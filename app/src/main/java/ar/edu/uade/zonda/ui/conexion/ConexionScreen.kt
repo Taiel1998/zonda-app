@@ -60,8 +60,7 @@ import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.PasoPareo
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.ui.components.LogoZonda
-import ar.edu.uade.zonda.ui.theme.SeveridadMedia
-import ar.edu.uade.zonda.ui.theme.SeveridadMediaFondo
+import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.VerdeZondaClaro
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 
@@ -375,11 +374,11 @@ private fun ColumnScope.Fallo(estado: ConexionUiState.Fallo, acciones: AccionesC
     }
     TarjetaRed(estado.direccion)
     Spacer(modifier = Modifier.height(12.dp))
-    Surface(color = SeveridadMediaFondo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = Tonos.Media.fondo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Text(text = stringResource(titulo), style = MaterialTheme.typography.titleSmall, color = SeveridadMedia)
+            Text(text = stringResource(titulo), style = MaterialTheme.typography.titleSmall, color = Tonos.Media.texto)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = stringResource(texto), style = MaterialTheme.typography.bodyMedium, color = SeveridadMedia)
+            Text(text = stringResource(texto), style = MaterialTheme.typography.bodyMedium, color = Tonos.Media.texto)
         }
     }
     Spacer(modifier = Modifier.height(16.dp))

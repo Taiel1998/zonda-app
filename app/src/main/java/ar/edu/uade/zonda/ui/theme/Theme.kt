@@ -1,44 +1,64 @@
 package ar.edu.uade.zonda.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val EsquemaClaro = lightColorScheme(
+/**
+ * Los colores del Figma puestos en los roles de Material 3. Con el verde claro en
+ * `secondaryContainer`, el chip elegido, el botón tonal y la píldora de la barra inferior salen
+ * verdes sin tocar cada componente.
+ */
+private val EsquemaZonda = lightColorScheme(
     primary = VerdeZonda,
-    onPrimary = Color.White,
+    onPrimary = Blanco,
     primaryContainer = VerdeZondaClaro,
-    onPrimaryContainer = VerdeZondaOscuro,
-    secondary = SeveridadBaja,
-    secondaryContainer = SeveridadBajaFondo,
-    error = SeveridadAlta,
-    errorContainer = SeveridadAltaFondo,
-    background = Color(0xFFFCFDFC),
-    surface = Color(0xFFFCFDFC),
-)
-
-private val EsquemaOscuro = darkColorScheme(
-    primary = Color(0xFF7FD3BD),
-    onPrimary = VerdeZondaOscuro,
-    primaryContainer = VerdeZondaOscuro,
-    onPrimaryContainer = VerdeZondaClaro,
-    error = Color(0xFFF2B8B5),
+    onPrimaryContainer = VerdeZonda,
+    inversePrimary = VerdeAccionAviso,
+    secondary = VerdeZonda,
+    onSecondary = Blanco,
+    secondaryContainer = VerdeZondaClaro,
+    onSecondaryContainer = VerdeZonda,
+    tertiary = Tonos.Info.texto,
+    onTertiary = Blanco,
+    tertiaryContainer = Tonos.Info.fondo,
+    onTertiaryContainer = Tonos.Info.texto,
+    background = Blanco,
+    onBackground = Texto,
+    surface = Blanco,
+    onSurface = Texto,
+    surfaceVariant = GrisCalido,
+    onSurfaceVariant = TextoSecundario,
+    surfaceTint = Blanco,
+    inverseSurface = GrisAviso,
+    inverseOnSurface = Blanco,
+    error = RojoPeligro,
+    onError = Blanco,
+    errorContainer = RojoPeligroFondo,
+    onErrorContainer = RojoPeligro,
+    outline = Borde,
+    outlineVariant = Borde,
+    scrim = Color.Black,
+    surfaceBright = Blanco,
+    surfaceDim = GrisCalido,
+    surfaceContainerLowest = Blanco,
+    surfaceContainerLow = Blanco,
+    surfaceContainer = CremaBarra,
+    surfaceContainerHigh = Blanco,
+    surfaceContainerHighest = GrisCalido,
 )
 
 /**
- * Tema de la app: Material 3 con los colores de Zonda. La tipografía es la de Material 3 por defecto,
- * que alcanza para esta app (indicación de la cátedra) y respeta el tamaño de letra del sistema.
+ * Tema de la app. Solo claro y sin colores dinámicos: con colores dinámicos, en Android 12 o más
+ * nuevo la app tomaría los colores del fondo de pantalla y dejaría de parecerse al Figma, que
+ * tampoco tiene tema oscuro (va a las limitaciones del README).
  */
 @Composable
-fun ZondaTheme(
-    oscuro: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
+fun ZondaTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = if (oscuro) EsquemaOscuro else EsquemaClaro,
+        colorScheme = EsquemaZonda,
+        typography = TipografiaZonda,
         content = content,
     )
 }

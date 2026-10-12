@@ -39,8 +39,7 @@ import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.ui.comentarioPropuesto
 import ar.edu.uade.zonda.ui.etiqueta
-import ar.edu.uade.zonda.ui.theme.EstadoRevisada
-import ar.edu.uade.zonda.ui.theme.SeveridadAlta
+import ar.edu.uade.zonda.ui.theme.Tonos
 
 /** Hoja inferior Revisar (Figma, figura 12). Cerrarla deslizando equivale a Cancelar. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,7 +84,7 @@ private fun ColumnScope.PasoResultado(formulario: FormularioRevision, acciones: 
     OpcionResultado(
         titulo = stringResource(R.string.resultado_ataque_real),
         detalle = stringResource(R.string.revisar_ataque_real_detalle),
-        color = SeveridadAlta,
+        color = Tonos.Alta.texto,
         seleccionada = formulario.resultado == ResultadoRevision.ATAQUE_REAL,
         alElegir = { acciones.alElegirResultado(ResultadoRevision.ATAQUE_REAL) },
     )
@@ -93,7 +92,7 @@ private fun ColumnScope.PasoResultado(formulario: FormularioRevision, acciones: 
     OpcionResultado(
         titulo = stringResource(R.string.resultado_falso_positivo),
         detalle = stringResource(R.string.revisar_falso_positivo_detalle),
-        color = EstadoRevisada,
+        color = Tonos.Baja.texto,
         seleccionada = formulario.resultado == ResultadoRevision.FALSO_POSITIVO,
         alElegir = { acciones.alElegirResultado(ResultadoRevision.FALSO_POSITIVO) },
     )

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,7 +57,7 @@ import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.primerinicio.TIPOS_EN_PANTALLA
 import ar.edu.uade.zonda.ui.primerinicio.TarjetaNotificaciones
-import ar.edu.uade.zonda.ui.theme.SeveridadMedia
+import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.ZoneId
 
@@ -145,6 +146,7 @@ fun AjustesContenido(estado: AjustesUiState, acciones: AccionesAjustes, zona: Zo
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0),
         topBar = { TopAppBar(title = { Text(stringResource(R.string.destino_ajustes)) }) },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { relleno ->
@@ -274,7 +276,7 @@ private fun FilaRed(red: Red, acciones: AccionesAjustes) {
             Text(text = red.nombre, style = MaterialTheme.typography.titleSmall)
             Text(text = red.urlBase.removePrefix("https://"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (red.accesoVencido) {
-                Text(text = stringResource(R.string.acceso_vencido_corto), style = MaterialTheme.typography.bodySmall, color = SeveridadMedia)
+                Text(text = stringResource(R.string.acceso_vencido_corto), style = MaterialTheme.typography.bodySmall, color = Tonos.Media.texto)
             }
         }
         Spacer(modifier = Modifier.width(8.dp))

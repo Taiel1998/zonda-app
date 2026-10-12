@@ -63,8 +63,7 @@ import ar.edu.uade.zonda.ui.components.IndicadorVeredicto
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.nombreEnFrase
-import ar.edu.uade.zonda.ui.theme.EstadoRevisada
-import ar.edu.uade.zonda.ui.theme.SeveridadMedia
+import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.ZoneId
 
@@ -205,7 +204,6 @@ fun DetalleContenido(
                 DetalleUiState.SinRed -> EstadoVacio(
                     titulo = stringResource(R.string.vacio_sin_red_titulo),
                     detalle = stringResource(R.string.vacio_sin_red_detalle),
-                    icono = Icons.Filled.Info,
                 )
                 is DetalleUiState.NoDisponible -> {
                     if (estado.sinConexion) BannerSinConexion(datosDe = null, zona = zona)
@@ -320,7 +318,7 @@ private fun CuerpoDetalle(alerta: Alerta, accion: AccionPendiente?, acciones: Ac
                 FilaDato(
                     etiqueta = stringResource(R.string.detalle_resultado),
                     valor = stringResource(revision.resultado.etiqueta()),
-                    colorValor = if (revision.resultado == ResultadoRevision.ATAQUE_REAL) MaterialTheme.colorScheme.error else EstadoRevisada,
+                    colorValor = if (revision.resultado == ResultadoRevision.ATAQUE_REAL) MaterialTheme.colorScheme.error else Tonos.Baja.texto,
                 )
                 FilaDato(stringResource(R.string.detalle_motivo), stringResource(revision.motivo.etiqueta()))
                 Spacer(modifier = Modifier.height(6.dp))
@@ -364,9 +362,9 @@ private fun CuerpoDetalle(alerta: Alerta, accion: AccionPendiente?, acciones: Ac
 /** 409: otra persona revisó la alerta antes. Se muestra su revisión y la persona decide (RF04, criterio 4). */
 @Composable
 private fun TarjetaConflicto(ajena: Revision, acciones: AccionesDetalle, zona: ZoneId) {
-    OutlinedCard(modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, SeveridadMedia)) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Tonos.Media.texto)) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Text(text = stringResource(R.string.conflicto_titulo), style = MaterialTheme.typography.titleSmall, color = SeveridadMedia)
+            Text(text = stringResource(R.string.conflicto_titulo), style = MaterialTheme.typography.titleSmall, color = Tonos.Media.texto)
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "${stringResource(ajena.resultado.etiqueta())} · ${stringResource(ajena.motivo.etiqueta())}",

@@ -1,14 +1,15 @@
 package ar.edu.uade.zonda.ui.alertas
 
 import android.content.Context
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
@@ -92,6 +93,7 @@ fun AlertasContenido(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.destino_alertas)) },
@@ -131,7 +133,6 @@ fun AlertasContenido(
                 ContenidoAlertas.SinRed -> EstadoVacio(
                     titulo = stringResource(R.string.vacio_sin_red_titulo),
                     detalle = stringResource(R.string.vacio_sin_red_detalle),
-                    icono = Icons.Filled.Info,
                 )
                 is ContenidoAlertas.Vacio -> if (contenido.conFiltro) {
                     EstadoVacio(
