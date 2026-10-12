@@ -101,3 +101,11 @@ Registro corto de las decisiones que cambian algo respecto de la Etapa 1 o que c
 **Por qué.** Enviar antes de bajar evita que el servidor devuelva "sin revisar" una alerta que el teléfono ya revisó. Guardar el cursor por página hace que un corte a mitad de camino no obligue a bajar todo de nuevo. La espera exponencial entre intentos la aporta WorkManager (fase 8); hacerla dentro de "Sincronizar ahora" dejaría a la persona esperando con la pantalla bloqueada.
 
 **Qué cambia.** `ResultadoSincronizacion` cuenta acciones enviadas y con error; los conflictos no se cuentan como error porque esperan una decisión de la persona.
+
+## 14. Un estado por pantalla y pantallas sin ViewModel adentro
+
+**Decisión.** Cada pantalla de datos tiene un ViewModel que expone un único `StateFlow` con una clase de estado (`AlertasUiState`, `DetalleUiState`): el contenido como clase sellada (cargando, sin red, vacío, lista o contenido), el filtro, si hay conexión, si se está sincronizando y un aviso de un solo uso para el snackbar. La pantalla se divide en dos funciones: `AlertasScreen` crea el ViewModel y `AlertasContenido` recibe el estado y devuelve las acciones. Los ViewModels se crean con `viewModelDeZonda { contenedor -> ... }`, que toma las dependencias del `AppContainer`.
+
+**Por qué.** Con un solo estado, lo que se ve es siempre una función de un valor y no hay combinaciones imposibles (una lista y un error a la vez). Separar el contenido del ViewModel permite probar la pantalla con Compose sobre Robolectric pasándole un estado armado a mano, sin base ni red. El aviso de un solo uso (la pantalla lo muestra y avisa `avisoMostrado()`) evita que un snackbar reaparezca al rotar el teléfono.
+
+**Qué cambia.** Los textos siguen en `strings.xml`; la traducción de cada valor del dominio a su texto está en un solo archivo (`ui/Textos.kt`), igual que el formato de fechas y números (`ui/Formato.kt`).

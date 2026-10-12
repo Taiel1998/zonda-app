@@ -18,6 +18,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import ar.edu.uade.zonda.ui.ajustes.AjustesScreen
 import ar.edu.uade.zonda.ui.alertas.AlertasScreen
+import ar.edu.uade.zonda.ui.detalle.RutaDetalle
 import ar.edu.uade.zonda.ui.detalle.detalleAlerta
 import ar.edu.uade.zonda.ui.estado.EstadoScreen
 
@@ -61,7 +62,9 @@ fun ZondaNavHost(navController: NavHostController = rememberNavController()) {
             modifier = Modifier.padding(relleno),
         ) {
             composable(Destino.Estado.ruta) { EstadoScreen() }
-            composable(Destino.Alertas.ruta) { AlertasScreen() }
+            composable(Destino.Alertas.ruta) {
+                AlertasScreen(alAbrirDetalle = { alertaId -> navController.navigate(RutaDetalle.crear(alertaId)) })
+            }
             composable(Destino.Ajustes.ruta) { AjustesScreen() }
             detalleAlerta(alVolver = { navController.popBackStack() })
         }
