@@ -54,11 +54,13 @@ fun SeveridadesScreen(
     textoBoton: String,
     alGuardar: () -> Unit,
     alVolver: (() -> Unit)? = null,
+    titulo: String = stringResource(R.string.inicio_antes_de_empezar),
+    intro: String = stringResource(R.string.severidades_intro),
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.inicio_antes_de_empezar)) },
+                title = { Text(titulo) },
                 navigationIcon = {
                     if (alVolver != null) {
                         IconButton(onClick = alVolver) {
@@ -76,7 +78,7 @@ fun SeveridadesScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
-            Text(text = stringResource(R.string.severidades_intro), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = intro, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TIPOS_EN_PANTALLA.forEach { tipo ->
                 Spacer(modifier = Modifier.height(10.dp))
                 OutlinedCard(modifier = Modifier.fillMaxWidth()) {

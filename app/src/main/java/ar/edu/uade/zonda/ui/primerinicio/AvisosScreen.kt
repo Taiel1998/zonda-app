@@ -4,10 +4,7 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +22,6 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,15 +46,14 @@ import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.abrirAjustesDeLaApp
-import ar.edu.uade.zonda.ui.components.IndicadorSeveridad
-import ar.edu.uade.zonda.ui.etiqueta
+import ar.edu.uade.zonda.ui.components.SelectorDeAvisos
 import ar.edu.uade.zonda.ui.tienePermiso
 
 /**
  * Preferencias de avisos del primer inicio (RF05; Figma, figura 9): cómo avisa cada severidad y el
  * permiso de notificaciones. Sin el permiso la app sigue funcionando y explica cómo activarlo (RNF06).
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AvisosScreen(
     avisos: PreferenciasAvisos,
@@ -93,20 +88,7 @@ fun AvisosScreen(
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(text = stringResource(R.string.avisos_titulo), style = MaterialTheme.typography.titleSmall)
                     Text(text = stringResource(R.string.avisos_texto), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Severidad.entries.forEach { severidad ->
-                        Spacer(modifier = Modifier.height(12.dp))
-                        IndicadorSeveridad(severidad)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ModoAviso.entries.forEach { modo ->
-                                FilterChip(
-                                    selected = avisos.para(severidad) == modo,
-                                    onClick = { alCambiar(severidad, modo) },
-                                    label = { Text(stringResource(modo.etiqueta())) },
-                                )
-                            }
-                        }
-                    }
+                    SelectorDeAvisos(avisos = avisos, alCambiar = alCambiar)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -119,9 +101,12 @@ fun AvisosScreen(
     }
 }
 
-/** El permiso de notificaciones existe desde Android 13; antes no hace falta pedirlo. */
+/**
+ * El permiso de notificaciones: pedirlo, y si se rechazó, explicar cómo activarlo desde los ajustes
+ * (RNF06). Existe desde Android 13; antes no hace falta. Lo usan el primer inicio y Ajustes.
+ */
 @Composable
-private fun TarjetaNotificaciones() {
+fun TarjetaNotificaciones(modifier: Modifier = Modifier) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
     val contexto = LocalContext.current
     var permitido by remember { mutableStateOf(tienePermiso(contexto, Manifest.permission.POST_NOTIFICATIONS)) }
@@ -136,7 +121,7 @@ private fun TarjetaNotificaciones() {
         onPauseOrDispose { }
     }
 
-    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+    OutlinedCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(text = stringResource(R.string.notificaciones_titulo), style = MaterialTheme.typography.titleSmall)
             Text(text = stringResource(R.string.notificaciones_texto), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
