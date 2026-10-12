@@ -28,11 +28,15 @@ import ar.edu.uade.zonda.domain.usecase.ObtenerDetalleAlerta
 import ar.edu.uade.zonda.domain.usecase.ObtenerEstadoRed
 import ar.edu.uade.zonda.domain.usecase.ParearRed
 import ar.edu.uade.zonda.domain.usecase.QuitarDispositivo
+import ar.edu.uade.zonda.domain.usecase.ResolverEnvioRevision
 import ar.edu.uade.zonda.domain.usecase.RevisarAlerta
 import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import ar.edu.uade.zonda.domain.usecase.VincularTelegram
 import ar.edu.uade.zonda.sync.ConectividadAndroid
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
 
 /**
@@ -69,12 +73,19 @@ class AppContainer(context: Context) {
     val accionesPendientes: AccionesPendientesRepository by lazy { AccionesPendientesRepositoryImpl(baseDeDatos.accionesPendientesDao()) }
     val generadorDeIds: GeneradorDeIds = GeneradorDeIds { UUID.randomUUID().toString() }
 
+    /**
+     * Alcance de corrutinas de toda la app, para el trabajo que no tiene que cortarse al cerrar una
+     * pantalla: por ejemplo, enviar una revisión cuando termina la ventana de Deshacer (decisión 15).
+     */
+    val alcanceDeLaApp: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     // Casos de uso
     val observarAlertas: ObservarAlertas by lazy { ObservarAlertas(redes, alertas) }
     val obtenerEstadoRed: ObtenerEstadoRed by lazy { ObtenerEstadoRed(redes, alertas) }
     val obtenerDetalleAlerta: ObtenerDetalleAlerta by lazy { ObtenerDetalleAlerta(alertas, conectividad) }
     val revisarAlerta: RevisarAlerta by lazy { RevisarAlerta(alertas, accionesPendientes, generadorDeIds) }
     val deshacerRevision: DeshacerRevision by lazy { DeshacerRevision(alertas, accionesPendientes) }
+    val resolverEnvioRevision: ResolverEnvioRevision by lazy { ResolverEnvioRevision(alertas, accionesPendientes) }
     val sincronizarAlertas: SincronizarAlertas by lazy { SincronizarAlertas(redes, alertas) }
     val calcularResumen: CalcularResumen by lazy { CalcularResumen(redes, alertas) }
     val cambiarSeveridades: CambiarSeveridades by lazy { CambiarSeveridades(redes, accionesPendientes, generadorDeIds) }

@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.ui.detalle
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,23 +26,29 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.EstadoEnvio
+import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Revision
@@ -56,34 +64,76 @@ import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.nombreEnFrase
 import ar.edu.uade.zonda.ui.theme.EstadoRevisada
+import ar.edu.uade.zonda.ui.theme.SeveridadMedia
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.ZoneId
-import kotlinx.coroutines.launch
+
+/** Lo que la persona puede hacer en el detalle. Los valores por defecto no hacen nada (cómodo en las pruebas). */
+class AccionesDetalle(
+    val alVolver: () -> Unit = {},
+    val alReintentarDescarga: () -> Unit = {},
+    val alRevisar: () -> Unit = {},
+    val alElegirResultado: (ResultadoRevision) -> Unit = {},
+    val alElegirMotivo: (Motivo, String) -> Unit = { _, _ -> },
+    val alCambiarComentario: (String) -> Unit = {},
+    val alVolverAlResultado: () -> Unit = {},
+    val alCancelarRevision: () -> Unit = {},
+    val alConfirmarRevision: () -> Unit = {},
+    val alDeshacer: () -> Unit = {},
+    val alAplicarLaMia: () -> Unit = {},
+    val alQuedarmeConLaOtra: () -> Unit = {},
+    val alReintentarEnvio: () -> Unit = {},
+    val alAvisoMostrado: () -> Unit = {},
+)
 
 /**
- * Pantalla Detalle (RF03): los datos del flujo, el veredicto de cada método con el dato que lo
- * justifica y, si está revisada, la revisión con su historial. Se abre desde Estado o Alertas y
- * desde el enlace del aviso de Telegram. La acción Revisar (RF04) se completa en la fase 6.
+ * Pantalla Detalle (RF03 y RF04): los datos del flujo, el veredicto de cada método con el dato que lo
+ * justifica, la revisión con su historial y la acción Revisar en dos pasos. Si la revisión no pudo
+ * llegar al servidor, muestra el conflicto con la revisión de otra persona o el botón Reintentar.
  */
 @Composable
 fun DetalleScreen(
     alertaId: String,
     alVolver: () -> Unit,
-    viewModel: DetalleViewModel = viewModelDeZonda {
-        DetalleViewModel(it.obtenerDetalleAlerta, it.redes, it.conectividad, alertaId)
+    viewModel: DetalleViewModel = viewModelDeZonda { contenedor ->
+        DetalleViewModel(
+            obtenerDetalle = contenedor.obtenerDetalleAlerta,
+            revisarAlerta = contenedor.revisarAlerta,
+            deshacerRevision = contenedor.deshacerRevision,
+            resolverEnvio = contenedor.resolverEnvioRevision,
+            sincronizarAlertas = contenedor.sincronizarAlertas,
+            redes = contenedor.redes,
+            acciones = contenedor.accionesPendientes,
+            conectividad = contenedor.conectividad,
+            alcanceDeEnvio = contenedor.alcanceDeLaApp,
+            alertaId = alertaId,
+        )
     },
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
-    val snackbar = remember { SnackbarHostState() }
-    val alcance = rememberCoroutineScope()
-    val textoPronto = stringResource(R.string.detalle_revision_pronto)
+    val formulario by viewModel.formulario.collectAsStateWithLifecycle()
+    val aviso by viewModel.aviso.collectAsStateWithLifecycle()
 
     DetalleContenido(
         estado = estado,
-        alVolver = alVolver,
-        alReintentar = viewModel::reintentar,
-        alRevisar = { alcance.launch { snackbar.showSnackbar(textoPronto) } },
-        snackbar = snackbar,
+        formulario = formulario,
+        aviso = aviso,
+        acciones = AccionesDetalle(
+            alVolver = alVolver,
+            alReintentarDescarga = viewModel::reintentarDescarga,
+            alRevisar = viewModel::abrirRevision,
+            alElegirResultado = viewModel::elegirResultado,
+            alElegirMotivo = viewModel::elegirMotivo,
+            alCambiarComentario = viewModel::cambiarComentario,
+            alVolverAlResultado = viewModel::volverAlResultado,
+            alCancelarRevision = viewModel::cancelarRevision,
+            alConfirmarRevision = viewModel::confirmarRevision,
+            alDeshacer = viewModel::deshacer,
+            alAplicarLaMia = viewModel::aplicarLaMiaIgual,
+            alQuedarmeConLaOtra = viewModel::quedarmeConLaOtra,
+            alReintentarEnvio = viewModel::reintentarEnvio,
+            alAvisoMostrado = viewModel::avisoMostrado,
+        ),
     )
 }
 
@@ -91,18 +141,43 @@ fun DetalleScreen(
 @Composable
 fun DetalleContenido(
     estado: DetalleUiState,
-    alVolver: () -> Unit,
-    alReintentar: () -> Unit,
-    alRevisar: () -> Unit,
-    snackbar: SnackbarHostState = remember { SnackbarHostState() },
+    acciones: AccionesDetalle,
+    formulario: FormularioRevision? = null,
+    aviso: AvisoDetalle? = null,
     zona: ZoneId = ZoneId.systemDefault(),
 ) {
+    val snackbar = remember { SnackbarHostState() }
+    val contexto = LocalContext.current
+
+    // El aviso con Deshacer queda a la vista mientras el ViewModel tenga la ventana abierta; cuando la
+    // cierra (aviso en null), este efecto se cancela y el snackbar desaparece.
+    LaunchedEffect(aviso) {
+        when (aviso) {
+            is AvisoDetalle.RevisionGuardada -> {
+                val mensaje = contexto.getString(
+                    if (aviso.conConexion) R.string.aviso_revision_guardada else R.string.aviso_revision_guardada_sin_conexion,
+                )
+                val resultado = snackbar.showSnackbar(
+                    message = mensaje,
+                    actionLabel = contexto.getString(R.string.aviso_deshacer),
+                    duration = SnackbarDuration.Indefinite,
+                )
+                if (resultado == SnackbarResult.ActionPerformed) acciones.alDeshacer()
+            }
+            is AvisoDetalle.Error -> {
+                snackbar.showSnackbar(contexto.getString(aviso.error.mensaje()))
+                acciones.alAvisoMostrado()
+            }
+            null -> Unit
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.detalle_titulo)) },
                 navigationIcon = {
-                    IconButton(onClick = alVolver) {
+                    IconButton(onClick = acciones.alVolver) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.accion_volver))
                     }
                 },
@@ -141,20 +216,22 @@ fun DetalleContenido(
                         } else {
                             stringResource(estado.error?.mensaje() ?: R.string.error_generico)
                         },
-                        alReintentar = alReintentar,
+                        alReintentar = acciones.alReintentarDescarga,
                     )
                 }
                 is DetalleUiState.Contenido -> {
                     if (estado.sinConexion) BannerSinConexion(datosDe = estado.datosDe, zona = zona)
-                    CuerpoDetalle(alerta = estado.alerta, alRevisar = alRevisar, zona = zona)
+                    CuerpoDetalle(alerta = estado.alerta, accion = estado.accion, acciones = acciones, zona = zona)
                 }
             }
         }
     }
+
+    if (formulario != null) HojaRevision(formulario = formulario, acciones = acciones)
 }
 
 @Composable
-private fun CuerpoDetalle(alerta: Alerta, alRevisar: () -> Unit, zona: ZoneId) {
+private fun CuerpoDetalle(alerta: Alerta, accion: AccionPendiente?, acciones: AccionesDetalle, zona: ZoneId) {
     val metodos = alerta.metodos.sorted().map { stringResource(it.nombreEnFrase()) }
     Column(
         modifier = Modifier
@@ -227,6 +304,16 @@ private fun CuerpoDetalle(alerta: Alerta, alRevisar: () -> Unit, zona: ZoneId) {
         }
         Spacer(modifier = Modifier.height(12.dp))
 
+        val ajena = accion?.revisionAjena
+        if (accion?.estado == EstadoEnvio.CONFLICTO && ajena != null) {
+            TarjetaConflicto(ajena = ajena, acciones = acciones, zona = zona)
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        if (accion?.estado == EstadoEnvio.ERROR) {
+            TarjetaEnvioFallido(accion = accion, acciones = acciones)
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
         val revision = alerta.revisionActual
         if (revision != null && !alerta.sinRevisar) {
             Seccion(titulo = stringResource(R.string.detalle_revision)) {
@@ -240,12 +327,13 @@ private fun CuerpoDetalle(alerta: Alerta, alRevisar: () -> Unit, zona: ZoneId) {
                 Text(text = "“${revision.comentario}”", style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = autorYFecha(revision, zona), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (alerta.historial.size > 1) {
+                val anteriores = alerta.historial.filterNot { it === revision }.asReversed()
+                if (anteriores.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(10.dp))
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = stringResource(R.string.detalle_historial), style = MaterialTheme.typography.titleSmall)
-                    alerta.historial.dropLast(1).asReversed().forEach { anterior ->
+                    anteriores.forEach { anterior ->
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "${stringResource(anterior.resultado.etiqueta())} · ${stringResource(anterior.motivo.etiqueta())} · ${autorYFecha(anterior, zona)}",
@@ -256,7 +344,7 @@ private fun CuerpoDetalle(alerta: Alerta, alRevisar: () -> Unit, zona: ZoneId) {
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(onClick = alRevisar, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = acciones.alRevisar, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.detalle_cambiar_revision))
             }
         } else {
@@ -266,9 +354,59 @@ private fun CuerpoDetalle(alerta: Alerta, alRevisar: () -> Unit, zona: ZoneId) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Button(onClick = alRevisar, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = acciones.alRevisar, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.detalle_revisar))
             }
+        }
+    }
+}
+
+/** 409: otra persona revisó la alerta antes. Se muestra su revisión y la persona decide (RF04, criterio 4). */
+@Composable
+private fun TarjetaConflicto(ajena: Revision, acciones: AccionesDetalle, zona: ZoneId) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, SeveridadMedia)) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(text = stringResource(R.string.conflicto_titulo), style = MaterialTheme.typography.titleSmall, color = SeveridadMedia)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "${stringResource(ajena.resultado.etiqueta())} · ${stringResource(ajena.motivo.etiqueta())}",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(text = "“${ajena.comentario}”", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = "${ajena.autor ?: stringResource(R.string.conflicto_otra_persona)} · ${Formato.fechaYHora(ajena.fecha, zona)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = stringResource(R.string.conflicto_pregunta), style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = acciones.alQuedarmeConLaOtra, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.conflicto_quedarme))
+                }
+                Button(onClick = acciones.alAplicarLaMia, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.conflicto_aplicar))
+                }
+            }
+        }
+    }
+}
+
+/** La revisión no salió después de cinco intentos, o el servidor la rechazó: Reintentar a mano (informe, 14.3). */
+@Composable
+private fun TarjetaEnvioFallido(accion: AccionPendiente, acciones: AccionesDetalle) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(text = stringResource(R.string.envio_error_titulo), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.envio_error_detalle, accion.intentos, accion.ultimoError.orEmpty()),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            FilledTonalButton(onClick = acciones.alReintentarEnvio) { Text(stringResource(R.string.error_reintentar)) }
         }
     }
 }
