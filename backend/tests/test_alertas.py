@@ -43,6 +43,12 @@ def test_filtros_de_severidad_metodo_y_estado(cliente, auth):
     assert altas and all(a["severidad"] == "alta" for a in altas)
     assert all(a["tipoAtaque"] in ("fuerza_bruta", "sin_tipificar") for a in altas)
 
+    # El filtro se resuelve en SQL: cada página viene completa (10 por página en los tests), no con huecos.
+    bajas = todas_las_alertas_con(cliente, auth, severidad="baja")
+    primera = cliente.get("/alertas", params={"severidad": "baja"}, headers=auth).json()
+    assert len(primera["alertas"]) == min(10, len(bajas))
+    assert primera["hayMas"] is (len(bajas) > 10)
+
     reglas = todas_las_alertas_con(cliente, auth, metodo="reglas")
     assert reglas and all(a["veredictos"]["reglas"] for a in reglas)
 

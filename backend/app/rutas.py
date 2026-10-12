@@ -167,6 +167,10 @@ def listar_alertas(
         parametros.append(estado)
     if metodo:
         sql += f" AND veredicto_{metodo} = 1"
+    if severidad:
+        # La severidad sale del tipo según la tabla de la red; se filtra en SQL para que cada página venga completa.
+        sql += " AND COALESCE(tipo_ataque, ?) IN (SELECT tipo_ataque FROM severidades WHERE severidad = ?)"
+        parametros.extend([CLAVE_SIN_TIPO, severidad])
     tamanio = request.app.state.config.tamanio_pagina
     sql += " ORDER BY secuencia ASC LIMIT ?"
     parametros.append(tamanio + 1)
@@ -174,9 +178,6 @@ def listar_alertas(
     hay_mas = len(filas) > tamanio
     filas = filas[:tamanio]
     alertas = [alerta_dto(con, fila) for fila in filas]
-    if severidad:
-        # La severidad se calcula a partir del tipo, por eso se filtra después de leer.
-        alertas = [a for a in alertas if a.severidad == severidad]
     ultima = filas[-1]["secuencia"] if filas else secuencia_desde
     return PaginaAlertas(alertas=alertas, cursorSiguiente=f"{instancia}:{ultima}", hayMas=hay_mas, horaServidor=iso(ahora()))
 
