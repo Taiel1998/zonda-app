@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -80,6 +82,12 @@ class AlertasViewModel(
         // Al abrir la pantalla con una red pareada y conexión, se sincroniza en segundo plano (informe, 14.2).
         viewModelScope.launch {
             if (redes.observarRedActiva().first() != null && conectividad.hayConexion()) sincronizar(manual = false)
+        }
+        viewModelScope.launch {
+            // Cuando vuelve la conexión se envía lo pendiente y se traen las novedades (RF04, criterio 3).
+            conectividad.conectado.drop(1).filter { it }.collect {
+                if (redes.observarRedActiva().first() != null) sincronizar(manual = false)
+            }
         }
     }
 
