@@ -1,6 +1,7 @@
 package ar.edu.uade.zonda.di
 
 import android.content.Context
+import android.os.Build
 import ar.edu.uade.zonda.data.local.ZondaDatabase
 import ar.edu.uade.zonda.data.preferencias.PreferenciasRepositoryImpl
 import ar.edu.uade.zonda.data.preferencias.preferenciasZonda
@@ -78,6 +79,14 @@ class AppContainer(context: Context) {
      * pantalla: por ejemplo, enviar una revisión cuando termina la ventana de Deshacer (decisión 15).
      */
     val alcanceDeLaApp: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Cómo se llama este teléfono en el servidor ("Google Pixel 7"): es el autor de sus revisiones. */
+    val nombreDelTelefono: String = listOf(Build.MANUFACTURER.orEmpty(), Build.MODEL.orEmpty())
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .distinct()
+        .joinToString(" ") { parte -> parte.replaceFirstChar { it.uppercase() } }
+        .ifBlank { "Teléfono Android" }
 
     // Casos de uso
     val observarAlertas: ObservarAlertas by lazy { ObservarAlertas(redes, alertas) }
