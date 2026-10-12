@@ -1,36 +1,56 @@
 package ar.edu.uade.zonda.domain.usecase
 
+import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.EstadoRed
+import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.Semaforo
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.RedesRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 /**
  * Estado de la red activa para la pantalla Estado (RF01): semáforo, contadores de alertas sin
  * revisar por severidad y hora de los datos.
  *
- * LO ESCRIBE TAIEL. Lo que tiene que hacer, según RF01 del informe:
- *
- * 1. Observar la red activa con [RedesRepository.observarRedActiva]. Si es null (no hay red pareada),
- *    emitir null.
- * 2. Para esa red, observar los contadores con [AlertasRepository.observarContadoresSinRevisar]
- *    (mirar cómo lo hace [ObservarAlertas] con `flatMapLatest`).
- * 3. Calcular el semáforo con estas reglas, en este orden:
- *    - si la red nunca se sincronizó (`red.sinDatos`): [ar.edu.uade.zonda.domain.model.Semaforo.SIN_DATOS].
- *      Nunca un semáforo verde sin datos (criterio de aceptación 3);
- *    - si hay alertas altas sin revisar: ROJO;
- *    - si no hay altas pero hay medias: AMARILLO;
- *    - si no hay altas ni medias: VERDE. Las bajas no cambian el semáforo.
- * 4. Emitir un [EstadoRed] con la red, el semáforo, los contadores y `datosDe = red.ultimaSincronizacion`.
- *
- * Conviene poner la regla del semáforo en una función aparte (por ejemplo `calcularSemaforo(red, contadores)`),
- * así se prueba sola. Los tests están en `ObtenerEstadoRedTest` (los escribe Rodrigo).
+ * Emite null si no hay red pareada. Como es un Flow sobre la base local, cuando la persona revisa
+ * la última alerta alta el semáforo cambia solo, sin volver a llamar al caso de uso.
  */
 class ObtenerEstadoRed(
     private val redes: RedesRepository,
     private val alertas: AlertasRepository,
 ) {
-    operator fun invoke(): Flow<EstadoRed?> {
-        TODO("Lo escribe Taiel en la fase 1: ver el comentario de la clase")
+    @OptIn(ExperimentalCoroutinesApi::class)
+    operator fun invoke(): Flow<EstadoRed?> =
+        redes.observarRedActiva().flatMapLatest { red ->
+            if (red == null) {
+                flowOf(null)
+            } else {
+                alertas.observarContadoresSinRevisar(red.id).map { contadores ->
+                    EstadoRed(
+                        red = red,
+                        semaforo = calcularSemaforo(red, contadores),
+                        sinRevisar = contadores,
+                        datosDe = red.ultimaSincronizacion,
+                    )
+                }
+            }
+        }
+
+    companion object {
+        /**
+         * Regla del semáforo (RF01). El orden importa: sin datos manda sobre todo lo demás, porque
+         * nunca se muestra un semáforo verde si la red no se sincronizó (criterio de aceptación 3).
+         * Las bajas no cambian el color.
+         */
+        fun calcularSemaforo(red: Red, contadores: ContadoresSinRevisar): Semaforo = when {
+            red.sinDatos -> Semaforo.SIN_DATOS
+            contadores.altas > 0 -> Semaforo.ROJO
+            contadores.medias > 0 -> Semaforo.AMARILLO
+            else -> Semaforo.VERDE
+        }
     }
 }
