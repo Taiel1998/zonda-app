@@ -78,6 +78,8 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.mlkit.vision)
     implementation(libs.mlkit.barcode.scanning)
+    // Sincronización en segundo plano cada 15 minutos con red (RNF08).
+    implementation(libs.androidx.work.runtime)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -90,6 +92,8 @@ dependencies {
     // Pantallas de Compose dibujadas sobre Robolectric: se verifica lo que se muestra y lo que pasa al tocar.
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.androidx.compose.ui.test.junit4)
+    // Ejecutar el worker de sincronización en una prueba, sin WorkManager real.
+    testImplementation(libs.androidx.work.testing)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
