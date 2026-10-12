@@ -67,6 +67,11 @@ dependencies {
     implementation(libs.sqlcipher.android)
     // Preferencias del teléfono (avisos, primer inicio).
     implementation(libs.androidx.datastore.preferences)
+    // Red: Retrofit sobre OkHttp y Gson para el JSON del contrato (docs/decisiones.md, decisión 12).
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.gson)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -74,6 +79,8 @@ dependencies {
     // Room en memoria sobre la JVM, sin emulador.
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core.ktx)
+    // Servidor HTTP de mentira para probar el cliente: cabeceras, códigos de error y tiempos de espera.
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
