@@ -382,6 +382,38 @@ class SincronizadorHttpTest : PruebaConBase() {
     }
 
     @Test
+    fun `cuenta las nuevas por severidad para la notificacion`() = runTest {
+        conRed()
+        publicarCinco()
+
+        val resultado = alertas.sincronizar("red-1")
+
+        assertEquals(2, resultado.altasNuevas)
+        assertEquals(2, resultado.mediasNuevas)
+        assertEquals(1, resultado.bajasNuevas)
+    }
+
+    @Test
+    fun `un 401 deja la red con el acceso vencido y un pareo nuevo o una sincronizacion que anda lo limpian`() = runTest {
+        conRed()
+        publicarCinco()
+        alertas.sincronizar("red-1")
+        api.errores["alertas"] = errorHttp(401)
+
+        assertTrue(runCatching { alertas.sincronizar("red-1") }.exceptionOrNull() is ErrorZonda.NoAutorizado)
+        assertTrue(redes.observarRedActiva().first()!!.accesoVencido)
+
+        api.errores.clear()
+        alertas.sincronizar("red-1")
+        assertFalse(redes.observarRedActiva().first()!!.accesoVencido)
+
+        redes.marcarAccesoVencido("red-1", true)
+        redes.guardarRedPareada(Fixtures.red("red-1"), "token-nuevo")
+        assertFalse(redes.observarRedActiva().first()!!.accesoVencido)
+        assertEquals(5, alertas.observarAlertas("red-1", FiltroAlertas.TODAS).first().size)
+    }
+
+    @Test
     fun `sincronizar una red que no esta pareada es NoEncontrado`() = runTest {
         assertTrue(runCatching { alertas.sincronizar("red-x") }.exceptionOrNull() is ErrorZonda.NoEncontrado)
     }

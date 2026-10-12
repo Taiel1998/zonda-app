@@ -133,6 +133,19 @@ class PareoYServidorTest : PruebaConBase() {
     }
 
     @Test
+    fun `reiniciar la sincronizacion deja la red sin cursor ni hora pero pareada`() = runTest {
+        redes.parear(datos, "x")
+        redes.actualizarSincronizacion("red-oficina", "inst1:5", Fixtures.AHORA)
+
+        redes.reiniciarSincronizacion("red-oficina")
+
+        val red = redes.observarRedActiva().first()!!
+        assertNull(red.cursor)
+        assertNull(red.ultimaSincronizacion)
+        assertEquals("token-1", redes.tokenDe("red-oficina"))
+    }
+
+    @Test
     fun `pedir el vinculo de Telegram devuelve el codigo y el enlace al bot`() = runTest {
         redes.parear(datos, "x")
 

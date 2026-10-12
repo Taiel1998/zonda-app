@@ -73,6 +73,14 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
         redes.value = redes.value.filter { it.id != redId }
     }
 
+    override suspend fun marcarAccesoVencido(redId: String, vencido: Boolean) {
+        redes.value = redes.value.map { if (it.id == redId) it.copy(accesoVencido = vencido) else it }
+    }
+
+    override suspend fun reiniciarSincronizacion(redId: String) {
+        redes.value = redes.value.map { if (it.id == redId) it.copy(cursor = null, ultimaSincronizacion = null) else it }
+    }
+
     override fun observarSeveridades(redId: String): Flow<SeveridadPorTipo> =
         severidades.map { it[redId] ?: SeveridadPorTipo.RECOMENDADA }
 
