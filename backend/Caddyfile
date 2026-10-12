@@ -1,0 +1,15 @@
+# Caddy publica la API con HTTPS delante de uvicorn (que solo escucha en 127.0.0.1:8000).
+# El certificado lo emite Let's Encrypt con validación por DNS en DuckDNS, porque el nombre apunta
+# a una dirección privada y Let's Encrypt no puede llegar por HTTP (informe, sección 13.4).
+# Los valores {$...} salen del archivo .env: caddy run --envfile .env
+{
+	email {$CADDY_EMAIL}
+}
+
+{$ZONDA_DOMINIO} {
+	tls {
+		dns duckdns {$DUCKDNS_TOKEN}
+		protocols tls1.2 tls1.3
+	}
+	reverse_proxy 127.0.0.1:8000
+}

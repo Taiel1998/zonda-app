@@ -1,0 +1,28 @@
+name: Android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  compilar-y-probar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar el JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Preparar Gradle (con caché de dependencias)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Dar permiso de ejecución al wrapper
+        run: chmod +x gradlew
+
+      - name: Compilar la app y correr los tests unitarios
+        run: ./gradlew assembleDebug testDebugUnitTest --no-daemon --stacktrace

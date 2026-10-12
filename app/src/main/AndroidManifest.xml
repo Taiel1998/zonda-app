@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- allowBackup en false: la base local y el token no van a ninguna copia de seguridad (RNF03). -->
+    <application
+        android:name=".ZondaApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Zonda">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Zonda">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Enlace del aviso de Telegram (App Link): https://taiel1998.github.io/a/{id}.
+                 Android lo verifica contra /.well-known/assetlinks.json de ese dominio. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="taiel1998.github.io"
+                    android:pathPrefix="/a/"
+                    android:scheme="https" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

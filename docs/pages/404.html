@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zonda · abrí la app</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 32px 20px; background: #f2faf7; color: #1b2a27; }
+    main { max-width: 480px; margin: 0 auto; }
+    h1 { color: #0e6b5b; }
+    code { background: #d7f0e8; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Abrí Zonda para ver esta alerta</h1>
+    <p id="mensaje">Este enlace se abre con la app Zonda instalada en el teléfono.</p>
+    <p>Si ya la tenés instalada y llegaste acá igual, abrila desde el ícono: la alerta aparece en la lista al sincronizar.</p>
+  </main>
+  <script>
+    // El enlace tiene la forma /a/{id}. Se muestra el id para que la persona pueda buscar la alerta en la app.
+    var partes = location.pathname.split("/").filter(Boolean);
+    if (partes.length === 2 && partes[0] === "a") {
+      document.getElementById("mensaje").innerHTML =
+        "Alerta <code>" + partes[1].replace(/[^a-zA-Z0-9-]/g, "") + "</code>. Este enlace se abre con la app Zonda instalada en el teléfono.";
+    }
+  </script>
+</body>
+</html>

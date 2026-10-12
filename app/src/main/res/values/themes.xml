@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema de la Activity: sin barra de acción, porque la interfaz es toda de Compose (Material 3). -->
+    <style name="Theme.Zonda" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

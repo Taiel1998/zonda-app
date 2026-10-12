@@ -1,0 +1,22 @@
+<resources>
+    <!-- Textos de la interfaz, en voseo como en el Figma. Los mantiene Melinda. -->
+    <string name="app_name">Zonda</string>
+
+    <!-- Barra inferior -->
+    <string name="destino_estado">Estado</string>
+    <string name="destino_alertas">Alertas</string>
+    <string name="destino_ajustes">Ajustes</string>
+
+    <!-- Acciones comunes -->
+    <string name="accion_volver">Volver</string>
+
+    <!-- Marcadores de posición (se van reemplazando en cada fase) -->
+    <string name="estado_placeholder">Acá vas a ver el semáforo de la red y cuántas alertas faltan revisar.</string>
+    <string name="alertas_placeholder">Acá vas a ver la lista de alertas con los filtros.</string>
+    <string name="ajustes_placeholder">Acá vas a elegir la red activa, los avisos y la severidad de cada tipo de ataque.</string>
+
+    <!-- Detalle -->
+    <string name="detalle_titulo">Detalle de la alerta</string>
+    <string name="detalle_alerta_id">Alerta %1$s</string>
+    <string name="detalle_placeholder">Llegaste desde el enlace del aviso. El detalle completo se construye en la fase 5.</string>
+</resources>
