@@ -1,0 +1,107 @@
+package ar.edu.uade.zonda.domain.fakes
+
+import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
+import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoEnvio
+import ar.edu.uade.zonda.domain.model.EstadoRevision
+import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.Revision
+import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.domain.repository.AlertasRepository
+import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
+import java.time.Instant
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+
+/**
+ * Repositorio de alertas en memoria para probar los casos de uso sin Room ni red.
+ * Aplica los filtros de estado, severidad, servicio, destino y método; el período no (no hay reloj).
+ */
+class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepository {
+
+    private val alertas = MutableStateFlow(iniciales)
+
+    /** Última versión de cada alerta "tal como llegó del servidor", para restaurar al deshacer. */
+    private val delServidor = iniciales.associateBy { it.id }.toMutableMap()
+
+    /** Lo que devuelve [descargarDetalle], por id. */
+    var alertasRemotas: Map<String, Alerta> = emptyMap()
+
+    var resultadoSincronizacion = ResultadoSincronizacion(0, 0, 0, 0, 0, Instant.EPOCH)
+    var errorAlSincronizar: ErrorZonda? = null
+    val sincronizaciones = mutableListOf<String>()
+
+    val todas: List<Alerta>
+        get() = alertas.value
+
+    fun agregar(vararg nuevas: Alerta) {
+        alertas.value = alertas.value + nuevas
+        nuevas.forEach { delServidor[it.id] = it }
+    }
+
+    override fun observarAlertas(redId: String, filtro: FiltroAlertas): Flow<List<Alerta>> =
+        alertas.map { lista ->
+            lista.filter { it.redId == redId && filtro.acepta(it) }.sortedByDescending { it.inicio }
+        }
+
+    override fun observarAlerta(redId: String, alertaId: String): Flow<Alerta?> =
+        alertas.map { lista -> lista.firstOrNull { it.redId == redId && it.id == alertaId } }
+
+    override fun observarContadoresSinRevisar(redId: String): Flow<ContadoresSinRevisar> =
+        alertas.map { lista ->
+            val sinRevisar = lista.filter { it.redId == redId && it.sinRevisar }
+            ContadoresSinRevisar(
+                altas = sinRevisar.count { it.severidad == Severidad.ALTA },
+                medias = sinRevisar.count { it.severidad == Severidad.MEDIA },
+                bajas = sinRevisar.count { it.severidad == Severidad.BAJA },
+            )
+        }
+
+    override suspend fun obtenerAlertasDesde(redId: String, desde: Instant): List<Alerta> =
+        alertas.value.filter { it.redId == redId && !it.inicio.isBefore(desde) }
+
+    override suspend fun aplicarRevisionLocal(redId: String, alertaId: String, revision: Revision): Alerta {
+        val actual = alertas.value.firstOrNull { it.redId == redId && it.id == alertaId } ?: throw ErrorZonda.NoEncontrado()
+        val nueva = actual.copy(
+            estadoRevision = EstadoRevision.de(revision.resultado),
+            revisionActual = revision,
+            historial = actual.historial + revision,
+            envio = EstadoEnvio.PENDIENTE,
+        )
+        reemplazar(nueva)
+        return nueva
+    }
+
+    override suspend fun restaurarEstadoDelServidor(redId: String, alertaId: String) {
+        delServidor[alertaId]?.let { reemplazar(it) }
+    }
+
+    override suspend fun descargarDetalle(redId: String, alertaId: String): Alerta {
+        val remota = alertasRemotas[alertaId] ?: throw ErrorZonda.NoEncontrado()
+        agregar(remota)
+        return remota
+    }
+
+    override suspend fun sincronizar(redId: String): ResultadoSincronizacion {
+        sincronizaciones += redId
+        errorAlSincronizar?.let { throw it }
+        return resultadoSincronizacion
+    }
+
+    override suspend fun borrarDeRed(redId: String) {
+        alertas.value = alertas.value.filter { it.redId != redId }
+    }
+
+    private fun reemplazar(nueva: Alerta) {
+        alertas.value = alertas.value.map { if (it.id == nueva.id) nueva else it }
+    }
+
+    private fun FiltroAlertas.acepta(alerta: Alerta): Boolean =
+        (estado == null || alerta.estadoRevision == estado) &&
+            (severidad == null || alerta.severidad == severidad) &&
+            (servicio == null || alerta.servicio == servicio) &&
+            (destinoIp == null || alerta.destino.ip == destinoIp) &&
+            (metodo == null || metodo in alerta.metodos)
+}

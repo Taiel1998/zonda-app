@@ -71,3 +71,9 @@ Registro corto de las decisiones que cambian algo respecto de la Etapa 1 o que c
 **Por qué.** Los botones de un bot de Telegram solo aceptan enlaces http, https y tg, así que un esquema propio (`zonda://`) no sirve. El nombre de DuckDNS de la API apunta a una dirección privada y no sirve para alojar el archivo de verificación.
 
 **Plan B.** Si la verificación falla en el teléfono de la demo, el aviso dice "Abrí Zonda" y la app sincroniza al abrirse.
+
+## 10. Cómo representa el dominio el tipo vacío y los motivos de revisión
+
+**Decisión.** Cuando la API manda `tipoAtaque: null` (la alerta la detectaron solo las reglas o los umbrales), el dominio usa el valor `SOLO_REGLAS_O_UMBRALES` del enum `TipoAtaque`. Los motivos de revisión son una lista fija (`Motivo`), cada uno atado a un resultado; el texto de cada motivo y el comentario que propone están en `strings.xml`.
+
+**Por qué.** Con un valor explícito, la pantalla de severidades y los filtros tratan ese caso como uno más, sin un `null` que haya que contemplar aparte en cada lugar. Los motivos fijos evitan escribir el motivo a mano (heurística 6 de Nielsen) y hacen comparables las revisiones en el Resumen.
