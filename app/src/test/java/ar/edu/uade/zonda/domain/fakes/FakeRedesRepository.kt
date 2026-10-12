@@ -2,6 +2,8 @@ package ar.edu.uade.zonda.domain.fakes
 
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.DatosPareo
+import ar.edu.uade.zonda.domain.model.ErrorZonda
+import kotlinx.coroutines.CompletableDeferred
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
@@ -20,6 +22,20 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
     var vinculoTelegram = VinculoTelegram("ABCD-1234", "https://t.me/zonda_bot?start=ABCD-1234")
     val redesQuitadas = mutableListOf<String>()
 
+    /** Direcciones verificadas y pareos pedidos, en orden, para que las pruebas vean qué se mandó. */
+    val verificaciones = mutableListOf<String>()
+    val pareos = mutableListOf<DatosPareo>()
+    var errorAlVerificar: ErrorZonda? = null
+    var errorAlParear: ErrorZonda? = null
+
+    /** Si no es null, el pareo espera hasta que la prueba lo complete (para ver los pasos intermedios). */
+    var esperaAlParear: CompletableDeferred<Unit>? = null
+
+    override suspend fun verificarServidor(urlBase: String) {
+        verificaciones += urlBase
+        errorAlVerificar?.let { throw it }
+    }
+
     val todas: List<Red>
         get() = redes.value
 
@@ -36,6 +52,9 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
     }
 
     override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): Red {
+        pareos += datos
+        esperaAlParear?.await()
+        errorAlParear?.let { throw it }
         val red = Red(
             id = "red-${redes.value.size + 1}",
             nombre = "Red pareada",

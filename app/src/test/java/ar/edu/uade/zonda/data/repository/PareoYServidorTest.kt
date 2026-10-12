@@ -121,6 +121,18 @@ class PareoYServidorTest : PruebaConBase() {
     }
 
     @Test
+    fun `verificar el servidor no gasta el codigo y traduce los errores`() = runTest {
+        redes.verificarServidor("http://10.0.2.2:8000")
+        assertTrue(api.codigosUsados.isEmpty())
+
+        api.errores["salud"] = IOException("apagado")
+        assertTrue(runCatching { redes.verificarServidor("http://10.0.2.2:8000") }.exceptionOrNull() is ErrorZonda.SinConexion)
+
+        api.errores["salud"] = SSLHandshakeException("certificado desconocido")
+        assertTrue(runCatching { redes.verificarServidor("https://zonda.duckdns.org") }.exceptionOrNull() is ErrorZonda.ServidorNoVerificado)
+    }
+
+    @Test
     fun `pedir el vinculo de Telegram devuelve el codigo y el enlace al bot`() = runTest {
         redes.parear(datos, "x")
 
