@@ -4,6 +4,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Para saber si hay conexión antes de enviar o encolar una acción (informe, sección 14.1). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Escanear el QR de pareo. Sin cámara (o sin permiso) los datos se ingresan a mano (RNF06). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- Notificación local cuando llega una alerta alta (Android 13 o superior lo pide). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- allowBackup en false: la base local y el token no van a ninguna copia de seguridad (RNF03). -->
     <application
