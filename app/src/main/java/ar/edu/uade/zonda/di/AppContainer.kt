@@ -21,6 +21,7 @@ import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.GeneradorDeIds
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
 import ar.edu.uade.zonda.domain.repository.RedesRepository
+import ar.edu.uade.zonda.domain.usecase.BorrarDatosLocales
 import ar.edu.uade.zonda.domain.usecase.CalcularResumen
 import ar.edu.uade.zonda.domain.usecase.CambiarSeveridades
 import ar.edu.uade.zonda.domain.usecase.DeshacerRevision
@@ -33,6 +34,7 @@ import ar.edu.uade.zonda.domain.usecase.ResolverEnvioRevision
 import ar.edu.uade.zonda.domain.usecase.RevisarAlerta
 import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import ar.edu.uade.zonda.domain.usecase.VincularTelegram
+import ar.edu.uade.zonda.notificaciones.Notificador
 import ar.edu.uade.zonda.sync.ConectividadAndroid
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -80,6 +82,14 @@ class AppContainer(context: Context) {
      */
     val alcanceDeLaApp: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /** Notificaciones locales de alertas nuevas; los canales se crean al arrancar la app. */
+    val notificador: Notificador by lazy { Notificador(appContext) }
+
+    /** Versión de la app, para Detalles técnicos. */
+    val versionDeLaApp: String by lazy {
+        runCatching { appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName }.getOrNull() ?: "?"
+    }
+
     /** Cómo se llama este teléfono en el servidor ("Google Pixel 7"): es el autor de sus revisiones. */
     val nombreDelTelefono: String = listOf(Build.MANUFACTURER.orEmpty(), Build.MODEL.orEmpty())
         .map { it.trim() }
@@ -100,5 +110,6 @@ class AppContainer(context: Context) {
     val cambiarSeveridades: CambiarSeveridades by lazy { CambiarSeveridades(redes, accionesPendientes, generadorDeIds) }
     val parearRed: ParearRed by lazy { ParearRed(redes) }
     val quitarDispositivo: QuitarDispositivo by lazy { QuitarDispositivo(redes, alertas, accionesPendientes) }
+    val borrarDatosLocales: BorrarDatosLocales by lazy { BorrarDatosLocales(redes, alertas, accionesPendientes) }
     val vincularTelegram: VincularTelegram by lazy { VincularTelegram(redes) }
 }

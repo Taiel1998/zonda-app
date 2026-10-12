@@ -18,9 +18,15 @@ object Rutas {
     const val SEVERIDADES_INICIALES = "severidades_iniciales"
     const val CONEXION_INICIAL = "conexion_inicial"
 
-    /** Conexión fuera del primer inicio: sin red pareada después de la introducción. */
+    /** Conexión fuera del primer inicio: sin red pareada después de la introducción, agregar otra red o conectar de nuevo. */
     const val CONEXION = "conexion"
+
+    /** Severidad por tipo de ataque de la red activa, desde Ajustes (RF06). */
+    const val SEVERIDADES = "severidades"
 }
+
+/** Enlace interno con el que la notificación local abre la pestaña Alertas. No se publica a otras apps. */
+const val ENLACE_ALERTAS = "zonda://alertas"
 
 /** Después del pareo: Estado queda como única pantalla de la pila (Volver sale de la app). */
 fun NavHostController.irAPrincipal() {

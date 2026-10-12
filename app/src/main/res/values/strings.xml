@@ -14,7 +14,63 @@
 
     <!-- Marcadores de posición (se van reemplazando en cada fase) -->
     <string name="estado_placeholder">Acá vas a ver el semáforo de la red y cuántas alertas faltan revisar.</string>
-    <string name="ajustes_placeholder">Acá vas a elegir la red activa, los avisos y la severidad de cada tipo de ataque.</string>
+
+    <!-- Acceso vencido (401): hay que parear de nuevo sin perder lo guardado -->
+    <string name="acceso_vencido_banner">El acceso a esta red venció. Lo guardado sigue a la vista.</string>
+    <string name="acceso_vencido_corto">Acceso vencido: hay que conectar de nuevo.</string>
+    <string name="acceso_vencido_conectar">Conectar de nuevo</string>
+
+    <!-- Notificación local (RF05) -->
+    <string name="canal_sonido">Alertas con sonido</string>
+    <string name="canal_sonido_descripcion">Las severidades que elegiste avisar con sonido.</string>
+    <string name="canal_vibracion">Alertas con vibración</string>
+    <string name="canal_vibracion_descripcion">Las severidades que elegiste avisar con vibración.</string>
+    <string name="canal_silencio">Alertas en silencio</string>
+    <string name="canal_silencio_descripcion">Avisos sin sonido ni vibración.</string>
+    <string name="notificacion_titulo">Zonda · %1$s</string>
+    <plurals name="notificacion_altas">
+        <item quantity="one">%d alerta nueva de severidad alta</item>
+        <item quantity="other">%d alertas nuevas de severidad alta</item>
+    </plurals>
+    <plurals name="notificacion_medias">
+        <item quantity="one">%d alerta nueva de severidad media</item>
+        <item quantity="other">%d alertas nuevas de severidad media</item>
+    </plurals>
+    <plurals name="notificacion_bajas">
+        <item quantity="one">%d alerta nueva de severidad baja</item>
+        <item quantity="other">%d alertas nuevas de severidad baja</item>
+    </plurals>
+
+    <!-- Ajustes (RF05 y RF06) -->
+    <string name="ajustes_redes">Redes</string>
+    <string name="ajustes_sin_redes">No hay ninguna red conectada.</string>
+    <string name="ajustes_red_activa_etiqueta">Activa</string>
+    <string name="ajustes_activar">Activar</string>
+    <string name="ajustes_agregar_red">Agregar otra red</string>
+    <string name="ajustes_telegram">Telegram</string>
+    <string name="ajustes_telegram_pronto">Los avisos por Telegram se conectan en la próxima entrega.</string>
+    <string name="ajustes_severidades">Severidad de cada tipo de ataque</string>
+    <string name="ajustes_cambiar_severidades">Cambiar</string>
+    <string name="ajustes_severidades_intro">Elegí qué tan grave es cada tipo de ataque. Eso define el color del semáforo y cómo te avisa cada alerta. Los cambios valen para todos los teléfonos pareados a esta red.</string>
+    <string name="ajustes_guardar_severidades">Guardar para toda la red</string>
+    <string name="ajustes_severidades_guardadas">Severidades guardadas. Se envían a la red.</string>
+    <string name="ajustes_detalles_tecnicos">Detalles técnicos</string>
+    <string name="ajustes_red_activa">Red activa</string>
+    <string name="ajustes_ultima_sincronizacion">Última sincronización</string>
+    <string name="ajustes_cursor">Cursor</string>
+    <string name="ajustes_este_telefono">Este teléfono</string>
+    <string name="ajustes_version">Versión de la app</string>
+    <string name="ajustes_sincronizacion_fondo">En segundo plano</string>
+    <string name="ajustes_sincronizacion_fondo_valor">cada 15 min con red</string>
+    <string name="ajustes_datos_locales">Datos locales</string>
+    <string name="ajustes_borrar_datos">Borrar datos locales</string>
+    <string name="ajustes_borrar_datos_confirmar">Se borran las alertas, las revisiones y las acciones pendientes guardadas en este teléfono. Las redes siguen conectadas y vuelven a descargar todo en la próxima sincronización.</string>
+    <string name="ajustes_borrar">Borrar</string>
+    <string name="ajustes_datos_borrados">Datos locales borrados.</string>
+    <string name="ajustes_quitar_dispositivo">Quitar este dispositivo</string>
+    <string name="ajustes_quitar_dispositivo_confirmar">Este teléfono deja de tener acceso a la red %1$s: se revoca su token y se borra todo lo guardado de esa red. Para volver, hace falta un código de pareo nuevo.</string>
+    <string name="ajustes_quitar">Quitar</string>
+    <string name="ajustes_dispositivo_quitado">Dispositivo quitado de la red.</string>
 
     <!-- Severidad, estado de revisión, envío, métodos y veredictos -->
     <string name="severidad_alta">Alta</string>
@@ -230,7 +286,7 @@
     <string name="avisos_texto">Elegí cómo te avisa cada severidad. El aviso siempre dice la severidad con palabras, además del color.</string>
     <string name="avisos_continuar">Continuar</string>
     <string name="notificaciones_titulo">Notificaciones en el teléfono</string>
-    <string name="notificaciones_texto">Zonda muestra una notificación cuando la sincronización trae una alerta alta. Android te va a pedir confirmar el permiso.</string>
+    <string name="notificaciones_texto">Zonda muestra una notificación cuando la sincronización trae alertas nuevas, con el aviso que elegiste para cada severidad. Android te va a pedir confirmar el permiso.</string>
     <string name="notificaciones_permitir">Permitir notificaciones</string>
     <string name="notificaciones_permitidas">Las notificaciones están permitidas.</string>
     <string name="notificaciones_rechazadas">Sin permiso, Zonda no puede mostrar notificaciones. La app sigue funcionando; podés activarlas desde los ajustes del sistema.</string>
