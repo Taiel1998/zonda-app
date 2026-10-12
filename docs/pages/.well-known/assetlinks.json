@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ar.edu.uade.zonda",
+      "sha256_cert_fingerprints": [
+        "E1:C5:9A:59:B5:C3:07:53:FE:80:A9:87:8F:8C:4A:B7:37:AD:EB:E8:0F:02:0E:7E:43:30:05:4B:B7:14:EF:F5"
+      ]
+    }
+  }
+]
