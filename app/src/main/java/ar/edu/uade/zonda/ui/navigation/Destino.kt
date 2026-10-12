@@ -17,9 +17,9 @@ sealed class Destino(
     @param:StringRes val titulo: Int,
     val icono: ImageVector,
 ) {
-    data object Estado : Destino("estado", R.string.destino_estado, Icons.Filled.Home)
-    data object Alertas : Destino("alertas", R.string.destino_alertas, Icons.Filled.Notifications)
-    data object Ajustes : Destino("ajustes", R.string.destino_ajustes, Icons.Filled.Settings)
+    data object Estado : Destino(Rutas.ESTADO, R.string.destino_estado, Icons.Filled.Home)
+    data object Alertas : Destino(Rutas.ALERTAS, R.string.destino_alertas, Icons.Filled.Notifications)
+    data object Ajustes : Destino(Rutas.AJUSTES, R.string.destino_ajustes, Icons.Filled.Settings)
 
     companion object {
         val barraInferior: List<Destino> = listOf(Estado, Alertas, Ajustes)

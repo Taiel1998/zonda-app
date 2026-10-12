@@ -6,10 +6,12 @@ import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
+import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.domain.model.TipoAtaque
 
 // Qué texto de strings.xml corresponde a cada valor del dominio. El dominio no conoce los
 // recursos de Android; la traducción se hace acá, en un solo lugar, y los textos los mantiene Melinda.
@@ -85,6 +87,23 @@ fun Motivo.etiqueta(): Int = when (this) {
     Motivo.HERRAMIENTA_AUTORIZADA -> R.string.motivo_herramienta_autorizada
     Motivo.PRUEBA_DEL_EQUIPO_DE_IT -> R.string.motivo_prueba_del_equipo_de_it
     Motivo.SERVICIO_NUEVO -> R.string.motivo_servicio_nuevo
+}
+
+@StringRes
+fun TipoAtaque.etiqueta(): Int = when (this) {
+    TipoAtaque.FUERZA_BRUTA -> R.string.tipo_fuerza_bruta
+    TipoAtaque.ESCANEO -> R.string.tipo_escaneo
+    TipoAtaque.DDOS -> R.string.tipo_ddos
+    TipoAtaque.SIN_TIPIFICAR -> R.string.tipo_sin_tipificar
+    TipoAtaque.PROBABLE_FALSA_ALARMA -> R.string.tipo_probable_falsa_alarma
+    TipoAtaque.SOLO_REGLAS_O_UMBRALES -> R.string.tipo_solo_reglas_o_umbrales
+}
+
+@StringRes
+fun ModoAviso.etiqueta(): Int = when (this) {
+    ModoAviso.SONIDO -> R.string.modo_sonido
+    ModoAviso.VIBRACION -> R.string.modo_vibracion
+    ModoAviso.SIN_AVISO -> R.string.modo_sin_aviso
 }
 
 /** El comentario que propone cada motivo al revisar; la persona lo puede editar (RF04). */

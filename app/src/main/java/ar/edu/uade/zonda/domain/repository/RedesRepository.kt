@@ -18,6 +18,12 @@ interface RedesRepository {
     suspend fun activar(redId: String)
 
     /**
+     * Verifica que el servidor responda y que su certificado sea válido (`GET /salud`, sin token), antes
+     * de mandar el código, que es de un solo uso. Lanza [ar.edu.uade.zonda.domain.model.ErrorZonda].
+     */
+    suspend fun verificarServidor(urlBase: String)
+
+    /**
      * Verifica el servidor, canjea el código por un token (`POST /pareo`), guarda el token en el
      * almacenamiento seguro y deja la red pareada y activa. Lanza [ar.edu.uade.zonda.domain.model.ErrorZonda].
      */
