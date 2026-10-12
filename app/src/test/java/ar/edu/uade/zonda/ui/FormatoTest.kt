@@ -1,0 +1,45 @@
+package ar.edu.uade.zonda.ui
+
+import ar.edu.uade.zonda.domain.model.Equipo
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class FormatoTest {
+
+    private val buenosAires = ZoneId.of("America/Argentina/Buenos_Aires")
+    private val instante = Instant.parse("2026-09-27T05:09:12Z") // 02:09:12 en Buenos Aires, domingo
+
+    @Test
+    fun `hora, dia y fecha en la zona del telefono`() {
+        assertEquals("02:09", Formato.hora(instante, buenosAires))
+        assertEquals("02:09:12", Formato.horaConSegundos(instante, buenosAires))
+        assertEquals("dom 27/09", Formato.dia(instante, buenosAires))
+        assertEquals("02:09 · dom 27/09", Formato.horaYDia(instante, buenosAires))
+        assertEquals("27/09 02:09", Formato.fechaYHora(instante, buenosAires))
+        assertEquals("05:09", Formato.hora(instante, ZoneId.of("UTC")))
+    }
+
+    @Test
+    fun `duraciones en segundos, minutos y horas`() {
+        assertEquals("0 s", Formato.duracion(Duration.ZERO))
+        assertEquals("42 s", Formato.duracion(Duration.ofSeconds(42)))
+        assertEquals("18 min 10 s", Formato.duracion(Duration.ofSeconds(18 * 60 + 10)))
+        assertEquals("5 min", Formato.duracion(Duration.ofMinutes(5)))
+        assertEquals("1 h 5 min", Formato.duracion(Duration.ofMinutes(65)))
+        assertEquals("2 h", Formato.duracion(Duration.ofHours(2)))
+        assertEquals("0 s", Formato.duracion(Duration.ofSeconds(-3)))
+    }
+
+    @Test
+    fun `numeros con coma decimal, equipos y servicios`() {
+        assertEquals("0,0412", Formato.numero(0.0412))
+        assertEquals("0,0031", Formato.numero(0.00306383))
+        assertEquals("0,87", Formato.numero(0.87, decimales = 2))
+        assertEquals("192.168.30.50 · pc-rrhh", Formato.ipYNombre(Equipo("192.168.30.50", "pc-rrhh")))
+        assertEquals("192.168.30.50", Formato.ipYNombre(Equipo("192.168.30.50")))
+        assertEquals("SSH · 22", Formato.servicioYPuerto("ssh", 22))
+    }
+}

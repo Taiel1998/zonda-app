@@ -81,6 +81,9 @@ dependencies {
     testImplementation(libs.androidx.test.core.ktx)
     // Servidor HTTP de mentira para probar el cliente: cabeceras, códigos de error y tiempos de espera.
     testImplementation(libs.okhttp.mockwebserver)
+    // Pantallas de Compose dibujadas sobre Robolectric: se verifica lo que se muestra y lo que pasa al tocar.
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
