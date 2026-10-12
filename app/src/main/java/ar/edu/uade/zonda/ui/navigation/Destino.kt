@@ -2,9 +2,9 @@ package ar.edu.uade.zonda.ui.navigation
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.ui.graphics.vector.ImageVector
 import ar.edu.uade.zonda.R
 
@@ -17,7 +17,7 @@ sealed class Destino(
     @param:StringRes val titulo: Int,
     val icono: ImageVector,
 ) {
-    data object Estado : Destino(Rutas.ESTADO, R.string.destino_estado, Icons.Filled.Home)
+    data object Estado : Destino(Rutas.ESTADO, R.string.destino_estado, Icons.Filled.VerifiedUser)
     data object Alertas : Destino(Rutas.ALERTAS, R.string.destino_alertas, Icons.Filled.Notifications)
     data object Ajustes : Destino(Rutas.AJUSTES, R.string.destino_ajustes, Icons.Filled.Settings)
 
