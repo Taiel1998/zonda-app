@@ -9,14 +9,144 @@
 
     <!-- Acciones comunes -->
     <string name="accion_volver">Volver</string>
+    <string name="accion_sincronizar">Sincronizar ahora</string>
+    <string name="error_reintentar">Reintentar</string>
 
     <!-- Marcadores de posición (se van reemplazando en cada fase) -->
     <string name="estado_placeholder">Acá vas a ver el semáforo de la red y cuántas alertas faltan revisar.</string>
-    <string name="alertas_placeholder">Acá vas a ver la lista de alertas con los filtros.</string>
     <string name="ajustes_placeholder">Acá vas a elegir la red activa, los avisos y la severidad de cada tipo de ataque.</string>
 
+    <!-- Severidad, estado de revisión, envío, métodos y veredictos -->
+    <string name="severidad_alta">Alta</string>
+    <string name="severidad_media">Media</string>
+    <string name="severidad_baja">Baja</string>
+    <string name="estado_sin_revisar">Sin revisar</string>
+    <string name="estado_revisada">Revisada</string>
+    <string name="estado_falso_positivo">Falso positivo</string>
+    <string name="envio_pendiente">pendiente</string>
+    <string name="envio_error">no enviada</string>
+    <string name="envio_conflicto">revisada por otra persona</string>
+    <string name="metodo_ia">IA</string>
+    <string name="metodo_umbrales">Umbrales</string>
+    <string name="metodo_reglas">Reglas</string>
+    <string name="metodo_ia_frase">IA</string>
+    <string name="metodo_umbrales_frase">umbrales</string>
+    <string name="metodo_reglas_frase">reglas</string>
+    <string name="veredicto_anomalo">Anómalo</string>
+    <string name="veredicto_normal">Normal</string>
+    <string name="resultado_ataque_real">Ataque real</string>
+    <string name="resultado_falso_positivo">Falso positivo</string>
+    <string name="motivo_escalado_al_proveedor">Escalado al proveedor</string>
+    <string name="motivo_equipo_aislado">Equipo aislado</string>
+    <string name="motivo_credenciales_cambiadas">Credenciales cambiadas</string>
+    <string name="motivo_en_investigacion">En investigación</string>
+    <string name="motivo_tarea_programada">Tarea programada</string>
+    <string name="motivo_herramienta_autorizada">Herramienta autorizada</string>
+    <string name="motivo_prueba_del_equipo_de_it">Prueba del equipo de IT</string>
+    <string name="motivo_servicio_nuevo">Servicio nuevo</string>
+
+    <!-- Alertas: resumen y filtros -->
+    <plurals name="alertas_cantidad">
+        <item quantity="one">%d alerta</item>
+        <item quantity="other">%d alertas</item>
+    </plurals>
+    <string name="alertas_sin_revisar">%d sin revisar</string>
+    <string name="alertas_actualizado">actualizado %1$s</string>
+    <string name="alertas_sin_sincronizar">sin sincronizar</string>
+    <string name="periodo_ultimas_24h">últimas 24 h</string>
+    <string name="periodo_ultimos_7d">últimos 7 días</string>
+    <string name="periodo_ultimos_30d">últimos 30 días</string>
+    <string name="filtro_estado_titulo">Estado de revisión</string>
+    <string name="filtro_estado_todas">Todas</string>
+    <string name="filtro_estado_todas_detalle">Incluye las revisadas y los falsos positivos</string>
+    <string name="filtro_estado_sin_revisar">Sin revisar</string>
+    <string name="filtro_estado_sin_revisar_detalle">Las que todavía nadie marcó</string>
+    <string name="filtro_estado_revisadas">Revisadas</string>
+    <string name="filtro_estado_falsos_positivos">Falsos positivos</string>
+    <string name="filtro_severidad">Severidad</string>
+    <string name="filtro_severidad_titulo">Severidad</string>
+    <string name="filtro_severidad_todas">Todas las severidades</string>
+    <string name="filtro_periodo">Período</string>
+    <string name="filtro_periodo_titulo">Período</string>
+    <string name="filtro_periodo_24h">24 h</string>
+    <string name="filtro_periodo_24h_detalle">Últimas 24 horas</string>
+    <string name="filtro_periodo_7d">7 días</string>
+    <string name="filtro_periodo_30d">30 días</string>
+    <string name="filtro_periodo_todo">Todo</string>
+    <string name="filtro_periodo_todo_detalle">Todas las alertas guardadas (hasta 30 días)</string>
+    <string name="filtro_mas">Más filtros</string>
+    <string name="filtro_mas_con_cantidad">Más filtros (%1$d)</string>
+    <string name="filtro_mas_titulo">Más filtros</string>
+    <string name="filtro_servicio">Servicio</string>
+    <string name="filtro_destino">Equipo destino</string>
+    <string name="filtro_metodo">Método</string>
+    <string name="filtro_todos">Todos</string>
+    <string name="filtro_aplicar">Aplicar</string>
+    <string name="filtro_limpiar">Limpiar</string>
+    <string name="filtro_quitar">Quitar filtros</string>
+
+    <!-- Estados de pantalla -->
+    <string name="sin_conexion_banner">Sin conexión · mostrando datos de las %1$s</string>
+    <string name="sin_conexion_banner_sin_datos">Sin conexión · todavía no hay datos guardados</string>
+    <string name="vacio_sin_red_titulo">Todavía no hay una red conectada</string>
+    <string name="vacio_sin_red_detalle">Conectá la red de tu empresa desde Ajustes para empezar a recibir alertas.</string>
+    <string name="vacio_sin_alertas_titulo">Sin alertas guardadas</string>
+    <string name="vacio_sin_alertas_detalle">Sincronizá para traer las novedades del servidor.</string>
+    <string name="vacio_con_filtro_titulo">Ninguna alerta coincide con los filtros</string>
+    <string name="vacio_con_filtro_detalle">Probá con otro período o quitá los filtros.</string>
+    <string name="aviso_sincronizado_sin_novedades">Sincronizado. No hay alertas nuevas.</string>
+    <plurals name="aviso_sincronizado_nuevas">
+        <item quantity="one">Sincronizado: %d alerta nueva.</item>
+        <item quantity="other">Sincronizado: %d alertas nuevas.</item>
+    </plurals>
+    <string name="aviso_sincronizado_con_altas">Sincronizado: %1$d nuevas, %2$d de severidad alta.</string>
+
+    <!-- Errores (informe, sección 14.3) -->
+    <string name="error_sin_conexion">Sin conexión. Se muestran los datos guardados.</string>
+    <string name="error_servidor_no_verificado">No se pudo verificar el servidor. No se envió nada.</string>
+    <string name="error_no_autorizado">El acceso venció. Hay que conectar la red de nuevo.</string>
+    <string name="error_no_encontrado">La alerta ya no está en el servidor.</string>
+    <string name="error_conflicto">Otra persona revisó esta alerta antes.</string>
+    <string name="error_cursor_invalido">El servidor se reinstaló. Se sincroniza desde cero.</string>
+    <string name="error_codigo_invalido">El código no es válido.</string>
+    <string name="error_codigo_vencido">El código venció o ya se usó.</string>
+    <string name="error_del_servidor">El servidor no respondió. Probá de nuevo en un rato.</string>
+    <string name="error_validacion">Revisá los datos ingresados.</string>
+    <string name="error_generico">Algo salió mal.</string>
+
     <!-- Detalle -->
-    <string name="detalle_titulo">Detalle de la alerta</string>
-    <string name="detalle_alerta_id">Alerta %1$s</string>
-    <string name="detalle_placeholder">Llegaste desde el enlace del aviso. El detalle completo se construye en la fase 5.</string>
+    <string name="detalle_titulo">Alerta</string>
+    <string name="detalle_detectada_por">detectada por %1$s</string>
+    <string name="detalle_cargando">Descargando el detalle…</string>
+    <string name="detalle_no_disponible_titulo">No se pudo cargar la alerta</string>
+    <string name="detalle_no_disponible_sin_conexion">Sin conexión. Se va a descargar cuando vuelva la red.</string>
+    <string name="detalle_datos_del_flujo">Datos del flujo</string>
+    <string name="detalle_origen">Origen</string>
+    <string name="detalle_destino">Destino</string>
+    <string name="detalle_servicio">Servicio</string>
+    <string name="detalle_inicio">Inicio</string>
+    <string name="detalle_duracion">Duración</string>
+    <string name="detalle_conexiones_60s">Conexiones en 60 s</string>
+    <string name="detalle_flujos">Flujos del episodio</string>
+    <string name="detalle_puertos_distintos">Puertos distintos</string>
+    <string name="detalle_veredictos">Veredicto por método</string>
+    <string name="detalle_modelo_ia">Modelo de IA</string>
+    <string name="detalle_ia_detalle">error %1$s · umbral %2$s</string>
+    <string name="detalle_umbrales">Umbrales estadísticos</string>
+    <string name="detalle_umbrales_detalle">contexto %1$d · umbral %2$d</string>
+    <string name="detalle_umbrales_sin_linea_base">servicio sin línea base</string>
+    <string name="detalle_reglas">Reglas estáticas</string>
+    <string name="detalle_reglas_en_catalogo">servicio en catálogo</string>
+    <string name="detalle_reglas_fuera_de_catalogo">fuera del catálogo: %1$s</string>
+    <string name="detalle_revision">Revisión</string>
+    <string name="detalle_resultado">Resultado</string>
+    <string name="detalle_motivo">Motivo</string>
+    <string name="detalle_este_telefono">Este teléfono</string>
+    <string name="detalle_enviada">enviada</string>
+    <string name="detalle_pendiente_de_envio">pendiente de envío</string>
+    <string name="detalle_historial">Historial</string>
+    <string name="detalle_revisar_explicacion">Al revisar vas a indicar si fue un ataque real o un falso positivo, con su motivo y un comentario.</string>
+    <string name="detalle_revisar">Revisar</string>
+    <string name="detalle_cambiar_revision">Cambiar revisión</string>
+    <string name="detalle_revision_pronto">La revisión se habilita en la próxima entrega.</string>
 </resources>
