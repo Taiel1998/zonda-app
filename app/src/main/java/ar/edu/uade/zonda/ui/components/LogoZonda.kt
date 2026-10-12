@@ -1,29 +1,23 @@
 package ar.edu.uade.zonda.ui.components
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
-import ar.edu.uade.zonda.ui.theme.VerdeZonda
 
-/** El ícono de Zonda sobre su fondo verde, para la bienvenida y la conexión. */
+/**
+ * El logo de Zonda (docs/marca/logo_zonda.png), para la bienvenida, la conexión y la barra de Estado.
+ * Va al lado del nombre de la app o de un título, así que es decorativo para TalkBack.
+ */
 @Composable
 fun LogoZonda(modifier: Modifier = Modifier, tamanio: Dp = 88.dp) {
-    Box(
-        modifier = modifier
-            .size(tamanio)
-            .clip(RoundedCornerShape(tamanio / 4))
-            .background(VerdeZonda),
-    ) {
-        Image(painter = painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.fillMaxSize())
-    }
+    Image(
+        painter = painterResource(R.drawable.logo_zonda),
+        contentDescription = null,
+        modifier = modifier.size(tamanio),
+    )
 }
