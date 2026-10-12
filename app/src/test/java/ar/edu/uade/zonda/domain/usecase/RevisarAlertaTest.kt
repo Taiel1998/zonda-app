@@ -80,6 +80,7 @@ class RevisarAlertaTest {
         assertEquals(listOf(segunda), acciones.todas)
         val alerta = alertas.observarAlerta("red-1", "a-1").first()!!
         assertEquals(EstadoRevision.FALSO_POSITIVO, alerta.estadoRevision)
-        assertEquals(2, alerta.historial.size)
+        // La primera revisión nunca llegó al servidor, así que no queda en el historial.
+        assertEquals(1, alerta.historial.size)
     }
 }

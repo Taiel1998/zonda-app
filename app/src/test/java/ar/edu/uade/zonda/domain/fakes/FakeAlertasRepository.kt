@@ -6,6 +6,7 @@ import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
@@ -64,10 +65,12 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
 
     override suspend fun aplicarRevisionLocal(redId: String, alertaId: String, revision: Revision): Alerta {
         val actual = alertas.value.firstOrNull { it.redId == redId && it.id == alertaId } ?: throw ErrorZonda.NoEncontrado()
+        // Igual que la base real: una revisión local reemplaza a la anterior que no llegó al servidor.
+        val historial = actual.historial.filter { it.origen != OrigenRevision.ESTE_TELEFONO } + revision
         val nueva = actual.copy(
             estadoRevision = EstadoRevision.de(revision.resultado),
             revisionActual = revision,
-            historial = actual.historial + revision,
+            historial = historial,
             envio = EstadoEnvio.PENDIENTE,
         )
         reemplazar(nueva)

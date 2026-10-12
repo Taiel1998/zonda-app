@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    // KSP genera el código de Room (DAOs y base) en tiempo de compilación.
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -38,6 +40,10 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // Robolectric necesita los recursos de Android para correr Room en memoria en la JVM.
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -55,10 +61,26 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     // El dominio expone Flow y funciones suspend; coroutines-core no depende de Android.
     implementation(libs.kotlinx.coroutines.core)
+    // Caché local: Room como fuente de verdad, cifrada con SQLCipher (RNF01 y RNF03).
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.sqlcipher.android)
+    // Preferencias del teléfono (avisos, primer inicio).
+    implementation(libs.androidx.datastore.preferences)
+    // Red: Retrofit sobre OkHttp y Gson para el JSON del contrato (docs/decisiones.md, decisión 12).
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.gson)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    // Room en memoria sobre la JVM, sin emulador.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core.ktx)
+    // Servidor HTTP de mentira para probar el cliente: cabeceras, códigos de error y tiempos de espera.
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

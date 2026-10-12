@@ -77,3 +77,27 @@ Registro corto de las decisiones que cambian algo respecto de la Etapa 1 o que c
 **Decisión.** Cuando la API manda `tipoAtaque: null` (la alerta la detectaron solo las reglas o los umbrales), el dominio usa el valor `SOLO_REGLAS_O_UMBRALES` del enum `TipoAtaque`. Los motivos de revisión son una lista fija (`Motivo`), cada uno atado a un resultado; el texto de cada motivo y el comentario que propone están en `strings.xml`.
 
 **Por qué.** Con un valor explícito, la pantalla de severidades y los filtros tratan ese caso como uno más, sin un `null` que haya que contemplar aparte en cada lugar. Los motivos fijos evitan escribir el motivo a mano (heurística 6 de Nielsen) y hacen comparables las revisiones en el Resumen.
+
+## 11. KSP 2.3 con el Kotlin integrado de AGP 9
+
+**Decisión.** Room genera su código con KSP. Se usa la línea nueva de KSP (2.3.x), que tiene su propia numeración y funciona con el Kotlin integrado de Android Gradle Plugin 9, sin aplicar el plugin `org.jetbrains.kotlin.android`.
+
+**Por qué.** La versión de KSP atada a Kotlin 2.2.21 (2.2.21-2.0.5) corta la configuración del proyecto con el mensaje "KSP is not compatible with Android Gradle Plugin's built-in Kotlin". Se probó el camino viejo (desactivar el Kotlin integrado con `android.builtInKotlin=false`, conservar el DSL anterior con `android.newDsl=false` y aplicar el plugin clásico de Kotlin): compila, pero depende de dos opciones que AGP 10 elimina. Con KSP 2.3.12 el proyecto queda igual que uno recién creado por Android Studio.
+
+**Qué cambia.** Nada en el código; solo la versión de KSP en `gradle/libs.versions.toml`.
+
+## 12. Retrofit con Gson, DTO aparte y errores traducidos en un solo lugar
+
+**Decisión.** La app habla con la API con Retrofit sobre OkHttp y convierte el JSON con Gson. Los DTO (`data/remote/Dtos.kt`) copian el contrato tal cual (camelCase, enumeraciones en minúsculas, fechas ISO 8601 como texto) y los mappers (`data/mapper/MapeosRemotos.kt`) los pasan al dominio. Toda llamada pasa por `conErroresTraducidos`, que convierte `HttpException`, los errores de certificado y los de entrada y salida en `ErrorZonda`: 401 → NoAutorizado, 404 → NoEncontrado, 409 → Conflicto con la revisión ajena, 410 → CursorInvalido (sincronización) o CodigoVencido (pareo), 400 → CodigoInvalido (pareo), 5xx y tiempos de espera → ErrorDelServidor o SinConexión.
+
+**Por qué.** Retrofit y Gson son lo que usan los ejemplos de la cátedra y lo que el equipo puede explicar. Separar DTO de dominio permite que la API cambie un nombre sin tocar las pantallas, y traducir los errores en un solo lugar evita que cada repositorio interprete códigos HTTP. Se descartó kotlinx.serialization porque exige anotar cada clase y sumar un plugin del compilador. En debug, un `network_security_config` permite texto claro solo hacia `10.0.2.2` (el emulador); en release Android exige HTTPS.
+
+**Qué cambia.** Las fechas se leen con `OffsetDateTime.parse`, porque la API manda `+00:00` y el `Instant.parse` de Android 8 no lo acepta. El tipo vacío (`null`) se vuelve `SOLO_REGLAS_O_UMBRALES` al entrar. Un valor que el dominio no conoce se informa como error del servidor, no como caída de la app.
+
+## 13. Orden de la sincronización y reintentos
+
+**Decisión.** `SincronizadorHttp` envía primero la cola de acciones pendientes (en orden de creación) y después baja las alertas por cursor, de a 200, guardando el cursor después de cada página. Cada sincronización es un intento por acción: a los cinco fallos la acción pasa a `ERROR` y espera un reintento manual; un 409 la deja en `CONFLICTO` con la revisión ajena, sin frenar al resto; un 401 o la falta de conexión detienen todo y la acción vuelve a `PENDIENTE`. Un 410 dispara una sincronización completa que conserva alertas y acciones pendientes. Al final se actualizan catálogo y severidades, se purgan las alertas de más de 30 días y se registra la hora.
+
+**Por qué.** Enviar antes de bajar evita que el servidor devuelva "sin revisar" una alerta que el teléfono ya revisó. Guardar el cursor por página hace que un corte a mitad de camino no obligue a bajar todo de nuevo. La espera exponencial entre intentos la aporta WorkManager (fase 8); hacerla dentro de "Sincronizar ahora" dejaría a la persona esperando con la pantalla bloqueada.
+
+**Qué cambia.** `ResultadoSincronizacion` cuenta acciones enviadas y con error; los conflictos no se cuentan como error porque esperan una decisión de la persona.
