@@ -1,0 +1,71 @@
+package ar.edu.uade.zonda.domain.fakes
+
+import ar.edu.uade.zonda.domain.model.Catalogo
+import ar.edu.uade.zonda.domain.model.DatosPareo
+import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.VinculoTelegram
+import ar.edu.uade.zonda.domain.repository.RedesRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+
+/** Redes en memoria para las pruebas. */
+class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository {
+
+    private val redes = MutableStateFlow(iniciales)
+    private val severidades = MutableStateFlow<Map<String, SeveridadPorTipo>>(emptyMap())
+    private val catalogos = MutableStateFlow<Map<String, Catalogo>>(emptyMap())
+
+    var vinculoTelegram = VinculoTelegram("ABCD-1234", "https://t.me/zonda_bot?start=ABCD-1234")
+    val redesQuitadas = mutableListOf<String>()
+
+    val todas: List<Red>
+        get() = redes.value
+
+    fun agregar(red: Red) {
+        redes.value = redes.value + red
+    }
+
+    override fun observarRedes(): Flow<List<Red>> = redes
+
+    override fun observarRedActiva(): Flow<Red?> = redes.map { lista -> lista.firstOrNull { it.activa } }
+
+    override suspend fun activar(redId: String) {
+        redes.value = redes.value.map { it.copy(activa = it.id == redId) }
+    }
+
+    override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): Red {
+        val red = Red(
+            id = "red-${redes.value.size + 1}",
+            nombre = "Red pareada",
+            urlBase = datos.urlBase,
+            cursor = null,
+            ultimaSincronizacion = null,
+            telegramVinculado = false,
+            activa = true,
+        )
+        redes.value = redes.value.map { it.copy(activa = false) } + red
+        return red
+    }
+
+    override suspend fun quitarDispositivo(redId: String) {
+        redesQuitadas += redId
+        redes.value = redes.value.filter { it.id != redId }
+    }
+
+    override fun observarSeveridades(redId: String): Flow<SeveridadPorTipo> =
+        severidades.map { it[redId] ?: SeveridadPorTipo.RECOMENDADA }
+
+    override suspend fun guardarSeveridadesLocal(redId: String, severidades: SeveridadPorTipo) {
+        this.severidades.value = this.severidades.value + (redId to severidades)
+    }
+
+    override suspend fun pedirVinculoTelegram(redId: String): VinculoTelegram = vinculoTelegram
+
+    override suspend fun marcarTelegramVinculado(redId: String, vinculado: Boolean) {
+        redes.value = redes.value.map { if (it.id == redId) it.copy(telegramVinculado = vinculado) else it }
+    }
+
+    override fun observarCatalogo(redId: String): Flow<Catalogo> = catalogos.map { it[redId] ?: Catalogo.VACIO }
+}
