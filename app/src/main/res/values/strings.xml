@@ -148,5 +148,42 @@
     <string name="detalle_revisar_explicacion">Al revisar vas a indicar si fue un ataque real o un falso positivo, con su motivo y un comentario.</string>
     <string name="detalle_revisar">Revisar</string>
     <string name="detalle_cambiar_revision">Cambiar revisión</string>
-    <string name="detalle_revision_pronto">La revisión se habilita en la próxima entrega.</string>
+
+    <!-- Revisión en dos pasos (RF04) -->
+    <string name="revisar_paso1_titulo">¿Qué resultó ser esta alerta?</string>
+    <string name="revisar_paso1_detalle">Elegí una opción. En el paso siguiente indicás el motivo y dejás un comentario; los dos son obligatorios.</string>
+    <string name="revisar_paso_1_de_2">Paso 1 de 2</string>
+    <string name="revisar_paso_2_de_2">Paso 2 de 2</string>
+    <string name="revisar_ataque_real_detalle">Hubo actividad no autorizada o maliciosa (verdadero positivo).</string>
+    <string name="revisar_falso_positivo_detalle">Era tráfico legítimo: un respaldo, una tarea programada, un equipo nuevo.</string>
+    <string name="revisar_cancelar">Cancelar</string>
+    <string name="revisar_paso2_titulo_ataque">Ataque real: ¿qué hiciste?</string>
+    <string name="revisar_paso2_titulo_falso">Falso positivo: ¿por qué?</string>
+    <string name="revisar_motivo">Motivo (obligatorio)</string>
+    <string name="revisar_comentario">Comentario (obligatorio)</string>
+    <string name="revisar_comentario_ayuda">Contá qué hiciste o por qué. Queda en el historial de la alerta.</string>
+    <string name="revisar_volver">Volver</string>
+    <string name="revisar_confirmar">Confirmar revisión</string>
+
+    <!-- Comentario que propone cada motivo (se puede editar) -->
+    <string name="comentario_escalado_al_proveedor">Escalé la alerta al proveedor de seguridad.</string>
+    <string name="comentario_equipo_aislado">Aislé el equipo de la red hasta revisarlo.</string>
+    <string name="comentario_credenciales_cambiadas">Cambié las credenciales de la cuenta afectada.</string>
+    <string name="comentario_en_investigacion">Lo estoy investigando; actualizo cuando sepa más.</string>
+    <string name="comentario_tarea_programada">Era una tarea programada, como un respaldo o una actualización.</string>
+    <string name="comentario_herramienta_autorizada">Era una herramienta autorizada por IT.</string>
+    <string name="comentario_prueba_del_equipo_de_it">Era una prueba del equipo de IT.</string>
+    <string name="comentario_servicio_nuevo">Es un servicio nuevo que todavía no está en el catálogo.</string>
+
+    <!-- Aviso con Deshacer, conflicto y envío fallido -->
+    <string name="aviso_revision_guardada">Revisión guardada.</string>
+    <string name="aviso_revision_guardada_sin_conexion">Revisión guardada. Se enviará cuando haya conexión.</string>
+    <string name="aviso_deshacer">Deshacer</string>
+    <string name="conflicto_titulo">Otra persona revisó esta alerta</string>
+    <string name="conflicto_otra_persona">Otra persona</string>
+    <string name="conflicto_pregunta">¿Aplicás tu revisión igual?</string>
+    <string name="conflicto_aplicar">Aplicar la mía igual</string>
+    <string name="conflicto_quedarme">Quedarme con la otra</string>
+    <string name="envio_error_titulo">No se pudo enviar la revisión</string>
+    <string name="envio_error_detalle">Intentos: %1$d. Último error: %2$s.</string>
 </resources>
