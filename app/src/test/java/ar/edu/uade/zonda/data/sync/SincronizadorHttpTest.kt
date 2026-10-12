@@ -23,8 +23,11 @@ import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.repository.GeneradorDeIds
 import ar.edu.uade.zonda.domain.usecase.CambiarSeveridades
+import ar.edu.uade.zonda.domain.usecase.ResolverEnvioRevision
 import ar.edu.uade.zonda.domain.usecase.RevisarAlerta
 import java.io.IOException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -316,6 +319,66 @@ class SincronizadorHttpTest : PruebaConBase() {
         assertEquals(Severidad.ALTA, redes.observarSeveridades("red-1").first().severidadDe(TipoAtaque.ESCANEO))
         assertEquals(Severidad.ALTA, alertas.observarAlerta("red-1", "a-2").first()?.severidad)
         assertTrue(acciones.observar("red-1").first().isEmpty())
+    }
+
+    @Test
+    fun `aplicar la mia igual despues de un 409 la envia con la version vista y el servidor la acepta`() = runTest {
+        conRed()
+        publicarCinco()
+        alertas.sincronizar("red-1")
+        val accion = revisar("a-1")
+        api.revisarDesdeOtroTelefono("a-1")
+        alertas.sincronizar("red-1") // 409: la acción queda en conflicto y baja la revisión de Lucía (versión 2)
+
+        ResolverEnvioRevision(alertas, acciones).aplicarLaMiaIgual("red-1", "a-1")
+        val resultado = alertas.sincronizar("red-1")
+
+        assertEquals(1, resultado.accionesEnviadas)
+        val enviada = api.revisionesRecibidas.last()
+        assertEquals(accion.id, enviada.accionId)
+        assertEquals(2, enviada.versionVista)
+        assertFalse(enviada.forzar)
+        assertTrue(acciones.observar("red-1").first().isEmpty())
+        val a1 = alertas.observarAlerta("red-1", "a-1").first()!!
+        assertEquals(EstadoRevision.ATAQUE_REAL, a1.estadoRevision)
+        assertEquals(3, a1.version)
+        assertNull(a1.envio)
+        assertEquals(listOf("Teléfono de Lucía", "Este teléfono"), a1.historial.map { it.autor })
+        assertTrue(a1.historial.all { it.origen == OrigenRevision.SERVIDOR })
+    }
+
+    @Test
+    fun `quedarme con la otra despues de un 409 deja la revision de la otra persona y no envia nada`() = runTest {
+        conRed()
+        publicarCinco()
+        alertas.sincronizar("red-1")
+        revisar("a-1")
+        api.revisarDesdeOtroTelefono("a-1")
+        alertas.sincronizar("red-1")
+        val recibidas = api.revisionesRecibidas.size
+
+        ResolverEnvioRevision(alertas, acciones).quedarmeConLaOtra("red-1", "a-1")
+        alertas.sincronizar("red-1")
+
+        assertEquals(recibidas, api.revisionesRecibidas.size)
+        val a1 = alertas.observarAlerta("red-1", "a-1").first()!!
+        assertEquals(EstadoRevision.FALSO_POSITIVO, a1.estadoRevision)
+        assertEquals("Teléfono de Lucía", a1.revisionActual?.autor)
+        assertEquals(1, a1.historial.size)
+        assertNull(a1.envio)
+    }
+
+    @Test
+    fun `dos sincronizaciones a la vez no mandan la misma accion dos veces`() = runTest {
+        conRed()
+        publicarCinco()
+        alertas.sincronizar("red-1")
+        revisar("a-2")
+
+        val resultados = listOf(async { alertas.sincronizar("red-1") }, async { alertas.sincronizar("red-1") }).awaitAll()
+
+        assertEquals(1, api.revisionesRecibidas.size)
+        assertEquals(1, resultados.sumOf { it.accionesEnviadas })
     }
 
     @Test

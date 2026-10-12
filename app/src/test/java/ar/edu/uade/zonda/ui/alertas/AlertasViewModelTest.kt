@@ -162,4 +162,16 @@ class AlertasViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `cuando vuelve la conexion sincroniza solo para mandar lo pendiente`() = runTest {
+        conRedYAlertas()
+        conectividad.estado.value = false
+        viewModel()
+        assertTrue(alertas.sincronizaciones.isEmpty())
+
+        conectividad.estado.value = true
+
+        assertEquals(listOf("red-1"), alertas.sincronizaciones)
+    }
 }
