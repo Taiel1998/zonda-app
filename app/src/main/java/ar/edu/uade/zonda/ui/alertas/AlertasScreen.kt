@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.components.BannerAccesoVencido
 import ar.edu.uade.zonda.ui.components.BannerSinConexion
 import ar.edu.uade.zonda.ui.components.EsqueletoLista
 import ar.edu.uade.zonda.ui.components.EstadoVacio
@@ -52,6 +53,7 @@ import java.time.ZoneId
 @Composable
 fun AlertasScreen(
     alAbrirDetalle: (alertaId: String) -> Unit,
+    alConectarDeNuevo: () -> Unit,
     viewModel: AlertasViewModel = viewModelDeZonda {
         AlertasViewModel(it.observarAlertas, it.sincronizarAlertas, it.redes, it.conectividad)
     },
@@ -64,6 +66,7 @@ fun AlertasScreen(
         alSincronizar = { viewModel.sincronizar() },
         alQuitarFiltros = viewModel::quitarFiltros,
         alAvisoMostrado = viewModel::avisoMostrado,
+        alConectarDeNuevo = alConectarDeNuevo,
     )
 }
 
@@ -77,6 +80,7 @@ fun AlertasContenido(
     alSincronizar: () -> Unit,
     alQuitarFiltros: () -> Unit,
     alAvisoMostrado: () -> Unit = {},
+    alConectarDeNuevo: () -> Unit = {},
     zona: ZoneId = ZoneId.systemDefault(),
 ) {
     val snackbar = remember { SnackbarHostState() }
@@ -114,6 +118,7 @@ fun AlertasContenido(
                 .padding(relleno)
                 .fillMaxSize(),
         ) {
+            if (estado.accesoVencido) BannerAccesoVencido(alConectar = alConectarDeNuevo)
             if (estado.sinConexion) BannerSinConexion(datosDe = estado.datosDe, zona = zona)
             FiltrosAlertas(
                 filtro = estado.filtro,

@@ -45,6 +45,8 @@ data class AlertasUiState(
     /** Hora de la última sincronización ("actualizado 02:14"); null si nunca se sincronizó. */
     val datosDe: Instant? = null,
     val sinConexion: Boolean = false,
+    /** El servidor rechazó el token de la red activa: hay que conectarla de nuevo (RNF12). */
+    val accesoVencido: Boolean = false,
     val sincronizando: Boolean = false,
     val aviso: AvisoAlertas? = null,
 )

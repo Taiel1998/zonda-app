@@ -22,7 +22,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
+import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.ui.ajustes.AjustesScreen
+import ar.edu.uade.zonda.ui.ajustes.ajustesViewModel
 import ar.edu.uade.zonda.ui.alertas.AlertasScreen
 import ar.edu.uade.zonda.ui.conexion.ConexionScreen
 import ar.edu.uade.zonda.ui.detalle.RutaDetalle
@@ -30,6 +33,7 @@ import ar.edu.uade.zonda.ui.detalle.detalleAlerta
 import ar.edu.uade.zonda.ui.estado.EstadoScreen
 import ar.edu.uade.zonda.ui.inicio.ArranqueViewModel
 import ar.edu.uade.zonda.ui.inicio.DestinoInicial
+import ar.edu.uade.zonda.ui.primerinicio.SeveridadesScreen
 import ar.edu.uade.zonda.ui.primerinicio.primerInicio
 import ar.edu.uade.zonda.ui.recorrido.RecorridoViewModel
 import ar.edu.uade.zonda.ui.recorrido.TarjetaRecorrido
@@ -40,7 +44,8 @@ import ar.edu.uade.zonda.ui.viewModelDeZonda
  *
  * - Entrada por el ícono: sin red pareada, el primer inicio (o Conexión si la introducción ya se hizo);
  *   con red, Estado.
- * - Entrada por el enlace del aviso: el detalle de esa alerta.
+ * - Entradas externas: el enlace del aviso de Telegram abre el detalle de esa alerta; la notificación
+ *   local abre la pestaña Alertas.
  * - Una barra inferior con Estado, Alertas y Ajustes, y una pila de pantallas que se cierran con Volver.
  *   La barra solo se ve en los tres destinos principales.
  * - El recorrido de once pasos se muestra sobre las pestañas la primera vez (RF05).
@@ -72,6 +77,11 @@ fun ZondaNavHost(
         if (enPestania && rutaActual != paso.ruta) navController.irAPestania(paso.ruta)
     }
 
+    /** Sin ninguna red pareada (se quitó la última), la app vuelve a Conexión como única pantalla. */
+    val irAConexionSinVolver: () -> Unit = {
+        navController.navigate(Rutas.CONEXION) { popUpTo(navController.graph.id) { inclusive = true } }
+    }
+
     Scaffold(
         bottomBar = {
             if (enPestania) {
@@ -92,13 +102,50 @@ fun ZondaNavHost(
             NavHost(navController = navController, startDestination = rutaDeInicio) {
                 primerInicio(navController)
                 composable(Rutas.CONEXION) {
-                    ConexionScreen(alTerminar = { navController.irAPrincipal() }, alVolver = null)
+                    ConexionScreen(
+                        alTerminar = { navController.irAPrincipal() },
+                        alVolver = if (navController.previousBackStackEntry == null) null else ({ navController.popBackStack() }),
+                    )
                 }
                 composable(Rutas.ESTADO) { EstadoScreen() }
-                composable(Rutas.ALERTAS) {
-                    AlertasScreen(alAbrirDetalle = { alertaId -> navController.navigate(RutaDetalle.crear(alertaId)) })
+                composable(
+                    route = Rutas.ALERTAS,
+                    deepLinks = listOf(navDeepLink { uriPattern = ENLACE_ALERTAS }),
+                ) {
+                    AlertasScreen(
+                        alAbrirDetalle = { alertaId -> navController.navigate(RutaDetalle.crear(alertaId)) },
+                        alConectarDeNuevo = { navController.navigate(Rutas.CONEXION) },
+                    )
                 }
-                composable(Rutas.AJUSTES) { AjustesScreen() }
+                composable(Rutas.AJUSTES) {
+                    AjustesScreen(
+                        alAgregarRed = { navController.navigate(Rutas.CONEXION) },
+                        alConectarDeNuevo = { navController.navigate(Rutas.CONEXION) },
+                        alEditarSeveridades = { navController.navigate(Rutas.SEVERIDADES) },
+                        alQuedarSinRedes = irAConexionSinVolver,
+                    )
+                }
+                composable(Rutas.SEVERIDADES) { entrada ->
+                    // El mismo ViewModel que Ajustes, que es desde donde se llega.
+                    val dueño = remember(entrada) { navController.getBackStackEntry(Rutas.AJUSTES) }
+                    val viewModel = ajustesViewModel(dueño)
+                    val estado by viewModel.estado.collectAsStateWithLifecycle()
+                    SeveridadesScreen(
+                        severidades = estado.borradorSeveridades ?: estado.severidades,
+                        alCambiar = viewModel::cambiarSeveridadDelBorrador,
+                        textoBoton = stringResource(R.string.ajustes_guardar_severidades),
+                        titulo = stringResource(R.string.ajustes_severidades),
+                        intro = stringResource(R.string.ajustes_severidades_intro),
+                        alGuardar = {
+                            viewModel.guardarSeveridades()
+                            navController.popBackStack()
+                        },
+                        alVolver = {
+                            viewModel.descartarBorrador()
+                            navController.popBackStack()
+                        },
+                    )
+                }
                 detalleAlerta(alVolver = { navController.popBackStack() })
             }
             val paso = pasoRecorrido

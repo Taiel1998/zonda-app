@@ -73,6 +73,7 @@ class AlertasViewModel(
             catalogo = datos.catalogo,
             datosDe = datos.red?.ultimaSincronizacion,
             sinConexion = !controles.conectado,
+            accesoVencido = datos.red?.accesoVencido == true,
             sincronizando = controles.sincronizando,
             aviso = controles.aviso,
         )
