@@ -14,6 +14,8 @@ data class Red(
     val ultimaSincronizacion: Instant?,
     val telegramVinculado: Boolean,
     val activa: Boolean,
+    /** El servidor respondió 401: el token venció o fue revocado. La caché sigue; hay que parear de nuevo (RNF12). */
+    val accesoVencido: Boolean = false,
 ) {
     /** Nunca se sincronizó: la pantalla Estado muestra "sin datos" y nunca un semáforo verde (RF01, criterio 3). */
     val sinDatos: Boolean

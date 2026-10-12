@@ -41,6 +41,7 @@ fun RedEntity.aDominio(): Red = Red(
     ultimaSincronizacion = ultimaSincronizacion?.aInstant(),
     telegramVinculado = telegramVinculado,
     activa = activa,
+    accesoVencido = accesoVencido,
 )
 
 fun Red.aEntidad(creadaEn: Instant): RedEntity = RedEntity(
@@ -52,6 +53,7 @@ fun Red.aEntidad(creadaEn: Instant): RedEntity = RedEntity(
     telegramVinculado = telegramVinculado,
     activa = activa,
     creadaEn = creadaEn.aMilis(),
+    accesoVencido = accesoVencido,
 )
 
 fun RevisionEntity.aDominio(): Revision = Revision(

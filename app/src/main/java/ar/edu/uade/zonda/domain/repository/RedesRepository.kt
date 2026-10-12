@@ -32,6 +32,12 @@ interface RedesRepository {
     /** Revoca el token en el servidor (`DELETE /dispositivos/actual`) y borra el token y todos los datos de la red. */
     suspend fun quitarDispositivo(redId: String)
 
+    /** El servidor respondió 401 (o volvió a aceptar el token): la app pide un pareo nuevo sin borrar la caché. */
+    suspend fun marcarAccesoVencido(redId: String, vencido: Boolean)
+
+    /** Borrar datos locales: la red queda pareada pero sin cursor ni hora; la sincronización siguiente baja todo. */
+    suspend fun reiniciarSincronizacion(redId: String)
+
     /** Severidad por tipo de ataque elegida para la red. Vale para todos los teléfonos pareados a ella. */
     fun observarSeveridades(redId: String): Flow<SeveridadPorTipo>
 

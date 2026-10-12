@@ -16,6 +16,9 @@ data class ResultadoSincronizacion(
     val accionesEnviadas: Int,
     val accionesConError: Int,
     val hora: Instant,
+    /** Nuevas por severidad media y baja, para la notificación local según la preferencia de cada una (RF05). */
+    val mediasNuevas: Int = 0,
+    val bajasNuevas: Int = 0,
 )
 
 /**

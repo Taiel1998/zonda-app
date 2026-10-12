@@ -55,7 +55,15 @@ class SincronizadorHttp(
      */
     private val candado = Mutex()
 
-    override suspend fun sincronizar(redId: String): ResultadoSincronizacion = candado.withLock { sincronizarAhora(redId) }
+    override suspend fun sincronizar(redId: String): ResultadoSincronizacion = candado.withLock {
+        try {
+            sincronizarAhora(redId)
+        } catch (e: ErrorZonda.NoAutorizado) {
+            // El token venció o fue revocado: la red queda marcada y la app pide un pareo nuevo (RNF12).
+            redesDao.marcarAccesoVencido(redId, true)
+            throw e
+        }
+    }
 
     private suspend fun sincronizarAhora(redId: String): ResultadoSincronizacion {
         val red = redesDao.obtener(redId)?.aDominio() ?: throw ErrorZonda.NoEncontrado()
@@ -68,6 +76,7 @@ class SincronizadorHttp(
 
         val hora = reloj()
         redesDao.actualizarSincronizacion(redId, descarga.cursor, hora.toEpochMilli())
+        if (red.accesoVencido) redesDao.marcarAccesoVencido(redId, false)
         return ResultadoSincronizacion(
             nuevas = descarga.nuevas,
             modificadas = descarga.modificadas,
@@ -75,6 +84,8 @@ class SincronizadorHttp(
             accionesEnviadas = envio.enviadas,
             accionesConError = envio.conError,
             hora = hora,
+            mediasNuevas = descarga.mediasNuevas,
+            bajasNuevas = descarga.bajasNuevas,
         )
     }
 
@@ -156,7 +167,14 @@ class SincronizadorHttp(
 
     // ---- 2. Descarga por cursor ----
 
-    private data class ResultadoDescarga(val cursor: String?, val nuevas: Int, val modificadas: Int, val altasNuevas: Int)
+    private data class ResultadoDescarga(
+        val cursor: String?,
+        val nuevas: Int,
+        val modificadas: Int,
+        val altasNuevas: Int,
+        val mediasNuevas: Int,
+        val bajasNuevas: Int,
+    )
 
     private suspend fun descargar(redId: String, cursorInicial: String?, api: ZondaApi): ResultadoDescarga =
         try {
@@ -172,6 +190,8 @@ class SincronizadorHttp(
         var nuevas = 0
         var modificadas = 0
         var altasNuevas = 0
+        var mediasNuevas = 0
+        var bajasNuevas = 0
         var paginas = 0
         while (true) {
             val pagina = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.alertas(cursor) }
@@ -183,7 +203,11 @@ class SincronizadorHttp(
                         modificadas++
                     } else {
                         nuevas++
-                        if (alerta.severidad == Severidad.ALTA) altasNuevas++
+                        when (alerta.severidad) {
+                            Severidad.ALTA -> altasNuevas++
+                            Severidad.MEDIA -> mediasNuevas++
+                            Severidad.BAJA -> bajasNuevas++
+                        }
                     }
                 }
                 guardar(alertas)
@@ -194,7 +218,7 @@ class SincronizadorHttp(
             paginas++
             if (!pagina.hayMas || paginas >= MAXIMO_PAGINAS) break
         }
-        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas)
+        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, mediasNuevas, bajasNuevas)
     }
 
     /** SQLite admite hasta 999 parámetros por consulta. */

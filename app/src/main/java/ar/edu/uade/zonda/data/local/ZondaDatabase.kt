@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import ar.edu.uade.zonda.data.local.dao.AccionesPendientesDao
 import ar.edu.uade.zonda.data.local.dao.AlertasDao
 import ar.edu.uade.zonda.data.local.dao.RedesDao
@@ -33,7 +35,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         RevisionEntity::class,
         AccionPendienteEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class ZondaDatabase : RoomDatabase() {
@@ -47,11 +49,19 @@ abstract class ZondaDatabase : RoomDatabase() {
     companion object {
         const val NOMBRE_ARCHIVO = "zonda.db"
 
-        /** Abre (o crea) la base cifrada en el almacenamiento interno de la app. */
+        /** Versión 2 (fase 8): `redes.accesoVencido`, para pedir un pareo nuevo después de un 401 sin borrar la caché. */
+        val MIGRACION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE redes ADD COLUMN accesoVencido INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Abre (o crea) la base cifrada en el almacenamiento interno de la app, migrándola si hace falta. */
         fun cifrada(context: Context, clave: ByteArray): ZondaDatabase {
             System.loadLibrary("sqlcipher")
             return Room.databaseBuilder(context, ZondaDatabase::class.java, NOMBRE_ARCHIVO)
                 .openHelperFactory(SupportOpenHelperFactory(clave))
+                .addMigrations(MIGRACION_1_2)
                 .build()
         }
     }

@@ -120,6 +120,10 @@ class RedesRepositoryImpl(
         apis.olvidar(redId)
     }
 
+    override suspend fun marcarAccesoVencido(redId: String, vencido: Boolean) = dao.marcarAccesoVencido(redId, vencido)
+
+    override suspend fun reiniciarSincronizacion(redId: String) = dao.reiniciarSincronizacion(redId)
+
     override fun observarSeveridades(redId: String): Flow<SeveridadPorTipo> =
         dao.observarSeveridades(redId).map { it.aDominio() }
 
