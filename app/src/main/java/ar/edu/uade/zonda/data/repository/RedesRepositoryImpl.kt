@@ -46,9 +46,19 @@ class RedesRepositoryImpl(
 
     override suspend fun activar(redId: String) = dao.activar(redId)
 
+    override suspend fun verificarServidor(urlBase: String) {
+        val api = try {
+            apis.sinToken(urlBase)
+        } catch (e: IllegalArgumentException) {
+            throw ErrorZonda.Validacion("urlBase", "La dirección del servidor no es válida")
+        }
+        conErroresTraducidos(OperacionHttp.PAREO) { api.salud() }
+    }
+
     /**
      * Primero `GET /salud` sin token, que verifica que el servidor responde y que su certificado es
      * válido antes de mandar el código; después `POST /pareo`, que entrega el token una sola vez.
+     * Verifica aunque [ParearRed] ya lo haya hecho, para que nunca se mande el código a ciegas.
      */
     override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): Red {
         val api = try {
