@@ -2,6 +2,8 @@ package ar.edu.uade.zonda.data.repository
 
 import ar.edu.uade.zonda.data.FakeAlmacenSeguro
 import ar.edu.uade.zonda.data.PruebaConBase
+import ar.edu.uade.zonda.data.remote.ApiFalsa
+import ar.edu.uade.zonda.data.remote.ProveedorDeApiFalso
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
@@ -28,7 +30,8 @@ class RedesRepositoryImplTest : PruebaConBase() {
 
     @Before
     fun preparar() {
-        redes = RedesRepositoryImpl(base.redesDao(), almacen, reloj = { Fixtures.AHORA })
+        // La API en memoria: estas pruebas miran la base; lo que habla con el servidor está en PareoYServidorTest.
+        redes = RedesRepositoryImpl(base.redesDao(), almacen, ProveedorDeApiFalso(ApiFalsa()), reloj = { Fixtures.AHORA })
     }
 
     @Test
