@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo en el build de debug: configuración de red que permite texto claro hacia el emulador
+     (10.0.2.2), donde corre la API local sin HTTPS. En release no existe y Android exige HTTPS. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+
+</manifest>

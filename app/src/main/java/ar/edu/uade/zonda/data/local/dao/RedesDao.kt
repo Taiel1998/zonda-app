@@ -53,6 +53,14 @@ abstract class RedesDao {
     @Query("UPDATE redes SET cursor = :cursor, ultimaSincronizacion = :hora WHERE id = :id")
     abstract suspend fun actualizarSincronizacion(id: String, cursor: String?, hora: Long)
 
+    /** Solo el cursor, página por página; la hora se registra cuando la sincronización termina. */
+    @Query("UPDATE redes SET cursor = :cursor WHERE id = :id")
+    abstract suspend fun actualizarCursor(id: String, cursor: String?)
+
+    /** Pareo repetido de una red que ya estaba (token vencido o revocado): se actualizan los datos sin perder la caché. */
+    @Query("UPDATE redes SET nombre = :nombre, urlBase = :urlBase WHERE id = :id")
+    abstract suspend fun actualizarDatosDePareo(id: String, nombre: String, urlBase: String)
+
     @Query("UPDATE redes SET telegramVinculado = :vinculado WHERE id = :id")
     abstract suspend fun marcarTelegram(id: String, vinculado: Boolean)
 

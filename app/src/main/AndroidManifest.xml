@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Para saber si hay conexión antes de enviar o encolar una acción (informe, sección 14.1). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- allowBackup en false: la base local y el token no van a ninguna copia de seguridad (RNF03). -->
     <application

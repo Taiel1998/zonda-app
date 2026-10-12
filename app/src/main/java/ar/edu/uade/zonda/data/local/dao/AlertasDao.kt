@@ -93,6 +93,20 @@ abstract class AlertasDao {
     @Query("DELETE FROM alertas WHERE redId = :redId AND inicio < :antesDe")
     abstract suspend fun purgarAnterioresA(redId: String, antesDe: Long): Int
 
+    /** De una lista de ids, cuáles ya están en el teléfono (la sincronización cuenta nuevas y modificadas). */
+    @Query("SELECT id FROM alertas WHERE redId = :redId AND id IN (:ids)")
+    abstract suspend fun idsExistentes(redId: String, ids: List<String>): List<String>
+
+    /**
+     * El servidor confirmó la revisión hecha en este teléfono: la revisión local deja de ser
+     * provisoria (ya está en el historial que manda el servidor) y la alerta queda como la devolvió la API.
+     */
+    @Transaction
+    open suspend fun confirmarDelServidor(alerta: AlertaEntity, revisiones: List<RevisionEntity>) {
+        borrarRevisionesLocales(alerta.id)
+        guardarDelServidor(listOf(alerta), mapOf(alerta.id to revisiones))
+    }
+
     /**
      * Revisión hecha en este teléfono: reemplaza la revisión local anterior si había una (nunca
      * llegó al servidor, así que no es historia), agrega la nueva y deja la alerta con ese estado.

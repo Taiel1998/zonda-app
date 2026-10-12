@@ -57,6 +57,12 @@ Desde la terminal:
 .\gradlew.bat assembleDebug testDebugUnitTest
 ```
 
+Para usar la app contra la API local desde el emulador, levantar el backend (ver abajo) y parear con la dirección `http://10.0.2.2:8000`: el build de debug permite ese tráfico sin HTTPS; el de release, no. La sincronización completa también se puede correr contra la API desde la JVM, con el backend levantado y un código de `zonda.cmd pair`:
+
+```powershell
+$env:ZONDA_API_URL = "http://127.0.0.1:8000"; $env:ZONDA_CODIGO_PAREO = "K7M2-QX9P"; .\gradlew.bat testDebugUnitTest --tests "*ContraBackend*"
+```
+
 ### Backend
 
 Ver [backend/README.md](backend/README.md). En resumen: crear un entorno virtual de Python 3.12, instalar `requirements.txt` y levantar `uvicorn`. Para publicarlo con HTTPS se usa Caddy con un nombre de DuckDNS.

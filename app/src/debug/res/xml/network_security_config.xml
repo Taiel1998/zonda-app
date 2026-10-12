@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Configuración de red del build de debug (plan, sección 4.6; docs/decisiones.md, decisión 12).
+
+    Se permite tráfico sin cifrar únicamente hacia 10.0.2.2, que es la dirección con la que el
+    emulador de Android ve a la computadora donde corre la API. Cualquier otro destino exige HTTPS.
+    Para probar en un teléfono real contra la notebook sin pasar por Caddy, agregar la IP privada de
+    la notebook como otro <domain>. El build de release no tiene este archivo.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

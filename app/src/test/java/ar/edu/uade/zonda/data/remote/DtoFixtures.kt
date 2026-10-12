@@ -1,0 +1,53 @@
+package ar.edu.uade.zonda.data.remote
+
+/** Alertas con la forma exacta del contrato; cada prueba cambia solo lo que le importa. */
+object DtoFixtures {
+
+    fun alerta(
+        id: String = "a-1",
+        severidad: String = "alta",
+        tipoAtaque: String? = "fuerza_bruta",
+        estadoRevision: String = "sin_revisar",
+        version: Int = 1,
+        historial: List<RevisionDto> = emptyList(),
+        inicio: String = "2026-10-11T14:02:00+00:00",
+        fin: String = "2026-10-11T14:20:10+00:00",
+        creadaEn: String = "2026-10-11T14:25:10+00:00",
+        servicio: String = "ssh",
+        destinoIp: String = "192.168.10.50",
+    ) = AlertaDto(
+        id = id,
+        creadaEn = creadaEn,
+        inicio = inicio,
+        fin = fin,
+        cantidadFlujos = 1198,
+        uidReferencia = "CxYz1",
+        origenIp = "192.168.10.9",
+        origenNombre = "pc-09",
+        destinoIp = destinoIp,
+        destinoNombre = "srv-web",
+        servicio = servicio,
+        puerto = 22,
+        puertoReferencia = 22,
+        puertosDistintos = 1,
+        tipoAtaque = tipoAtaque,
+        confianzaTipo = if (tipoAtaque == null) null else 0.98,
+        severidad = severidad,
+        veredictos = VeredictosDto(
+            ia = true,
+            errorReconstruccion = 0.0412,
+            umbralIa = 0.00306383,
+            umbrales = true,
+            contexto60s = 65,
+            umbralServicio = 1,
+            servicioSinLineaBase = false,
+            reglas = false,
+            parDestino = "$destinoIp:22",
+            parEnCatalogo = true,
+        ),
+        estadoRevision = estadoRevision,
+        historial = historial,
+        version = version,
+        actualizadaEn = creadaEn,
+    )
+}

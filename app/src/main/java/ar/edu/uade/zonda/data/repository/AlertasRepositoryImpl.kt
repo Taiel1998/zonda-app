@@ -4,6 +4,8 @@ import ar.edu.uade.zonda.data.local.dao.AlertasDao
 import ar.edu.uade.zonda.data.local.entidades.AlertaConDetalles
 import ar.edu.uade.zonda.data.mapper.aDominio
 import ar.edu.uade.zonda.data.mapper.aEntidad
+import ar.edu.uade.zonda.data.sync.SinSincronizador
+import ar.edu.uade.zonda.data.sync.Sincronizador
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.ErrorZonda
@@ -22,11 +24,12 @@ import kotlinx.coroutines.flow.map
  * Repositorio de alertas sobre Room. Todo lo que observa la interfaz sale de la base local;
  * la red solo la actualiza (informe, sección 14).
  *
- * Las operaciones que hablan con el servidor ([descargarDetalle] y [sincronizar]) se completan en
- * la fase 4 con Retrofit; hasta entonces responden "sin conexión" para que la app no se rompa.
+ * Las operaciones que hablan con el servidor ([descargarDetalle] y [sincronizar]) las hace el
+ * [Sincronizador]; las pruebas que solo miran la base le pasan [SinSincronizador].
  */
 class AlertasRepositoryImpl(
     private val dao: AlertasDao,
+    private val sincronizador: Sincronizador = SinSincronizador,
     private val reloj: () -> Instant = Instant::now,
 ) : AlertasRepository {
 
@@ -68,22 +71,17 @@ class AlertasRepositoryImpl(
         dao.restaurarEstadoDelServidor(alertaId)
     }
 
-    override suspend fun descargarDetalle(redId: String, alertaId: String): Alerta {
-        // Fase 4: GET /alertas/{id} con Retrofit y guardarDelServidor.
-        throw ErrorZonda.SinConexion()
-    }
+    override suspend fun descargarDetalle(redId: String, alertaId: String): Alerta =
+        sincronizador.descargarDetalle(redId, alertaId)
 
-    override suspend fun sincronizar(redId: String): ResultadoSincronizacion {
-        // Fase 4: envío de la cola y GET /alertas?desde=cursor.
-        throw ErrorZonda.SinConexion()
-    }
+    override suspend fun sincronizar(redId: String): ResultadoSincronizacion =
+        sincronizador.sincronizar(redId)
 
     override suspend fun borrarDeRed(redId: String) = dao.borrarDeRed(redId)
 
     /**
-     * Guarda alertas tal como llegaron del servidor. Lo usa la sincronización (fase 4) y la carga
-     * de datos de ejemplo. El historial del servidor reemplaza al guardado; una revisión local
-     * pendiente se conserva.
+     * Guarda alertas tal como llegaron del servidor. Lo usa la carga de datos de ejemplo y las pruebas.
+     * El historial del servidor reemplaza al guardado; una revisión local pendiente se conserva.
      */
     suspend fun guardarDelServidor(alertas: List<Alerta>) {
         val revisiones = alertas.associate { alerta ->
