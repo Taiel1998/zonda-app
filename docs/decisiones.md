@@ -77,3 +77,11 @@ Registro corto de las decisiones que cambian algo respecto de la Etapa 1 o que c
 **Decisión.** Cuando la API manda `tipoAtaque: null` (la alerta la detectaron solo las reglas o los umbrales), el dominio usa el valor `SOLO_REGLAS_O_UMBRALES` del enum `TipoAtaque`. Los motivos de revisión son una lista fija (`Motivo`), cada uno atado a un resultado; el texto de cada motivo y el comentario que propone están en `strings.xml`.
 
 **Por qué.** Con un valor explícito, la pantalla de severidades y los filtros tratan ese caso como uno más, sin un `null` que haya que contemplar aparte en cada lugar. Los motivos fijos evitan escribir el motivo a mano (heurística 6 de Nielsen) y hacen comparables las revisiones en el Resumen.
+
+## 11. KSP 2.3 con el Kotlin integrado de AGP 9
+
+**Decisión.** Room genera su código con KSP. Se usa la línea nueva de KSP (2.3.x), que tiene su propia numeración y funciona con el Kotlin integrado de Android Gradle Plugin 9, sin aplicar el plugin `org.jetbrains.kotlin.android`.
+
+**Por qué.** La versión de KSP atada a Kotlin 2.2.21 (2.2.21-2.0.5) corta la configuración del proyecto con el mensaje "KSP is not compatible with Android Gradle Plugin's built-in Kotlin". Se probó el camino viejo (desactivar el Kotlin integrado con `android.builtInKotlin=false`, conservar el DSL anterior con `android.newDsl=false` y aplicar el plugin clásico de Kotlin): compila, pero depende de dos opciones que AGP 10 elimina. Con KSP 2.3.12 el proyecto queda igual que uno recién creado por Android Studio.
+
+**Qué cambia.** Nada en el código; solo la versión de KSP en `gradle/libs.versions.toml`.
