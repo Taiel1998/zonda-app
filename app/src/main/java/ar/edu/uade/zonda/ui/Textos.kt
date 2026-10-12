@@ -87,6 +87,19 @@ fun Motivo.etiqueta(): Int = when (this) {
     Motivo.SERVICIO_NUEVO -> R.string.motivo_servicio_nuevo
 }
 
+/** El comentario que propone cada motivo al revisar; la persona lo puede editar (RF04). */
+@StringRes
+fun Motivo.comentarioPropuesto(): Int = when (this) {
+    Motivo.ESCALADO_AL_PROVEEDOR -> R.string.comentario_escalado_al_proveedor
+    Motivo.EQUIPO_AISLADO -> R.string.comentario_equipo_aislado
+    Motivo.CREDENCIALES_CAMBIADAS -> R.string.comentario_credenciales_cambiadas
+    Motivo.EN_INVESTIGACION -> R.string.comentario_en_investigacion
+    Motivo.TAREA_PROGRAMADA -> R.string.comentario_tarea_programada
+    Motivo.HERRAMIENTA_AUTORIZADA -> R.string.comentario_herramienta_autorizada
+    Motivo.PRUEBA_DEL_EQUIPO_DE_IT -> R.string.comentario_prueba_del_equipo_de_it
+    Motivo.SERVICIO_NUEVO -> R.string.comentario_servicio_nuevo
+}
+
 /** El mensaje que ve la persona por cada error de datos (informe, sección 14.3). */
 @StringRes
 fun ErrorZonda.mensaje(): Int = when (this) {

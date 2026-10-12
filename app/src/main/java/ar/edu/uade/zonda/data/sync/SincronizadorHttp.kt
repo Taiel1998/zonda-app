@@ -23,6 +23,8 @@ import ar.edu.uade.zonda.domain.model.TipoAccion
 import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
 import java.time.Duration
 import java.time.Instant
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * La sincronización de una red (informe, sección 14.2; docs/decisiones.md, decisión 13):
@@ -47,7 +49,15 @@ class SincronizadorHttp(
     private val redesDao get() = base.redesDao()
     private val accionesDao get() = base.accionesPendientesDao()
 
-    override suspend fun sincronizar(redId: String): ResultadoSincronizacion {
+    /**
+     * Una sincronización por vez: si se piden dos juntas (al volver la red desde dos pantallas, por
+     * ejemplo), la segunda espera a que termine la primera y no manda la misma acción dos veces.
+     */
+    private val candado = Mutex()
+
+    override suspend fun sincronizar(redId: String): ResultadoSincronizacion = candado.withLock { sincronizarAhora(redId) }
+
+    private suspend fun sincronizarAhora(redId: String): ResultadoSincronizacion {
         val red = redesDao.obtener(redId)?.aDominio() ?: throw ErrorZonda.NoEncontrado()
         val api = apis.para(red)
 

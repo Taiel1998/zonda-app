@@ -98,7 +98,9 @@ fun AlertaConDetalles.aDominio(): Alerta {
             reglas = VeredictoReglas(alerta.veredictoReglas, alerta.parDestino, alerta.parEnCatalogo),
         ),
         estadoRevision = EstadoRevision.valueOf(alerta.estadoRevision),
-        revisionActual = historial.lastOrNull(),
+        // Una revisión local pendiente es la que manda sobre el estado (AlertasDao.guardarDelServidor),
+        // aunque una revisión del servidor tenga fecha posterior (por ejemplo, en un conflicto 409).
+        revisionActual = historial.lastOrNull { it.origen == OrigenRevision.ESTE_TELEFONO } ?: historial.lastOrNull(),
         historial = historial,
         envio = accion?.let { EstadoEnvio.valueOf(it.estado) },
         version = alerta.version,
