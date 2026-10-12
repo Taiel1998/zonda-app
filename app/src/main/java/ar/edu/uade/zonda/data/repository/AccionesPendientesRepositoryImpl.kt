@@ -27,9 +27,12 @@ class AccionesPendientesRepositoryImpl(
 
     override suspend fun borrarDeRed(redId: String) = dao.borrarDeRed(redId)
 
-    /** Lo usa la sincronización (fase 4) para marcar reintentos, errores y conflictos. */
+    /** Lo usa la sincronización para marcar reintentos, errores y conflictos. */
     suspend fun actualizarEnvio(accionId: String, estado: EstadoEnvio, intentos: Int, ultimoError: String?) =
         dao.actualizarEnvio(accionId, estado.name, intentos, ultimoError)
+
+    /** Reintento manual de una acción que quedó en error: vuelve a pendiente con los intentos en cero. */
+    suspend fun reintentar(accionId: String) = dao.reintentar(accionId)
 
     suspend fun listar(redId: String): List<AccionPendiente> = dao.listar(redId).map { it.aDominio() }
 }

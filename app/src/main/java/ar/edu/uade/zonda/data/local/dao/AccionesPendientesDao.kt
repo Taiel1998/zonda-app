@@ -37,6 +37,28 @@ abstract class AccionesPendientesDao {
     @Query("UPDATE acciones_pendientes SET estado = :estado, intentos = :intentos, ultimoError = :ultimoError WHERE id = :id")
     abstract suspend fun actualizarEnvio(id: String, estado: String, intentos: Int, ultimoError: String?)
 
+    /**
+     * Las que todavía pueden viajar: pendientes y las que quedaron "enviando" por un corte. Las de
+     * error esperan el reintento manual y las de conflicto, una decisión de la persona.
+     */
+    @Query("SELECT * FROM acciones_pendientes WHERE redId = :redId AND estado IN ('PENDIENTE', 'ENVIANDO') ORDER BY creadaEn ASC")
+    abstract suspend fun listarParaEnviar(redId: String): List<AccionPendienteEntity>
+
+    /** El servidor respondió 409: se guarda la revisión de la otra persona para mostrarla en el detalle. */
+    @Query(
+        """
+        UPDATE acciones_pendientes
+        SET estado = 'CONFLICTO', ajenaResultado = :resultado, ajenaMotivo = :motivo,
+            ajenaComentario = :comentario, ajenaAutor = :autor, ajenaFecha = :fecha
+        WHERE id = :id
+        """,
+    )
+    abstract suspend fun marcarConflicto(id: String, resultado: String, motivo: String, comentario: String, autor: String?, fecha: Long)
+
+    /** Reintento manual de una acción con error: vuelve a pendiente con los intentos en cero. */
+    @Query("UPDATE acciones_pendientes SET estado = 'PENDIENTE', intentos = 0, ultimoError = NULL WHERE id = :id")
+    abstract suspend fun reintentar(id: String)
+
     /** Como máximo hay una acción por alerta: la nueva reemplaza a la anterior. */
     @Transaction
     open suspend fun encolar(accion: AccionPendienteEntity) {
