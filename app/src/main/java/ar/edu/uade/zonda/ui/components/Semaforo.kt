@@ -22,6 +22,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -36,6 +38,10 @@ import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.theme.Tono
 import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
+import ar.edu.uade.zonda.ui.theme.etiquetaBarra
+import ar.edu.uade.zonda.ui.theme.numeroContador
+import ar.edu.uade.zonda.ui.theme.rotulo
+import ar.edu.uade.zonda.ui.theme.tituloHoja
 
 // Piezas de la pantalla Estado (RF01; Figma 1-3, 1-178, 1-222 y 50-616). Las usa también el tutorial.
 // La pantalla y su ViewModel los escribe Taiel.
@@ -44,6 +50,9 @@ import ar.edu.uade.zonda.ui.theme.ZondaTheme
  * Semáforo de la red: el círculo del color del estado, la etiqueta ("Atención", "Tranquila" o
  * "Sin datos"), el título y el detalle. Rojo si hay altas sin revisar, amarillo si solo quedan medias
  * y verde si no queda ninguna de las dos; las bajas no lo cambian. Sin datos, nunca verde.
+ *
+ * Medidas del Figma (35-263): esquinas de 16, 20 de margen, 12 entre la fila y el detalle, círculo
+ * de 48 a 14 de los textos, etiqueta SemiBold 12, título SemiBold 20 y detalle Regular 13.
  */
 @Composable
 fun Semaforo(
@@ -60,30 +69,18 @@ fun Semaforo(
             .fillMaxWidth()
             .semantics(mergeDescendants = true) {},
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(48.dp)
                         .background(tono.punto, CircleShape),
                 )
-                Spacer(modifier = Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text = etiqueta.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = tono.texto,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = titulo,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = tono.texto,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(text = etiqueta.uppercase(), style = MaterialTheme.typography.etiquetaBarra, color = tono.texto)
+                    Text(text = titulo, style = MaterialTheme.typography.tituloHoja, color = tono.texto)
                 }
             }
-            Spacer(modifier = Modifier.height(10.dp))
             Text(text = detalle, style = MaterialTheme.typography.bodySmall, color = tono.texto)
         }
     }
@@ -106,10 +103,11 @@ fun ContadorSeveridad(
     val nombre = stringResource(severidad.etiqueta())
     val descripcion = stringResource(R.string.contador_descripcion, cantidad, nombre)
     val borde = if (elegido) BorderStroke(2.dp, tono.texto) else null
+    // Figma 35-263: 12 de margen, 2 entre el número (SemiBold 24) y el nombre (Medium 12).
     val contenido: @Composable () -> Unit = {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Text(text = cantidad.toString(), style = MaterialTheme.typography.headlineSmall, color = tono.texto, fontWeight = FontWeight.SemiBold)
-            Text(text = nombre, style = MaterialTheme.typography.bodySmall, color = tono.texto)
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(text = cantidad.toString(), style = MaterialTheme.typography.numeroContador, color = tono.texto)
+            Text(text = nombre, style = MaterialTheme.typography.rotulo, color = tono.texto)
         }
     }
     val semantica = Modifier.semantics {
@@ -136,7 +134,7 @@ fun ContadorSeveridad(
     }
 }
 
-/** Los tres contadores, uno al lado del otro. */
+/** Los tres contadores, uno al lado del otro, con 12 entre ellos. */
 @Composable
 fun FilaContadores(
     altas: Int,
@@ -146,7 +144,7 @@ fun FilaContadores(
     elegida: Severidad? = null,
     alTocar: ((Severidad) -> Unit)? = null,
 ) {
-    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         listOf(Severidad.ALTA to altas, Severidad.MEDIA to medias, Severidad.BAJA to bajas).forEach { (severidad, cantidad) ->
             ContadorSeveridad(
                 severidad = severidad,
@@ -190,7 +188,8 @@ private fun FilaLeyenda(tono: Tono, texto: String) {
 
 /**
  * La primera descarga después del pareo (Figma 50-616): "Descargando alertas…", la barra y
- * "120 de 213 · últimos 30 días · solo la primera vez". Sin el total, la barra no tiene fin.
+ * "120 de 213 · últimos 30 días · solo la primera vez". Es un [Panel] con el título Medium 15, la
+ * barra de 6 con esquinas de 3 y el texto Regular 13 gris. Sin el total, la barra no tiene fin.
  */
 @Composable
 fun TarjetaDescarga(
@@ -198,33 +197,38 @@ fun TarjetaDescarga(
     total: Int?,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedCard(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(text = stringResource(R.string.descarga_titulo), style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(10.dp))
-            if (total != null && total > 0) {
-                LinearProgressIndicator(
-                    progress = { (descargadas.toFloat() / total).coerceIn(0f, 1f) },
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.fillMaxWidth().height(6.dp),
-                )
-            } else {
-                LinearProgressIndicator(
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.fillMaxWidth().height(6.dp),
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = if (total != null) {
-                    stringResource(R.string.descarga_progreso, descargadas, total)
-                } else {
-                    stringResource(R.string.descarga_sin_total, descargadas)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+    Panel(modifier = modifier) {
+        Text(text = stringResource(R.string.descarga_titulo), style = MaterialTheme.typography.titleSmall)
+        val barra = Modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+        if (total != null && total > 0) {
+            LinearProgressIndicator(
+                progress = { (descargadas.toFloat() / total).coerceIn(0f, 1f) },
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                strokeCap = StrokeCap.Round,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+                modifier = barra,
+            )
+        } else {
+            LinearProgressIndicator(
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                strokeCap = StrokeCap.Round,
+                gapSize = 0.dp,
+                modifier = barra,
             )
         }
+        Text(
+            text = if (total != null) {
+                stringResource(R.string.descarga_progreso, descargadas, total)
+            } else {
+                stringResource(R.string.descarga_sin_total, descargadas)
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

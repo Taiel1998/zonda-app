@@ -46,8 +46,12 @@ class ReglasDelModeloTest {
     @Test
     fun `el filtro por defecto no esconde nada y el de un contador si`() {
         assertFalse(FiltroAlertas.TODAS.activo)
+        // 30 días es todo lo que guarda el teléfono (RNF03): por defecto no se esconde nada.
+        assertEquals(Periodo.ULTIMOS_30_DIAS, FiltroAlertas.TODAS.periodo)
+        assertEquals(FiltroEstado.TODAS, FiltroAlertas.TODAS.estado)
         assertTrue(FiltroAlertas.sinRevisarDe(Severidad.MEDIA).activo)
-        assertEquals(EstadoRevision.SIN_REVISAR, FiltroAlertas.sinRevisarDe(Severidad.MEDIA).estado)
+        assertEquals(FiltroEstado.SIN_REVISAR, FiltroAlertas.sinRevisarDe(Severidad.MEDIA).estado)
+        assertEquals(setOf(Severidad.MEDIA), FiltroAlertas.sinRevisarDe(Severidad.MEDIA).severidades)
     }
 
     @Test

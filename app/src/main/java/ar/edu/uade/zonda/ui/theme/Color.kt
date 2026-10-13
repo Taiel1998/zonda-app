@@ -39,6 +39,10 @@ val RojoPeligroFondo = Color(0xFFFCEBEB)
 /** Fondo del aviso inferior (snackbar). */
 val GrisAviso = Color(0xFF2C2C2A)
 
+/** Fondo del escáner del QR y texto claro sobre él (Figma 35-464 y 49-284). */
+val FondoEscaner = Color(0xFF1E1E1C)
+val TextoEscaner = Color(0xFFE4E2DA)
+
 /** Los tres colores de un tono: el del texto, el del fondo y el del punto que lo acompaña. */
 @Immutable
 data class Tono(val texto: Color, val fondo: Color, val punto: Color)

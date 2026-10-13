@@ -24,13 +24,19 @@ import ar.edu.uade.zonda.domain.model.Veredictos
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 // Conversores entre los DTO de la API y el dominio. Las enumeraciones viajan en minúsculas con guion
 // bajo y acá se pasan al nombre del enum (`fuerza_bruta` ↔ FUERZA_BRUTA). Un valor que el dominio no
-// conoce lanza IllegalArgumentException: la sincronización lo informa como error del servidor.
+// conoce lanza IllegalArgumentException: la sincronización lo informa como error del servidor. Los
+// motivos anteriores al Figma se aceptan con su nombre actual (Motivo.desdeNombre).
 
 /** La API manda fechas como `2026-10-11T14:25:10+00:00`; `Instant.parse` de Android 8 no acepta ese sufijo. */
 fun String.aInstante(): Instant = OffsetDateTime.parse(this).toInstant()
+
+/** `2026-10-12T05:13:00Z`: ISO 8601 en UTC, como lo espera la API. */
+fun Instant.aTextoIso(): String = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(atOffset(ZoneOffset.UTC))
 
 fun AlertaDto.aDominio(redId: String): Alerta {
     val historial = historial.map { it.aDominio() }
@@ -45,6 +51,7 @@ fun AlertaDto.aDominio(redId: String): Alerta {
         origen = Equipo(origenIp, origenNombre),
         destino = Equipo(destinoIp, destinoNombre),
         servicio = servicio,
+        protocolo = protocolo,
         puerto = puerto,
         puertoReferencia = puertoReferencia,
         puertosDistintos = puertosDistintos,
@@ -68,11 +75,12 @@ fun AlertaDto.aDominio(redId: String): Alerta {
 /** Toda revisión que llega de la API es del servidor, aunque la haya hecho este mismo teléfono. */
 fun RevisionDto.aDominio(): Revision = Revision(
     resultado = ResultadoRevision.valueOf(resultado.uppercase()),
-    motivo = Motivo.valueOf(motivo.uppercase()),
+    motivo = Motivo.desdeNombre(motivo.uppercase()),
     comentario = comentario,
     autor = autor,
     fecha = fecha.aInstante(),
     origen = OrigenRevision.SERVIDOR,
+    revisadaEn = revisadaEn?.aInstante(),
 )
 
 /** La acción pendiente de revisar, como la espera `POST /alertas/{id}/revision`. Null si no tiene revisión. */
@@ -85,6 +93,7 @@ fun AccionPendiente.aRevisionEntrada(forzar: Boolean = false): RevisionEntradaDt
         comentario = revision.comentario,
         versionVista = versionVista,
         forzar = forzar,
+        revisadaEn = revision.fecha.aTextoIso(),
     )
 }
 

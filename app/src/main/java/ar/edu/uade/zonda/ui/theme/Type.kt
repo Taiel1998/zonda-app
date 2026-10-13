@@ -81,6 +81,34 @@ val Typography.opcion: TextStyle
 val Typography.valor: TextStyle
     get() = bodyMedium.copy(fontWeight = FontWeight.Medium)
 
-/** SemiBold 12: el nombre de cada pestaña de la barra inferior. */
+/** SemiBold 12: el nombre de cada pestaña de la barra inferior, "Pegar" y la etiqueta del semáforo. */
 val Typography.etiquetaBarra: TextStyle
     get() = labelMedium.copy(fontSize = 12.sp)
+
+/** Regular 15: los pasos de las hojas de ayuda y los textos del primer inicio. */
+val Typography.cuerpo: TextStyle
+    get() = bodyMedium.copy(fontSize = 15.sp)
+
+/** SemiBold 18: "Necesitás el código de pareo". */
+val Typography.encabezado: TextStyle
+    get() = titleLarge.copy(fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+
+/** SemiBold 22: el título de cada paso del tutorial. */
+val Typography.tituloPaso: TextStyle
+    get() = titleLarge.copy(fontWeight = FontWeight.SemiBold)
+
+/** SemiBold 26: "Bienvenido a Zonda". */
+val Typography.tituloBienvenida: TextStyle
+    get() = titleLarge.copy(fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
+
+/** Medium 12: "o ingresalo a mano", el encabezado de un aviso y el nombre de cada contador. */
+val Typography.rotulo: TextStyle
+    get() = bodySmall.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium)
+
+/** Regular 17: el ejemplo de un campo vacío ("zonda-empresa.duckdns.org"). */
+val Typography.ejemploCampo: TextStyle
+    get() = bodyLarge.copy(fontSize = 17.sp)
+
+/** SemiBold 24: el número de cada contador del semáforo. */
+val Typography.numeroContador: TextStyle
+    get() = headlineSmall.copy(fontWeight = FontWeight.SemiBold)

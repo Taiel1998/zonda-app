@@ -36,6 +36,7 @@ data class AlertaEntity(
     val destinoIp: String,
     val destinoNombre: String?,
     val servicio: String,
+    val protocolo: String? = null,
     val puerto: Int,
     val puertoReferencia: Int,
     val puertosDistintos: Int,
@@ -74,8 +75,11 @@ data class RevisionEntity(
     val motivo: String,
     val comentario: String,
     val autor: String?,
+    /** Cuándo llegó al servidor; en una revisión local que no salió, cuándo se hizo. */
     val fecha: Long,
     val origen: String,
+    /** Cuándo se revisó en el teléfono que la hizo (decisión 21). */
+    val revisadaEn: Long? = null,
 )
 
 /** Acción hecha en el teléfono que todavía no llegó al servidor (tabla `acciones_pendientes`). */
@@ -108,6 +112,7 @@ data class AccionPendienteEntity(
     val ajenaComentario: String?,
     val ajenaAutor: String?,
     val ajenaFecha: Long?,
+    val ajenaRevisadaEn: Long? = null,
 )
 
 /** Una alerta con su historial y la acción pendiente que tenga, en una sola lectura. */

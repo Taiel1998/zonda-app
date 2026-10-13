@@ -5,6 +5,7 @@ import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.RedPareada
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import ar.edu.uade.zonda.domain.repository.RedesRepository
@@ -61,7 +62,10 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
         redes.value = redes.value.map { it.copy(activa = it.id == redId) }
     }
 
-    override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): Red {
+    /** Cuántas alertas de los últimos 30 días informa el pareo. */
+    var alertasAlParear = 213
+
+    override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): RedPareada {
         pareos += datos
         esperaAlParear?.await()
         errorAlParear?.let { throw it }
@@ -75,7 +79,7 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
             activa = true,
         )
         redes.value = redes.value.map { it.copy(activa = false) } + red
-        return red
+        return RedPareada(red, alertasParaDescargar = alertasAlParear)
     }
 
     override suspend fun quitarDispositivo(redId: String) {

@@ -19,16 +19,15 @@ import ar.edu.uade.zonda.ui.viewModelDeZonda
 import kotlinx.coroutines.launch
 
 /**
- * El primer inicio como grafo anidado (RF05; informe, 11.5): bienvenida con las condiciones, tutorial,
- * avisos, severidades y pareo. Todas las pantallas comparten un [PrimerInicioViewModel], que vive
- * mientras el grafo esté en la pila. Telegram se agrega en la fase 10.
+ * El primer inicio como grafo anidado (RF05; informe, 11.5): bienvenida (las condiciones se abren en
+ * una hoja), tutorial, avisos, severidades y pareo. Todas las pantallas comparten un
+ * [PrimerInicioViewModel], que vive mientras el grafo esté en la pila. Telegram se agrega en la fase 10.
  */
 fun NavGraphBuilder.primerInicio(navController: NavHostController) {
     navigation(startDestination = Rutas.BIENVENIDA, route = Rutas.PRIMER_INICIO) {
         composable(Rutas.BIENVENIDA) { entrada ->
             val viewModel = primerInicioViewModel(navController, entrada)
             BienvenidaScreen(
-                alVerCondiciones = { navController.navigate(Rutas.CONDICIONES) },
                 alEmpezar = { navController.navigate(Rutas.TUTORIAL) },
                 alOmitirIntroduccion = {
                     viewModel.terminarIntroduccion()
@@ -36,11 +35,11 @@ fun NavGraphBuilder.primerInicio(navController: NavHostController) {
                 },
             )
         }
-        composable(Rutas.CONDICIONES) {
-            CondicionesScreen(alVolver = { navController.popBackStack() })
-        }
         composable(Rutas.TUTORIAL) {
-            TutorialScreen(alTerminar = { navController.navigate(Rutas.AVISOS) })
+            TutorialScreen(
+                alOmitir = { navController.navigate(Rutas.AVISOS) },
+                alTerminar = { navController.navigate(Rutas.AVISOS) },
+            )
         }
         composable(Rutas.AVISOS) { entrada ->
             val viewModel = primerInicioViewModel(navController, entrada)
@@ -49,7 +48,6 @@ fun NavGraphBuilder.primerInicio(navController: NavHostController) {
                 avisos = avisos,
                 alCambiar = viewModel::cambiarAviso,
                 alContinuar = { navController.navigate(Rutas.SEVERIDADES_INICIALES) },
-                alVolver = { navController.popBackStack() },
             )
         }
         composable(Rutas.SEVERIDADES_INICIALES) { entrada ->
@@ -69,6 +67,7 @@ fun NavGraphBuilder.primerInicio(navController: NavHostController) {
         composable(Rutas.CONEXION_INICIAL) { entrada ->
             val viewModel = primerInicioViewModel(navController, entrada)
             val alcance = rememberCoroutineScope()
+            // Sin flecha, como en el Figma (35-432): el botón Volver del teléfono igual vuelve atrás.
             ConexionScreen(
                 alTerminar = { red ->
                     alcance.launch {
@@ -76,7 +75,8 @@ fun NavGraphBuilder.primerInicio(navController: NavHostController) {
                         navController.irAPrincipal()
                     }
                 },
-                alVolver = { navController.popBackStack() },
+                alVolver = null,
+                alVerDetallesTecnicos = { navController.navigate(Rutas.DETALLES_TECNICOS) },
             )
         }
     }

@@ -6,6 +6,9 @@ import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.Motivo
+import ar.edu.uade.zonda.domain.model.FiltroServicio
+import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.Periodo
@@ -63,12 +66,68 @@ class AlertasRepositoryImplTest : PruebaConBase() {
 
         suspend fun ids(filtro: FiltroAlertas) = alertas.observarAlertas("red-1", filtro).first().map { it.id }.toSet()
 
-        assertEquals(setOf("alta-ia", "media-reglas", "vieja"), ids(FiltroAlertas(estado = EstadoRevision.SIN_REVISAR)))
+        assertEquals(setOf("alta-ia", "media-reglas", "vieja"), ids(FiltroAlertas(estado = FiltroEstado.SIN_REVISAR)))
         assertEquals(setOf("alta-ia"), ids(FiltroAlertas.sinRevisarDe(Severidad.ALTA)))
-        assertEquals(setOf("alta-revisada"), ids(FiltroAlertas(estado = EstadoRevision.ATAQUE_REAL)))
+        assertEquals(setOf("alta-revisada"), ids(FiltroAlertas(estado = FiltroEstado.REVISADAS)))
+        assertEquals(setOf("alta-ia", "media-reglas"), ids(FiltroAlertas(severidades = setOf(Severidad.ALTA, Severidad.MEDIA), estado = FiltroEstado.SIN_REVISAR)))
         assertEquals(setOf("media-reglas"), ids(FiltroAlertas(metodo = MetodoDeteccion.REGLAS)))
         assertEquals(setOf("alta-ia", "media-reglas", "alta-revisada"), ids(FiltroAlertas(periodo = Periodo.ULTIMAS_24_HORAS)))
         assertEquals(4, ids(FiltroAlertas.TODAS).size)
+    }
+
+    @Test
+    fun `revisadas incluye los falsos positivos, como en el Figma`() = runTest {
+        conRed()
+        alertas.guardarDelServidor(
+            listOf(
+                Fixtures.alerta("real", revision = Fixtures.revision(origen = OrigenRevision.SERVIDOR)),
+                Fixtures.alerta("falsa", revision = Fixtures.revision(ResultadoRevision.FALSO_POSITIVO, motivo = Motivo.BACKUP, origen = OrigenRevision.SERVIDOR)),
+                Fixtures.alerta("sin-revisar"),
+            ),
+        )
+
+        suspend fun ids(estado: FiltroEstado) = alertas.observarAlertas("red-1", FiltroAlertas(estado = estado)).first().map { it.id }.toSet()
+
+        assertEquals(setOf("real", "falsa"), ids(FiltroEstado.REVISADAS))
+        assertEquals(setOf("falsa"), ids(FiltroEstado.FALSOS_POSITIVOS))
+        assertEquals(setOf("real", "falsa", "sin-revisar"), ids(FiltroEstado.TODAS))
+    }
+
+    @Test
+    fun `mas filtros ofrece los servicios y destinos de las alertas guardadas y Otros junta el resto`() = runTest {
+        conRed()
+        val servicios = listOf("ssh", "ssh", "ssh", "ftp", "ftp", "smb", "rdp", "http", "dns", "ldap")
+        alertas.guardarDelServidor(
+            servicios.mapIndexed { indice, servicio ->
+                Fixtures.alerta("a-$indice", servicio = servicio, destinoIp = if (indice < 6) "192.168.10.50" else "192.168.10.77")
+            },
+        )
+
+        val opciones = alertas.observarOpcionesDeFiltro("red-1").first()
+
+        assertEquals(listOf("ssh", "ftp", "dns", "http", "ldap", "rdp", "smb"), opciones.servicios)
+        assertEquals(listOf("ssh", "ftp", "dns", "http", "ldap"), opciones.serviciosConChip)
+        assertTrue(opciones.hayOtrosServicios)
+        assertEquals(listOf("192.168.10.50", "192.168.10.77"), opciones.destinos.map { it.ip })
+        assertEquals("srv-web", opciones.destinos.first().nombre)
+
+        val otros = alertas.observarAlertas("red-1", FiltroAlertas(servicio = FiltroServicio.Otros(opciones.serviciosConChip.toSet()))).first()
+        assertEquals(setOf("rdp", "smb"), otros.map { it.servicio }.toSet())
+        val ssh = alertas.observarAlertas("red-1", FiltroAlertas(servicio = FiltroServicio.Uno("ssh"))).first()
+        assertEquals(3, ssh.size)
+    }
+
+    @Test
+    fun `por defecto la lista muestra los ultimos 30 dias`() = runTest {
+        conRed()
+        alertas.guardarDelServidor(
+            listOf(
+                Fixtures.alerta("de-ayer", creadaEn = Fixtures.AHORA.minus(Duration.ofDays(1))),
+                Fixtures.alerta("de-hace-40-dias", creadaEn = Fixtures.AHORA.minus(Duration.ofDays(40))),
+            ),
+        )
+
+        assertEquals(listOf("de-ayer"), alertas.observarAlertas("red-1", FiltroAlertas.TODAS).first().map { it.id })
     }
 
     @Test
@@ -107,7 +166,7 @@ class AlertasRepositoryImplTest : PruebaConBase() {
         conRed()
         val revisionDelServidor = Fixtures.revision(ResultadoRevision.ATAQUE_REAL, fecha = Fixtures.AHORA.minus(Duration.ofHours(1)), origen = OrigenRevision.SERVIDOR)
         alertas.guardarDelServidor(listOf(Fixtures.alerta("a-1", revision = revisionDelServidor)))
-        alertas.aplicarRevisionLocal("red-1", "a-1", Fixtures.revision(ResultadoRevision.FALSO_POSITIVO, motivo = ar.edu.uade.zonda.domain.model.Motivo.SERVICIO_NUEVO))
+        alertas.aplicarRevisionLocal("red-1", "a-1", Fixtures.revision(ResultadoRevision.FALSO_POSITIVO, motivo = ar.edu.uade.zonda.domain.model.Motivo.EQUIPO_NUEVO))
 
         alertas.restaurarEstadoDelServidor("red-1", "a-1")
 

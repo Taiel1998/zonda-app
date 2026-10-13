@@ -25,12 +25,13 @@ Configuración: copiar `.env.ejemplo` a `.env` (no se commitea). Variables que l
 
 | Variable | Para qué | Por defecto |
 |---|---|---|
-| `ZONDA_RED_ID`, `ZONDA_RED_NOMBRE` | Identidad de la red que sirve este servidor (una API por red) | `red-oficina`, `Oficina` |
+| `ZONDA_RED_ID`, `ZONDA_RED_NOMBRE` | Identidad de la red que sirve este servidor (una API por red) | `red-oficina`, `Oficina central` |
 | `ZONDA_URL_PUBLICA` | Dirección que va en el QR de pareo | `http://127.0.0.1:8000` |
 | `ZONDA_DB_PATH` | Archivo SQLite | `backend/zonda.db` |
 | `ZONDA_SEMILLA` | JSON con las alertas de muestra | `backend/alertas_semilla.json` |
 | `ZONDA_EMITIR_CADA` | Segundos entre alertas nuevas que emite el servidor durante la demo (0 apaga) | `0` |
 | `ZONDA_MULTIPLICAR` | Copias de la semilla, solo para probar la lista con 1.000 alertas | `1` |
+| `ZONDA_TAMANIO_PAGINA` | Alertas por página de `GET /alertas`; con un número chico se ve la barra de la primera descarga | `200` |
 | `ZONDA_TELEGRAM_BOT` | Usuario del bot, para el enlace de vinculación | `zonda_alertas_bot` |
 
 ## Datos de muestra y fechas corridas
@@ -49,7 +50,7 @@ No hay interfaz web de administración; se usan comandos en la computadora de la
 .\zonda.cmd revoke d-xxxxxxxx # revoca el token de un teléfono (la app pide un pareo nuevo)
 ```
 
-El QR contiene `zonda:<ZONDA_URL_PUBLICA>#<código>`. En Linux o macOS: `python -m app.cli pair`.
+El QR contiene `zonda:<ZONDA_URL_PUBLICA>#<código>;vence=<fecha ISO>`, por ejemplo `zonda:https://zonda-empresa.duckdns.org#K7M2-QX9P;vence=2026-10-12T02:19:00+00:00`. En Linux o macOS: `python -m app.cli pair`.
 
 ## Contrato
 
@@ -59,11 +60,11 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
 |---|---|---|
 | `GET /salud` | nada → `version`, `hora`, `alertas` (cantidad), `red`, `tokenVence` (si mandó token) | 401 si el token venció |
 | `GET /estado` | token → `sinRevisar {alta, media, baja}`, `ultimoFlujoProcesado`, `horaServidor` | 401 |
-| `GET /alertas?desde=&severidad=&servicio=&destino=&metodo=&estado=` | cursor → `alertas` nuevas o modificadas, `cursorSiguiente`, `hayMas` | 401, 410 cursor de otra instalación |
+| `GET /alertas?desde=&severidad=&servicio=&destino=&metodo=&estado=` | cursor → `alertas` nuevas o modificadas, `cursorSiguiente`, `hayMas`; sin cursor trae solo los últimos 30 días y suma `total` | 401, 410 cursor de otra instalación |
 | `GET /alertas/{id}` | id → la alerta con sus veredictos e `historial` | 401, 404 |
-| `POST /alertas/{id}/revision` | `{accionId, resultado, motivo, comentario, versionVista, forzar}` → la alerta actualizada | 401, 404, 409 con `revisionAjena` y la alerta, 422 motivo que no corresponde |
+| `POST /alertas/{id}/revision` | `{accionId, resultado, motivo, comentario, versionVista, forzar, revisadaEn}` → la alerta actualizada | 401, 404, 409 con `revisionAjena` y la alerta, 422 motivo que no corresponde o comentario vacío |
 | `GET /severidades`, `PUT /severidades` | `{tipo: severidad}` → la tabla completa; el PUT marca todas las alertas como modificadas | 401, 422 tipo desconocido |
-| `POST /pareo` | `{codigo, nombreDispositivo}` → `{token, red, emitido, vence, dispositivoId}` | 400 inválido, 410 vencido o usado |
+| `POST /pareo` | `{codigo, nombreDispositivo}` → `{token, red, emitido, vence, dispositivoId, alertas30Dias}` | 400 inválido, 410 vencido o usado |
 | `POST /telegram/vinculo` | token → `{codigo, enlaceBot, vence}` | 401 |
 | `DELETE /dispositivos/actual` | token → 204 | 401 |
 | `GET /catalogo` | token → `{equipos {ip: nombre}, servicios []}` | 401 |
@@ -76,7 +77,7 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
   "inicio": "2026-10-11T14:02:00+00:00", "fin": "2026-10-11T14:20:10+00:00",
   "cantidadFlujos": 1198, "uidReferencia": "CxYz1...",
   "origenIp": "172.16.0.1", "origenNombre": "gw-borde", "destinoIp": "192.168.10.50", "destinoNombre": "srv-web",
-  "servicio": "ftp", "puerto": 21, "puertoReferencia": 21, "puertosDistintos": 1,
+  "servicio": "ftp", "protocolo": "tcp", "puerto": 21, "puertoReferencia": 21, "puertosDistintos": 1,
   "tipoAtaque": "fuerza_bruta", "confianzaTipo": 1.0, "severidad": "alta",
   "veredictos": {
     "ia": true, "errorReconstruccion": 0.0412, "umbralIa": 0.00306383,
@@ -87,9 +88,10 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
 }
 ```
 
+- `protocolo`: el transporte del episodio, `tcp` o `udp`. El detalle lo muestra junto al puerto ("SSH · TCP/22").
 - `tipoAtaque`: `fuerza_bruta`, `escaneo`, `ddos`, `probable_falsa_alarma`, `sin_tipificar` o `null` (la detectaron solo las reglas o los umbrales).
 - `severidad` sale del tipo según la tabla de la red (`PUT /severidades`). Por defecto: fuerza bruta y sin tipificar en alta; escaneo, denegación de servicio y tipo vacío en media; probable falsa alarma en baja. Ninguna alerta se oculta: el tipo ordena.
-- `estadoRevision`: `sin_revisar`, `ataque_real`, `falso_positivo`. `resultado` y `motivo` de la revisión: ataque real admite `escalado_al_proveedor`, `equipo_aislado`, `credenciales_cambiadas`, `en_investigacion`; falso positivo admite `tarea_programada`, `herramienta_autorizada`, `prueba_del_equipo_de_it`, `servicio_nuevo`.
+- `estadoRevision`: `sin_revisar`, `ataque_real`, `falso_positivo`. `resultado` y `motivo` de la revisión: ataque real admite `escalado_al_proveedor`, `bloqueado_manualmente`, `contrasena_cambiada`, `investigando`; falso positivo admite `tarea_programada`, `backup`, `equipo_nuevo`, `usuario_autorizado`, `otro`. El comentario es obligatorio. Las revisiones guardadas con los motivos anteriores se pasan a los nuevos al arrancar.
 
 ### Sincronización por cursor
 
@@ -98,6 +100,8 @@ Cada cambio en una alerta (alta nueva, revisión, cambio de severidades) le asig
 ### Revisiones
 
 `accionId` es el identificador único que genera el teléfono por cada acción: si la misma acción se reenvía, la API devuelve la alerta sin aplicarla dos veces. `versionVista` es la versión de la alerta que la persona vio al revisar; si otra persona la revisó después (la versión del servidor es mayor), la API responde `409` con esa revisión y la app pregunta si aplica la propia igual (`forzar: true`).
+
+Cada revisión del `historial` trae dos horas: `revisadaEn`, cuándo se revisó en el teléfono (la manda la app), y `fecha`, cuándo llegó al servidor. Sin conexión, la revisión queda en el teléfono y sale después, así que las dos pueden diferir; el historial del detalle muestra las dos. Si la app no manda `revisadaEn`, vale la hora de llegada, y una hora posterior a la llegada (reloj adelantado) también se toma como la de llegada. Las revisiones guardadas antes de este campo lo traen en `null`.
 
 ## Publicación con HTTPS (Caddy + DuckDNS + Let's Encrypt)
 

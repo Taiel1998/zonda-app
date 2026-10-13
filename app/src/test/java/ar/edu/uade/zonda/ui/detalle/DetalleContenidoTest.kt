@@ -1,5 +1,7 @@
 package ar.edu.uade.zonda.ui.detalle
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,17 +9,22 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.domain.Fixtures
+import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
+import java.time.Duration
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -26,7 +33,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** La revisión y sus salidas dibujadas con Compose sobre Robolectric, sin emulador. */
+/** El detalle, la revisión y sus salidas dibujados con Compose sobre Robolectric (Figma 3-3 a 3-139). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -37,85 +44,119 @@ class DetalleContenidoTest {
 
     private val utc = ZoneId.of("UTC")
 
-    @Test
-    fun `una alerta sin revisar ofrece Revisar`() {
-        var abierta = false
+    /** La revisión del servidor, hecha sin conexión a las 11:10 y llegada a las 11:16. */
+    private val revisionDelServidor = Fixtures.revision(fecha = Fixtures.AHORA.minus(Duration.ofMinutes(44)), origen = OrigenRevision.SERVIDOR)
+        .copy(autor = "Celular Martín", revisadaEn = Fixtures.AHORA.minus(Duration.ofMinutes(50)), comentario = "Avisé al proveedor.")
 
+    private fun dibujar(
+        estado: DetalleUiState,
+        acciones: AccionesDetalle = AccionesDetalle(),
+        aviso: AvisoDetalle? = null,
+    ) {
         compose.setContent {
-            ZondaTheme {
-                DetalleContenido(
-                    estado = DetalleUiState.Contenido(Fixtures.alerta("a-1"), accion = null, sinConexion = false, datosDe = Fixtures.AHORA),
-                    acciones = AccionesDetalle(alRevisar = { abierta = true }),
-                    zona = utc,
-                )
-            }
+            ZondaTheme { DetalleContenido(estado = estado, acciones = acciones, aviso = aviso, zona = utc, ahora = Fixtures.AHORA) }
         }
+    }
 
+    private fun contenido(
+        alerta: ar.edu.uade.zonda.domain.model.Alerta,
+        accion: ar.edu.uade.zonda.domain.model.AccionPendiente? = null,
+        sinConexion: Boolean = false,
+        recienRevisada: Boolean = false,
+    ) = DetalleUiState.Contenido(alerta, accion, sinConexion, datosDe = Fixtures.AHORA, recienRevisada = recienRevisada, nombreDelTelefono = "Celular Martín")
+
+    @Test
+    fun `sin revisar muestra el encabezado, los datos y Revisar, y comparte sin IP ni nombres`() {
+        var abierta = false
+        var compartido = ""
+        dibujar(
+            contenido(Fixtures.alerta("a-1").copy(protocolo = "tcp")),
+            AccionesDetalle(alRevisar = { abierta = true }, alCompartir = { compartido = it }),
+        )
+
+        compose.onNodeWithText("pc-09 → srv-web").assertIsDisplayed()
+        compose.onNodeWithText("SSH · TCP/22 · 10:50:00 · detectada por IA").assertIsDisplayed()
+        compose.onNodeWithText("Datos del flujo").assertIsDisplayed()
+        compose.onNodeWithText("Veredicto por método").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Revisar").performScrollTo().performClick()
         assertTrue(abierta)
+
+        compose.onNodeWithContentDescription("Compartir").performClick()
+        assertTrue(compartido, compartido.startsWith("Alerta ALTA · SSH · 10:50\n65 conexiones en 60 s."))
+        assertTrue(compartido, compartido.endsWith("https://taiel1998.github.io/a/a-1"))
+        assertFalse(compartido, "192.168" in compartido || "srv-web" in compartido || "pc-09" in compartido)
     }
 
     @Test
-    fun `el paso 1 pregunta si fue un ataque real o un falso positivo`() {
-        var elegido: ResultadoRevision? = null
+    fun `revisada muestra arriba la revision y el historial con las dos horas`() {
+        var cambiar = false
+        dibujar(contenido(Fixtures.alerta("a-1", revision = revisionDelServidor)), AccionesDetalle(alRevisar = { cambiar = true }))
 
-        compose.setContent {
-            ZondaTheme { ContenidoHojaRevision(FormularioRevision(), AccionesDetalle(alElegirResultado = { elegido = it })) }
-        }
-
-        compose.onNodeWithText("¿Qué resultó ser esta alerta?").assertIsDisplayed()
-        compose.onNodeWithText("Paso 1 de 2").assertIsDisplayed()
-        compose.onNodeWithText("Falso positivo").performClick()
-        assertEquals(ResultadoRevision.FALSO_POSITIVO, elegido)
+        compose.onNodeWithText("Ataque real · sincronizada 11:16").assertIsDisplayed()
+        compose.onNodeWithText("Avisé al proveedor.").assertIsDisplayed()
+        compose.onNodeWithText("Historial").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Enviada al servidor").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Revisada: ataque real · Escalado al proveedor").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Celular Martín · sin conexión, quedó pendiente").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Detectada por el modelo de IA").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Cambiar revisión").performScrollTo().performClick()
+        assertTrue(cambiar)
     }
 
     @Test
-    fun `el paso 2 propone el comentario del motivo y solo deja confirmar con motivo y comentario`() {
-        var motivoElegido: Pair<Motivo, String>? = null
-        var confirmada = false
-        var formulario by mutableStateOf(FormularioRevision(paso = PasoRevision.MOTIVO, resultado = ResultadoRevision.FALSO_POSITIVO))
+    fun `recien revisada muestra la revision abajo, como enviada, y el aviso con Deshacer`() {
+        var deshecha = false
+        dibujar(
+            contenido(Fixtures.alerta("a-1", revision = revisionDelServidor), recienRevisada = true),
+            AccionesDetalle(alDeshacer = { deshecha = true }),
+            aviso = AvisoDetalle.RevisionGuardada(conConexion = true),
+        )
 
-        compose.setContent {
-            ZondaTheme {
-                ContenidoHojaRevision(
-                    formulario,
-                    AccionesDetalle(alElegirMotivo = { motivo, comentario -> motivoElegido = motivo to comentario }, alConfirmarRevision = { confirmada = true }),
-                )
-            }
-        }
-
-        compose.onNodeWithText("Falso positivo: ¿por qué?").assertIsDisplayed()
-        compose.onNodeWithText("Confirmar revisión").assertIsNotEnabled()
-        compose.onNodeWithText("Tarea programada").performClick()
-        assertEquals(Motivo.TAREA_PROGRAMADA to "Era una tarea programada, como un respaldo o una actualización.", motivoElegido)
-
-        formulario = formulario.copy(motivo = Motivo.TAREA_PROGRAMADA, comentario = "Respaldo nocturno")
-        compose.onNodeWithText("Confirmar revisión").assertIsEnabled().performClick()
-        assertTrue(confirmada)
+        compose.onNodeWithText("“Avisé al proveedor.”").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Celular Martín · hoy 11:10 · enviada").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Revisión guardada y enviada al servidor.").assertIsDisplayed()
+        compose.onNodeWithText("Deshacer").performClick()
+        assertTrue(deshecha)
     }
 
     @Test
-    fun `en conflicto muestra la revision de la otra persona y deja aplicar la propia`() {
+    fun `pendiente sin conexion lo dice en el banner, la etiqueta y la tarjeta`() {
+        val local = Fixtures.revision(fecha = Fixtures.AHORA.minus(Duration.ofMinutes(5)))
+        dibujar(
+            contenido(
+                Fixtures.alerta("a-1", revision = local, envio = EstadoEnvio.PENDIENTE),
+                accion = Fixtures.accion(alertaId = "a-1", revision = local),
+                sinConexion = true,
+            ),
+        )
+
+        compose.onNodeWithText("Sin conexión · tu revisión se enviará al reconectar").assertIsDisplayed()
+        compose.onNodeWithText("PENDIENTE DE SINCRONIZAR").assertIsDisplayed()
+        compose.onNodeWithText("11:55 · Celular Martín · pendiente de envío").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Cambiar revisión").assertDoesNotExist()
+    }
+
+    @Test
+    fun `revisada desde otro telefono muestra la tarjeta azul y deja elegir`() {
         var aplicada = false
+        var mantenida = false
         val ajena = Fixtures.revision(resultado = ResultadoRevision.FALSO_POSITIVO, motivo = Motivo.TAREA_PROGRAMADA, origen = OrigenRevision.SERVIDOR)
-            .copy(autor = "Teléfono de Lucía")
+            .copy(autor = "Celular Lucía", revisadaEn = Fixtures.AHORA.minus(Duration.ofMinutes(2)))
         val alerta = Fixtures.alerta("a-1", revision = Fixtures.revision(), envio = EstadoEnvio.CONFLICTO)
         val accion = Fixtures.accion(alertaId = "a-1").copy(estado = EstadoEnvio.CONFLICTO, revisionAjena = ajena)
+        dibujar(contenido(alerta, accion), AccionesDetalle(alAplicarLaMia = { aplicada = true }, alQuedarmeConLaOtra = { mantenida = true }))
 
-        compose.setContent {
-            ZondaTheme {
-                DetalleContenido(
-                    estado = DetalleUiState.Contenido(alerta, accion, sinConexion = false, datosDe = Fixtures.AHORA),
-                    acciones = AccionesDetalle(alAplicarLaMia = { aplicada = true }),
-                    zona = utc,
-                )
-            }
-        }
-
-        compose.onNodeWithText("Otra persona revisó esta alerta").assertExists()
-        compose.onNodeWithText("Teléfono de Lucía", substring = true).assertExists()
-        compose.onNodeWithText("Aplicar la mía igual").performScrollTo().performClick()
-        assertTrue(aplicada)
+        compose.onNodeWithText("Revisada desde otro teléfono").assertIsDisplayed()
+        // La etiqueta muestra lo que quedó en el servidor: la revisión de Lucía.
+        compose.onNodeWithText("FALSO POSITIVO").assertIsDisplayed()
+        compose.onNodeWithText(
+            "Celular Lucía la revisó como falso positivo a las 11:58 con el motivo “Tarea programada”, después de tu última sincronización.",
+        ).assertIsDisplayed()
+        compose.onNodeWithText("Tu revisión (Escalado al proveedor, 12:00) todavía no se aplicó. ¿Querés aplicarla igual?").assertIsDisplayed()
+        compose.onNodeWithText("Aplicar la mía").performScrollTo().performClick()
+        // "Celular Lucía" no entra en medio botón: queda "Mantener la otra".
+        compose.onNodeWithText("Mantener la otra").performScrollTo().performClick()
+        assertTrue(aplicada && mantenida)
     }
 
     @Test
@@ -123,20 +164,78 @@ class DetalleContenidoTest {
         var reintentada = false
         val alerta = Fixtures.alerta("a-1", revision = Fixtures.revision(), envio = EstadoEnvio.ERROR)
         val accion = Fixtures.accion(alertaId = "a-1").copy(estado = EstadoEnvio.ERROR, intentos = 5, ultimoError = "Error del servidor")
-
-        compose.setContent {
-            ZondaTheme {
-                DetalleContenido(
-                    estado = DetalleUiState.Contenido(alerta, accion, sinConexion = false, datosDe = Fixtures.AHORA),
-                    acciones = AccionesDetalle(alReintentarEnvio = { reintentada = true }),
-                    zona = utc,
-                )
-            }
-        }
+        dibujar(contenido(alerta, accion), AccionesDetalle(alReintentarEnvio = { reintentada = true }))
 
         compose.onNodeWithText("No se pudo enviar la revisión").assertExists()
         compose.onNodeWithText("Intentos: 5. Último error: Error del servidor.").assertExists()
         compose.onNodeWithText("Reintentar").performScrollTo().performClick()
         assertTrue(reintentada)
+    }
+
+    @Test
+    fun `sin la alerta en el telefono explica cuando se descarga y deja reintentar o volver`() {
+        var reintentos = 0
+        var vuelta = false
+        dibujar(
+            DetalleUiState.NoDisponible(sinConexion = true, error = ErrorZonda.SinConexion()),
+            AccionesDetalle(alReintentarDescarga = { reintentos++ }, alVolver = { vuelta = true }),
+        )
+
+        compose.onNodeWithText("Sin conexión con el servidor · el detalle todavía no está en el teléfono").assertIsDisplayed()
+        compose.onNodeWithText("PENDIENTE DE DESCARGA").assertIsDisplayed()
+        compose.onNodeWithText("El detalle se descarga cuando vuelvas a la red de la empresa").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Compartir").assertDoesNotExist()
+        compose.onNodeWithText("Reintentar ahora").performClick()
+        compose.onNodeWithText("Volver a la lista").performClick()
+        assertEquals(1, reintentos)
+        assertTrue(vuelta)
+    }
+
+    @Test
+    fun `el paso 1 pregunta si fue un ataque real o un falso positivo`() {
+        var elegido: ResultadoRevision? = null
+        compose.setContent {
+            ZondaTheme {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ContenidoHojaRevision(FormularioRevision(), Fixtures.alerta(), AccionesDetalle(alElegirResultado = { elegido = it }))
+                }
+            }
+        }
+
+        compose.onNodeWithText("¿Qué resultó ser esta alerta?").assertIsDisplayed()
+        compose.onNodeWithText("Paso 1 de 2").assertIsDisplayed()
+        compose.onNodeWithText("Era tráfico legítimo: un backup, una tarea programada, un equipo nuevo.").assertIsDisplayed()
+        compose.onNodeWithText("Falso positivo").performClick()
+        assertEquals(ResultadoRevision.FALSO_POSITIVO, elegido)
+    }
+
+    @Test
+    fun `el paso 2 tiene los motivos del Figma, propone su comentario y solo deja confirmar con todo`() {
+        var motivoElegido: Pair<Motivo, String>? = null
+        var confirmada = false
+        var formulario by mutableStateOf(FormularioRevision(paso = PasoRevision.MOTIVO, resultado = ResultadoRevision.FALSO_POSITIVO))
+        compose.setContent {
+            ZondaTheme {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ContenidoHojaRevision(
+                        formulario,
+                        Fixtures.alerta(),
+                        AccionesDetalle(alElegirMotivo = { motivo, comentario -> motivoElegido = motivo to comentario }, alConfirmarRevision = { confirmada = true }),
+                    )
+                }
+            }
+        }
+
+        compose.onNodeWithText("Falso positivo: ¿por qué?").assertIsDisplayed()
+        listOf("Tarea programada", "Backup", "Equipo nuevo", "Usuario autorizado", "Otro").forEach { compose.onNodeWithText(it).assertIsDisplayed() }
+        compose.onNodeWithText("Contá qué hiciste o por qué. Queda en el historial de la alerta.").assertIsDisplayed()
+        compose.onNodeWithText("Confirmar revisión").assertIsNotEnabled()
+        compose.onNodeWithText("Backup").performClick()
+        // El comentario del Figma, con los equipos de esta alerta.
+        assertEquals(Motivo.BACKUP to "Es el backup semanal de pc-09 hacia srv-web.", motivoElegido)
+
+        formulario = formulario.copy(motivo = Motivo.BACKUP, comentario = "Backup semanal")
+        compose.onNodeWithText("Confirmar revisión").assertIsEnabled().performClick()
+        assertTrue(confirmada)
     }
 }

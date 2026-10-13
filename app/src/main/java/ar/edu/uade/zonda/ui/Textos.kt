@@ -1,10 +1,13 @@
 package ar.edu.uade.zonda.ui
 
+import android.content.res.Resources
 import androidx.annotation.StringRes
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
+import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.Motivo
@@ -53,6 +56,40 @@ fun MetodoDeteccion.nombreEnFrase(): Int = when (this) {
     MetodoDeteccion.REGLAS -> R.string.metodo_reglas_frase
 }
 
+/** El texto del chip de estado y de su opción en la hoja (Figma 51-1805). */
+@StringRes
+fun FiltroEstado.etiqueta(): Int = when (this) {
+    FiltroEstado.SIN_REVISAR -> R.string.filtro_estado_sin_revisar
+    FiltroEstado.REVISADAS -> R.string.filtro_estado_revisadas
+    FiltroEstado.FALSOS_POSITIVOS -> R.string.filtro_estado_falsos_positivos
+    FiltroEstado.TODAS -> R.string.filtro_estado_todas
+}
+
+/** El nombre completo de cada método en Más filtros y en el resumen: "Modelo de IA". */
+@StringRes
+fun MetodoDeteccion.nombreEnFiltro(): Int = when (this) {
+    MetodoDeteccion.IA -> R.string.filtro_metodo_ia
+    MetodoDeteccion.UMBRALES -> R.string.metodo_umbrales
+    MetodoDeteccion.REGLAS -> R.string.metodo_reglas
+}
+
+/** Cada período en la hoja Período (Figma 51-2072): "Últimas 24 h". */
+@StringRes
+fun Periodo.tituloEnHoja(): Int = when (this) {
+    Periodo.ULTIMAS_24_HORAS -> R.string.filtro_periodo_24h_titulo
+    Periodo.ULTIMOS_7_DIAS -> R.string.filtro_periodo_7d_titulo
+    Periodo.ULTIMOS_30_DIAS -> R.string.filtro_periodo_30d_titulo
+    Periodo.TODO -> R.string.filtro_periodo
+}
+
+/** Cómo se nombra en el historial del detalle: "Detectada por el modelo de IA y los umbrales". */
+@StringRes
+fun MetodoDeteccion.nombreEnHistorial(): Int = when (this) {
+    MetodoDeteccion.IA -> R.string.metodo_ia_historial
+    MetodoDeteccion.UMBRALES -> R.string.metodo_umbrales_historial
+    MetodoDeteccion.REGLAS -> R.string.metodo_reglas_historial
+}
+
 /** Texto del chip de período. */
 @StringRes
 fun Periodo.etiqueta(): Int = when (this) {
@@ -80,13 +117,14 @@ fun ResultadoRevision.etiqueta(): Int = when (this) {
 @StringRes
 fun Motivo.etiqueta(): Int = when (this) {
     Motivo.ESCALADO_AL_PROVEEDOR -> R.string.motivo_escalado_al_proveedor
-    Motivo.EQUIPO_AISLADO -> R.string.motivo_equipo_aislado
-    Motivo.CREDENCIALES_CAMBIADAS -> R.string.motivo_credenciales_cambiadas
-    Motivo.EN_INVESTIGACION -> R.string.motivo_en_investigacion
+    Motivo.BLOQUEADO_MANUALMENTE -> R.string.motivo_bloqueado_manualmente
+    Motivo.CONTRASENA_CAMBIADA -> R.string.motivo_contrasena_cambiada
+    Motivo.INVESTIGANDO -> R.string.motivo_investigando
     Motivo.TAREA_PROGRAMADA -> R.string.motivo_tarea_programada
-    Motivo.HERRAMIENTA_AUTORIZADA -> R.string.motivo_herramienta_autorizada
-    Motivo.PRUEBA_DEL_EQUIPO_DE_IT -> R.string.motivo_prueba_del_equipo_de_it
-    Motivo.SERVICIO_NUEVO -> R.string.motivo_servicio_nuevo
+    Motivo.BACKUP -> R.string.motivo_backup
+    Motivo.EQUIPO_NUEVO -> R.string.motivo_equipo_nuevo
+    Motivo.USUARIO_AUTORIZADO -> R.string.motivo_usuario_autorizado
+    Motivo.OTRO -> R.string.motivo_otro
 }
 
 @StringRes
@@ -106,17 +144,21 @@ fun ModoAviso.etiqueta(): Int = when (this) {
     ModoAviso.SIN_AVISO -> R.string.modo_sin_aviso
 }
 
-/** El comentario que propone cada motivo al revisar; la persona lo puede editar (RF04). */
-@StringRes
-fun Motivo.comentarioPropuesto(): Int = when (this) {
-    Motivo.ESCALADO_AL_PROVEEDOR -> R.string.comentario_escalado_al_proveedor
-    Motivo.EQUIPO_AISLADO -> R.string.comentario_equipo_aislado
-    Motivo.CREDENCIALES_CAMBIADAS -> R.string.comentario_credenciales_cambiadas
-    Motivo.EN_INVESTIGACION -> R.string.comentario_en_investigacion
-    Motivo.TAREA_PROGRAMADA -> R.string.comentario_tarea_programada
-    Motivo.HERRAMIENTA_AUTORIZADA -> R.string.comentario_herramienta_autorizada
-    Motivo.PRUEBA_DEL_EQUIPO_DE_IT -> R.string.comentario_prueba_del_equipo_de_it
-    Motivo.SERVICIO_NUEVO -> R.string.comentario_servicio_nuevo
+/**
+ * El comentario que propone cada motivo al revisar, el de su pantalla del Figma; la persona lo puede
+ * editar (RF04). Los que nombran equipos usan los de la alerta, para no proponer un nombre ajeno.
+ */
+fun Motivo.comentarioPropuesto(recursos: Resources, alerta: Alerta): String = when (this) {
+    Motivo.ESCALADO_AL_PROVEEDOR -> recursos.getString(R.string.comentario_escalado_al_proveedor)
+    Motivo.BLOQUEADO_MANUALMENTE ->
+        recursos.getString(R.string.comentario_bloqueado_manualmente, alerta.servicio.uppercase(), alerta.origen.etiqueta)
+    Motivo.CONTRASENA_CAMBIADA -> recursos.getString(R.string.comentario_contrasena_cambiada)
+    Motivo.INVESTIGANDO -> recursos.getString(R.string.comentario_investigando)
+    Motivo.TAREA_PROGRAMADA -> recursos.getString(R.string.comentario_tarea_programada)
+    Motivo.BACKUP -> recursos.getString(R.string.comentario_backup, alerta.origen.etiqueta, alerta.destino.etiqueta)
+    Motivo.EQUIPO_NUEVO -> recursos.getString(R.string.comentario_equipo_nuevo, alerta.origen.etiqueta)
+    Motivo.USUARIO_AUTORIZADO -> recursos.getString(R.string.comentario_usuario_autorizado)
+    Motivo.OTRO -> recursos.getString(R.string.comentario_otro)
 }
 
 /** El mensaje que ve la persona por cada error de datos (informe, sección 14.3). */

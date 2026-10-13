@@ -37,6 +37,8 @@ def test_pareo_entrega_token_y_el_codigo_se_consume(cliente):
     assert len(cuerpo["token"]) > 30
     assert cuerpo["dispositivoId"].startswith("d-")
     assert cuerpo["emitido"] < cuerpo["vence"]
+    # Toda la semilla de ejemplo es de los últimos 30 días.
+    assert cuerpo["alertas30Dias"] == cliente.get("/salud").json()["alertas"]
     assert segunda.status_code == 410
 
 

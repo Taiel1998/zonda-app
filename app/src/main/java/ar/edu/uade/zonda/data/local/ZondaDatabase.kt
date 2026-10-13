@@ -35,7 +35,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         RevisionEntity::class,
         AccionPendienteEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class ZondaDatabase : RoomDatabase() {
@@ -61,12 +61,40 @@ abstract class ZondaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Versión 3 (paso 4 del plan del Figma): el protocolo de cada alerta, la hora en que se revisó en
+         * el teléfono (decisión 21) y los motivos del Figma. Las revisiones y las acciones pendientes con
+         * los motivos anteriores pasan al nombre nuevo, igual que en el backend.
+         */
+        val MIGRACION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE alertas ADD COLUMN protocolo TEXT")
+                db.execSQL("ALTER TABLE revisiones ADD COLUMN revisadaEn INTEGER")
+                db.execSQL("ALTER TABLE acciones_pendientes ADD COLUMN ajenaRevisadaEn INTEGER")
+                for ((anterior, actual) in MOTIVOS_ANTERIORES) {
+                    db.execSQL("UPDATE revisiones SET motivo = ? WHERE motivo = ?", arrayOf(actual, anterior))
+                    db.execSQL("UPDATE acciones_pendientes SET motivo = ? WHERE motivo = ?", arrayOf(actual, anterior))
+                    db.execSQL("UPDATE acciones_pendientes SET ajenaMotivo = ? WHERE ajenaMotivo = ?", arrayOf(actual, anterior))
+                }
+            }
+        }
+
+        /** Los nombres anteriores y los del Figma, fijos acá: una migración no cambia aunque cambie el enum. */
+        private val MOTIVOS_ANTERIORES = mapOf(
+            "EQUIPO_AISLADO" to "BLOQUEADO_MANUALMENTE",
+            "CREDENCIALES_CAMBIADAS" to "CONTRASENA_CAMBIADA",
+            "EN_INVESTIGACION" to "INVESTIGANDO",
+            "HERRAMIENTA_AUTORIZADA" to "USUARIO_AUTORIZADO",
+            "PRUEBA_DEL_EQUIPO_DE_IT" to "OTRO",
+            "SERVICIO_NUEVO" to "EQUIPO_NUEVO",
+        )
+
         /** Abre (o crea) la base cifrada en el almacenamiento interno de la app, migrándola si hace falta. */
         fun cifrada(context: Context, clave: ByteArray): ZondaDatabase {
             System.loadLibrary("sqlcipher")
             return Room.databaseBuilder(context, ZondaDatabase::class.java, NOMBRE_ARCHIVO)
                 .openHelperFactory(SupportOpenHelperFactory(clave))
-                .addMigrations(MIGRACION_1_2)
+                .addMigrations(MIGRACION_1_2, MIGRACION_2_3)
                 .build()
         }
     }

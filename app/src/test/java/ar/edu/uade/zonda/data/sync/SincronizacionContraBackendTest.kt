@@ -48,7 +48,7 @@ class SincronizacionContraBackendTest : PruebaConBase() {
         val alertas = AlertasRepositoryImpl(base.alertasDao(), SincronizadorHttp(base, apis))
         val acciones = AccionesPendientesRepositoryImpl(base.accionesPendientesDao())
 
-        val red = redes.parear(DatosPareo(url!!, codigo!!), "Prueba desde la JVM")
+        val red = redes.parear(DatosPareo(url!!, codigo!!), "Prueba desde la JVM").red
         println("Pareada la red ${red.nombre} (${red.id}) en ${red.urlBase}")
 
         val primera = alertas.sincronizar(red.id)

@@ -22,6 +22,8 @@ data class PaginaAlertasDto(
     val cursorSiguiente: String,
     val hayMas: Boolean,
     val horaServidor: String?,
+    /** Solo en la primera página de la primera sincronización: cuántas alertas trae en total ("120 de 213"). */
+    val total: Int? = null,
 )
 
 data class AlertaDto(
@@ -36,6 +38,8 @@ data class AlertaDto(
     val destinoIp: String,
     val destinoNombre: String?,
     val servicio: String,
+    /** "tcp" o "udp". Un servidor anterior no lo manda. */
+    val protocolo: String? = null,
     val puerto: Int,
     val puertoReferencia: Int,
     val puertosDistintos: Int,
@@ -68,7 +72,10 @@ data class RevisionDto(
     val motivo: String,
     val comentario: String,
     val autor: String?,
+    /** Cuándo llegó al servidor. */
     val fecha: String,
+    /** Cuándo se revisó en el teléfono; null en las revisiones anteriores a este dato. */
+    val revisadaEn: String? = null,
 )
 
 /** Cuerpo de `POST /alertas/{id}/revision`. */
@@ -79,6 +86,8 @@ data class RevisionEntradaDto(
     val comentario: String,
     val versionVista: Int?,
     val forzar: Boolean,
+    /** Cuándo se revisó en el teléfono (ISO 8601 en UTC): sin conexión sale bastante después. */
+    val revisadaEn: String? = null,
 )
 
 /** Cuerpo de un 409: la API lo manda dentro de `detail`. */
@@ -104,6 +113,8 @@ data class PareoSalidaDto(
     val dispositivoId: String,
     /** Cuándo se emitió el token. Un servidor anterior puede no mandarlo. */
     val emitido: String? = null,
+    /** Alertas de los últimos 30 días que tiene la red para descargar (Figma 35-692). */
+    val alertas30Dias: Int = 0,
 )
 
 data class CatalogoDto(

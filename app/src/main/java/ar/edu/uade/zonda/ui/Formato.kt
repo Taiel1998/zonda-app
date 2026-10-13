@@ -47,6 +47,13 @@ object Formato {
     fun mismoDia(a: Instant, b: Instant, zona: ZoneId = ZoneId.systemDefault()): Boolean =
         a.atZone(zona).toLocalDate() == b.atZone(zona).toLocalDate()
 
+    /** `hoy`, `ayer` o `dom 27/09`: el día de una revisión ("Celular Martín · hoy 02:12 · enviada"). */
+    fun diaRelativo(instante: Instant, ahora: Instant, zona: ZoneId = ZoneId.systemDefault()): String = when {
+        mismoDia(instante, ahora, zona) -> "hoy"
+        ayer(instante, ahora, zona) -> "ayer"
+        else -> dia(instante, zona)
+    }
+
     /** Si [instante] cae el día anterior a [ahora] (para "Ayer 23:50"). */
     fun ayer(instante: Instant, ahora: Instant, zona: ZoneId = ZoneId.systemDefault()): Boolean =
         instante.atZone(zona).toLocalDate() == ahora.atZone(zona).toLocalDate().minusDays(1)
@@ -75,6 +82,10 @@ object Formato {
     /** `192.168.30.50 · pc-rrhh`, o solo la IP si el catálogo no tiene el nombre. */
     fun ipYNombre(equipo: Equipo): String = if (equipo.nombre == null) equipo.ip else "${equipo.ip} · ${equipo.nombre}"
 
-    /** `SSH · puerto 22` */
+    /** `SSH · 22`, como en la tarjeta de la lista. */
     fun servicioYPuerto(servicio: String, puerto: Int): String = "${servicio.uppercase(LOCALE)} · $puerto"
+
+    /** `SSH · TCP/22`, como en el detalle. Sin el protocolo (alertas guardadas antes de que la API lo mandara), `SSH · 22`. */
+    fun servicioProtocoloYPuerto(servicio: String, protocolo: String?, puerto: Int): String =
+        if (protocolo == null) servicioYPuerto(servicio, puerto) else "${servicio.uppercase(LOCALE)} · ${protocolo.uppercase(LOCALE)}/$puerto"
 }

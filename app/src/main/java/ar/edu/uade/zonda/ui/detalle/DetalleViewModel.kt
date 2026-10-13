@@ -60,12 +60,14 @@ class DetalleViewModel(
     private val alcanceDeEnvio: CoroutineScope,
     private val alertaId: String,
     private val esperaDeshacer: Long = ESPERA_DESHACER_MS,
+    private val nombreDelTelefono: String = "",
 ) : ViewModel() {
 
     private val descargando = MutableStateFlow(false)
     private val errorDeDescarga = MutableStateFlow<ErrorZonda?>(null)
     private val _formulario = MutableStateFlow<FormularioRevision?>(null)
     private val _aviso = MutableStateFlow<AvisoDetalle?>(null)
+    private val recienRevisada = MutableStateFlow(false)
     private var ventanaDeshacer: Job? = null
 
     /** La hoja Revisar abierta, o null si está cerrada. */
@@ -82,16 +84,25 @@ class DetalleViewModel(
         if (red == null) flowOf(null) else acciones.observar(red.id).map { lista -> lista.firstOrNull { it.alertaId == alertaId } }
     }
 
+    private data class Descarga(val enCurso: Boolean, val error: ErrorZonda?, val recienRevisada: Boolean)
+
     val estado: StateFlow<DetalleUiState> = combine(
         redes.observarRedActiva(),
         alerta,
         accion,
         conectividad.conectado,
-        combine(descargando, errorDeDescarga) { enCurso, error -> enCurso to error },
-    ) { red, alertaActual, accionActual, conectado, (enCurso, error) ->
+        combine(descargando, errorDeDescarga, recienRevisada) { enCurso, error, recien -> Descarga(enCurso, error, recien) },
+    ) { red, alertaActual, accionActual, conectado, (enCurso, error, recien) ->
         when {
             red == null -> DetalleUiState.SinRed
-            alertaActual != null -> DetalleUiState.Contenido(alertaActual, accionActual, sinConexion = !conectado, datosDe = red.ultimaSincronizacion)
+            alertaActual != null -> DetalleUiState.Contenido(
+                alerta = alertaActual,
+                accion = accionActual,
+                sinConexion = !conectado,
+                datosDe = red.ultimaSincronizacion,
+                recienRevisada = recien,
+                nombreDelTelefono = nombreDelTelefono,
+            )
             enCurso -> DetalleUiState.Cargando
             else -> DetalleUiState.NoDisponible(sinConexion = !conectado, error = error)
         }
@@ -167,16 +178,29 @@ class DetalleViewModel(
         conRedActiva { redId ->
             revisarAlerta(redId, alertaId, resultado, motivo, formulario.comentario)
             _formulario.value = null
+            recienRevisada.value = true
             abrirVentanaDeshacer(redId)
         }
     }
 
-    /** Durante la ventana: la revisión se descarta antes de salir y la alerta vuelve a como estaba (RF04, criterio 1). */
+    /**
+     * Durante la ventana: la revisión se descarta antes de salir y la alerta vuelve a como estaba (RF04,
+     * criterio 1). La pantalla se cierra enseguida, así que el descarte corre en el alcance de la app:
+     * no se corta con el ViewModel.
+     */
     fun deshacer() {
         ventanaDeshacer?.cancel()
         ventanaDeshacer = null
         _aviso.value = null
-        conRedActiva { redId -> deshacerRevision(redId, alertaId) }
+        recienRevisada.value = false
+        alcanceDeEnvio.launch {
+            val red = redes.observarRedActiva().first() ?: return@launch
+            try {
+                deshacerRevision(red.id, alertaId)
+            } catch (e: ErrorZonda) {
+                // La alerta ya no está (se borraron los datos): no hay nada que deshacer.
+            }
+        }
     }
 
     // ---- Envío que no pudo llegar ----

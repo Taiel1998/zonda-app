@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS alertas (
     origen_ip TEXT NOT NULL,
     destino_ip TEXT NOT NULL,
     servicio TEXT NOT NULL,
+    protocolo TEXT NOT NULL DEFAULT 'tcp',
     puerto INTEGER NOT NULL,
     puerto_referencia INTEGER NOT NULL,
     puertos_distintos INTEGER NOT NULL,
@@ -83,6 +84,8 @@ CREATE TABLE IF NOT EXISTS revisiones (
     comentario TEXT NOT NULL,
     autor TEXT NOT NULL,
     fecha TEXT NOT NULL,
+    -- Cuándo se revisó en el teléfono; fecha es cuándo llegó al servidor (decisión 21).
+    revisada_en TEXT,
     dispositivo_id TEXT NOT NULL,
     version_resultante INTEGER NOT NULL
 );
@@ -124,7 +127,21 @@ class Base:
         con = self.conexion()
         con.executescript(ESQUEMA)
         con.execute("INSERT OR IGNORE INTO meta (clave, valor) VALUES ('secuencia', '0')")
+        self._actualizar(con)
         con.commit()
+
+    @staticmethod
+    def _actualizar(con: sqlite3.Connection) -> None:
+        """Pone al día una base creada con una versión anterior: el protocolo, la hora de revisión en el teléfono y los motivos nuevos."""
+        from .modelos import MOTIVOS_ANTERIORES
+
+        columnas = {fila[1] for fila in con.execute("PRAGMA table_info(alertas)")}
+        if "protocolo" not in columnas:
+            con.execute("ALTER TABLE alertas ADD COLUMN protocolo TEXT NOT NULL DEFAULT 'tcp'")
+        if "revisada_en" not in {fila[1] for fila in con.execute("PRAGMA table_info(revisiones)")}:
+            con.execute("ALTER TABLE revisiones ADD COLUMN revisada_en TEXT")
+        for viejo, nuevo in MOTIVOS_ANTERIORES.items():
+            con.execute("UPDATE revisiones SET motivo = ? WHERE motivo = ?", (nuevo, viejo))
 
     @contextmanager
     def transaccion(self):

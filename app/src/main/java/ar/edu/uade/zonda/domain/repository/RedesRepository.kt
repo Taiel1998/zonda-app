@@ -4,6 +4,7 @@ import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.RedPareada
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import kotlinx.coroutines.flow.Flow
@@ -26,9 +27,10 @@ interface RedesRepository {
 
     /**
      * Verifica el servidor, canjea el código por un token (`POST /pareo`), guarda el token en el
-     * almacenamiento seguro y deja la red pareada y activa. Lanza [ar.edu.uade.zonda.domain.model.ErrorZonda].
+     * almacenamiento seguro y deja la red pareada y activa. Devuelve también cuántas alertas tiene
+     * para descargar. Lanza [ar.edu.uade.zonda.domain.model.ErrorZonda].
      */
-    suspend fun parear(datos: DatosPareo, nombreDispositivo: String): Red
+    suspend fun parear(datos: DatosPareo, nombreDispositivo: String): RedPareada
 
     /** Revoca el token en el servidor (`DELETE /dispositivos/actual`) y borra el token y todos los datos de la red. */
     suspend fun quitarDispositivo(redId: String)

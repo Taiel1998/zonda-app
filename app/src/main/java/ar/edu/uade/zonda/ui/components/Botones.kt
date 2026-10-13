@@ -17,16 +17,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import ar.edu.uade.zonda.ui.theme.Tonos
 
 // Los botones del Figma: 41 dp de alto (12 arriba y abajo, 24 a los costados), esquinas de 20 y
 // texto SemiBold 14. Cambia solo el color: verde lleno, verde tonal, rojo tonal, rojo lleno y con
-// borde. El área táctil sigue siendo de 48 dp (Material la agrega alrededor).
+// borde.
+//
+// Material reserva 48 dp de alto en el diseño para el área táctil y le suma 7 al botón de 41: los
+// espacios entre piezas quedaban más grandes que en el Figma. Por eso cada botón ocupa su alto visible
+// ([SinReservaTactil]) y el área táctil de 48 dp la da la búsqueda de toque cercano de Compose, que
+// acepta un toque hasta 48 dp alrededor de lo que se puede tocar (decisión 19).
 
 private val FormaBoton = RoundedCornerShape(20.dp)
+
+/** El botón ocupa en el diseño lo que se ve; el toque cercano completa los 48 dp. */
+@Composable
+fun SinReservaTactil(contenido: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified, content = contenido)
+}
 private val RellenoBoton = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
 
 /**
@@ -58,15 +74,17 @@ private fun BotonLleno(
     relleno: PaddingValues = RellenoBoton,
     cargando: Boolean = false,
 ) {
-    Button(
-        onClick = alTocar,
-        enabled = habilitado,
-        shape = FormaBoton,
-        colors = colores,
-        contentPadding = relleno,
-        modifier = modifier,
-    ) {
-        ContenidoBoton(texto, icono, cargando)
+    SinReservaTactil {
+        Button(
+            onClick = alTocar,
+            enabled = habilitado,
+            shape = FormaBoton,
+            colors = colores,
+            contentPadding = relleno,
+            modifier = modifier,
+        ) {
+            ContenidoBoton(texto, icono, cargando)
+        }
     }
 }
 
@@ -78,8 +96,15 @@ fun BotonPrincipal(
     modifier: Modifier = Modifier,
     habilitado: Boolean = true,
     icono: ImageVector? = null,
+    /** Sin el ancho completo, el botón mide lo que su texto ("Siguiente" del recorrido, Figma 107-4860). */
+    anchoCompleto: Boolean = true,
 ) {
-    BotonLleno(texto, alTocar, ButtonDefaults.buttonColors(), modifier.fillMaxWidth(), habilitado, icono)
+    // Deshabilitado como el Figma ("Conectar" sin datos): gris cálido con el texto gris.
+    val colores = ButtonDefaults.buttonColors(
+        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+        disabledContentColor = Tonos.Neutro.punto,
+    )
+    BotonLleno(texto, alTocar, colores, if (anchoCompleto) modifier.fillMaxWidth() else modifier, habilitado, icono)
 }
 
 /** Verde claro con texto verde: acciones secundarias ("Sincronizar ahora", "Conectar Telegram"). */
@@ -148,34 +173,47 @@ fun BotonPeligro(
     )
 }
 
-/** Con borde gris y texto verde: la salida de una hoja ("Cancelar", "Entendido"). */
+/**
+ * Con borde gris y texto verde: la salida de una hoja ("Cancelar", "Entendido") o la segunda acción de
+ * una pantalla ("Ya conozco Zonda"). En el escáner, oscuro, cambian [colorTexto] y [colorBorde].
+ */
 @Composable
 fun BotonContorno(
     texto: String,
     alTocar: () -> Unit,
     modifier: Modifier = Modifier,
     relleno: PaddingValues = RellenoBoton,
+    habilitado: Boolean = true,
+    colorTexto: Color = MaterialTheme.colorScheme.primary,
+    colorBorde: Color = MaterialTheme.colorScheme.outlineVariant,
 ) {
-    OutlinedButton(
-        onClick = alTocar,
-        shape = FormaBoton,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-        contentPadding = relleno,
-        modifier = modifier,
-    ) {
-        ContenidoBoton(texto, icono = null)
+    SinReservaTactil {
+        OutlinedButton(
+            onClick = alTocar,
+            enabled = habilitado,
+            shape = FormaBoton,
+            border = BorderStroke(1.dp, colorBorde),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colorTexto, disabledContentColor = Tonos.Neutro.punto),
+            contentPadding = relleno,
+            modifier = modifier,
+        ) {
+            ContenidoBoton(texto, icono = null)
+        }
     }
 }
 
-/** Un enlace: texto verde SemiBold sin fondo ("Cambiar la severidad de cada tipo de ataque"). */
+/** Un enlace: texto verde SemiBold sin fondo ("Cambiar la severidad de cada tipo de ataque", "Corregir la dirección"). */
 @Composable
 fun BotonEnlace(
     texto: String,
     alTocar: () -> Unit,
     modifier: Modifier = Modifier,
+    relleno: PaddingValues = RellenoBoton,
+    colorTexto: Color = MaterialTheme.colorScheme.primary,
 ) {
-    TextButton(onClick = alTocar, contentPadding = RellenoBoton, modifier = modifier) {
-        Text(text = texto, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+    SinReservaTactil {
+        TextButton(onClick = alTocar, shape = FormaBoton, contentPadding = relleno, modifier = modifier) {
+            Text(text = texto, style = MaterialTheme.typography.labelLarge, color = colorTexto)
+        }
     }
 }

@@ -61,18 +61,23 @@
     <string name="metodo_ia_frase">IA</string>
     <string name="metodo_umbrales_frase">umbrales</string>
     <string name="metodo_reglas_frase">reglas</string>
+    <string name="metodo_ia_historial">el modelo de IA</string>
+    <string name="metodo_umbrales_historial">los umbrales</string>
+    <string name="metodo_reglas_historial">las reglas</string>
     <string name="veredicto_anomalo">Anómalo</string>
     <string name="veredicto_normal">Normal</string>
     <string name="resultado_ataque_real">Ataque real</string>
     <string name="resultado_falso_positivo">Falso positivo</string>
+    <!-- Motivos del Figma (66-2852 y 66-2942) -->
     <string name="motivo_escalado_al_proveedor">Escalado al proveedor</string>
-    <string name="motivo_equipo_aislado">Equipo aislado</string>
-    <string name="motivo_credenciales_cambiadas">Credenciales cambiadas</string>
-    <string name="motivo_en_investigacion">En investigación</string>
+    <string name="motivo_bloqueado_manualmente">Bloqueado manualmente</string>
+    <string name="motivo_contrasena_cambiada">Contraseña cambiada</string>
+    <string name="motivo_investigando">Investigando</string>
     <string name="motivo_tarea_programada">Tarea programada</string>
-    <string name="motivo_herramienta_autorizada">Herramienta autorizada</string>
-    <string name="motivo_prueba_del_equipo_de_it">Prueba del equipo de IT</string>
-    <string name="motivo_servicio_nuevo">Servicio nuevo</string>
+    <string name="motivo_backup">Backup</string>
+    <string name="motivo_equipo_nuevo">Equipo nuevo</string>
+    <string name="motivo_usuario_autorizado">Usuario autorizado</string>
+    <string name="motivo_otro">Otro</string>
 
     <!-- Alertas: resumen y filtros -->
     <plurals name="alertas_cantidad">
@@ -81,6 +86,37 @@
     </plurals>
     <string name="alertas_sin_revisar">%d sin revisar</string>
     <string name="alertas_actualizado">actualizado %1$s</string>
+    <string name="alertas_datos_de">datos de las %1$s</string>
+    <!-- La línea de resumen con filtros (Figma 2-3 y los cuadros "filtro ... aplicado") -->
+    <plurals name="resumen_sin_revisar">
+        <item quantity="one">%d alerta sin revisar</item>
+        <item quantity="other">%d alertas sin revisar</item>
+    </plurals>
+    <plurals name="resumen_sin_revisar_de_severidad">
+        <item quantity="one">%1$d alerta %2$s sin revisar</item>
+        <item quantity="other">%1$d alertas %2$s sin revisar</item>
+    </plurals>
+    <plurals name="resumen_revisadas">
+        <item quantity="one">%d revisada</item>
+        <item quantity="other">%d revisadas</item>
+    </plurals>
+    <plurals name="resumen_falsos_positivos">
+        <item quantity="one">%d falso positivo</item>
+        <item quantity="other">%d falsos positivos</item>
+    </plurals>
+    <plurals name="adjetivo_alta">
+        <item quantity="one">alta</item>
+        <item quantity="other">altas</item>
+    </plurals>
+    <plurals name="adjetivo_media">
+        <item quantity="one">media</item>
+        <item quantity="other">medias</item>
+    </plurals>
+    <plurals name="adjetivo_baja">
+        <item quantity="one">baja</item>
+        <item quantity="other">bajas</item>
+    </plurals>
+    <string name="resumen_otros_servicios">otros servicios</string>
     <string name="alertas_sin_sincronizar">sin sincronizar</string>
     <string name="periodo_ultimas_24h">últimas 24 h</string>
     <string name="periodo_ultimos_7d">últimos 7 días</string>
@@ -94,25 +130,27 @@
     <string name="filtro_estado_falsos_positivos">Falsos positivos</string>
     <string name="filtro_severidad">Severidad</string>
     <string name="filtro_severidad_titulo">Severidad</string>
-    <string name="filtro_severidad_todas">Todas las severidades</string>
     <string name="filtro_periodo">Período</string>
     <string name="filtro_periodo_titulo">Período</string>
     <string name="filtro_periodo_24h">24 h</string>
-    <string name="filtro_periodo_24h_detalle">Últimas 24 horas</string>
     <string name="filtro_periodo_7d">7 días</string>
     <string name="filtro_periodo_30d">30 días</string>
-    <string name="filtro_periodo_todo">Todo</string>
-    <string name="filtro_periodo_todo_detalle">Todas las alertas guardadas (hasta 30 días)</string>
+    <string name="filtro_periodo_24h_titulo">Últimas 24 h</string>
+    <string name="filtro_periodo_7d_titulo">Últimos 7 días</string>
+    <string name="filtro_periodo_30d_titulo">Últimos 30 días</string>
+    <string name="filtro_periodo_30d_detalle">Todo lo que hay guardado en el teléfono</string>
     <string name="filtro_mas">Más filtros</string>
     <string name="filtro_mas_con_cantidad">Más filtros (%1$d)</string>
     <string name="filtro_mas_titulo">Más filtros</string>
     <string name="filtro_servicio">Servicio</string>
     <string name="filtro_destino">Equipo destino</string>
-    <string name="filtro_metodo">Método</string>
-    <string name="filtro_todos">Todos</string>
+    <string name="filtro_metodo">Método que la detectó</string>
+    <string name="filtro_metodo_ia">Modelo de IA</string>
+    <string name="filtro_otros">Otros</string>
+    <string name="filtro_mas_nota">Los servicios y los equipos los informa el servidor de tu empresa; no hay que configurarlos en la app. Si un equipo no tiene nombre, se muestra su dirección.</string>
     <string name="filtro_aplicar">Aplicar</string>
     <string name="filtro_limpiar">Limpiar</string>
-    <string name="filtro_quitar">Quitar filtros</string>
+    <string name="filtro_limpiar_filtros">Limpiar filtros</string>
 
     <!-- Estados de pantalla -->
     <string name="sin_conexion_banner">Sin conexión · mostrando datos de las %1$s</string>
@@ -121,9 +159,12 @@
     <string name="vacio_sin_red_detalle">Conectá la red de tu empresa desde Ajustes para empezar a recibir alertas.</string>
     <string name="vacio_sin_alertas_titulo">Sin alertas guardadas</string>
     <string name="vacio_sin_alertas_detalle">Sincronizá para traer las novedades del servidor.</string>
-    <string name="vacio_con_filtro_titulo">Ninguna alerta coincide con los filtros</string>
-    <string name="vacio_con_filtro_detalle">Probá con otro período o quitá los filtros.</string>
-    <string name="aviso_sincronizado_sin_novedades">Sincronizado. No hay alertas nuevas.</string>
+    <string name="vacio_con_filtro_titulo">Sin alertas para esos filtros</string>
+    <string name="vacio_con_filtro_detalle">Probá con otro período o quitá un filtro.</string>
+    <string name="error_carga_titulo">No se pudo cargar</string>
+    <string name="error_carga_detalle">El servidor no respondió.</string>
+    <string name="error_carga_detalle_con_datos">El servidor no respondió. Los datos de las %1$s siguen disponibles sin conexión.</string>
+    <string name="aviso_sincronizado_hora">Sincronizado · %1$s · %2$s</string>
     <plurals name="aviso_sincronizado_nuevas">
         <item quantity="one">Sincronizado: %d alerta nueva.</item>
         <item quantity="other">Sincronizado: %d alertas nuevas.</item>
@@ -177,6 +218,27 @@
     <string name="detalle_revisar_explicacion">Al revisar vas a indicar si fue un ataque real o un falso positivo, con su motivo y un comentario.</string>
     <string name="detalle_revisar">Revisar</string>
     <string name="detalle_cambiar_revision">Cambiar revisión</string>
+    <string name="detalle_comentario">Comentario</string>
+    <string name="detalle_quien">Quién</string>
+    <string name="detalle_revisada">Revisada</string>
+    <string name="detalle_resultado_sincronizada">%1$s · sincronizada %2$s</string>
+    <string name="detalle_pendiente_de_sincronizar">Pendiente de sincronizar</string>
+    <string name="detalle_revision_pendiente_banner">Sin conexión · tu revisión se enviará al reconectar</string>
+    <string name="accion_compartir">Compartir</string>
+    <!-- Lo que comparte el detalle: lo mismo que el aviso, sin direcciones IP ni nombres de equipos -->
+    <string name="detalle_compartir_texto">Alerta %1$s · %2$s · %3$s\n%4$d conexiones en 60 s. Tocá para ver el detalle en Zonda. El aviso no incluye direcciones IP.\n%5$s</string>
+    <!-- Historial (Figma 51-2379) -->
+    <string name="historial_enviada">Enviada al servidor</string>
+    <string name="historial_revisada">Revisada: %1$s · %2$s</string>
+    <string name="historial_quedo_pendiente">sin conexión, quedó pendiente</string>
+    <string name="historial_detectada">Detectada por %1$s</string>
+    <!-- Pendiente de descarga (Figma 3-139) -->
+    <string name="detalle_pendiente_de_descarga">Pendiente de descarga</string>
+    <string name="detalle_sin_descargar_banner">Sin conexión con el servidor · el detalle todavía no está en el teléfono</string>
+    <string name="detalle_descarga_titulo">El detalle se descarga cuando vuelvas a la red de la empresa</string>
+    <string name="detalle_descarga_texto">Origen, destino, cantidad de conexiones y el veredicto de cada método se piden al servidor; el aviso no los trae. La app lo intenta sola cada 15 minutos y apenas detecta red.</string>
+    <string name="detalle_descarga_reintentar">Reintentar ahora</string>
+    <string name="detalle_descarga_volver">Volver a la lista</string>
 
     <!-- Revisión en dos pasos (RF04) -->
     <string name="revisar_paso1_titulo">¿Qué resultó ser esta alerta?</string>
@@ -184,7 +246,7 @@
     <string name="revisar_paso_1_de_2">Paso 1 de 2</string>
     <string name="revisar_paso_2_de_2">Paso 2 de 2</string>
     <string name="revisar_ataque_real_detalle">Hubo actividad no autorizada o maliciosa (verdadero positivo).</string>
-    <string name="revisar_falso_positivo_detalle">Era tráfico legítimo: un respaldo, una tarea programada, un equipo nuevo.</string>
+    <string name="revisar_falso_positivo_detalle">Era tráfico legítimo: un backup, una tarea programada, un equipo nuevo.</string>
     <string name="revisar_cancelar">Cancelar</string>
     <string name="revisar_paso2_titulo_ataque">Ataque real: ¿qué hiciste?</string>
     <string name="revisar_paso2_titulo_falso">Falso positivo: ¿por qué?</string>
@@ -194,25 +256,31 @@
     <string name="revisar_volver">Volver</string>
     <string name="revisar_confirmar">Confirmar revisión</string>
 
-    <!-- Comentario que propone cada motivo (se puede editar) -->
-    <string name="comentario_escalado_al_proveedor">Escalé la alerta al proveedor de seguridad.</string>
-    <string name="comentario_equipo_aislado">Aislé el equipo de la red hasta revisarlo.</string>
-    <string name="comentario_credenciales_cambiadas">Cambié las credenciales de la cuenta afectada.</string>
-    <string name="comentario_en_investigacion">Lo estoy investigando; actualizo cuando sepa más.</string>
-    <string name="comentario_tarea_programada">Era una tarea programada, como un respaldo o una actualización.</string>
-    <string name="comentario_herramienta_autorizada">Era una herramienta autorizada por IT.</string>
-    <string name="comentario_prueba_del_equipo_de_it">Era una prueba del equipo de IT.</string>
-    <string name="comentario_servicio_nuevo">Es un servicio nuevo que todavía no está en el catálogo.</string>
+    <!-- Comentario que propone cada motivo, el de su pantalla del Figma (se puede editar). Los que
+         nombran equipos usan los de la alerta: el servicio y el origen al bloquear, origen y destino
+         en el backup y el origen en el equipo nuevo. -->
+    <string name="comentario_escalado_al_proveedor">Avisé al proveedor de seguridad; están revisando el servidor.</string>
+    <string name="comentario_bloqueado_manualmente">Bloqueé el acceso %1$s de %2$s y avisé al proveedor.</string>
+    <string name="comentario_contrasena_cambiada">Cambié la contraseña de la cuenta usada y revisé los accesos.</string>
+    <string name="comentario_investigando">Estoy revisando los registros del servidor; sigo mañana.</string>
+    <string name="comentario_tarea_programada">Es la copia nocturna que corre todos los domingos.</string>
+    <string name="comentario_backup">Es el backup semanal de %1$s hacia %2$s.</string>
+    <string name="comentario_equipo_nuevo">%1$s es un equipo nuevo que se configuró hoy.</string>
+    <string name="comentario_usuario_autorizado">Es un acceso autorizado del administrador.</string>
+    <string name="comentario_otro">Prueba de conectividad que hizo el proveedor.</string>
 
     <!-- Aviso con Deshacer, conflicto y envío fallido -->
-    <string name="aviso_revision_guardada">Revisión guardada.</string>
+    <string name="aviso_revision_guardada">Revisión guardada y enviada al servidor.</string>
     <string name="aviso_revision_guardada_sin_conexion">Revisión guardada. Se enviará cuando haya conexión.</string>
     <string name="aviso_deshacer">Deshacer</string>
-    <string name="conflicto_titulo">Otra persona revisó esta alerta</string>
+    <!-- Revisada desde otro teléfono (Figma 51-2497) -->
+    <string name="conflicto_titulo">Revisada desde otro teléfono</string>
     <string name="conflicto_otra_persona">Otra persona</string>
-    <string name="conflicto_pregunta">¿Aplicás tu revisión igual?</string>
-    <string name="conflicto_aplicar">Aplicar la mía igual</string>
-    <string name="conflicto_quedarme">Quedarme con la otra</string>
+    <string name="conflicto_texto">%1$s la revisó como %2$s a las %3$s con el motivo “%4$s”, después de tu última sincronización.</string>
+    <string name="conflicto_tu_revision">Tu revisión (%1$s, %2$s) todavía no se aplicó. ¿Querés aplicarla igual?</string>
+    <string name="conflicto_aplicar">Aplicar la mía</string>
+    <string name="conflicto_mantener">Mantener la de %1$s</string>
+    <string name="conflicto_mantener_otra">Mantener la otra</string>
     <string name="envio_error_titulo">No se pudo enviar la revisión</string>
     <string name="envio_error_detalle">Intentos: %1$d. Último error: %2$s.</string>
 
@@ -242,17 +310,36 @@
     <string name="bienvenida_empezar">Empezar</string>
     <string name="bienvenida_omitir">Ya conozco Zonda: omitir la introducción</string>
     <string name="condiciones_titulo">Condiciones de uso y privacidad</string>
-    <string name="condiciones_texto">Zonda es una herramienta de apoyo para el equipo de IT de tu empresa. Muestra las alertas que genera el sistema de detección instalado en la red y permite registrar cómo se revisó cada una.\n\nQué guarda el teléfono: las alertas de los últimos 30 días, las revisiones y los datos de conexión de cada red. Todo queda en una base cifrada que no va a ninguna copia de seguridad. El acceso a cada red se guarda en el almacenamiento seguro de Android y nunca se muestra.\n\nQué viaja y por dónde: las alertas y las revisiones viajan cifradas (HTTPS) entre el teléfono y el servidor de tu empresa. Por Telegram viajan solo la severidad, el servicio y la hora; nunca las direcciones IP, que son datos personales según la Ley 25.326.\n\nQué no hace Zonda: no bloquea tráfico ni decide por vos. Revisar una alerta es dejar registrado lo que vos decidiste.\n\nDesde Ajustes podés borrar todos los datos del teléfono o quitar este dispositivo de una red.</string>
+    <string name="condiciones_guarda">Las alertas de los últimos 30 días de cada red pareada, con las direcciones IP de los equipos involucrados, y el registro de quién revisó cada una. Todo se guarda cifrado en el teléfono.</string>
+    <string name="condiciones_sale_titulo">Qué sale del teléfono</string>
+    <string name="condiciones_sale">Solo las revisiones que marcás, hacia el servidor de tu empresa por un canal cifrado. Por Telegram viaja únicamente la severidad, el servicio y la hora de cada alerta, nunca direcciones IP ni nombres de equipos.</string>
+    <string name="condiciones_tiempo_titulo">Cuánto tiempo</string>
+    <string name="condiciones_tiempo">Las alertas de más de 30 días se borran solas. Podés borrar todo desde Ajustes en cualquier momento.</string>
+    <string name="condiciones_datos">Las direcciones IP son datos personales según la Ley 25.326. Zonda las muestra solo a quien está pareado con la red de la empresa y nunca las comparte con terceros.</string>
     <string name="tutorial_omitir">Omitir</string>
     <string name="tutorial_siguiente">Siguiente</string>
-    <string name="tutorial_listo">Listo</string>
-    <string name="tutorial_paso">%1$d de %2$d</string>
-    <string name="tutorial_1_titulo">Te llega un aviso</string>
-    <string name="tutorial_1_texto">Cuando el sistema detecta algo raro en la red, te llega un mensaje por Telegram con la severidad, el servicio y la hora.</string>
-    <string name="tutorial_2_titulo">Tocás el aviso y se abre el detalle</string>
-    <string name="tutorial_2_texto">Ves qué equipos, qué servicio y qué detectó cada método: la IA, los umbrales y las reglas.</string>
-    <string name="tutorial_3_titulo">Lo revisás desde donde estés</string>
-    <string name="tutorial_3_texto">Marcás si fue un ataque real o un falso positivo, con un motivo y un comentario. Sin red, se guarda y se envía después.</string>
+    <string name="tutorial_paso">Paso %1$d de %2$d</string>
+    <string name="tutorial_1_titulo">Mirá el estado de la red de un vistazo</string>
+    <string name="tutorial_1_texto">El semáforo resume la situación: rojo si hay alertas altas sin revisar, amarillo si solo quedan medias y verde si no queda ninguna. Los números cuentan las alertas sin revisar de cada severidad.</string>
+    <string name="tutorial_2_titulo">Los avisos llegan a tu teléfono</string>
+    <string name="tutorial_2_texto">Primero llega el aviso de Telegram, según la severidad que elijas. Cuando lo tocás, Zonda abre el detalle de esa alerta: no tenés que buscarla.</string>
+    <string name="tutorial_3_titulo">Sin señal, seguís trabajando</string>
+    <string name="tutorial_3_texto">En la sala de servidores o sin señal seguís viendo las alertas guardadas en el teléfono. Si marcás una como revisada, la app la envía sola cuando vuelve la red.</string>
+    <string name="tutorial_configurar">Configurar mis avisos</string>
+    <!-- Ilustraciones del tutorial: datos de ejemplo del Figma -->
+    <string name="tutorial_semaforo_etiqueta">Atención</string>
+    <string name="tutorial_semaforo_titulo">3 alertas altas sin revisar</string>
+    <string name="tutorial_semaforo_detalle">Última detección hace 5 min · actualizado 02:14</string>
+    <string name="tutorial_aviso_paso">1. Llega el aviso por Telegram</string>
+    <string name="tutorial_aviso_origen">Telegram · Zonda alertas · ahora</string>
+    <!-- El aviso de ejemplo sigue al Figma (8-7). Si cambia el texto del aviso de Telegram (fase 10), cambia también acá. -->
+    <string name="tutorial_aviso_titulo">Alerta ALTA · SSH · servidor de sueldos</string>
+    <string name="tutorial_aviso_texto">65 conexiones en 60 s desde una estación de RRHH. Tocá para ver el detalle. El aviso no incluye direcciones IP.</string>
+    <string name="tutorial_lo_tocas">↓ Lo tocás</string>
+    <string name="tutorial_detalle_paso">2. Se abre el detalle de esa alerta</string>
+    <string name="tutorial_ruta">pc-rrhh → srv-sueldos</string>
+    <string name="tutorial_detalle_conexiones">Conexiones en 60 s</string>
+    <string name="tutorial_detalle_ia">Modelo de IA</string>
     <string name="inicio_antes_de_empezar">Antes de empezar</string>
     <string name="avisos_intro">Elegí cómo querés que Zonda te avise. Podés cambiar todo esto después desde Ajustes.</string>
     <string name="avisos_titulo">Avisos por Telegram</string>
@@ -273,83 +360,108 @@
     <string name="conexion_te_lo_da">Te lo da el administrador de Zonda.</string>
     <string name="conexion_en_la_red">Tenés que estar conectado a la red de la empresa.</string>
     <string name="conexion_que_significa">Qué significa</string>
-    <string name="conexion_que_significa_texto">El servidor de Zonda está en la red interna de tu empresa. Para parear el teléfono, conectate al wifi de la oficina (o a la VPN, si tu empresa usa una). Después, las alertas se actualizan cada vez que estés en esa red.</string>
     <string name="conexion_escanear">Escanear código QR</string>
     <string name="conexion_o_a_mano">o ingresalo a mano</string>
+    <string name="conexion_escribi_los_datos">Escribí los dos datos que trae el código que te dio el administrador.</string>
     <string name="conexion_direccion">Dirección del servidor</string>
     <string name="conexion_direccion_ejemplo">zonda-empresa.duckdns.org</string>
+    <string name="conexion_direccion_ayuda">Es el nombre que figura en el código, sin https://</string>
     <string name="conexion_direccion_error">Revisá la dirección, por ejemplo zonda-empresa.duckdns.org</string>
     <string name="conexion_codigo">Código de pareo</string>
     <string name="conexion_codigo_ejemplo">8 caracteres, por ejemplo K7M2-QX9P</string>
+    <string name="conexion_codigo_ejemplo_corto">8 caracteres</string>
+    <string name="conexion_codigo_ayuda">8 letras y números. Se escriben en mayúsculas solas; el guion no hace falta.</string>
+    <string name="conexion_pegar">Pegar</string>
     <string name="conexion_codigo_error">El código tiene 8 caracteres, por ejemplo K7M2-QX9P</string>
     <string name="conexion_conectar">Conectar</string>
     <string name="conexion_donde_codigo">¿Dónde encuentro el código?</string>
-    <string name="conexion_donde_codigo_texto">Lo genera el administrador en la computadora del servidor de Zonda con el comando zonda pair. Aparece como un código QR y como un texto de 8 caracteres. Sirve una sola vez y vence a los 10 minutos.</string>
-    <string name="conexion_entendido">Entendido</string>
+    <string name="conexion_donde_codigo_pie">¿Dónde encuentro el código? Lo genera el administrador en la computadora del servidor Zonda.</string>
+    <!-- Ayudas (Figma 66-4286 y 66-4353) -->
+    <string name="ayuda_red_titulo">Estar en la red de la empresa</string>
+    <string name="ayuda_red_intro">Zonda se conecta al servidor que está dentro de tu empresa. Por eso, para parear, el teléfono tiene que estar en esa red.</string>
+    <string name="ayuda_red_paso_1">Conectate al wifi de la oficina, no a los datos del celular.</string>
+    <string name="ayuda_red_paso_2">Si estás afuera y la empresa tiene VPN, activala primero.</string>
+    <string name="ayuda_red_paso_3">Si no sabés cuál es el wifi, preguntale al administrador.</string>
+    <string name="ayuda_codigo_intro">El código se genera en la computadora donde está instalado Zonda.</string>
+    <string name="ayuda_codigo_paso_1">El administrador abre la terminal en esa computadora y escribe zonda pair.</string>
+    <string name="ayuda_codigo_paso_2">Aparece un código QR y, debajo, el mismo código en texto (por ejemplo K7M2-QX9P).</string>
+    <string name="ayuda_codigo_paso_3">Escaneá el QR o escribí el código acá. Sirve una sola vez y vence a los 10 minutos.</string>
+    <string name="ayuda_codigo_escanear">Escanear QR</string>
     <string name="conexion_red">Red</string>
     <string name="conexion_direccion_corta">Dirección</string>
+    <string name="conexion_nombre">Nombre</string>
     <string name="conexion_conectando">Conectando…</string>
     <string name="conexion_paso_buscando">Buscando el servidor</string>
     <string name="conexion_paso_verificando">Verificando que sea el verdadero</string>
     <string name="conexion_paso_registrando">Registrando este teléfono</string>
-    <string name="conexion_paso_descargando">Descargando las alertas</string>
     <string name="conexion_tarda">Tarda unos segundos. Si el servidor no responde, la app te avisa y podés reintentar.</string>
-    <string name="conexion_conectada_titulo">Red conectada</string>
-    <plurals name="conexion_conectada_alertas">
-        <item quantity="one">Se descargó %d alerta.</item>
-        <item quantity="other">Se descargaron %d alertas.</item>
+    <string name="conexion_segura">Conexión segura</string>
+    <string name="conexion_sin_cifrar">Conexión sin cifrar (solo pruebas)</string>
+    <string name="conexion_registrado_como">Este teléfono quedó registrado como \"%1$s\". El código ya se usó y no sirve para otro teléfono.</string>
+    <plurals name="conexion_alertas_para_descargar">
+        <item quantity="one">%d alerta de los últimos 30 días lista para descargar</item>
+        <item quantity="other">%d alertas de los últimos 30 días listas para descargar</item>
     </plurals>
-    <string name="conexion_conectada_sin_descarga">Las alertas se van a descargar en la próxima sincronización.</string>
+    <string name="conexion_nota_acceso">El acceso de este teléfono se guarda cifrado. Podés quitarlo cuando quieras desde Ajustes → Quitar este dispositivo.</string>
     <string name="conexion_continuar">Continuar</string>
     <string name="escanear_titulo">Escanear código</string>
-    <string name="escanear_apunta">Apuntá la cámara al código QR que te dio el administrador.</string>
+    <string name="escanear_apunta">Apuntá la cámara al código QR que generó el administrador</string>
     <string name="escanear_no_es_zonda">Ese QR no es de Zonda. Pedile al administrador el código de pareo.</string>
     <string name="escanear_sin_permiso_titulo">Zonda no tiene permiso para usar la cámara</string>
-    <string name="escanear_sin_permiso_texto">Sin cámara no se puede escanear el QR, pero podés ingresar el código a mano: son la dirección del servidor y 8 caracteres.\n\nSi preferís escanear, permití el acceso a la cámara desde los ajustes del sistema y volvé a esta pantalla.</string>
+    <string name="escanear_sin_permiso_texto">Sin cámara no se puede escanear el QR, pero podés ingresar el código a mano: son la dirección del servidor y 8 caracteres.</string>
+    <string name="escanear_sin_permiso_ajustes">Si preferís escanear, permití el acceso a la cámara desde los ajustes del sistema y volvé a esta pantalla.</string>
     <string name="escanear_sin_camara_titulo">Este teléfono no tiene cámara</string>
     <string name="escanear_sin_camara_texto">Ingresá a mano la dirección del servidor y el código de 8 caracteres que te dio el administrador.</string>
     <string name="escanear_a_mano">Ingresar código a mano</string>
+    <string name="escanear_a_mano_abajo">Ingresar el código a mano</string>
+    <string name="escanear_aviso_codigo">El código sirve una sola vez y vence a los 10 minutos. La conexión se verifica antes de enviar nada.</string>
     <string name="error_pareo_vencido_titulo">El código venció o ya se usó</string>
     <string name="error_pareo_vencido_texto">Cada código sirve una sola vez y vence a los 10 minutos. Pedile al administrador un código nuevo y volvé a escanearlo.</string>
     <string name="error_pareo_invalido_titulo">El código no es válido</string>
     <string name="error_pareo_invalido_texto">Revisá que esté bien copiado: son 8 caracteres, por ejemplo K7M2-QX9P.</string>
-    <string name="error_pareo_sin_servidor_titulo">No se encontró el servidor</string>
-    <string name="error_pareo_sin_servidor_texto">Revisá que estés conectado a la red de la empresa y que la dirección esté bien escrita.</string>
+    <string name="error_pareo_sin_servidor_titulo">No se pudo conectar</string>
+    <string name="error_pareo_sin_servidor_texto">Revisá que estés en la red de la empresa (o conectado a su VPN), que la computadora del servidor esté encendida y que la dirección esté bien escrita.</string>
+    <string name="error_pareo_codigo_valido_hasta">El código sigue siendo válido hasta las %1$s.</string>
     <string name="error_pareo_no_verificado_titulo">No se pudo verificar el servidor</string>
-    <string name="error_pareo_no_verificado_texto">Su certificado no es válido, así que no se envió el código. Avisale al administrador.</string>
+    <string name="error_pareo_no_verificado_texto">La dirección respondió, pero su certificado no es válido para ese nombre. La app no envió el código ni ningún otro dato.</string>
+    <string name="error_pareo_no_verificado_vpn">Avisale al administrador. Si estás fuera de la empresa, conectate a la VPN y reintentá.</string>
     <string name="error_pareo_otro_titulo">El servidor no respondió bien</string>
     <string name="error_pareo_otro_texto">Probá de nuevo en unos minutos.</string>
     <string name="pareo_escanear_otro">Escanear otro código</string>
     <string name="pareo_otro_a_mano">Ingresar otro código a mano</string>
-    <string name="pareo_revisar_direccion">Revisar la dirección</string>
+    <string name="pareo_corregir_direccion">Corregir la dirección</string>
 
     <!-- Recorrido de once pasos (RF05) -->
     <string name="recorrido_paso">Paso %1$d de %2$d</string>
     <string name="recorrido_omitir">Omitir</string>
     <string name="recorrido_siguiente">Siguiente</string>
-    <string name="recorrido_terminar">Terminar</string>
-    <string name="recorrido_1_titulo">El semáforo</string>
-    <string name="recorrido_1_texto">Resume la red de un vistazo: rojo si hay alertas altas sin revisar, amarillo si hay medias y verde si está tranquila.</string>
-    <string name="recorrido_2_titulo">Los contadores</string>
-    <string name="recorrido_2_texto">Cuántas alertas faltan revisar de cada severidad. Tocá uno para ver solo esas.</string>
-    <string name="recorrido_3_titulo">La hora de los datos</string>
-    <string name="recorrido_3_texto">Siempre ves cuándo se actualizó la información. Deslizá hacia abajo para sincronizar.</string>
-    <string name="recorrido_4_titulo">El resumen</string>
-    <string name="recorrido_4_texto">Desde Estado abrís el resumen de 7 o 30 días, listo para compartir con la dirección.</string>
-    <string name="recorrido_5_titulo">La lista de alertas</string>
-    <string name="recorrido_5_texto">De la más reciente a la más antigua, con su severidad y si ya se revisó.</string>
-    <string name="recorrido_6_titulo">Los filtros</string>
-    <string name="recorrido_6_texto">Filtrá por estado, severidad y período; en Más filtros, por servicio, equipo destino y método.</string>
-    <string name="recorrido_7_titulo">Lo pendiente</string>
-    <string name="recorrido_7_texto">Si revisás sin conexión, la tarjeta muestra que la revisión está pendiente hasta que llega al servidor.</string>
-    <string name="recorrido_8_titulo">El detalle</string>
-    <string name="recorrido_8_texto">Tocá una alerta para ver los equipos, el servicio, la hora y qué detectó cada método.</string>
-    <string name="recorrido_9_titulo">Revisar</string>
-    <string name="recorrido_9_texto">En dos pasos: si fue un ataque real o un falso positivo, y después el motivo con un comentario. Tenés cinco segundos para deshacer.</string>
-    <string name="recorrido_10_titulo">Ajustes</string>
-    <string name="recorrido_10_texto">Las redes, los avisos, la severidad de cada tipo de ataque y la conexión con Telegram.</string>
-    <string name="recorrido_11_titulo">Sin conexión</string>
-    <string name="recorrido_11_texto">Todo sigue funcionando con los datos guardados. Lo que marques se envía solo cuando vuelva la red.</string>
+    <string name="recorrido_listo">Listo</string>
+    <!-- Los once pasos del Figma (107-3321 a 107-4731) -->
+    <string name="recorrido_1_titulo">El estado de la red, de un vistazo</string>
+    <string name="recorrido_1_texto">El color del semáforo te dice si hay algo urgente:</string>
+    <string name="recorrido_1_rojo">Rojo: hay alertas altas sin revisar</string>
+    <string name="recorrido_1_amarillo">Amarillo: solo quedan medias sin revisar</string>
+    <string name="recorrido_1_verde">Verde: ninguna alta ni media; las bajas esperan en la lista</string>
+    <string name="recorrido_2_titulo">Cuántas faltan revisar</string>
+    <string name="recorrido_2_texto">Tocá un contador y la lista de abajo muestra solo esa severidad. Tocá de nuevo y vuelve a mostrar todas.</string>
+    <string name="recorrido_3_titulo">Sincronizar</string>
+    <string name="recorrido_3_texto">Trae las alertas nuevas del servidor. Al terminar, un aviso te muestra la fecha y la hora de la sincronización.</string>
+    <string name="recorrido_4_titulo">El Resumen</string>
+    <string name="recorrido_4_texto">Abre el tablero de la semana o del mes: totales, tiempos de respuesta y precisión de cada método.</string>
+    <string name="recorrido_5_titulo">Alertas</string>
+    <string name="recorrido_5_texto">La lista completa: cada tarjeta dice si está revisada, y se filtra por estado, severidad, período, servicio, equipo y método.</string>
+    <string name="recorrido_6_titulo">Filtros</string>
+    <string name="recorrido_6_texto">Tocá un chip para abrir sus opciones. Más filtros agrupa servicio, equipo destino y método que lo detectó.</string>
+    <string name="recorrido_7_titulo">Cada tarjeta</string>
+    <string name="recorrido_7_texto">Severidad, estado de revisión, hora y día, origen y destino, y qué método la detectó. Tocá para ver el detalle.</string>
+    <string name="recorrido_8_titulo">Revisar</string>
+    <string name="recorrido_8_texto">Un solo botón: elegís si fue ataque real o falso positivo, y después el motivo y un comentario. Los dos son obligatorios.</string>
+    <string name="recorrido_9_titulo">Todo el Resumen se puede tocar</string>
+    <string name="recorrido_9_texto">Tocá un total, un día, un tipo de ataque o un método y todas las cifras se recalculan sobre ese grupo. Tocá de nuevo para volver a todo.</string>
+    <string name="recorrido_10_titulo">7 o 30 días y compartir</string>
+    <string name="recorrido_10_texto">Cambiá el período acá arriba. Compartir resumen lo envía como imagen por WhatsApp u otra app, sin IPs ni nombres de equipos.</string>
+    <string name="recorrido_11_titulo">Ajustes</string>
+    <string name="recorrido_11_texto">Redes, Telegram, avisos por severidad, severidad por tipo de ataque, sincronizar, borrar datos y, al final, la ayuda.</string>
 
     <!-- Acciones comunes de las hojas inferiores -->
     <string name="accion_cancelar">Cancelar</string>

@@ -6,8 +6,12 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import ar.edu.uade.zonda.data.mapper.aDominio
 import ar.edu.uade.zonda.data.mapper.aEntidad
+import ar.edu.uade.zonda.data.repository.AlertasRepositoryImpl
 import ar.edu.uade.zonda.domain.Fixtures
+import ar.edu.uade.zonda.domain.model.Motivo
+import ar.edu.uade.zonda.domain.model.OrigenRevision
 import java.time.Instant
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -19,7 +23,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * La migración de la base: un teléfono con la app de la fase 7 (versión 1) instala la nueva y no
+ * Las migraciones de la base: un teléfono con una versión anterior de la app instala la nueva y no
  * pierde nada. Room valida el esquema migrado contra las entidades al abrir la base.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -38,10 +42,11 @@ class MigracionesTest {
         val nueva = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO).allowMainThreadQueries().build()
         nueva.redesDao().insertar(Fixtures.red("red-1").aEntidad(creadaEn = Fixtures.AHORA))
         nueva.close()
+        llevarAVersion2()
         llevarAVersion1()
 
         val migrada = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO)
-            .addMigrations(ZondaDatabase.MIGRACION_1_2)
+            .addMigrations(ZondaDatabase.MIGRACION_1_2, ZondaDatabase.MIGRACION_2_3)
             .allowMainThreadQueries()
             .build()
         val red = migrada.redesDao().obtener("red-1")?.aDominio()
@@ -58,6 +63,80 @@ class MigracionesTest {
         assertEquals(emitido, renovada?.accesoEmitido)
         assertEquals(vence, renovada?.accesoVence)
         migrada.close()
+    }
+
+    @Test
+    fun `la migracion 2 a 3 suma el protocolo y la hora de revision y pasa los motivos anteriores`() = runTest {
+        val nueva = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO).allowMainThreadQueries().build()
+        nueva.redesDao().insertar(Fixtures.red("red-1").aEntidad(creadaEn = Fixtures.AHORA))
+        val alertas = AlertasRepositoryImpl(nueva.alertasDao(), reloj = { Fixtures.AHORA })
+        alertas.guardarDelServidor(
+            listOf(
+                Fixtures.alerta("a-1", revision = Fixtures.revision(origen = OrigenRevision.SERVIDOR)),
+                Fixtures.alerta("a-2"),
+            ),
+        )
+        nueva.accionesPendientesDao().insertar(Fixtures.accion(alertaId = "a-2").aEntidad())
+        nueva.close()
+        llevarAVersion2()
+
+        val migrada = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO)
+            .addMigrations(ZondaDatabase.MIGRACION_1_2, ZondaDatabase.MIGRACION_2_3)
+            .allowMainThreadQueries()
+            .build()
+        val revisada = AlertasRepositoryImpl(migrada.alertasDao(), reloj = { Fixtures.AHORA }).observarAlerta("red-1", "a-1").first()!!
+        val accion = migrada.accionesPendientesDao().deAlerta("red-1", "a-2")!!.aDominio()
+
+        assertEquals(Motivo.BLOQUEADO_MANUALMENTE, revisada.revisionActual?.motivo)
+        assertNull(revisada.revisionActual?.revisadaEn)
+        assertNull(revisada.protocolo)
+        assertEquals(Motivo.INVESTIGANDO, accion.revision?.motivo)
+        migrada.close()
+    }
+
+    /**
+     * Deja el archivo como lo dejaba la versión 2: sin el protocolo ni las horas de revisión, y con los
+     * motivos que tenía la app antes del Figma.
+     */
+    private fun llevarAVersion2() {
+        val db = SQLiteDatabase.openDatabase(contexto.getDatabasePath(ARCHIVO).path, null, SQLiteDatabase.OPEN_READWRITE)
+        db.beginTransaction()
+        try {
+            quitarColumnas(db, "alertas", listOf("protocolo"))
+            quitarColumnas(db, "revisiones", listOf("revisadaEn"))
+            quitarColumnas(db, "acciones_pendientes", listOf("ajenaRevisadaEn"))
+            db.execSQL("UPDATE revisiones SET motivo = 'EQUIPO_AISLADO'")
+            db.execSQL("UPDATE acciones_pendientes SET motivo = 'EN_INVESTIGACION'")
+            db.version = 2
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+    }
+
+    /**
+     * Rehace una tabla sin algunas columnas, con sus datos y sus índices. El SQLite de las pruebas no
+     * tiene `ALTER TABLE ... DROP COLUMN`.
+     */
+    private fun quitarColumnas(db: SQLiteDatabase, tabla: String, quitar: List<String>) {
+        val creacion = db.rawQuery("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(tabla)).use {
+            it.moveToFirst()
+            it.getString(0)
+        }
+        val indices = db.rawQuery("SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL", arrayOf(tabla)).use { cursor ->
+            buildList { while (cursor.moveToNext()) add(cursor.getString(0)) }
+        }
+        val columnas = db.rawQuery("PRAGMA table_info($tabla)", null).use { cursor ->
+            buildList { while (cursor.moveToNext()) add(cursor.getString(cursor.getColumnIndexOrThrow("name"))) }
+        }.filterNot { it in quitar }
+        val sinColumnas = quitar.fold(creacion) { sql, columna -> sql.replace(Regex(",\\s*`$columna`[^,)]*"), "") }
+        val lista = columnas.joinToString { "`$it`" }
+        db.execSQL(sinColumnas.replace("`$tabla`", "`${tabla}_anterior`"))
+        db.execSQL("INSERT INTO ${tabla}_anterior ($lista) SELECT $lista FROM $tabla")
+        db.execSQL("DROP TABLE $tabla")
+        db.execSQL("ALTER TABLE ${tabla}_anterior RENAME TO $tabla")
+        indices.forEach(db::execSQL)
     }
 
     /** Deja el archivo como lo dejaba la fase 7: la tabla de redes sin las columnas de la versión 2. */

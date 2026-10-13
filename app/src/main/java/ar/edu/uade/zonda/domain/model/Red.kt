@@ -1,6 +1,8 @@
 package ar.edu.uade.zonda.domain.model
 
 import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.format.DateTimeParseException
 
 /**
  * Una red pareada con este teléfono (RF05 y RF06). Cada red tiene su servidor, su cursor de
@@ -25,10 +27,14 @@ data class Red(
         get() = ultimaSincronizacion == null
 }
 
-/** Lo que trae el código QR o se escribe a mano para parear (informe, sección 13.4). */
+/**
+ * Lo que trae el código QR o se escribe a mano para parear (informe, sección 13.4). [codigoVence]
+ * solo viene en el QR: con el ingreso a mano no se sabe hasta cuándo vale el código.
+ */
 data class DatosPareo(
     val urlBase: String,
     val codigo: String,
+    val codigoVence: Instant? = null,
 ) {
     val codigoValido: Boolean
         get() = FORMATO_CODIGO.matches(codigo.trim().uppercase())
@@ -50,6 +56,9 @@ data class DatosPareo(
             return if (conEsquema) limpio else "https://$limpio"
         }
 
+        /** Las letras y los números del código, en mayúsculas y sin el guion: `k7m2-qx9p` → `K7M2QX9P`. */
+        fun caracteresDeCodigo(texto: String): String = texto.uppercase().filter { it in 'A'..'Z' || it in '0'..'9' }
+
         /** El código como lo escribió la persona, en mayúsculas y con el guion: `k7m2qx9p` → `K7M2-QX9P`. */
         fun normalizarCodigo(texto: String): String {
             val caracteres = texto.uppercase().filter { it.isLetterOrDigit() }
@@ -57,8 +66,9 @@ data class DatosPareo(
         }
 
         /**
-         * El QR contiene `zonda:<urlBase>#<codigo>`, por ejemplo `zonda:https://red.duckdns.org#K7M2-QX9P`.
-         * Devuelve null si el texto no tiene ese formato.
+         * El QR contiene `zonda:<urlBase>#<codigo>;vence=<fecha ISO>`, por ejemplo
+         * `zonda:https://red.duckdns.org#K7M2-QX9P;vence=2026-10-12T02:19:00+00:00`. Un QR sin `vence`
+         * (de un servidor anterior) también vale. Devuelve null si el texto no tiene ese formato.
          */
         fun desdeQr(contenido: String): DatosPareo? {
             val texto = contenido.trim()
@@ -66,20 +76,52 @@ data class DatosPareo(
             val cuerpo = texto.removePrefix(PREFIJO_QR)
             val separador = cuerpo.lastIndexOf('#')
             if (separador <= 0 || separador == cuerpo.lastIndex) return null
+            val partes = cuerpo.substring(separador + 1).split(';')
             val datos = DatosPareo(
                 urlBase = cuerpo.substring(0, separador).trimEnd('/'),
-                codigo = cuerpo.substring(separador + 1).uppercase(),
+                codigo = partes.first().uppercase(),
+                codigoVence = partes.drop(1).firstOrNull { it.startsWith(CLAVE_VENCE) }?.let { leerFecha(it.removePrefix(CLAVE_VENCE)) },
             )
             return if (datos.codigoValido && datos.urlBase.startsWith("http")) datos else null
         }
+
+        private const val CLAVE_VENCE = "vence="
+
+        /** Una fecha mal escrita no invalida el QR: solo se pierde la línea "válido hasta las HH:MM". */
+        private fun leerFecha(texto: String): Instant? =
+            try {
+                OffsetDateTime.parse(texto).toInstant()
+            } catch (e: DateTimeParseException) {
+                null
+            }
     }
 }
 
 /**
- * Los pasos del pareo que muestra la pantalla Conexión (Figma, figura 14). Buscar el servidor y
+ * Los pasos del pareo que muestra la pantalla Conexión (Figma 49-521). Buscar el servidor y
  * verificar que sea el verdadero son el mismo pedido (`GET /salud` por HTTPS): terminan juntos.
+ * La descarga de las alertas ya no es un paso: pasa en Estado, con su barra (Figma 50-616).
  */
-enum class PasoPareo { BUSCANDO_SERVIDOR, REGISTRANDO_TELEFONO, DESCARGANDO_ALERTAS }
+enum class PasoPareo { BUSCANDO_SERVIDOR, REGISTRANDO_TELEFONO }
+
+/**
+ * El resultado del pareo: la red ya pareada y activa, y cuántas alertas de los últimos 30 días
+ * tiene para descargar ("213 alertas de los últimos 30 días listas para descargar", Figma 35-692).
+ */
+data class RedPareada(
+    val red: Red,
+    val alertasParaDescargar: Int,
+)
+
+/**
+ * Cómo va la primera descarga de una red (Figma 50-616): "120 de 213". [total] es null hasta que
+ * llega la primera página, o si el servidor no lo manda.
+ */
+data class ProgresoDescarga(
+    val redId: String,
+    val descargadas: Int,
+    val total: Int?,
+)
 
 /** Respuesta del servidor al pedir el vínculo con Telegram: un código de un uso y el enlace al bot. */
 data class VinculoTelegram(

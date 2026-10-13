@@ -14,10 +14,15 @@ from .config import RAIZ, Config
 from .db import Base
 
 
+def contenido_qr(url_publica: str, codigo: str, vence) -> str:
+    """Lo que lleva el QR: la dirección, el código y cuándo vence (la app muestra "válido hasta las HH:MM")."""
+    return f"zonda:{url_publica}#{codigo};vence={iso(vence)}"
+
+
 def comando_pair(base: Base, cfg: Config) -> int:
     with base.transaccion() as con:
         codigo, vence = crear_codigo_pareo(con, cfg.minutos_codigo)
-    contenido = f"zonda:{cfg.url_publica}#{codigo}"
+    contenido = contenido_qr(cfg.url_publica, codigo, vence)
     print(f"Código de pareo: {codigo}   (vence {vence.astimezone().strftime('%H:%M')}, un solo uso)")
     print(f"Dirección de la red: {cfg.url_publica}")
     try:

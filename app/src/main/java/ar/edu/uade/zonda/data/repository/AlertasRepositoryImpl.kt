@@ -8,16 +8,21 @@ import ar.edu.uade.zonda.data.sync.SinSincronizador
 import ar.edu.uade.zonda.data.sync.Sincronizador
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
+import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.FiltroServicio
+import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 /**
@@ -36,13 +41,25 @@ class AlertasRepositoryImpl(
     override fun observarAlertas(redId: String, filtro: FiltroAlertas): Flow<List<Alerta>> =
         dao.observar(
             redId = redId,
-            estado = filtro.estado?.name,
-            severidad = filtro.severidad?.name,
+            todosLosEstados = filtro.estado.estados == null,
+            estados = filtro.estado.estados.orEmpty().map { it.name }.ifEmpty { listOf(NINGUNO) },
+            todasLasSeveridades = filtro.severidades.isEmpty(),
+            severidades = filtro.severidades.map { it.name }.ifEmpty { listOf(NINGUNO) },
             desde = filtro.periodo.desde(reloj())?.toEpochMilli(),
-            servicio = filtro.servicio,
+            servicio = (filtro.servicio as? FiltroServicio.Uno)?.nombre,
+            otrosServicios = filtro.servicio is FiltroServicio.Otros,
+            serviciosConChip = (filtro.servicio as? FiltroServicio.Otros)?.conChip.orEmpty().toList().ifEmpty { listOf(NINGUNO) },
             destinoIp = filtro.destinoIp,
             metodo = filtro.metodo?.name,
         ).map { filas -> filas.map(AlertaConDetalles::aDominio) }
+
+    override fun observarOpcionesDeFiltro(redId: String): Flow<OpcionesDeFiltro> =
+        combine(dao.observarServicios(redId), dao.observarDestinos(redId)) { servicios, destinos ->
+            OpcionesDeFiltro(
+                servicios = servicios.map { it.valor },
+                destinos = destinos.map { Equipo(it.valor, it.nombre) },
+            )
+        }
 
     override fun observarAlerta(redId: String, alertaId: String): Flow<Alerta?> =
         dao.observarUna(redId, alertaId).map { it?.aDominio() }
@@ -78,6 +95,9 @@ class AlertasRepositoryImpl(
     override suspend fun descargarDetalle(redId: String, alertaId: String): Alerta =
         sincronizador.descargarDetalle(redId, alertaId)
 
+    override fun observarProgresoDescarga(redId: String): Flow<ProgresoDescarga?> =
+        sincronizador.progresoDescarga.map { progreso -> progreso?.takeIf { it.redId == redId } }
+
     override suspend fun sincronizar(redId: String): ResultadoSincronizacion =
         sincronizador.sincronizar(redId)
 
@@ -99,4 +119,9 @@ class AlertasRepositoryImpl(
     /** Borra las alertas anteriores a una fecha (caché de 30 días, RNF03). Devuelve cuántas borró. */
     suspend fun purgarAnterioresA(redId: String, antesDe: Instant): Int =
         dao.purgarAnterioresA(redId, antesDe.toEpochMilli())
+
+    private companion object {
+        /** Una lista vacía en `IN ()` no es SQL portable: con la bandera prendida, este valor no se usa. */
+        const val NINGUNO = "-"
+    }
 }

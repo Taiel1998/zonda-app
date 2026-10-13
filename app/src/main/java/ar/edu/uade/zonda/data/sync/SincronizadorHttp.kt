@@ -18,11 +18,15 @@ import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.TipoAccion
 import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
 import java.time.Duration
 import java.time.Instant
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -37,6 +41,9 @@ import kotlinx.coroutines.sync.withLock
  *    conserva lo guardado y lo pendiente.
  * 3. Actualiza el catálogo y las severidades de la red, purga las alertas de más de 30 días (RNF03)
  *    y registra la hora de la sincronización.
+ *
+ * Mientras baja desde cero (la primera vez, o después de borrar los datos locales) publica cuántas
+ * van en [progresoDescarga], para la tarjeta "Descargando alertas…" de Estado (Figma 50-616).
  */
 class SincronizadorHttp(
     private val base: ZondaDatabase,
@@ -55,6 +62,9 @@ class SincronizadorHttp(
      */
     private val candado = Mutex()
 
+    private val _progresoDescarga = MutableStateFlow<ProgresoDescarga?>(null)
+    override val progresoDescarga: StateFlow<ProgresoDescarga?> = _progresoDescarga.asStateFlow()
+
     override suspend fun sincronizar(redId: String): ResultadoSincronizacion = candado.withLock {
         try {
             sincronizarAhora(redId)
@@ -62,6 +72,8 @@ class SincronizadorHttp(
             // El token venció o fue revocado: la red queda marcada y la app pide un pareo nuevo (RNF12).
             redesDao.marcarAccesoVencido(redId, true)
             throw e
+        } finally {
+            _progresoDescarga.value = null
         }
     }
 
@@ -110,7 +122,15 @@ class SincronizadorHttp(
                 enviadas++
             } catch (e: ErrorZonda.Conflicto) {
                 val ajena = e.revisionAjena
-                accionesDao.marcarConflicto(accion.id, ajena.resultado.name, ajena.motivo.name, ajena.comentario, ajena.autor, ajena.fecha.toEpochMilli())
+                accionesDao.marcarConflicto(
+                    id = accion.id,
+                    resultado = ajena.resultado.name,
+                    motivo = ajena.motivo.name,
+                    comentario = ajena.comentario,
+                    autor = ajena.autor,
+                    fecha = ajena.fecha.toEpochMilli(),
+                    revisadaEn = ajena.revisadaEn?.toEpochMilli(),
+                )
             } catch (e: ErrorZonda.SinConexion) {
                 devolverAPendiente(accion)
                 throw e
@@ -190,9 +210,18 @@ class SincronizadorHttp(
         var altasNuevas = 0
         val idsAltasNuevas = mutableListOf<String>()
         var paginas = 0
+        // Desde cero se baja todo lo de los últimos 30 días: la pantalla Estado muestra cuántas van.
+        val desdeCero = cursorInicial == null
+        var total: Int? = null
+        var descargadas = 0
+        if (desdeCero) _progresoDescarga.value = ProgresoDescarga(redId, descargadas = 0, total = null)
         while (true) {
             val pagina = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.alertas(cursor) }
             val alertas = convertir { pagina.alertas.map { it.aDominio(redId) } }
+            if (desdeCero) {
+                total = total ?: pagina.total
+                descargadas += alertas.size
+            }
             if (alertas.isNotEmpty()) {
                 val existentes = idsExistentes(redId, alertas.map { it.id })
                 for (alerta in alertas) {
@@ -211,6 +240,7 @@ class SincronizadorHttp(
             cursor = pagina.cursorSiguiente
             // El cursor se guarda por página: un corte a mitad de camino no obliga a bajar todo de nuevo.
             redesDao.actualizarCursor(redId, cursor)
+            if (desdeCero) _progresoDescarga.value = ProgresoDescarga(redId, descargadas, total)
             paginas++
             if (!pagina.hayMas || paginas >= MAXIMO_PAGINAS) break
         }
