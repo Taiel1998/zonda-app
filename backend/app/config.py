@@ -21,6 +21,7 @@ class Config:
     multiplicar: int = 1
     dias_token: int = 90
     minutos_codigo: int = 10
+    dias_cache: int = 30
     tamanio_pagina: int = 200
 
     @classmethod
@@ -36,4 +37,5 @@ class Config:
             bot_usuario=leer("ZONDA_TELEGRAM_BOT", "zonda_alertas_bot"),
             emitir_cada=int(leer("ZONDA_EMITIR_CADA", "0")),
             multiplicar=int(leer("ZONDA_MULTIPLICAR", "1")),
+            tamanio_pagina=int(leer("ZONDA_TAMANIO_PAGINA", "200")),
         )

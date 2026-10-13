@@ -1,5 +1,7 @@
 import random
+from datetime import datetime, timezone
 
+from app.cli import contenido_qr
 from app.cli import main as cli
 from app.emisor import emitir_una
 from tests.conftest import todas_las_alertas
@@ -66,3 +68,11 @@ def test_cli_pair_revoke_y_dispositivos(cliente, config, monkeypatch, capsys):
     assert cli(["revoke", dispositivo_id]) == 0
     assert cliente.get("/estado", headers={"Authorization": f"Bearer {respuesta.json()['token']}"}).status_code == 401
     assert cli(["revoke", "d-inexistente"]) == 1
+
+
+def test_el_qr_lleva_la_direccion_el_codigo_y_cuando_vence():
+    vence = datetime(2026, 10, 12, 2, 19, tzinfo=timezone.utc)
+
+    contenido = contenido_qr("https://zonda-empresa.duckdns.org", "K7M2-QX9P", vence)
+
+    assert contenido == "zonda:https://zonda-empresa.duckdns.org#K7M2-QX9P;vence=2026-10-12T02:19:00+00:00"

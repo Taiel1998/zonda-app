@@ -31,6 +31,7 @@ Configuración: copiar `.env.ejemplo` a `.env` (no se commitea). Variables que l
 | `ZONDA_SEMILLA` | JSON con las alertas de muestra | `backend/alertas_semilla.json` |
 | `ZONDA_EMITIR_CADA` | Segundos entre alertas nuevas que emite el servidor durante la demo (0 apaga) | `0` |
 | `ZONDA_MULTIPLICAR` | Copias de la semilla, solo para probar la lista con 1.000 alertas | `1` |
+| `ZONDA_TAMANIO_PAGINA` | Alertas por página de `GET /alertas`; con un número chico se ve la barra de la primera descarga | `200` |
 | `ZONDA_TELEGRAM_BOT` | Usuario del bot, para el enlace de vinculación | `zonda_alertas_bot` |
 
 ## Datos de muestra y fechas corridas
@@ -49,7 +50,7 @@ No hay interfaz web de administración; se usan comandos en la computadora de la
 .\zonda.cmd revoke d-xxxxxxxx # revoca el token de un teléfono (la app pide un pareo nuevo)
 ```
 
-El QR contiene `zonda:<ZONDA_URL_PUBLICA>#<código>`. En Linux o macOS: `python -m app.cli pair`.
+El QR contiene `zonda:<ZONDA_URL_PUBLICA>#<código>;vence=<fecha ISO>`, por ejemplo `zonda:https://zonda-empresa.duckdns.org#K7M2-QX9P;vence=2026-10-12T02:19:00+00:00`. En Linux o macOS: `python -m app.cli pair`.
 
 ## Contrato
 
@@ -59,11 +60,11 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
 |---|---|---|
 | `GET /salud` | nada → `version`, `hora`, `alertas` (cantidad), `red`, `tokenVence` (si mandó token) | 401 si el token venció |
 | `GET /estado` | token → `sinRevisar {alta, media, baja}`, `ultimoFlujoProcesado`, `horaServidor` | 401 |
-| `GET /alertas?desde=&severidad=&servicio=&destino=&metodo=&estado=` | cursor → `alertas` nuevas o modificadas, `cursorSiguiente`, `hayMas` | 401, 410 cursor de otra instalación |
+| `GET /alertas?desde=&severidad=&servicio=&destino=&metodo=&estado=` | cursor → `alertas` nuevas o modificadas, `cursorSiguiente`, `hayMas`; sin cursor trae solo los últimos 30 días y suma `total` | 401, 410 cursor de otra instalación |
 | `GET /alertas/{id}` | id → la alerta con sus veredictos e `historial` | 401, 404 |
 | `POST /alertas/{id}/revision` | `{accionId, resultado, motivo, comentario, versionVista, forzar}` → la alerta actualizada | 401, 404, 409 con `revisionAjena` y la alerta, 422 motivo que no corresponde |
 | `GET /severidades`, `PUT /severidades` | `{tipo: severidad}` → la tabla completa; el PUT marca todas las alertas como modificadas | 401, 422 tipo desconocido |
-| `POST /pareo` | `{codigo, nombreDispositivo}` → `{token, red, emitido, vence, dispositivoId}` | 400 inválido, 410 vencido o usado |
+| `POST /pareo` | `{codigo, nombreDispositivo}` → `{token, red, emitido, vence, dispositivoId, alertas30Dias}` | 400 inválido, 410 vencido o usado |
 | `POST /telegram/vinculo` | token → `{codigo, enlaceBot, vence}` | 401 |
 | `DELETE /dispositivos/actual` | token → 204 | 401 |
 | `GET /catalogo` | token → `{equipos {ip: nombre}, servicios []}` | 401 |

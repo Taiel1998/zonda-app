@@ -171,7 +171,15 @@ def listar_alertas(
         # La severidad sale del tipo según la tabla de la red; se filtra en SQL para que cada página venga completa.
         sql += " AND COALESCE(tipo_ataque, ?) IN (SELECT tipo_ataque FROM severidades WHERE severidad = ?)"
         parametros.extend([CLAVE_SIN_TIPO, severidad])
-    tamanio = request.app.state.config.tamanio_pagina
+    cfg = request.app.state.config
+    total = None
+    if not desde:
+        # La primera sincronización trae lo que la app guarda (los últimos 30 días) y avisa cuántas son,
+        # para la barra "120 de 213" de la descarga inicial.
+        sql += " AND creada_en >= ?"
+        parametros.append(iso(ahora() - timedelta(days=cfg.dias_cache)))
+        total = con.execute(f"SELECT COUNT(*) FROM ({sql})", parametros).fetchone()[0]
+    tamanio = cfg.tamanio_pagina
     sql += " ORDER BY secuencia ASC LIMIT ?"
     parametros.append(tamanio + 1)
     filas = con.execute(sql, parametros).fetchall()
@@ -179,7 +187,7 @@ def listar_alertas(
     filas = filas[:tamanio]
     alertas = [alerta_dto(con, fila) for fila in filas]
     ultima = filas[-1]["secuencia"] if filas else secuencia_desde
-    return PaginaAlertas(alertas=alertas, cursorSiguiente=f"{instancia}:{ultima}", hayMas=hay_mas, horaServidor=iso(ahora()))
+    return PaginaAlertas(alertas=alertas, cursorSiguiente=f"{instancia}:{ultima}", hayMas=hay_mas, horaServidor=iso(ahora()), total=total)
 
 
 @router.get("/alertas/{alerta_id}", response_model=Alerta)
@@ -256,9 +264,18 @@ def guardar_severidades(entrada: dict[str, Severidad], request: Request, disposi
 def parear(entrada: PareoEntrada, request: Request) -> PareoSalida:
     """Canjea el código de un uso por el token del teléfono (400 inválido, 410 vencido o usado)."""
     cfg = request.app.state.config
+    limite = iso(ahora() - timedelta(days=cfg.dias_cache))
     with _base(request).transaccion() as con:
         datos = canjear_codigo_pareo(con, entrada.codigo, entrada.nombreDispositivo, cfg.dias_token)
-    return PareoSalida(token=datos["token"], red={"id": cfg.red_id, "nombre": cfg.red_nombre}, emitido=datos["emitido"], vence=datos["vence"], dispositivoId=datos["dispositivoId"])
+        recientes = con.execute("SELECT COUNT(*) FROM alertas WHERE creada_en >= ?", (limite,)).fetchone()[0]
+    return PareoSalida(
+        token=datos["token"],
+        red={"id": cfg.red_id, "nombre": cfg.red_nombre},
+        emitido=datos["emitido"],
+        vence=datos["vence"],
+        dispositivoId=datos["dispositivoId"],
+        alertas30Dias=recientes,
+    )
 
 
 @router.post("/telegram/vinculo", response_model=VinculoTelegram)

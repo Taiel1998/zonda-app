@@ -84,6 +84,8 @@ class PaginaAlertas(BaseModel):
     cursorSiguiente: str
     hayMas: bool
     horaServidor: str
+    # Solo en la primera página (sin cursor): cuántas alertas trae la sincronización completa.
+    total: int | None = None
 
 
 class Salud(BaseModel):
@@ -132,6 +134,8 @@ class PareoSalida(BaseModel):
     emitido: str
     vence: str
     dispositivoId: str
+    # Alertas de los últimos 30 días que la app va a descargar ("Red conectada", Figma 35-692).
+    alertas30Dias: int = 0
 
 
 class VinculoTelegram(BaseModel):
