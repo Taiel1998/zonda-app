@@ -36,6 +36,8 @@ import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
+import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.EstadoPermiso
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.abrirAjustesDeNotificaciones
@@ -207,7 +209,10 @@ fun AjustesContenido(
                 }
             }
 
-            TarjetaSeccion(titulo = stringResource(R.string.ajustes_seccion_avisos)) {
+            TarjetaSeccion(
+                titulo = stringResource(R.string.ajustes_seccion_avisos),
+                modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.TARJETA_AVISOS),
+            ) {
                 if (red?.telegramVinculado == true) {
                     FilaNavegable(
                         titulo = stringResource(R.string.ajustes_telegram),

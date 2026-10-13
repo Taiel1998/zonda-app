@@ -2,14 +2,17 @@ package ar.edu.uade.zonda.ui.alertas
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,6 +52,8 @@ import ar.edu.uade.zonda.ui.components.TarjetaAlerta
 import ar.edu.uade.zonda.ui.enResumen
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.nombreEnFiltro
+import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
+import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.ZoneId
@@ -138,12 +143,21 @@ fun AlertasContenido(
         ) {
             if (estado.accesoVencido) BannerAccesoVencido(alConectar = alConectarDeNuevo)
             if (estado.sinConexion) BannerSinConexion(datosDe = estado.datosDe, zona = zona)
-            FiltrosAlertas(
-                filtro = estado.filtro,
-                opciones = estado.opciones,
-                alCambiar = alCambiarFiltro,
-                modifier = Modifier.padding(top = 16.dp),
-            )
+            // El recorrido resalta la fila de chips sin los 16 de cada costado, como el paso 6 del Figma.
+            Box(modifier = Modifier.padding(top = 16.dp)) {
+                Spacer(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .padding(horizontal = 16.dp)
+                        .objetivoDelRecorrido(ObjetivoRecorrido.CHIPS),
+                )
+                FiltrosAlertas(
+                    filtro = estado.filtro,
+                    opciones = estado.opciones,
+                    alCambiar = alCambiarFiltro,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             val debajoDeLosChips = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
             when (val contenido = estado.contenido) {
                 ContenidoAlertas.Cargando -> EsqueletoLista(modifier = debajoDeLosChips)
@@ -193,8 +207,13 @@ fun AlertasContenido(
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            items(contenido.alertas, key = { it.id }) { alerta ->
-                                TarjetaAlerta(alerta = alerta, alTocar = alAbrirDetalle, zona = zona)
+                            itemsIndexed(contenido.alertas, key = { _, alerta -> alerta.id }) { indice, alerta ->
+                                TarjetaAlerta(
+                                    alerta = alerta,
+                                    alTocar = alAbrirDetalle,
+                                    zona = zona,
+                                    modifier = if (indice == 0) Modifier.objetivoDelRecorrido(ObjetivoRecorrido.PRIMERA_TARJETA) else Modifier,
+                                )
                             }
                         }
                     }

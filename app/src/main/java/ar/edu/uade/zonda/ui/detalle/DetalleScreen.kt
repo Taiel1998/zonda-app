@@ -72,6 +72,8 @@ import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.nombreEnFrase
 import ar.edu.uade.zonda.ui.nombreEnHistorial
+import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
+import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.theme.CremaBarra
 import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.encabezado
@@ -327,12 +329,22 @@ private fun CuerpoDetalle(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                BotonPrincipal(texto = stringResource(R.string.detalle_revisar), alTocar = acciones.alRevisar)
+                BotonPrincipal(
+                    texto = stringResource(R.string.detalle_revisar),
+                    alTocar = acciones.alRevisar,
+                    modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.BOTON_REVISAR),
+                )
             }
             ModoDetalle.REVISADA -> {
                 alerta.revisionActual?.let { TarjetaRevision(it, estado.nombreDelTelefono, zona) }
                 TarjetaHistorial(alerta, estado.nombreDelTelefono, zona)
-                BotonContorno(texto = stringResource(R.string.detalle_cambiar_revision), alTocar = acciones.alRevisar, modifier = Modifier.fillMaxWidth())
+                BotonContorno(
+                    texto = stringResource(R.string.detalle_cambiar_revision),
+                    alTocar = acciones.alRevisar,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .objetivoDelRecorrido(ObjetivoRecorrido.BOTON_REVISAR),
+                )
                 DatosDelFlujo(alerta, zona)
                 Veredictos(alerta)
             }

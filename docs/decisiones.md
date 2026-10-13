@@ -173,3 +173,11 @@ Registro corto de las decisiones que cambian algo respecto de la Etapa 1 o que c
 **Por qué.** Son los cuadros del Figma: la lista con cada filtro aplicado, las hojas 51-1805 a 51-2202 y el detalle en cada estado. La nota de Más filtros dice que los servicios y los equipos los informa el servidor y que un equipo sin nombre se muestra con su dirección, así que la lista sale de las alertas que mandó el servidor y no de una lista fija en la app. Con cinco chips y "Otros" la hoja entra en la pantalla aunque la red tenga muchos servicios.
 
 **Qué cambia.** El filtro del dominio pasa a `FiltroEstado`, un conjunto de severidades y `FiltroServicio` (uno o "Otros"); la consulta de Room los resuelve en una sola sentencia. El vacío con filtros ofrece "Limpiar filtros" y, sin nada guardado y con la sincronización fallida, la lista muestra "No se pudo cargar" con Reintentar. El botón "Mantener la de <nombre>" usa el nombre del teléfono si entra en medio ancho; si no, dice "Mantener la otra".
+
+## 23. Recorrido con el resaltado y la tarjeta al lado
+
+**Decisión.** El recorrido de once pasos se dibuja en una capa encima de toda la app: el velo negro al 50 %, el elemento del paso a la vista con un borde verde claro (de 3, 5 por fuera del elemento y con esquinas de 14) y la tarjeta del Figma al lado, debajo si entra y si no arriba. Cada pantalla marca sus elementos con `objetivoDelRecorrido`, que guarda dónde quedaron en un registro compartido, y el recorrido navega solo hasta la pantalla de cada paso: Estado, Alertas, el detalle de la primera alerta de la lista y Ajustes.
+
+**Por qué.** Así lo muestra el Figma (107-3321 a 107-4731) y lo pide el RF05 con el "recorrido de once pasos". Medir la posición real de cada elemento hace que el resaltado siga a la pantalla en cualquier tamaño y con la letra agrandada; si el elemento no se ve entero, la pantalla se desplaza hasta él. Sin animaciones, como quedó en el plan.
+
+**Qué cambia.** Estado y el Resumen todavía no marcan sus elementos (Estado es provisoria y el Resumen es de la fase 9): hasta entonces, sus pasos muestran la tarjeta sola, en el medio de Estado. Cuando se escriban, cada pantalla suma `Modifier.objetivoDelRecorrido(...)` al semáforo, los contadores, el ícono de sincronizar, el del Resumen, las cifras y el período.

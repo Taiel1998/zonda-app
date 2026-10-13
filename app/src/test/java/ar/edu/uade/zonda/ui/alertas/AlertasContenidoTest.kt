@@ -1,8 +1,13 @@
 package ar.edu.uade.zonda.ui.alertas
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
@@ -25,6 +30,9 @@ import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.ui.recorrido.LocalRegistroRecorrido
+import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
+import ar.edu.uade.zonda.ui.recorrido.RegistroRecorrido
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
@@ -243,5 +251,36 @@ class AlertasContenidoTest {
             metodo = MetodoDeteccion.REGLAS,
         )
         assertEquals(listOf(esperado), aplicados)
+    }
+
+    @Test
+    fun `el recorrido resalta los chips y la primera tarjeta con los margenes del Figma`() {
+        val registro = RegistroRecorrido()
+        var ancho = 0f
+        var densidad = 1f
+        compose.setContent {
+            densidad = LocalDensity.current.density
+            ZondaTheme {
+                CompositionLocalProvider(LocalRegistroRecorrido provides registro) {
+                    Box(modifier = Modifier.onGloballyPositioned { ancho = it.size.width.toFloat() }) {
+                        AlertasContenido(
+                            estado = AlertasUiState(contenido = lista(Fixtures.alerta("a-1"), Fixtures.alerta("a-2"))),
+                            alAbrirDetalle = {},
+                            alCambiarFiltro = {},
+                            alSincronizar = {},
+                            alQuitarFiltros = {},
+                            zona = utc,
+                        )
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+
+        val chips = registro.posicionDe(ObjetivoRecorrido.CHIPS)!!
+        assertEquals(16f, chips.left / densidad, 0.5f)
+        assertEquals(16f, (ancho - chips.right) / densidad, 0.5f)
+        val tarjeta = registro.posicionDe(ObjetivoRecorrido.PRIMERA_TARJETA)!!
+        assertTrue("la primera tarjeta va debajo de los chips", tarjeta.top > chips.bottom)
     }
 }
