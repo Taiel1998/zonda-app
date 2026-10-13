@@ -50,6 +50,10 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
     override fun observarAlerta(redId: String, alertaId: String): Flow<Alerta?> =
         alertas.map { lista -> lista.firstOrNull { it.redId == redId && it.id == alertaId } }
 
+    override fun observarCantidad(redId: String): Flow<Int> = alertas.map { lista -> lista.count { it.redId == redId } }
+
+    override fun observarCantidadTotal(): Flow<Int> = alertas.map { it.size }
+
     override fun observarContadoresSinRevisar(redId: String): Flow<ContadoresSinRevisar> =
         alertas.map { lista ->
             val sinRevisar = lista.filter { it.redId == redId && it.sinRevisar }

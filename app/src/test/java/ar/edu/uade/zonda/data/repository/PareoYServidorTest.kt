@@ -9,6 +9,7 @@ import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import java.io.IOException
+import java.time.Instant
 import javax.net.ssl.SSLHandshakeException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -55,6 +56,29 @@ class PareoYServidorTest : PruebaConBase() {
         assertEquals("token-1", redes.tokenDe("red-oficina"))
         assertEquals(setOf("token_red-oficina"), almacen.valores.keys)
         assertEquals(setOf("K7M2-QX9P"), api.codigosUsados)
+        // Detalles técnicos muestra cuándo se emitió el acceso y cuándo vence (90 días).
+        assertEquals(Instant.parse("2026-10-12T00:00:00Z"), red.accesoEmitido)
+        assertEquals(Instant.parse("2027-01-10T00:00:00Z"), red.accesoVence)
+    }
+
+    @Test
+    fun `los detalles de una conexion por http no traen TLS ni certificado y el vencimiento sale de lo guardado`() = runTest {
+        val red = redes.parear(datos, "Pixel de Martín")
+
+        val detalles = redes.detallesDeConexion(red.id)
+
+        assertNull(detalles.versionTls)
+        assertNull(detalles.emisorCertificado)
+        assertNull(detalles.certificadoVence)
+        assertEquals(Instant.parse("2027-01-10T00:00:00Z"), detalles.accesoVence)
+    }
+
+    @Test
+    fun `del emisor del certificado se muestra la organizacion, o el CN si no tiene`() {
+        assertEquals("Let's Encrypt", RedesRepositoryImpl.organizacion("CN=R11,O=Let's Encrypt,C=US"))
+        assertEquals("Ejemplo, Inc.", RedesRepositoryImpl.organizacion("CN=Ejemplo CA,O=Ejemplo\\, Inc.,C=AR"))
+        assertEquals("zonda-local", RedesRepositoryImpl.organizacion("CN=zonda-local"))
+        assertNull(RedesRepositoryImpl.organizacion(""))
     }
 
     @Test

@@ -382,15 +382,15 @@ class SincronizadorHttpTest : PruebaConBase() {
     }
 
     @Test
-    fun `cuenta las nuevas por severidad para la notificacion`() = runTest {
+    fun `cuenta las altas nuevas y guarda sus ids para la notificacion`() = runTest {
         conRed()
         publicarCinco()
 
         val resultado = alertas.sincronizar("red-1")
 
+        assertEquals(5, resultado.nuevas)
         assertEquals(2, resultado.altasNuevas)
-        assertEquals(2, resultado.mediasNuevas)
-        assertEquals(1, resultado.bajasNuevas)
+        assertEquals(listOf("a-1", "a-4"), resultado.idsAltasNuevas)
     }
 
     @Test

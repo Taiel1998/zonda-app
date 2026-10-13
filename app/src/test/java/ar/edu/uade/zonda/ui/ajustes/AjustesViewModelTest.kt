@@ -8,6 +8,7 @@ import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.domain.fakes.GeneradorDeIdsFijo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAccion
@@ -25,6 +26,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -44,6 +46,7 @@ class AjustesViewModelTest {
     private fun TestScope.viewModel(): AjustesViewModel {
         val viewModel = AjustesViewModel(
             redes = redes,
+            alertas = alertas,
             preferencias = preferencias,
             sincronizarAlertas = SincronizarAlertas(redes, alertas),
             cambiarSeveridades = CambiarSeveridades(redes, acciones, GeneradorDeIdsFijo(), reloj = { Fixtures.AHORA }),
@@ -51,7 +54,6 @@ class AjustesViewModelTest {
             borrarDatosLocales = BorrarDatosLocales(redes, alertas, acciones),
             alcanceDeEnvio = backgroundScope,
             nombreDelTelefono = "Google Pixel 7",
-            versionDeLaApp = "0.1.0",
         )
         // El estado se arma mientras alguien lo observa, como hace la pantalla.
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.estado.collect {} }
@@ -59,30 +61,63 @@ class AjustesViewModelTest {
     }
 
     @Test
-    fun `muestra las redes, la activa, los avisos y las severidades de la red activa`() = runTest {
+    fun `muestra cada red con sus alertas, la activa, los avisos y las severidades de la red activa`() = runTest {
         redes.guardarSeveridadesLocal("red-1", SeveridadPorTipo.RECOMENDADA.con(TipoAtaque.ESCANEO, Severidad.ALTA))
+        alertas.agregar(
+            Fixtures.alerta("a-1"),
+            Fixtures.alerta("a-2", severidad = Severidad.MEDIA),
+            Fixtures.alerta("a-3", redId = "red-2", severidad = Severidad.MEDIA),
+        )
 
         val estado = viewModel().estado.value
 
-        assertEquals(listOf("red-1", "red-2"), estado.redes.map { it.id })
+        assertEquals(listOf("red-1", "red-2"), estado.redes.map { it.red.id })
+        assertEquals(1, estado.redes[0].contadores.altas)
+        assertEquals(2, estado.redes[0].alertasGuardadas)
+        assertEquals(1, estado.redes[1].contadores.medias)
         assertEquals("red-1", estado.redActiva?.id)
+        assertEquals(2, estado.alertasDeLaRedActiva)
+        assertEquals(3, estado.alertasGuardadas)
         assertEquals(ModoAviso.SONIDO, estado.avisos.alta)
         assertEquals(Severidad.ALTA, estado.severidades.severidadDe(TipoAtaque.ESCANEO))
+        assertTrue(estado.notificacionesActivas)
         assertEquals("Google Pixel 7", estado.nombreDelTelefono)
-        assertEquals("0.1.0", estado.versionDeLaApp)
         assertNull(estado.borradorSeveridades)
+        assertNull(estado.borradorAvisos)
     }
 
     @Test
-    fun `activar otra red la deja activa y cambiar un aviso se guarda al instante`() = runTest {
+    fun `activar otra red la deja activa, lo avisa y sincroniza esa red`() = runTest {
         val viewModel = viewModel()
 
         viewModel.activarRed("red-2")
-        viewModel.cambiarAviso(Severidad.MEDIA, ModoAviso.SIN_AVISO)
+        runCurrent()
 
         assertEquals("red-2", viewModel.estado.value.redActiva?.id)
+        assertEquals(AvisoAjustes.RedActivada("Oficina"), viewModel.estado.value.aviso)
+        assertEquals(listOf("red-2"), alertas.sincronizaciones)
+    }
+
+    @Test
+    fun `los avisos se editan en un borrador, Guardar los guarda y volver sin guardar los descarta`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.empezarAEditarAvisos()
+        assertEquals(PreferenciasAvisos(), viewModel.estado.value.borradorAvisos)
+        viewModel.cambiarAvisoDelBorrador(Severidad.MEDIA, ModoAviso.SIN_AVISO)
+        assertEquals(ModoAviso.SIN_AVISO, viewModel.estado.value.borradorAvisos?.media)
+        assertEquals(ModoAviso.VIBRACION, preferencias.avisos.value.media) // todavía no se guardó
+
+        viewModel.guardarAvisos()
         assertEquals(ModoAviso.SIN_AVISO, preferencias.avisos.value.media)
         assertEquals(ModoAviso.SIN_AVISO, viewModel.estado.value.avisos.media)
+        assertNull(viewModel.estado.value.borradorAvisos)
+
+        viewModel.empezarAEditarAvisos()
+        viewModel.cambiarAvisoDelBorrador(Severidad.ALTA, ModoAviso.SIN_AVISO)
+        viewModel.descartarBorradorAvisos()
+        assertEquals(ModoAviso.SONIDO, preferencias.avisos.value.alta)
+        assertNull(viewModel.estado.value.borradorAvisos)
     }
 
     @Test
@@ -113,12 +148,24 @@ class AjustesViewModelTest {
     }
 
     @Test
-    fun `sincronizar ahora avisa el resultado y los errores, y el aviso se consume`() = runTest {
+    fun `el interruptor de notificaciones se guarda y Conectar Telegram avisa que llega despues`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.cambiarNotificaciones(false)
+        assertFalse(preferencias.notificaciones.value)
+        assertFalse(viewModel.estado.value.notificacionesActivas)
+
+        viewModel.conectarTelegram()
+        assertEquals(AvisoAjustes.TelegramPronto, viewModel.estado.value.aviso)
+    }
+
+    @Test
+    fun `sincronizar ahora avisa cuantas alertas llegaron y los errores, y el aviso se consume`() = runTest {
         alertas.resultadoSincronizacion = ResultadoSincronizacion(nuevas = 3, modificadas = 0, altasNuevas = 1, accionesEnviadas = 2, accionesConError = 0, hora = Fixtures.AHORA)
         val viewModel = viewModel()
 
         viewModel.sincronizarAhora()
-        assertEquals(AvisoAjustes.Sincronizado(nuevas = 3, accionesEnviadas = 2), viewModel.estado.value.aviso)
+        assertEquals(AvisoAjustes.Sincronizado(nuevas = 3), viewModel.estado.value.aviso)
         viewModel.avisoMostrado()
         assertNull(viewModel.estado.value.aviso)
 
@@ -136,6 +183,7 @@ class AjustesViewModelTest {
         viewModel.borrarDatosLocales()
 
         assertTrue(alertas.todas.isEmpty())
+        assertEquals(0, viewModel.estado.value.alertasGuardadas)
         assertEquals(2, viewModel.estado.value.redes.size)
         assertEquals(AvisoAjustes.DatosBorrados, viewModel.estado.value.aviso)
     }
@@ -157,5 +205,17 @@ class AjustesViewModelTest {
         assertTrue(viewModel.estado.value.redes.isEmpty())
         assertNull(viewModel.estado.value.redActiva)
         assertEquals(AvisoAjustes.DispositivoQuitado(quedanRedes = false), viewModel.estado.value.aviso)
+    }
+
+    @Test
+    fun `quitar el dispositivo de otra red desde Redes deja la activa como estaba`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.quitarDispositivo("red-2")
+
+        assertEquals(listOf("red-2"), redes.redesQuitadas)
+        assertEquals("red-1", viewModel.estado.value.redActiva?.id)
+        assertEquals(listOf("red-1"), viewModel.estado.value.redes.map { it.red.id })
+        assertEquals(AvisoAjustes.DispositivoQuitado(quedanRedes = true), viewModel.estado.value.aviso)
     }
 }

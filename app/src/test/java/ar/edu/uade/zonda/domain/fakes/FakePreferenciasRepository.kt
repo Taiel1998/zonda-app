@@ -14,11 +14,18 @@ class FakePreferenciasRepository(
     val avisos = MutableStateFlow(PreferenciasAvisos())
     val primerInicio = MutableStateFlow(primerInicioHecho)
     val recorrido = MutableStateFlow(recorridoHecho)
+    val notificaciones = MutableStateFlow(true)
 
     override fun observarAvisos(): Flow<PreferenciasAvisos> = avisos
 
     override suspend fun guardarAvisos(preferencias: PreferenciasAvisos) {
         avisos.value = preferencias
+    }
+
+    override fun observarNotificacionesActivas(): Flow<Boolean> = notificaciones
+
+    override suspend fun guardarNotificacionesActivas(activas: Boolean) {
+        notificaciones.value = activas
     }
 
     override fun observarPrimerInicioHecho(): Flow<Boolean> = primerInicio

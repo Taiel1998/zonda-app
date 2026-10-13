@@ -2,12 +2,13 @@ package ar.edu.uade.zonda.domain.fakes
 
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.DatosPareo
+import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.ErrorZonda
-import kotlinx.coroutines.CompletableDeferred
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import ar.edu.uade.zonda.domain.repository.RedesRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -30,6 +31,15 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
 
     /** Si no es null, el pareo espera hasta que la prueba lo complete (para ver los pasos intermedios). */
     var esperaAlParear: CompletableDeferred<Unit>? = null
+
+    /** Lo que devuelve [detallesDeConexion], o el error que lanza. */
+    var detallesConexion = DetallesConexion(versionTls = "TLSv1.3", emisorCertificado = "Let's Encrypt", certificadoVence = null, accesoVence = null)
+    var errorDetalles: ErrorZonda? = null
+
+    override suspend fun detallesDeConexion(redId: String): DetallesConexion {
+        errorDetalles?.let { throw it }
+        return detallesConexion
+    }
 
     override suspend fun verificarServidor(urlBase: String) {
         verificaciones += urlBase

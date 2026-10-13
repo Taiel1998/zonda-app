@@ -79,6 +79,8 @@ class ApiFalsa : ZondaApi {
         errores[operacion]?.let { throw it }
     }
 
+    override suspend fun saludConRespuesta(): retrofit2.Response<SaludDto> = retrofit2.Response.success(salud())
+
     override suspend fun salud(): SaludDto {
         fallarSiCorresponde("salud")
         return SaludDto("0.3.0", "2026-10-12T04:05:29+00:00", alertas.size, RedDto(redId, redNombre), null)
@@ -153,7 +155,7 @@ class ApiFalsa : ZondaApi {
         if (codigo in codigosUsados) throw errorHttp(410)
         codigosUsados += codigo
         dispositivosPareados++
-        return PareoSalidaDto("token-$dispositivosPareados", RedDto(redId, redNombre), "2027-01-10T00:00:00+00:00", "d-$dispositivosPareados")
+        return PareoSalidaDto("token-$dispositivosPareados", RedDto(redId, redNombre), "2027-01-10T00:00:00+00:00", "d-$dispositivosPareados", "2026-10-12T00:00:00+00:00")
     }
 
     override suspend fun vincularTelegram(): VinculoTelegramDto {
