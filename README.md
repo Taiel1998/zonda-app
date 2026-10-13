@@ -39,7 +39,7 @@ ar.edu.uade.zonda
 ├── domain/              modelos, reglas y casos de uso en Kotlin puro (sin Android)
 ├── data/                Room, Retrofit, Keystore, DataStore, mappers, repositorios y el sincronizador
 ├── sync/                el worker de sincronización en segundo plano y la conectividad
-├── notificaciones/      la notificación local de alertas nuevas y sus canales
+├── notificaciones/      la notificación local de alertas altas nuevas
 └── ui/                  pantallas en Compose, ViewModels, navegación, tema y componentes
 ```
 
