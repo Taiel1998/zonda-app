@@ -58,16 +58,17 @@ def canjear_codigo_pareo(con: sqlite3.Connection, codigo: str, nombre_dispositiv
         raise HTTPException(status_code=410, detail="El código venció o ya se usó")
     token = secrets.token_urlsafe(32)
     dispositivo_id = "d-" + uuid.uuid4().hex[:12]
-    vence = ahora() + timedelta(days=dias_token)
+    emitido = ahora()
+    vence = emitido + timedelta(days=dias_token)
     con.execute(
         "INSERT INTO dispositivos (id, nombre, token_hash, creado_en, vence_en) VALUES (?, ?, ?, ?, ?)",
-        (dispositivo_id, nombre_dispositivo.strip(), hash_token(token), iso(ahora()), iso(vence)),
+        (dispositivo_id, nombre_dispositivo.strip(), hash_token(token), iso(emitido), iso(vence)),
     )
     con.execute(
         "UPDATE codigos_pareo SET usado_en = ?, dispositivo_id = ? WHERE codigo = ?",
         (iso(ahora()), dispositivo_id, fila["codigo"]),
     )
-    return {"token": token, "dispositivoId": dispositivo_id, "vence": iso(vence)}
+    return {"token": token, "dispositivoId": dispositivo_id, "emitido": iso(emitido), "vence": iso(vence)}
 
 
 def buscar_dispositivo(con: sqlite3.Connection, token: str) -> sqlite3.Row | None:

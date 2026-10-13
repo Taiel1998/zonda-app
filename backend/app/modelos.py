@@ -129,6 +129,7 @@ class PareoEntrada(BaseModel):
 class PareoSalida(BaseModel):
     token: str
     red: dict
+    emitido: str
     vence: str
     dispositivoId: str
 

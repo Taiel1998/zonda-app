@@ -258,7 +258,7 @@ def parear(entrada: PareoEntrada, request: Request) -> PareoSalida:
     cfg = request.app.state.config
     with _base(request).transaccion() as con:
         datos = canjear_codigo_pareo(con, entrada.codigo, entrada.nombreDispositivo, cfg.dias_token)
-    return PareoSalida(token=datos["token"], red={"id": cfg.red_id, "nombre": cfg.red_nombre}, vence=datos["vence"], dispositivoId=datos["dispositivoId"])
+    return PareoSalida(token=datos["token"], red={"id": cfg.red_id, "nombre": cfg.red_nombre}, emitido=datos["emitido"], vence=datos["vence"], dispositivoId=datos["dispositivoId"])
 
 
 @router.post("/telegram/vinculo", response_model=VinculoTelegram)

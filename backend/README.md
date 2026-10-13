@@ -63,7 +63,7 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
 | `GET /alertas/{id}` | id → la alerta con sus veredictos e `historial` | 401, 404 |
 | `POST /alertas/{id}/revision` | `{accionId, resultado, motivo, comentario, versionVista, forzar}` → la alerta actualizada | 401, 404, 409 con `revisionAjena` y la alerta, 422 motivo que no corresponde |
 | `GET /severidades`, `PUT /severidades` | `{tipo: severidad}` → la tabla completa; el PUT marca todas las alertas como modificadas | 401, 422 tipo desconocido |
-| `POST /pareo` | `{codigo, nombreDispositivo}` → `{token, red, vence, dispositivoId}` | 400 inválido, 410 vencido o usado |
+| `POST /pareo` | `{codigo, nombreDispositivo}` → `{token, red, emitido, vence, dispositivoId}` | 400 inválido, 410 vencido o usado |
 | `POST /telegram/vinculo` | token → `{codigo, enlaceBot, vence}` | 401 |
 | `DELETE /dispositivos/actual` | token → 204 | 401 |
 | `GET /catalogo` | token → `{equipos {ip: nombre}, servicios []}` | 401 |
