@@ -47,6 +47,13 @@ object Formato {
     fun mismoDia(a: Instant, b: Instant, zona: ZoneId = ZoneId.systemDefault()): Boolean =
         a.atZone(zona).toLocalDate() == b.atZone(zona).toLocalDate()
 
+    /** `hoy`, `ayer` o `dom 27/09`: el día de una revisión ("Celular Martín · hoy 02:12 · enviada"). */
+    fun diaRelativo(instante: Instant, ahora: Instant, zona: ZoneId = ZoneId.systemDefault()): String = when {
+        mismoDia(instante, ahora, zona) -> "hoy"
+        ayer(instante, ahora, zona) -> "ayer"
+        else -> dia(instante, zona)
+    }
+
     /** Si [instante] cae el día anterior a [ahora] (para "Ayer 23:50"). */
     fun ayer(instante: Instant, ahora: Instant, zona: ZoneId = ZoneId.systemDefault()): Boolean =
         instante.atZone(zona).toLocalDate() == ahora.atZone(zona).toLocalDate().minusDays(1)

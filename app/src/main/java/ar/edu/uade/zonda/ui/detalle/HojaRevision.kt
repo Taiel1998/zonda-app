@@ -5,172 +5,169 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.ui.comentarioPropuesto
+import ar.edu.uade.zonda.ui.components.BotonContorno
+import ar.edu.uade.zonda.ui.components.BotonEnlace
+import ar.edu.uade.zonda.ui.components.BotonPrincipal
+import ar.edu.uade.zonda.ui.components.CampoTexto
+import ar.edu.uade.zonda.ui.components.ChipOpcion
+import ar.edu.uade.zonda.ui.components.HojaInferior
+import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.theme.Tonos
+import ar.edu.uade.zonda.ui.theme.etiquetaBarra
+import ar.edu.uade.zonda.ui.theme.tituloHoja
 
-/** Hoja inferior Revisar (Figma, figura 12). Cerrarla deslizando equivale a Cancelar. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** Hoja inferior Revisar (Figma 66-2769 a 66-2942). Cerrarla deslizando equivale a Cancelar. */
 @Composable
 fun HojaRevision(formulario: FormularioRevision, alerta: Alerta, acciones: AccionesDetalle) {
-    val estadoHoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = acciones.alCancelarRevision, sheetState = estadoHoja) {
+    HojaInferior(alCerrar = acciones.alCancelarRevision) {
         ContenidoHojaRevision(formulario, alerta, acciones)
     }
 }
 
-/** El contenido de la hoja, separado para dibujarlo en las pruebas sin la ventana de la hoja. */
+/**
+ * El contenido de la hoja: cada pieza va directo en la columna de la hoja, con 12 entre piezas como
+ * en el Figma. Aparte para dibujarlo en las pruebas sin la ventana de la hoja.
+ */
 @Composable
-fun ContenidoHojaRevision(formulario: FormularioRevision, alerta: Alerta, acciones: AccionesDetalle, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
-            .padding(bottom = 24.dp),
-    ) {
-        val resultado = formulario.resultado
-        if (formulario.paso == PasoRevision.MOTIVO && resultado != null) {
-            PasoMotivo(formulario, resultado, alerta, acciones)
-        } else {
-            PasoResultado(formulario, acciones)
-        }
+fun ContenidoHojaRevision(formulario: FormularioRevision, alerta: Alerta, acciones: AccionesDetalle) {
+    val resultado = formulario.resultado
+    if (formulario.paso == PasoRevision.MOTIVO && resultado != null) {
+        PasoMotivo(formulario, resultado, alerta, acciones)
+    } else {
+        PasoResultado(formulario, acciones)
     }
 }
 
+/** Figma 66-2834: título, explicación, "Paso 1 de 2", las dos opciones y Cancelar. */
 @Composable
-private fun ColumnScope.PasoResultado(formulario: FormularioRevision, acciones: AccionesDetalle) {
-    Text(text = stringResource(R.string.revisar_paso1_titulo), style = MaterialTheme.typography.titleLarge)
-    Spacer(modifier = Modifier.height(6.dp))
+private fun PasoResultado(formulario: FormularioRevision, acciones: AccionesDetalle) {
+    Text(text = stringResource(R.string.revisar_paso1_titulo), style = MaterialTheme.typography.tituloHoja)
     Text(
         text = stringResource(R.string.revisar_paso1_detalle),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Spacer(modifier = Modifier.height(10.dp))
-    Text(text = stringResource(R.string.revisar_paso_1_de_2), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-    Spacer(modifier = Modifier.height(10.dp))
+    Text(text = stringResource(R.string.revisar_paso_1_de_2), style = MaterialTheme.typography.etiquetaBarra, color = MaterialTheme.colorScheme.primary)
     OpcionResultado(
         titulo = stringResource(R.string.resultado_ataque_real),
         detalle = stringResource(R.string.revisar_ataque_real_detalle),
         color = Tonos.Alta.texto,
-        seleccionada = formulario.resultado == ResultadoRevision.ATAQUE_REAL,
+        elegida = formulario.resultado == ResultadoRevision.ATAQUE_REAL,
         alElegir = { acciones.alElegirResultado(ResultadoRevision.ATAQUE_REAL) },
     )
-    Spacer(modifier = Modifier.height(10.dp))
     OpcionResultado(
         titulo = stringResource(R.string.resultado_falso_positivo),
         detalle = stringResource(R.string.revisar_falso_positivo_detalle),
         color = Tonos.Baja.texto,
-        seleccionada = formulario.resultado == ResultadoRevision.FALSO_POSITIVO,
+        elegida = formulario.resultado == ResultadoRevision.FALSO_POSITIVO,
         alElegir = { acciones.alElegirResultado(ResultadoRevision.FALSO_POSITIVO) },
     )
-    Spacer(modifier = Modifier.height(8.dp))
-    TextButton(onClick = acciones.alCancelarRevision, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-        Text(stringResource(R.string.revisar_cancelar))
-    }
+    BotonEnlace(texto = stringResource(R.string.revisar_cancelar), alTocar = acciones.alCancelarRevision, modifier = Modifier.fillMaxWidth())
 }
 
+/**
+ * Figma 66-2840: borde gris, esquinas de 12 y 16 por 14 de margen; el punto de 12 y el título SemiBold
+ * 16 con 10 entre sí, y la explicación Regular 13 gris debajo. La elegida al volver del paso 2 lleva el
+ * borde verde.
+ */
 @Composable
-private fun OpcionResultado(titulo: String, detalle: String, color: Color, seleccionada: Boolean, alElegir: () -> Unit) {
-    OutlinedCard(
+private fun OpcionResultado(titulo: String, detalle: String, color: Color, elegida: Boolean, alElegir: () -> Unit) {
+    val borde = if (elegida) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    Surface(
         onClick = alElegir,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = borde,
         modifier = Modifier.fillMaxWidth(),
-        border = BorderStroke(
-            width = if (seleccionada) 2.dp else 1.dp,
-            color = if (seleccionada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-        ),
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 6.dp)
-                    .size(10.dp)
-                    .background(color, CircleShape),
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(text = titulo, style = MaterialTheme.typography.titleMedium)
-                Text(text = detalle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp + borde.width, vertical = 14.dp + borde.width),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .background(color, CircleShape),
+                )
+                Text(text = titulo, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
             }
+            Text(text = detalle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
+/**
+ * Figma 66-2917: el motivo y el comentario son obligatorios (RF04, criterio 2). Cada motivo propone el
+ * comentario de su pantalla del Figma, que la persona puede cambiar; "Confirmar revisión" se habilita
+ * con resultado, motivo y comentario.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PasoMotivo(formulario: FormularioRevision, resultado: ResultadoRevision, alerta: Alerta, acciones: AccionesDetalle) {
     val titulo = if (resultado == ResultadoRevision.ATAQUE_REAL) R.string.revisar_paso2_titulo_ataque else R.string.revisar_paso2_titulo_falso
-    Text(text = stringResource(titulo), style = MaterialTheme.typography.titleLarge)
-    Spacer(modifier = Modifier.height(6.dp))
-    Text(text = stringResource(R.string.revisar_paso_2_de_2), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-    Spacer(modifier = Modifier.height(12.dp))
-    Text(
-        text = stringResource(R.string.revisar_motivo),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Spacer(modifier = Modifier.height(4.dp))
     val recursos = LocalContext.current.resources
-    val propuestos = formulario.motivos.associateWith { it.comentarioPropuesto(recursos, alerta) }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text(text = stringResource(titulo), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(R.string.revisar_paso_2_de_2), style = MaterialTheme.typography.etiquetaBarra, color = MaterialTheme.colorScheme.primary)
+    Text(text = stringResource(R.string.revisar_motivo), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
         formulario.motivos.forEach { motivo ->
-            FilterChip(
-                selected = formulario.motivo == motivo,
-                onClick = { acciones.alElegirMotivo(motivo, propuestos.getValue(motivo)) },
-                label = { Text(stringResource(motivo.etiqueta())) },
+            ChipOpcion(
+                texto = stringResource(motivo.etiqueta()),
+                elegido = formulario.motivo == motivo,
+                alTocar = { acciones.alElegirMotivo(motivo, motivo.comentarioPropuesto(recursos, alerta)) },
             )
         }
     }
-    Spacer(modifier = Modifier.height(12.dp))
-    OutlinedTextField(
-        value = formulario.comentario,
-        onValueChange = acciones.alCambiarComentario,
-        label = { Text(stringResource(R.string.revisar_comentario)) },
-        supportingText = { Text(stringResource(R.string.revisar_comentario_ayuda)) },
-        minLines = 2,
-        modifier = Modifier.fillMaxWidth(),
+    CampoTexto(
+        valor = formulario.comentario,
+        alCambiar = acciones.alCambiarComentario,
+        etiqueta = stringResource(R.string.revisar_comentario),
+        ejemplo = "",
+        ayuda = stringResource(R.string.revisar_comentario_ayuda),
+        lineasMinimas = 2,
+        ayudaSiempre = true,
     )
-    Spacer(modifier = Modifier.height(16.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedButton(onClick = acciones.alVolverAlResultado, modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.revisar_volver))
-        }
-        Button(onClick = acciones.alConfirmarRevision, enabled = formulario.puedeConfirmar, modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.revisar_confirmar))
-        }
+    Row(modifier = Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        BotonContorno(
+            texto = stringResource(R.string.revisar_volver),
+            alTocar = acciones.alVolverAlResultado,
+            modifier = Modifier.weight(1f),
+            relleno = RellenoBotonAngosto,
+        )
+        BotonPrincipal(
+            texto = stringResource(R.string.revisar_confirmar),
+            alTocar = acciones.alConfirmarRevision,
+            habilitado = formulario.puedeConfirmar,
+            modifier = Modifier.weight(1f),
+        )
     }
 }

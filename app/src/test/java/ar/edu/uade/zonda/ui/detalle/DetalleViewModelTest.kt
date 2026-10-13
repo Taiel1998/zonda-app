@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.ui.detalle
 
+import androidx.lifecycle.viewModelScope
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import ar.edu.uade.zonda.domain.Fixtures
@@ -23,6 +24,7 @@ import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import ar.edu.uade.zonda.ui.ReglaDispatcherPrincipal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -214,6 +216,30 @@ class DetalleViewModelTest {
         assertTrue(acciones.todas.isEmpty())
         assertEquals(EstadoRevision.SIN_REVISAR, alertas.observarAlerta("red-1", "a-1").first()!!.estadoRevision)
         assertTrue(alertas.sincronizaciones.isEmpty())
+    }
+
+    @Test
+    fun `la revision recien hecha se marca para mostrarla abajo y deshacer lo saca aunque la pantalla se cierre`() = runTest {
+        alertas.agregar(Fixtures.alerta("a-1"))
+        val viewModel = viewModel("a-1", backgroundScope)
+
+        viewModel.estado.test {
+            assertFalse((esperar { it is DetalleUiState.Contenido } as DetalleUiState.Contenido).recienRevisada)
+            viewModel.abrirRevision()
+            viewModel.elegirResultado(ResultadoRevision.ATAQUE_REAL)
+            viewModel.elegirMotivo(Motivo.INVESTIGANDO, "Estoy revisando los registros del servidor; sigo mañana.")
+            viewModel.confirmarRevision()
+            esperar { (it as? DetalleUiState.Contenido)?.recienRevisada == true }
+
+            viewModel.deshacer()
+            esperar { (it as? DetalleUiState.Contenido)?.recienRevisada == false }
+            cancelAndIgnoreRemainingEvents()
+        }
+        // El descarte corre en el alcance de la app: termina aunque el detalle ya se haya cerrado.
+        viewModel.viewModelScope.cancel()
+        advanceTimeBy(ESPERA * 2)
+        assertTrue(acciones.todas.isEmpty())
+        assertEquals(EstadoRevision.SIN_REVISAR, alertas.observarAlerta("red-1", "a-1").first()!!.estadoRevision)
     }
 
     @Test

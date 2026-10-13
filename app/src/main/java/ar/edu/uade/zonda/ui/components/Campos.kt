@@ -122,13 +122,18 @@ fun CampoTexto(
     opcionesTeclado: KeyboardOptions = KeyboardOptions.Default,
     accionesTeclado: KeyboardActions = KeyboardActions.Default,
     interaccion: MutableInteractionSource = remember { MutableInteractionSource() },
+    /** Con más de una línea, el campo crece con el texto (el comentario de la revisión, Figma 66-2933). */
+    lineasMinimas: Int = 1,
+    /** La ayuda se ve siempre, no solo con el foco ("Contá qué hiciste o por qué"). */
+    ayudaSiempre: Boolean = false,
 ) {
     val enfocado by interaccion.collectIsFocusedAsState()
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         BasicTextField(
             value = valor,
             onValueChange = alCambiar,
-            singleLine = true,
+            singleLine = lineasMinimas == 1,
+            minLines = lineasMinimas,
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             keyboardOptions = opcionesTeclado,
@@ -141,7 +146,7 @@ fun CampoTexto(
                 RecuadroDeCampo(etiqueta, ejemplo, vacio = valor.isEmpty(), enfocado = enfocado, conError = error != null, campo = campo)
             },
         )
-        TextoBajoCampo(ayuda = if (enfocado) ayuda else null, error = error)
+        TextoBajoCampo(ayuda = if (enfocado || ayudaSiempre) ayuda else null, error = error)
     }
 }
 

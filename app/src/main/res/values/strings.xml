@@ -61,6 +61,9 @@
     <string name="metodo_ia_frase">IA</string>
     <string name="metodo_umbrales_frase">umbrales</string>
     <string name="metodo_reglas_frase">reglas</string>
+    <string name="metodo_ia_historial">el modelo de IA</string>
+    <string name="metodo_umbrales_historial">los umbrales</string>
+    <string name="metodo_reglas_historial">las reglas</string>
     <string name="veredicto_anomalo">Anómalo</string>
     <string name="veredicto_normal">Normal</string>
     <string name="resultado_ataque_real">Ataque real</string>
@@ -215,6 +218,27 @@
     <string name="detalle_revisar_explicacion">Al revisar vas a indicar si fue un ataque real o un falso positivo, con su motivo y un comentario.</string>
     <string name="detalle_revisar">Revisar</string>
     <string name="detalle_cambiar_revision">Cambiar revisión</string>
+    <string name="detalle_comentario">Comentario</string>
+    <string name="detalle_quien">Quién</string>
+    <string name="detalle_revisada">Revisada</string>
+    <string name="detalle_resultado_sincronizada">%1$s · sincronizada %2$s</string>
+    <string name="detalle_pendiente_de_sincronizar">Pendiente de sincronizar</string>
+    <string name="detalle_revision_pendiente_banner">Sin conexión · tu revisión se enviará al reconectar</string>
+    <string name="accion_compartir">Compartir</string>
+    <!-- Lo que comparte el detalle: lo mismo que el aviso, sin direcciones IP ni nombres de equipos -->
+    <string name="detalle_compartir_texto">Alerta %1$s · %2$s · %3$s\n%4$d conexiones en 60 s. Tocá para ver el detalle en Zonda. El aviso no incluye direcciones IP.\n%5$s</string>
+    <!-- Historial (Figma 51-2379) -->
+    <string name="historial_enviada">Enviada al servidor</string>
+    <string name="historial_revisada">Revisada: %1$s · %2$s</string>
+    <string name="historial_quedo_pendiente">sin conexión, quedó pendiente</string>
+    <string name="historial_detectada">Detectada por %1$s</string>
+    <!-- Pendiente de descarga (Figma 3-139) -->
+    <string name="detalle_pendiente_de_descarga">Pendiente de descarga</string>
+    <string name="detalle_sin_descargar_banner">Sin conexión con el servidor · el detalle todavía no está en el teléfono</string>
+    <string name="detalle_descarga_titulo">El detalle se descarga cuando vuelvas a la red de la empresa</string>
+    <string name="detalle_descarga_texto">Origen, destino, cantidad de conexiones y el veredicto de cada método se piden al servidor; el aviso no los trae. La app lo intenta sola cada 15 minutos y apenas detecta red.</string>
+    <string name="detalle_descarga_reintentar">Reintentar ahora</string>
+    <string name="detalle_descarga_volver">Volver a la lista</string>
 
     <!-- Revisión en dos pasos (RF04) -->
     <string name="revisar_paso1_titulo">¿Qué resultó ser esta alerta?</string>
@@ -222,7 +246,7 @@
     <string name="revisar_paso_1_de_2">Paso 1 de 2</string>
     <string name="revisar_paso_2_de_2">Paso 2 de 2</string>
     <string name="revisar_ataque_real_detalle">Hubo actividad no autorizada o maliciosa (verdadero positivo).</string>
-    <string name="revisar_falso_positivo_detalle">Era tráfico legítimo: un respaldo, una tarea programada, un equipo nuevo.</string>
+    <string name="revisar_falso_positivo_detalle">Era tráfico legítimo: un backup, una tarea programada, un equipo nuevo.</string>
     <string name="revisar_cancelar">Cancelar</string>
     <string name="revisar_paso2_titulo_ataque">Ataque real: ¿qué hiciste?</string>
     <string name="revisar_paso2_titulo_falso">Falso positivo: ¿por qué?</string>
@@ -246,14 +270,17 @@
     <string name="comentario_otro">Prueba de conectividad que hizo el proveedor.</string>
 
     <!-- Aviso con Deshacer, conflicto y envío fallido -->
-    <string name="aviso_revision_guardada">Revisión guardada.</string>
+    <string name="aviso_revision_guardada">Revisión guardada y enviada al servidor.</string>
     <string name="aviso_revision_guardada_sin_conexion">Revisión guardada. Se enviará cuando haya conexión.</string>
     <string name="aviso_deshacer">Deshacer</string>
-    <string name="conflicto_titulo">Otra persona revisó esta alerta</string>
+    <!-- Revisada desde otro teléfono (Figma 51-2497) -->
+    <string name="conflicto_titulo">Revisada desde otro teléfono</string>
     <string name="conflicto_otra_persona">Otra persona</string>
-    <string name="conflicto_pregunta">¿Aplicás tu revisión igual?</string>
-    <string name="conflicto_aplicar">Aplicar la mía igual</string>
-    <string name="conflicto_quedarme">Quedarme con la otra</string>
+    <string name="conflicto_texto">%1$s la revisó como %2$s a las %3$s con el motivo “%4$s”, después de tu última sincronización.</string>
+    <string name="conflicto_tu_revision">Tu revisión (%1$s, %2$s) todavía no se aplicó. ¿Querés aplicarla igual?</string>
+    <string name="conflicto_aplicar">Aplicar la mía</string>
+    <string name="conflicto_mantener">Mantener la de %1$s</string>
+    <string name="conflicto_mantener_otra">Mantener la otra</string>
     <string name="envio_error_titulo">No se pudo enviar la revisión</string>
     <string name="envio_error_detalle">Intentos: %1$d. Último error: %2$s.</string>
 

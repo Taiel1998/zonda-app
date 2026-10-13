@@ -82,6 +82,14 @@ fun Periodo.tituloEnHoja(): Int = when (this) {
     Periodo.TODO -> R.string.filtro_periodo
 }
 
+/** Cómo se nombra en el historial del detalle: "Detectada por el modelo de IA y los umbrales". */
+@StringRes
+fun MetodoDeteccion.nombreEnHistorial(): Int = when (this) {
+    MetodoDeteccion.IA -> R.string.metodo_ia_historial
+    MetodoDeteccion.UMBRALES -> R.string.metodo_umbrales_historial
+    MetodoDeteccion.REGLAS -> R.string.metodo_reglas_historial
+}
+
 /** Texto del chip de período. */
 @StringRes
 fun Periodo.etiqueta(): Int = when (this) {

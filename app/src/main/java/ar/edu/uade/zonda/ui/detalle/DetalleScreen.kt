@@ -1,44 +1,38 @@
 package ar.edu.uade.zonda.ui.detalle
 
-import androidx.compose.foundation.BorderStroke
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -47,29 +41,54 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
+import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.components.AvisoInferior
 import ar.edu.uade.zonda.ui.components.BannerSinConexion
+import ar.edu.uade.zonda.ui.components.BarraSuperior
+import ar.edu.uade.zonda.ui.components.BotonContorno
+import ar.edu.uade.zonda.ui.components.BotonEnlace
+import ar.edu.uade.zonda.ui.components.BotonPrincipal
+import ar.edu.uade.zonda.ui.components.BotonTonal
+import ar.edu.uade.zonda.ui.components.Etiqueta
 import ar.edu.uade.zonda.ui.components.EstadoError
 import ar.edu.uade.zonda.ui.components.EstadoVacio
+import ar.edu.uade.zonda.ui.components.FilaDato
 import ar.edu.uade.zonda.ui.components.IndicadorEnvio
 import ar.edu.uade.zonda.ui.components.IndicadorEstadoRevision
 import ar.edu.uade.zonda.ui.components.IndicadorSeveridad
 import ar.edu.uade.zonda.ui.components.IndicadorVeredicto
+import ar.edu.uade.zonda.ui.components.Panel
+import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
+import ar.edu.uade.zonda.ui.components.TarjetaTono
+import ar.edu.uade.zonda.ui.components.TituloSeccion
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.nombreEnFrase
+import ar.edu.uade.zonda.ui.nombreEnHistorial
+import ar.edu.uade.zonda.ui.theme.CremaBarra
 import ar.edu.uade.zonda.ui.theme.Tonos
+import ar.edu.uade.zonda.ui.theme.encabezado
+import ar.edu.uade.zonda.ui.theme.nota
+import ar.edu.uade.zonda.ui.theme.opcion
+import ar.edu.uade.zonda.ui.theme.rotulo
+import ar.edu.uade.zonda.ui.theme.valor
 import ar.edu.uade.zonda.ui.viewModelDeZonda
+import java.time.Duration
+import java.time.Instant
 import java.time.ZoneId
+import kotlinx.coroutines.Dispatchers
 
 /** Lo que la persona puede hacer en el detalle. Los valores por defecto no hacen nada (cómodo en las pruebas). */
 class AccionesDetalle(
     val alVolver: () -> Unit = {},
+    val alCompartir: (texto: String) -> Unit = {},
     val alReintentarDescarga: () -> Unit = {},
     val alRevisar: () -> Unit = {},
     val alElegirResultado: (ResultadoRevision) -> Unit = {},
@@ -86,9 +105,9 @@ class AccionesDetalle(
 )
 
 /**
- * Pantalla Detalle (RF03 y RF04): los datos del flujo, el veredicto de cada método con el dato que lo
- * justifica, la revisión con su historial y la acción Revisar en dos pasos. Si la revisión no pudo
- * llegar al servidor, muestra el conflicto con la revisión de otra persona o el botón Reintentar.
+ * Pantalla Detalle (RF03 y RF04; Figma 3-3 a 3-139 y 51-2379 a 51-2497): los datos del flujo, el
+ * veredicto de cada método con el dato que lo justifica, la revisión con su historial y la acción
+ * Revisar en dos pasos. Deshacer descarta la revisión y vuelve a la lista de la que se vino.
  */
 @Composable
 fun DetalleScreen(
@@ -106,12 +125,15 @@ fun DetalleScreen(
             conectividad = contenedor.conectividad,
             alcanceDeEnvio = contenedor.alcanceDeLaApp,
             alertaId = alertaId,
+            nombreDelTelefono = contenedor.nombreDelTelefono,
         )
     },
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
-    val formulario by viewModel.formulario.collectAsStateWithLifecycle()
+    // El comentario se escribe en la hoja: el estado se lee sin demora para que el teclado no pierda letras.
+    val formulario by viewModel.formulario.collectAsStateWithLifecycle(context = Dispatchers.Main.immediate)
     val aviso by viewModel.aviso.collectAsStateWithLifecycle()
+    val contexto = LocalContext.current
 
     DetalleContenido(
         estado = estado,
@@ -119,6 +141,10 @@ fun DetalleScreen(
         aviso = aviso,
         acciones = AccionesDetalle(
             alVolver = alVolver,
+            alCompartir = { texto ->
+                val envio = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, texto)
+                contexto.startActivity(Intent.createChooser(envio, null))
+            },
             alReintentarDescarga = viewModel::reintentarDescarga,
             alRevisar = viewModel::abrirRevision,
             alElegirResultado = viewModel::elegirResultado,
@@ -127,7 +153,11 @@ fun DetalleScreen(
             alVolverAlResultado = viewModel::volverAlResultado,
             alCancelarRevision = viewModel::cancelarRevision,
             alConfirmarRevision = viewModel::confirmarRevision,
-            alDeshacer = viewModel::deshacer,
+            // Deshacer descarta la revisión y vuelve a la lista de la que se vino (RF04, criterio 1).
+            alDeshacer = {
+                viewModel.deshacer()
+                alVolver()
+            },
             alAplicarLaMia = viewModel::aplicarLaMiaIgual,
             alQuedarmeConLaOtra = viewModel::quedarmeConLaOtra,
             alReintentarEnvio = viewModel::reintentarEnvio,
@@ -136,7 +166,41 @@ fun DetalleScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Cómo se muestra la revisión según en qué quedó (cada caso es un cuadro del Figma). */
+private enum class ModoDetalle {
+    /** 3-3: Revisar abajo. */
+    SIN_REVISAR,
+
+    /** 51-2379: la revisión y el historial arriba, "Cambiar revisión" y recién ahí los datos. */
+    REVISADA,
+
+    /** "revisada con éxito": la revisión abajo, recién hecha en esta pantalla. */
+    RECIEN_REVISADA,
+
+    /** 3-70: todavía no salió del teléfono. */
+    PENDIENTE,
+
+    /** 51-2497: otra persona la revisó antes. */
+    CONFLICTO,
+
+    /** No salió después de cinco intentos o el servidor la rechazó: Reintentar. */
+    ENVIO_FALLIDO,
+}
+
+private fun modoDe(estado: DetalleUiState.Contenido): ModoDetalle {
+    val accion = estado.accion
+    val enCola = accion?.estado == EstadoEnvio.PENDIENTE || accion?.estado == EstadoEnvio.ENVIANDO
+    return when {
+        accion?.estado == EstadoEnvio.CONFLICTO && accion.revisionAjena != null -> ModoDetalle.CONFLICTO
+        accion?.estado == EstadoEnvio.ERROR -> ModoDetalle.ENVIO_FALLIDO
+        // Con conexión, la revisión recién hecha sale cuando termina la ventana de Deshacer.
+        enCola -> if (estado.recienRevisada && !estado.sinConexion) ModoDetalle.RECIEN_REVISADA else ModoDetalle.PENDIENTE
+        estado.alerta.sinRevisar || estado.alerta.revisionActual == null -> ModoDetalle.SIN_REVISAR
+        estado.recienRevisada -> ModoDetalle.RECIEN_REVISADA
+        else -> ModoDetalle.REVISADA
+    }
+}
+
 @Composable
 fun DetalleContenido(
     estado: DetalleUiState,
@@ -144,12 +208,13 @@ fun DetalleContenido(
     formulario: FormularioRevision? = null,
     aviso: AvisoDetalle? = null,
     zona: ZoneId = ZoneId.systemDefault(),
+    ahora: Instant = Instant.now(),
 ) {
     val snackbar = remember { SnackbarHostState() }
     val contexto = LocalContext.current
 
     // El aviso con Deshacer queda a la vista mientras el ViewModel tenga la ventana abierta; cuando la
-    // cierra (aviso en null), este efecto se cancela y el snackbar desaparece.
+    // cierra (aviso en null), este efecto se cancela y el aviso desaparece.
     LaunchedEffect(aviso) {
         when (aviso) {
             is AvisoDetalle.RevisionGuardada -> {
@@ -171,18 +236,27 @@ fun DetalleContenido(
         }
     }
 
+    val alertaVisible = (estado as? DetalleUiState.Contenido)?.alerta
+    val textoParaCompartir = alertaVisible?.let { textoParaCompartir(it, zona) }
+
     Scaffold(
+        contentWindowInsets = WindowInsets(0),
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.detalle_titulo)) },
-                navigationIcon = {
-                    IconButton(onClick = acciones.alVolver) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.accion_volver))
+            BarraSuperior(
+                titulo = stringResource(R.string.detalle_titulo),
+                alVolver = acciones.alVolver,
+                acciones = {
+                    // Figma 33-90: compartir, en gris. Sin la alerta en el teléfono no hay qué compartir (3-139).
+                    if (textoParaCompartir != null) {
+                        IconButton(onClick = { acciones.alCompartir(textoParaCompartir) }) {
+                            Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.accion_compartir), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { SnackbarHost(snackbar) { AvisoInferior(it) } },
     ) { relleno ->
         Column(
             modifier = Modifier
@@ -205,270 +279,433 @@ fun DetalleContenido(
                     titulo = stringResource(R.string.vacio_sin_red_titulo),
                     detalle = stringResource(R.string.vacio_sin_red_detalle),
                 )
-                is DetalleUiState.NoDisponible -> {
-                    if (estado.sinConexion) BannerSinConexion(datosDe = null, zona = zona)
-                    EstadoError(
-                        titulo = stringResource(R.string.detalle_no_disponible_titulo),
-                        detalle = if (estado.sinConexion) {
-                            stringResource(R.string.detalle_no_disponible_sin_conexion)
-                        } else {
-                            stringResource(estado.error?.mensaje() ?: R.string.error_generico)
-                        },
-                        alReintentar = acciones.alReintentarDescarga,
-                    )
-                }
+                is DetalleUiState.NoDisponible -> PendienteDeDescarga(estado, acciones)
                 is DetalleUiState.Contenido -> {
-                    if (estado.sinConexion) BannerSinConexion(datosDe = estado.datosDe, zona = zona)
-                    CuerpoDetalle(alerta = estado.alerta, accion = estado.accion, acciones = acciones, zona = zona)
+                    val modo = modoDe(estado)
+                    if (estado.sinConexion) {
+                        if (modo == ModoDetalle.PENDIENTE) {
+                            BannerSinConexion(datosDe = estado.datosDe, zona = zona, texto = stringResource(R.string.detalle_revision_pendiente_banner))
+                        } else {
+                            BannerSinConexion(datosDe = estado.datosDe, zona = zona)
+                        }
+                    }
+                    CuerpoDetalle(estado = estado, modo = modo, acciones = acciones, zona = zona, ahora = ahora)
                 }
             }
         }
     }
 
-    val alertaRevisada = (estado as? DetalleUiState.Contenido)?.alerta
-    if (formulario != null && alertaRevisada != null) HojaRevision(formulario = formulario, alerta = alertaRevisada, acciones = acciones)
+    if (formulario != null && alertaVisible != null) HojaRevision(formulario = formulario, alerta = alertaVisible, acciones = acciones)
 }
 
+/** Figma 3-11: 16 de margen y 16 entre piezas. */
 @Composable
-private fun CuerpoDetalle(alerta: Alerta, accion: AccionPendiente?, acciones: AccionesDetalle, zona: ZoneId) {
-    val metodos = alerta.metodos.sorted().map { stringResource(it.nombreEnFrase()) }
+private fun CuerpoDetalle(
+    estado: DetalleUiState.Contenido,
+    modo: ModoDetalle,
+    acciones: AccionesDetalle,
+    zona: ZoneId,
+    ahora: Instant,
+) {
+    val alerta = estado.alerta
+    val accion = estado.accion
     Column(
         modifier = Modifier
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IndicadorSeveridad(alerta.severidad)
-            Spacer(modifier = Modifier.width(6.dp))
-            IndicadorEstadoRevision(alerta.estadoRevision)
-            alerta.envio?.let { envio ->
-                Spacer(modifier = Modifier.width(10.dp))
-                IndicadorEnvio(envio)
+        // En conflicto manda lo que quedó en el servidor, la revisión de la otra persona (Figma 51-2497).
+        val estadoVisible = accion?.revisionAjena?.takeIf { modo == ModoDetalle.CONFLICTO }?.let { EstadoRevision.de(it.resultado) } ?: alerta.estadoRevision
+        Encabezado(alerta = alerta, estado = estadoVisible, enCola = modo == ModoDetalle.PENDIENTE, envio = accion?.estado, zona = zona)
+        when (modo) {
+            ModoDetalle.SIN_REVISAR -> {
+                DatosDelFlujo(alerta, zona)
+                Veredictos(alerta)
+                Text(
+                    text = stringResource(R.string.detalle_revisar_explicacion),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                BotonPrincipal(texto = stringResource(R.string.detalle_revisar), alTocar = acciones.alRevisar)
+            }
+            ModoDetalle.REVISADA -> {
+                alerta.revisionActual?.let { TarjetaRevision(it, estado.nombreDelTelefono, zona) }
+                TarjetaHistorial(alerta, estado.nombreDelTelefono, zona)
+                BotonContorno(texto = stringResource(R.string.detalle_cambiar_revision), alTocar = acciones.alRevisar, modifier = Modifier.fillMaxWidth())
+                DatosDelFlujo(alerta, zona)
+                Veredictos(alerta)
+            }
+            ModoDetalle.RECIEN_REVISADA -> {
+                DatosDelFlujo(alerta, zona)
+                Veredictos(alerta)
+                alerta.revisionActual?.let { revision ->
+                    // Con conexión sale al terminar la ventana de Deshacer: se muestra como enviada, igual que el aviso.
+                    TarjetaRevisionHecha(revision, estado.nombreDelTelefono, enviada = !estado.sinConexion || revision.origen == OrigenRevision.SERVIDOR, zona = zona, ahora = ahora)
+                }
+                BotonContorno(texto = stringResource(R.string.detalle_cambiar_revision), alTocar = acciones.alRevisar, modifier = Modifier.fillMaxWidth())
+            }
+            ModoDetalle.PENDIENTE -> {
+                DatosDelFlujo(alerta, zona)
+                Veredictos(alerta)
+                alerta.revisionActual?.let { TarjetaRevisionPendiente(it, estado.nombreDelTelefono, zona) }
+            }
+            ModoDetalle.CONFLICTO -> {
+                val ajena = accion?.revisionAjena
+                if (ajena != null) TarjetaConflicto(ajena = ajena, propia = accion.revision, zona = zona)
+                DatosDelFlujo(alerta, zona)
+                Veredictos(alerta)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    BotonContorno(
+                        texto = textoMantener(ajena?.autor),
+                        alTocar = acciones.alQuedarmeConLaOtra,
+                        modifier = Modifier.weight(1f),
+                        relleno = RellenoBotonAngosto,
+                    )
+                    BotonPrincipal(texto = stringResource(R.string.conflicto_aplicar), alTocar = acciones.alAplicarLaMia, modifier = Modifier.weight(1f))
+                }
+            }
+            ModoDetalle.ENVIO_FALLIDO -> {
+                if (accion != null) TarjetaEnvioFallido(accion, acciones)
+                DatosDelFlujo(alerta, zona)
+                Veredictos(alerta)
+                alerta.revisionActual?.let { TarjetaRevisionPendiente(it, estado.nombreDelTelefono, zona) }
             }
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(4.dp))
+    }
+}
+
+/**
+ * Figma 3-12: la severidad y el estado (o "Pendiente de sincronizar", 3-70), "pc-rrhh → srv-sueldos"
+ * en SemiBold 18 y "SSH · TCP/22 · 02:09:12 · detectada por IA y umbrales" en Regular 13 gris.
+ */
+@Composable
+private fun Encabezado(alerta: Alerta, estado: EstadoRevision, enCola: Boolean, envio: EstadoEnvio?, zona: ZoneId) {
+    val metodos = alerta.metodos.sorted().map { stringResource(it.nombreEnFrase()) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IndicadorSeveridad(alerta.severidad)
+            if (enCola) {
+                Etiqueta(texto = stringResource(R.string.detalle_pendiente_de_sincronizar), tono = Tonos.Info)
+            } else {
+                IndicadorEstadoRevision(estado)
+                if (envio == EstadoEnvio.ERROR) IndicadorEnvio(envio)
+            }
+        }
+        Text(text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}", style = MaterialTheme.typography.encabezado)
         Text(
             text = listOf(
-                Formato.servicioYPuerto(alerta.servicio, alerta.puerto),
+                Formato.servicioProtocoloYPuerto(alerta.servicio, alerta.protocolo, alerta.puerto),
                 Formato.horaConSegundos(alerta.inicio, zona),
                 stringResource(R.string.detalle_detectada_por, enumerar(metodos)),
             ).joinToString(" · "),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
 
-        Seccion(titulo = stringResource(R.string.detalle_datos_del_flujo)) {
-            FilaDato(stringResource(R.string.detalle_origen), Formato.ipYNombre(alerta.origen))
-            FilaDato(stringResource(R.string.detalle_destino), Formato.ipYNombre(alerta.destino))
-            FilaDato(stringResource(R.string.detalle_servicio), Formato.servicioYPuerto(alerta.servicio, alerta.puerto))
-            FilaDato(stringResource(R.string.detalle_inicio), Formato.horaConSegundos(alerta.inicio, zona))
-            FilaDato(stringResource(R.string.detalle_duracion), Formato.duracion(alerta.duracion))
-            FilaDato(stringResource(R.string.detalle_conexiones_60s), alerta.veredictos.umbrales.contexto60s.toString())
-            FilaDato(stringResource(R.string.detalle_flujos), alerta.cantidadFlujos.toString())
-            if (alerta.puertosDistintos > 1) {
-                FilaDato(stringResource(R.string.detalle_puertos_distintos), alerta.puertosDistintos.toString())
+/** Figma 3-21: la tarjeta con borde y las filas de etiqueta y valor. */
+@Composable
+private fun DatosDelFlujo(alerta: Alerta, zona: ZoneId) {
+    Panel {
+        TituloSeccion(stringResource(R.string.detalle_datos_del_flujo))
+        FilaDato(stringResource(R.string.detalle_origen), Formato.ipYNombre(alerta.origen))
+        FilaDato(stringResource(R.string.detalle_destino), Formato.ipYNombre(alerta.destino))
+        FilaDato(stringResource(R.string.detalle_servicio), Formato.servicioProtocoloYPuerto(alerta.servicio, alerta.protocolo, alerta.puerto))
+        FilaDato(stringResource(R.string.detalle_inicio), Formato.horaConSegundos(alerta.inicio, zona))
+        FilaDato(stringResource(R.string.detalle_duracion), Formato.duracion(alerta.duracion))
+        FilaDato(stringResource(R.string.detalle_conexiones_60s), alerta.veredictos.umbrales.contexto60s.toString())
+        // Flujos y puertos distintos no están en el Figma: quedan por el cambio 1 del LEEME.
+        FilaDato(stringResource(R.string.detalle_flujos), alerta.cantidadFlujos.toString())
+        if (alerta.puertosDistintos > 1) {
+            FilaDato(stringResource(R.string.detalle_puertos_distintos), alerta.puertosDistintos.toString())
+        }
+    }
+}
+
+/** Figma 3-41: cada método con el dato que justifica su veredicto. */
+@Composable
+private fun Veredictos(alerta: Alerta) {
+    Panel {
+        TituloSeccion(stringResource(R.string.detalle_veredictos))
+        val ia = alerta.veredictos.ia
+        FilaVeredicto(
+            titulo = stringResource(R.string.detalle_modelo_ia),
+            detalle = stringResource(R.string.detalle_ia_detalle, Formato.numero(ia.errorReconstruccion), Formato.numero(ia.umbral)),
+            anomalo = ia.anomalo,
+        )
+        val umbrales = alerta.veredictos.umbrales
+        FilaVeredicto(
+            titulo = stringResource(R.string.detalle_umbrales),
+            detalle = listOfNotNull(
+                stringResource(R.string.detalle_umbrales_detalle, umbrales.contexto60s, umbrales.umbralServicio),
+                if (umbrales.servicioSinLineaBase) stringResource(R.string.detalle_umbrales_sin_linea_base) else null,
+            ).joinToString(" · "),
+            anomalo = umbrales.anomalo,
+        )
+        val reglas = alerta.veredictos.reglas
+        FilaVeredicto(
+            titulo = stringResource(R.string.detalle_reglas),
+            detalle = if (reglas.enCatalogo) {
+                stringResource(R.string.detalle_reglas_en_catalogo)
+            } else {
+                stringResource(R.string.detalle_reglas_fuera_de_catalogo, reglas.parDestino)
+            },
+            anomalo = reglas.anomalo,
+        )
+    }
+}
+
+/** Figma 3-43: nombre en Medium 14 y el dato en Regular 12 gris, con la etiqueta a la derecha. */
+@Composable
+private fun FilaVeredicto(titulo: String, detalle: String, anomalo: Boolean) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(text = titulo, style = MaterialTheme.typography.valor)
+            Text(text = detalle, style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        IndicadorVeredicto(anomalo = anomalo)
+    }
+}
+
+/** Figma 51-2379: resultado con la hora en que llegó al servidor, motivo, comentario y quién. */
+@Composable
+private fun TarjetaRevision(revision: Revision, nombreDelTelefono: String, zona: ZoneId) {
+    val resultado = stringResource(revision.resultado.etiqueta())
+    Panel {
+        TituloSeccion(stringResource(R.string.detalle_revision))
+        FilaDato(
+            etiqueta = stringResource(R.string.detalle_resultado),
+            valor = if (revision.origen == OrigenRevision.SERVIDOR) {
+                stringResource(R.string.detalle_resultado_sincronizada, resultado, Formato.hora(revision.fecha, zona))
+            } else {
+                resultado
+            },
+        )
+        FilaDato(stringResource(R.string.detalle_motivo), stringResource(revision.motivo.etiqueta()))
+        FilaDato(stringResource(R.string.detalle_comentario), revision.comentario)
+        FilaDato(stringResource(R.string.detalle_quien), autorDe(revision, nombreDelTelefono))
+    }
+}
+
+/**
+ * Los cuadros "revisada con éxito" del Figma: el resultado en su color, el motivo, el comentario entre
+ * comillas y "Celular Martín · hoy 02:12 · enviada".
+ */
+@Composable
+private fun TarjetaRevisionHecha(revision: Revision, nombreDelTelefono: String, enviada: Boolean, zona: ZoneId, ahora: Instant) {
+    Panel {
+        TituloSeccion(stringResource(R.string.detalle_revision))
+        FilaDato(
+            etiqueta = stringResource(R.string.detalle_resultado),
+            valor = stringResource(revision.resultado.etiqueta()),
+            colorValor = colorDe(revision.resultado),
+        )
+        FilaDato(stringResource(R.string.detalle_motivo), stringResource(revision.motivo.etiqueta()))
+        Text(text = "“${revision.comentario}”", style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = listOf(
+                autorDe(revision, nombreDelTelefono),
+                "${Formato.diaRelativo(revision.hechaEn, ahora, zona)} ${Formato.hora(revision.hechaEn, zona)}",
+                stringResource(if (enviada) R.string.detalle_enviada else R.string.detalle_pendiente_de_envio),
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.nota,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Figma 3-70: la revisión que todavía no salió, con "Revisada 02:13 · Celular Martín · pendiente de envío". */
+@Composable
+private fun TarjetaRevisionPendiente(revision: Revision, nombreDelTelefono: String, zona: ZoneId) {
+    Panel {
+        TituloSeccion(stringResource(R.string.detalle_revision))
+        FilaDato(stringResource(R.string.detalle_resultado), stringResource(revision.resultado.etiqueta()))
+        FilaDato(stringResource(R.string.detalle_motivo), stringResource(revision.motivo.etiqueta()))
+        FilaDato(stringResource(R.string.detalle_comentario), revision.comentario)
+        FilaDato(
+            etiqueta = stringResource(R.string.detalle_revisada),
+            valor = listOf(
+                Formato.hora(revision.hechaEn, zona),
+                autorDe(revision, nombreDelTelefono),
+                stringResource(R.string.detalle_pendiente_de_envio),
+            ).joinToString(" · "),
+        )
+    }
+}
+
+/** Un momento de la línea de tiempo del historial. */
+private data class EventoHistorial(val momento: Instant, val titulo: String, val detalle: String?)
+
+/**
+ * Figma 51-2475: la línea de tiempo, de lo último a lo primero. Cada revisión dice cuándo se hizo y,
+ * si salió más tarde (se hizo sin conexión), también cuándo llegó al servidor (decisión 21). El aviso
+ * de Telegram se suma cuando el servidor lo informe (fase 10).
+ */
+@Composable
+private fun TarjetaHistorial(alerta: Alerta, nombreDelTelefono: String, zona: ZoneId) {
+    val eventos = mutableListOf<EventoHistorial>()
+    alerta.historial.forEach { revision ->
+        val autor = autorDe(revision, nombreDelTelefono)
+        val titulo = stringResource(
+            R.string.historial_revisada,
+            stringResource(revision.resultado.etiqueta()).lowercase(),
+            stringResource(revision.motivo.etiqueta()),
+        )
+        val revisadaEn = revision.revisadaEn
+        when {
+            revision.origen == OrigenRevision.ESTE_TELEFONO ->
+                eventos += EventoHistorial(revision.fecha, titulo, "$autor · ${stringResource(R.string.detalle_pendiente_de_envio)}")
+            revisadaEn != null && Duration.between(revisadaEn, revision.fecha) >= SALIO_DESPUES -> {
+                eventos += EventoHistorial(revision.fecha, stringResource(R.string.historial_enviada), autor)
+                eventos += EventoHistorial(revisadaEn, titulo, "$autor · ${stringResource(R.string.historial_quedo_pendiente)}")
             }
+            else -> eventos += EventoHistorial(revision.hechaEn, titulo, autor)
         }
-        Spacer(modifier = Modifier.height(12.dp))
+    }
+    val metodos = alerta.metodos.sorted().map { stringResource(it.nombreEnHistorial()) }
+    eventos += EventoHistorial(alerta.inicio, stringResource(R.string.historial_detectada, enumerar(metodos)), null)
 
-        Seccion(titulo = stringResource(R.string.detalle_veredictos)) {
-            val ia = alerta.veredictos.ia
-            FilaVeredicto(
-                titulo = stringResource(R.string.detalle_modelo_ia),
-                detalle = stringResource(R.string.detalle_ia_detalle, Formato.numero(ia.errorReconstruccion), Formato.numero(ia.umbral)),
-                anomalo = ia.anomalo,
-            )
-            val umbrales = alerta.veredictos.umbrales
-            FilaVeredicto(
-                titulo = stringResource(R.string.detalle_umbrales),
-                detalle = listOfNotNull(
-                    stringResource(R.string.detalle_umbrales_detalle, umbrales.contexto60s, umbrales.umbralServicio),
-                    if (umbrales.servicioSinLineaBase) stringResource(R.string.detalle_umbrales_sin_linea_base) else null,
-                ).joinToString(" · "),
-                anomalo = umbrales.anomalo,
-            )
-            val reglas = alerta.veredictos.reglas
-            FilaVeredicto(
-                titulo = stringResource(R.string.detalle_reglas),
-                detalle = if (reglas.enCatalogo) {
-                    stringResource(R.string.detalle_reglas_en_catalogo)
-                } else {
-                    stringResource(R.string.detalle_reglas_fuera_de_catalogo, reglas.parDestino)
-                },
-                anomalo = reglas.anomalo,
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-
-        val ajena = accion?.revisionAjena
-        if (accion?.estado == EstadoEnvio.CONFLICTO && ajena != null) {
-            TarjetaConflicto(ajena = ajena, acciones = acciones, zona = zona)
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-        if (accion?.estado == EstadoEnvio.ERROR) {
-            TarjetaEnvioFallido(accion = accion, acciones = acciones)
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        val revision = alerta.revisionActual
-        if (revision != null && !alerta.sinRevisar) {
-            Seccion(titulo = stringResource(R.string.detalle_revision)) {
-                FilaDato(
-                    etiqueta = stringResource(R.string.detalle_resultado),
-                    valor = stringResource(revision.resultado.etiqueta()),
-                    colorValor = if (revision.resultado == ResultadoRevision.ATAQUE_REAL) MaterialTheme.colorScheme.error else Tonos.Baja.texto,
+    Panel {
+        TituloSeccion(stringResource(R.string.detalle_historial))
+        eventos.sortedByDescending { it.momento }.forEach { evento ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Números de ancho fijo y 32 de mínimo (Figma 51-2478): los textos de cada evento quedan alineados.
+                Text(
+                    text = if (Formato.mismoDia(evento.momento, alerta.inicio, zona)) Formato.hora(evento.momento, zona) else Formato.fechaYHora(evento.momento, zona),
+                    style = MaterialTheme.typography.rotulo.copy(fontFeatureSettings = "tnum"),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.widthIn(min = 32.dp),
                 )
-                FilaDato(stringResource(R.string.detalle_motivo), stringResource(revision.motivo.etiqueta()))
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(text = "“${revision.comentario}”", style = MaterialTheme.typography.bodyMedium)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(text = autorYFecha(revision, zona), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                val anteriores = alerta.historial.filterNot { it === revision }.asReversed()
-                if (anteriores.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = stringResource(R.string.detalle_historial), style = MaterialTheme.typography.titleSmall)
-                    anteriores.forEach { anterior ->
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${stringResource(anterior.resultado.etiqueta())} · ${stringResource(anterior.motivo.etiqueta())} · ${autorYFecha(anterior, zona)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(text = evento.titulo, style = MaterialTheme.typography.opcion)
+                    if (evento.detalle != null) {
+                        Text(text = evento.detalle, style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(onClick = acciones.alRevisar, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.detalle_cambiar_revision))
-            }
-        } else {
-            Text(
-                text = stringResource(R.string.detalle_revisar_explicacion),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(onClick = acciones.alRevisar, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.detalle_revisar))
-            }
         }
     }
 }
 
-/** 409: otra persona revisó la alerta antes. Se muestra su revisión y la persona decide (RF04, criterio 4). */
+/** Una revisión que llegó al servidor más de un minuto después de hacerse quedó pendiente en el teléfono. */
+private val SALIO_DESPUES: Duration = Duration.ofMinutes(1)
+
+/**
+ * Figma 51-2579: tarjeta azul arriba con quién la revisó, cuándo y con qué motivo, y que la propia
+ * todavía no se aplicó (RF04, criterio 4).
+ */
 @Composable
-private fun TarjetaConflicto(ajena: Revision, acciones: AccionesDetalle, zona: ZoneId) {
-    OutlinedCard(modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Tonos.Media.texto)) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(text = stringResource(R.string.conflicto_titulo), style = MaterialTheme.typography.titleSmall, color = Tonos.Media.texto)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "${stringResource(ajena.resultado.etiqueta())} · ${stringResource(ajena.motivo.etiqueta())}",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Text(text = "“${ajena.comentario}”", style = MaterialTheme.typography.bodyMedium)
-            Text(
-                text = "${ajena.autor ?: stringResource(R.string.conflicto_otra_persona)} · ${Formato.fechaYHora(ajena.fecha, zona)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = stringResource(R.string.conflicto_pregunta), style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = acciones.alQuedarmeConLaOtra, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.conflicto_quedarme))
-                }
-                Button(onClick = acciones.alAplicarLaMia, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.conflicto_aplicar))
-                }
-            }
+private fun TarjetaConflicto(ajena: Revision, propia: Revision?, zona: ZoneId) {
+    val textos = buildList {
+        add(
+            stringResource(
+                R.string.conflicto_texto,
+                ajena.autor ?: stringResource(R.string.conflicto_otra_persona),
+                stringResource(ajena.resultado.etiqueta()).lowercase(),
+                Formato.hora(ajena.hechaEn, zona),
+                stringResource(ajena.motivo.etiqueta()),
+            ),
+        )
+        if (propia != null) {
+            add(stringResource(R.string.conflicto_tu_revision, stringResource(propia.motivo.etiqueta()), Formato.hora(propia.fecha, zona)))
         }
     }
+    TarjetaTono(tono = Tonos.Info, titulo = stringResource(R.string.conflicto_titulo), textos = textos)
 }
+
+/** "Mantener la de Lucía" (Figma 51-2586); con un nombre más largo no entra en medio ancho y queda "Mantener la otra". */
+@Composable
+private fun textoMantener(autor: String?): String =
+    if (autor != null && autor.length <= LARGO_NOMBRE_EN_BOTON) {
+        stringResource(R.string.conflicto_mantener, autor)
+    } else {
+        stringResource(R.string.conflicto_mantener_otra)
+    }
+
+private const val LARGO_NOMBRE_EN_BOTON = 8
 
 /** La revisión no salió después de cinco intentos, o el servidor la rechazó: Reintentar a mano (informe, 14.3). */
 @Composable
 private fun TarjetaEnvioFallido(accion: AccionPendiente, acciones: AccionesDetalle) {
-    OutlinedCard(modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(text = stringResource(R.string.envio_error_titulo), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error)
-            Spacer(modifier = Modifier.height(4.dp))
+    Surface(color = Tonos.Alta.fondo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(text = stringResource(R.string.envio_error_titulo), style = MaterialTheme.typography.labelLarge, color = Tonos.Alta.texto)
             Text(
                 text = stringResource(R.string.envio_error_detalle, accion.intentos, accion.ultimoError.orEmpty()),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+                color = Tonos.Alta.texto,
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            FilledTonalButton(onClick = acciones.alReintentarEnvio) { Text(stringResource(R.string.error_reintentar)) }
+            BotonTonal(texto = stringResource(R.string.error_reintentar), alTocar = acciones.alReintentarEnvio)
         }
     }
 }
 
-/** "Celular de Martín · 27/09 02:12 · enviada" */
+/**
+ * Figma 3-139: la alerta no está en el teléfono (llegó el enlace del aviso sin red). El detalle se pide
+ * a la API cuando haya conexión; lo que trae el enlace se suma en la fase 10. Si el servidor dice que
+ * ya no existe, se muestra el error.
+ */
 @Composable
-private fun autorYFecha(revision: Revision, zona: ZoneId): String = listOf(
-    revision.autor ?: stringResource(R.string.detalle_este_telefono),
-    Formato.fechaYHora(revision.fecha, zona),
-    if (revision.origen == OrigenRevision.SERVIDOR) stringResource(R.string.detalle_enviada) else stringResource(R.string.detalle_pendiente_de_envio),
-).joinToString(" · ")
+private fun PendienteDeDescarga(estado: DetalleUiState.NoDisponible, acciones: AccionesDetalle) {
+    val error = estado.error
+    if (error != null && error !is ErrorZonda.SinConexion) {
+        EstadoError(
+            titulo = stringResource(R.string.detalle_no_disponible_titulo),
+            detalle = stringResource(error.mensaje()),
+            alReintentar = acciones.alReintentarDescarga,
+            modifier = Modifier.padding(16.dp),
+        )
+        return
+    }
+    BannerSinConexion(datosDe = null, texto = stringResource(R.string.detalle_sin_descargar_banner))
+    Column(
+        modifier = Modifier
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row { Etiqueta(texto = stringResource(R.string.detalle_pendiente_de_descarga), tono = Tonos.Info) }
+        // Figma 51-2609: recuadro crema con el título SemiBold 14 y el texto Regular 13, los dos grises.
+        Surface(color = CremaBarra, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = stringResource(R.string.detalle_descarga_titulo), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = stringResource(R.string.detalle_descarga_texto), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        BotonPrincipal(texto = stringResource(R.string.detalle_descarga_reintentar), alTocar = acciones.alReintentarDescarga)
+        BotonEnlace(texto = stringResource(R.string.detalle_descarga_volver), alTocar = acciones.alVolver, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/**
+ * Lo que comparte el detalle: lo mismo que el aviso, sin direcciones IP ni nombres de equipos
+ * ("Alerta ALTA · SSH · 02:09") y el enlace que abre la alerta en Zonda.
+ */
+@Composable
+private fun textoParaCompartir(alerta: Alerta, zona: ZoneId): String = stringResource(
+    R.string.detalle_compartir_texto,
+    stringResource(alerta.severidad.etiqueta()).uppercase(),
+    alerta.servicio.uppercase(),
+    Formato.hora(alerta.inicio, zona),
+    alerta.veredictos.umbrales.contexto60s,
+    RutaDetalle.ENLACE_AVISO.replace("{${RutaDetalle.ARG_ID}}", alerta.id),
+)
+
+/** El autor de la revisión; las de este teléfono que todavía no salieron llevan su nombre. */
+private fun autorDe(revision: Revision, nombreDelTelefono: String): String =
+    revision.autor ?: nombreDelTelefono
+
+@Composable
+private fun colorDe(resultado: ResultadoRevision) = when (resultado) {
+    ResultadoRevision.ATAQUE_REAL -> Tonos.Alta.texto
+    ResultadoRevision.FALSO_POSITIVO -> Tonos.Baja.texto
+}
 
 /** "IA", "IA y umbrales", "IA, umbrales y reglas". */
 private fun enumerar(partes: List<String>): String = when (partes.size) {
     0 -> ""
     1 -> partes.single()
     else -> partes.dropLast(1).joinToString(", ") + " y " + partes.last()
-}
-
-@Composable
-private fun Seccion(titulo: String, contenido: @Composable () -> Unit) {
-    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(text = titulo, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.height(8.dp))
-            contenido()
-        }
-    }
-}
-
-@Composable
-private fun FilaDato(etiqueta: String, valor: String, colorValor: Color = Color.Unspecified) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = etiqueta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = valor,
-            style = MaterialTheme.typography.bodyMedium,
-            color = colorValor,
-            textAlign = TextAlign.End,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun FilaVeredicto(titulo: String, detalle: String, anomalo: Boolean) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = titulo, style = MaterialTheme.typography.bodyLarge)
-            Text(text = detalle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        IndicadorVeredicto(anomalo = anomalo)
-    }
 }
