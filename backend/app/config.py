@@ -14,7 +14,7 @@ class Config:
     db_path: Path = RAIZ / "zonda.db"
     semilla: Path = RAIZ / "alertas_semilla.json"
     red_id: str = "red-oficina"
-    red_nombre: str = "Oficina"
+    red_nombre: str = "Oficina central"
     url_publica: str = "http://127.0.0.1:8000"
     bot_usuario: str = "zonda_alertas_bot"
     emitir_cada: int = 0
@@ -32,7 +32,7 @@ class Config:
             db_path=Path(leer("ZONDA_DB_PATH", str(RAIZ / "zonda.db"))),
             semilla=Path(leer("ZONDA_SEMILLA", str(RAIZ / "alertas_semilla.json"))),
             red_id=leer("ZONDA_RED_ID", "red-oficina"),
-            red_nombre=leer("ZONDA_RED_NOMBRE", "Oficina"),
+            red_nombre=leer("ZONDA_RED_NOMBRE", "Oficina central"),
             url_publica=leer("ZONDA_URL_PUBLICA", "http://127.0.0.1:8000"),
             bot_usuario=leer("ZONDA_TELEGRAM_BOT", "zonda_alertas_bot"),
             emitir_cada=int(leer("ZONDA_EMITIR_CADA", "0")),

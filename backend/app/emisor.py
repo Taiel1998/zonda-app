@@ -13,7 +13,7 @@ from .auth import ahora, iso
 from .db import Base
 
 COLUMNAS_COPIADAS = (
-    "cantidad_flujos, uid_referencia, origen_ip, destino_ip, servicio, puerto, puerto_referencia, puertos_distintos, "
+    "cantidad_flujos, uid_referencia, origen_ip, destino_ip, servicio, protocolo, puerto, puerto_referencia, puertos_distintos, "
     "tipo_ataque, confianza_tipo, veredicto_ia, error_reconstruccion, umbral_ia, veredicto_umbrales, contexto_60s, "
     "umbral_servicio, servicio_sin_linea_base, veredicto_reglas, par_destino, par_en_catalogo"
 )

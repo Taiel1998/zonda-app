@@ -10,8 +10,9 @@ from tests.conftest import todas_las_alertas
 def test_catalogo_tiene_equipos_y_servicios(cliente, auth):
     catalogo = cliente.get("/catalogo", headers=auth).json()
 
-    assert catalogo["equipos"]["192.168.10.3"] == "dc-01"
-    assert catalogo["equipos"]["192.168.10.50"] == "srv-web"
+    # Los nombres de la demo son los del Figma.
+    assert catalogo["equipos"]["192.168.10.3"] == "srv-facturacion"
+    assert catalogo["equipos"]["192.168.10.50"] == "srv-sueldos"
     assert "ssh" in catalogo["servicios"]
     assert catalogo["servicios"] == sorted(catalogo["servicios"])
 

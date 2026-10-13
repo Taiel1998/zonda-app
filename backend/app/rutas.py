@@ -1,7 +1,7 @@
 """Las rutas del contrato (informe, sección 13.3). Cada una dice qué recibe, qué devuelve y qué error da."""
 
 import sqlite3
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
@@ -62,9 +62,20 @@ def nombre_equipo(con: sqlite3.Connection, ip: str) -> str | None:
 def historial_de(con: sqlite3.Connection, alerta_id: str) -> list[Revision]:
     filas = con.execute("SELECT * FROM revisiones WHERE alerta_id = ? ORDER BY id ASC", (alerta_id,)).fetchall()
     return [
-        Revision(resultado=f["resultado"], motivo=f["motivo"], comentario=f["comentario"], autor=f["autor"], fecha=f["fecha"])
+        revision_dto(f)
         for f in filas
     ]
+
+
+def revision_dto(fila: sqlite3.Row) -> Revision:
+    return Revision(
+        resultado=fila["resultado"],
+        motivo=fila["motivo"],
+        comentario=fila["comentario"],
+        autor=fila["autor"],
+        fecha=fila["fecha"],
+        revisadaEn=fila["revisada_en"],
+    )
 
 
 def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
@@ -80,6 +91,7 @@ def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
         destinoIp=fila["destino_ip"],
         destinoNombre=nombre_equipo(con, fila["destino_ip"]),
         servicio=fila["servicio"],
+        protocolo=fila["protocolo"],
         puerto=fila["puerto"],
         puertoReferencia=fila["puerto_referencia"],
         puertosDistintos=fila["puertos_distintos"],
@@ -221,21 +233,28 @@ def revisar_alerta(
             if ajena is not None:
                 conflicto = Conflicto(
                     mensaje="Otra persona revisó esta alerta después de tu última sincronización",
-                    revisionAjena=Revision(resultado=ajena["resultado"], motivo=ajena["motivo"], comentario=ajena["comentario"], autor=ajena["autor"], fecha=ajena["fecha"]),
+                    revisionAjena=revision_dto(ajena),
                     alerta=alerta_dto(con, fila),
                 )
                 raise HTTPException(status_code=409, detail=conflicto.model_dump())
         momento = ahora()
         nueva_version = fila["version"] + 1
         con.execute(
-            "INSERT INTO revisiones (alerta_id, accion_id, resultado, motivo, comentario, autor, fecha, dispositivo_id, version_resultante) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (alerta_id, entrada.accionId, entrada.resultado, entrada.motivo, entrada.comentario.strip(), dispositivo["nombre"], iso(momento), dispositivo["id"], nueva_version),
+            "INSERT INTO revisiones (alerta_id, accion_id, resultado, motivo, comentario, autor, fecha, revisada_en, dispositivo_id, version_resultante) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (alerta_id, entrada.accionId, entrada.resultado, entrada.motivo, entrada.comentario.strip(), dispositivo["nombre"], iso(momento), revisada_en(entrada.revisadaEn, momento), dispositivo["id"], nueva_version),
         )
         con.execute(
             "UPDATE alertas SET estado_revision = ?, version = ?, actualizada_en = ?, secuencia = ? WHERE id = ?",
             (entrada.resultado, nueva_version, iso(momento), Base.siguiente_secuencia(con), alerta_id),
         )
         return alerta_dto(con, con.execute("SELECT * FROM alertas WHERE id = ?", (alerta_id,)).fetchone())
+
+
+def revisada_en(valor: str | None, recibida: datetime) -> str:
+    """La hora de revisión del teléfono, nunca posterior a la llegada: un reloj adelantado no la corre al futuro."""
+    if valor is None:
+        return iso(recibida)
+    return iso(min(datetime.fromisoformat(valor), recibida).astimezone(timezone.utc))
 
 
 @router.get("/severidades")
