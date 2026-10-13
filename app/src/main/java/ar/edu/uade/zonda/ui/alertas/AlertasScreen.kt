@@ -55,10 +55,13 @@ import java.time.ZoneId
 fun AlertasScreen(
     alAbrirDetalle: (alertaId: String) -> Unit,
     alConectarDeNuevo: () -> Unit,
+    filtroPedido: FiltroAlertas? = null,
     viewModel: AlertasViewModel = viewModelDeZonda {
         AlertasViewModel(it.observarAlertas, it.sincronizarAlertas, it.redes, it.conectividad)
     },
 ) {
+    // La notificación abre la lista ya filtrada en lo que avisó (Alta · Sin revisar).
+    LaunchedEffect(filtroPedido) { filtroPedido?.let(viewModel::aplicarFiltro) }
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     AlertasContenido(
         estado = estado,

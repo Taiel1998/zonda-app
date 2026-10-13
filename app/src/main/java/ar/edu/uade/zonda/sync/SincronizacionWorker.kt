@@ -25,8 +25,9 @@ import kotlinx.coroutines.flow.first
 /**
  * Sincronización en segundo plano (RNF08): cada 15 minutos, el mínimo que permite Android, solo con
  * red. Sincroniza todas las redes pareadas, no solo la activa, y avisa con una notificación local si
- * llegaron alertas nuevas (RF05). Si no hay red o el servidor falla, WorkManager reintenta con espera
- * exponencial (informe, 14.3); una red con el acceso vencido se saltea hasta que se vuelva a parear.
+ * llegaron alertas altas nuevas y el interruptor "Notificaciones del sistema" de Ajustes está
+ * prendido. Si no hay red o el servidor falla, WorkManager reintenta con espera exponencial
+ * (informe, 14.3); una red con el acceso vencido se saltea hasta que se vuelva a parear.
  */
 class SincronizacionWorker(
     contexto: Context,
@@ -39,11 +40,12 @@ class SincronizacionWorker(
 
     override suspend fun doWork(): Result {
         var reintentar = false
+        val notificar = preferencias.observarNotificacionesActivas().first()
         for (red in redes.observarRedes().first()) {
             if (red.accesoVencido) continue
             try {
                 val resultado = alertas.sincronizar(red.id)
-                if (resultado.nuevas > 0) notificador.avisarAlertasNuevas(red, resultado, preferencias.observarAvisos().first())
+                if (notificar) notificador.avisarAltasNuevas(red, resultado)
             } catch (e: ErrorZonda.SinConexion) {
                 reintentar = true
             } catch (e: ErrorZonda.ErrorDelServidor) {
