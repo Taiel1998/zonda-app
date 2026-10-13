@@ -11,18 +11,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.ui.theme.cuerpo
 import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.tituloHoja
 
@@ -46,8 +50,11 @@ fun HojaInferior(
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { AsaDeHoja() },
     ) {
+        // Con la letra agrandada o en un teléfono chico, la hoja se desplaza en lugar de cortarse.
         Column(
-            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             content = contenido,
         )
@@ -126,7 +133,7 @@ fun HojaAyuda(
         pasos.forEachIndexed { indice, paso ->
             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 NumeroDePaso(indice + 1)
-                Text(text = paso, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(text = paso, style = MaterialTheme.typography.cuerpo, modifier = Modifier.weight(1f))
             }
         }
         Row(modifier = Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -137,6 +144,33 @@ fun HojaAyuda(
                 BotonPrincipal(texto = accion.texto, alTocar = accion.alTocar, modifier = Modifier.weight(1f))
             }
         }
+    }
+}
+
+/**
+ * Condiciones de uso y privacidad (Figma 50-830): la hoja que abre el único enlace de la bienvenida,
+ * con cuatro bloques y "Entendido".
+ */
+@Composable
+fun HojaCondiciones(alCerrar: () -> Unit) {
+    HojaInferior(alCerrar = alCerrar) {
+        Text(text = stringResource(R.string.condiciones_titulo), style = MaterialTheme.typography.tituloHoja)
+        BloqueDeCondiciones(R.string.condiciones_guarda_titulo, R.string.condiciones_guarda)
+        BloqueDeCondiciones(R.string.condiciones_sale_titulo, R.string.condiciones_sale)
+        BloqueDeCondiciones(R.string.condiciones_tiempo_titulo, R.string.condiciones_tiempo)
+        BloqueDeCondiciones(R.string.condiciones_datos_titulo, R.string.condiciones_datos)
+        Row(modifier = Modifier.padding(vertical = 8.dp)) {
+            BotonPrincipal(texto = stringResource(R.string.accion_entendido), alTocar = alCerrar)
+        }
+    }
+}
+
+/** Título SemiBold 14 y texto Regular 13 gris, con 4 entre los dos. */
+@Composable
+private fun BloqueDeCondiciones(@StringRes titulo: Int, @StringRes texto: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(text = stringResource(titulo), style = MaterialTheme.typography.labelLarge)
+        Text(text = stringResource(texto), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

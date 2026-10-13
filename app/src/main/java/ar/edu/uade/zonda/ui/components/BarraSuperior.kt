@@ -21,6 +21,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,7 +32,8 @@ val AltoBarraSuperior = 51.dp
 
 /**
  * La barra superior de cada pantalla (Figma): fondo blanco, título Medium 22 y, en las pantallas
- * que se abren desde otra, la flecha para volver.
+ * que se abren desde otra, la flecha para volver. El escáner la usa oscura ([colorFondo] y
+ * [colorContenido]).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +41,8 @@ fun BarraSuperior(
     titulo: String,
     modifier: Modifier = Modifier,
     alVolver: (() -> Unit)? = null,
+    colorFondo: Color = MaterialTheme.colorScheme.surface,
+    colorContenido: Color = MaterialTheme.colorScheme.onSurface,
     acciones: @Composable RowScope.() -> Unit = {},
 ) {
     TopAppBar(
@@ -53,8 +57,11 @@ fun BarraSuperior(
         actions = acciones,
         expandedHeight = AltoBarraSuperior,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            scrolledContainerColor = MaterialTheme.colorScheme.surface,
+            containerColor = colorFondo,
+            scrolledContainerColor = colorFondo,
+            titleContentColor = colorContenido,
+            navigationIconContentColor = colorContenido,
+            actionIconContentColor = colorContenido,
         ),
         modifier = modifier,
     )

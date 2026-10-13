@@ -48,10 +48,10 @@ fun Severidad.color(): Color = tono().texto
 
 fun Severidad.fondo(): Color = tono().fondo
 
-/** Sin revisar en azul, revisada en verde y falso positivo en gris, como en el Figma. */
+/** Sin revisar en azul; revisada y falso positivo en gris, como en el Figma (2-3 y 35-348). */
 fun EstadoRevision.tono(): Tono = when (this) {
     EstadoRevision.SIN_REVISAR -> Tonos.Info
-    EstadoRevision.ATAQUE_REAL -> Tonos.Baja
+    EstadoRevision.ATAQUE_REAL -> Tonos.Neutro
     EstadoRevision.FALSO_POSITIVO -> Tonos.Neutro
 }
 
@@ -74,7 +74,7 @@ fun Etiqueta(
                         .size(7.dp)
                         .background(tono.punto, CircleShape),
                 )
-                Spacer(modifier = Modifier.width(5.dp))
+                Spacer(modifier = Modifier.width(6.dp))
             }
             Text(
                 text = texto.uppercase(),
@@ -112,13 +112,15 @@ fun IndicadorEnvio(envio: EstadoEnvio, modifier: Modifier = Modifier, hora: Stri
         EstadoEnvio.ERROR -> Tonos.Alta.texto to Icons.Outlined.ErrorOutline
         EstadoEnvio.CONFLICTO -> Tonos.Media.texto to Icons.Outlined.Info
     }
+    // Figma 35-363: reloj de 14 y "pendiente" en Medium 11 azul; la hora al lado, en gris.
+    val estilo = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium)
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Icon(imageVector = icono, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
         Spacer(modifier = Modifier.width(4.dp))
-        Text(text = stringResource(envio.etiqueta()), style = MaterialTheme.typography.labelMedium, color = color)
+        Text(text = stringResource(envio.etiqueta()), style = estilo, color = color)
         if (hora != null) {
             Spacer(modifier = Modifier.width(4.dp))
-            Text(text = hora, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = hora, style = estilo, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

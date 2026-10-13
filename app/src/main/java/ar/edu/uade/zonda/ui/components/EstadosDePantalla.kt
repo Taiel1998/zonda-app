@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.theme.Tonos
+import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
 import java.time.Instant
 import java.time.ZoneId
@@ -66,7 +67,7 @@ fun BannerSinConexion(
                 } else {
                     stringResource(R.string.sin_conexion_banner, Formato.hora(datosDe, zona))
                 },
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.opcion,
                 color = Tonos.Media.texto,
             )
         }

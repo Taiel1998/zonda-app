@@ -23,9 +23,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import ar.edu.uade.zonda.ui.theme.Tono
 import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.theme.valor
@@ -183,6 +185,35 @@ fun TarjetaAdvertencia(
     }
 }
 
+/**
+ * Tarjeta del color de un tono, sin borde (Figma 35-692, 35-720, 50-679 y 50-729): "Conexión segura"
+ * en verde, "No se pudo conectar" en rojo, "El código venció o ya se usó" en ámbar. Título SemiBold
+ * 14 con un ícono opcional de 18 y los textos en Regular 13, todo del color del tono; 12 de margen y
+ * 10 entre piezas.
+ */
+@Composable
+fun TarjetaTono(
+    tono: Tono,
+    titulo: String,
+    textos: List<String>,
+    modifier: Modifier = Modifier,
+    icono: ImageVector? = null,
+) {
+    Surface(color = tono.fondo, shape = RoundedCornerShape(12.dp), modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (icono != null) {
+                    Icon(imageVector = icono, contentDescription = null, tint = tono.texto, modifier = Modifier.size(18.dp))
+                }
+                Text(text = titulo, style = MaterialTheme.typography.labelLarge, color = tono.texto)
+            }
+            textos.forEach { texto ->
+                Text(text = texto, style = MaterialTheme.typography.bodySmall, color = tono.texto)
+            }
+        }
+    }
+}
+
 /** Tarjeta con un título chico y filas de etiqueta y valor ("Conexión", "Acceso de este teléfono"). */
 @Composable
 fun TarjetaDatos(
@@ -193,9 +224,9 @@ fun TarjetaDatos(
     TarjetaSeccion(titulo = titulo, modifier = modifier, contenido = contenido)
 }
 
-/** Etiqueta gris a la izquierda y valor a la derecha. */
+/** Etiqueta gris a la izquierda y valor a la derecha ("Anómalo" va en rojo con [colorValor]). */
 @Composable
-fun FilaDato(etiqueta: String, valor: String, modifier: Modifier = Modifier) {
+fun FilaDato(etiqueta: String, valor: String, modifier: Modifier = Modifier, colorValor: Color = Color.Unspecified) {
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -209,6 +240,7 @@ fun FilaDato(etiqueta: String, valor: String, modifier: Modifier = Modifier) {
         Text(
             text = valor,
             style = MaterialTheme.typography.valor,
+            color = colorValor,
             textAlign = TextAlign.End,
             modifier = Modifier.weight(1f),
         )
