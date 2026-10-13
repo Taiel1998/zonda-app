@@ -83,6 +83,37 @@
     </plurals>
     <string name="alertas_sin_revisar">%d sin revisar</string>
     <string name="alertas_actualizado">actualizado %1$s</string>
+    <string name="alertas_datos_de">datos de las %1$s</string>
+    <!-- La línea de resumen con filtros (Figma 2-3 y los cuadros "filtro ... aplicado") -->
+    <plurals name="resumen_sin_revisar">
+        <item quantity="one">%d alerta sin revisar</item>
+        <item quantity="other">%d alertas sin revisar</item>
+    </plurals>
+    <plurals name="resumen_sin_revisar_de_severidad">
+        <item quantity="one">%1$d alerta %2$s sin revisar</item>
+        <item quantity="other">%1$d alertas %2$s sin revisar</item>
+    </plurals>
+    <plurals name="resumen_revisadas">
+        <item quantity="one">%d revisada</item>
+        <item quantity="other">%d revisadas</item>
+    </plurals>
+    <plurals name="resumen_falsos_positivos">
+        <item quantity="one">%d falso positivo</item>
+        <item quantity="other">%d falsos positivos</item>
+    </plurals>
+    <plurals name="adjetivo_alta">
+        <item quantity="one">alta</item>
+        <item quantity="other">altas</item>
+    </plurals>
+    <plurals name="adjetivo_media">
+        <item quantity="one">media</item>
+        <item quantity="other">medias</item>
+    </plurals>
+    <plurals name="adjetivo_baja">
+        <item quantity="one">baja</item>
+        <item quantity="other">bajas</item>
+    </plurals>
+    <string name="resumen_otros_servicios">otros servicios</string>
     <string name="alertas_sin_sincronizar">sin sincronizar</string>
     <string name="periodo_ultimas_24h">últimas 24 h</string>
     <string name="periodo_ultimos_7d">últimos 7 días</string>
@@ -96,25 +127,27 @@
     <string name="filtro_estado_falsos_positivos">Falsos positivos</string>
     <string name="filtro_severidad">Severidad</string>
     <string name="filtro_severidad_titulo">Severidad</string>
-    <string name="filtro_severidad_todas">Todas las severidades</string>
     <string name="filtro_periodo">Período</string>
     <string name="filtro_periodo_titulo">Período</string>
     <string name="filtro_periodo_24h">24 h</string>
-    <string name="filtro_periodo_24h_detalle">Últimas 24 horas</string>
     <string name="filtro_periodo_7d">7 días</string>
     <string name="filtro_periodo_30d">30 días</string>
-    <string name="filtro_periodo_todo">Todo</string>
-    <string name="filtro_periodo_todo_detalle">Todas las alertas guardadas (hasta 30 días)</string>
+    <string name="filtro_periodo_24h_titulo">Últimas 24 h</string>
+    <string name="filtro_periodo_7d_titulo">Últimos 7 días</string>
+    <string name="filtro_periodo_30d_titulo">Últimos 30 días</string>
+    <string name="filtro_periodo_30d_detalle">Todo lo que hay guardado en el teléfono</string>
     <string name="filtro_mas">Más filtros</string>
     <string name="filtro_mas_con_cantidad">Más filtros (%1$d)</string>
     <string name="filtro_mas_titulo">Más filtros</string>
     <string name="filtro_servicio">Servicio</string>
     <string name="filtro_destino">Equipo destino</string>
-    <string name="filtro_metodo">Método</string>
-    <string name="filtro_todos">Todos</string>
+    <string name="filtro_metodo">Método que la detectó</string>
+    <string name="filtro_metodo_ia">Modelo de IA</string>
+    <string name="filtro_otros">Otros</string>
+    <string name="filtro_mas_nota">Los servicios y los equipos los informa el servidor de tu empresa; no hay que configurarlos en la app. Si un equipo no tiene nombre, se muestra su dirección.</string>
     <string name="filtro_aplicar">Aplicar</string>
     <string name="filtro_limpiar">Limpiar</string>
-    <string name="filtro_quitar">Quitar filtros</string>
+    <string name="filtro_limpiar_filtros">Limpiar filtros</string>
 
     <!-- Estados de pantalla -->
     <string name="sin_conexion_banner">Sin conexión · mostrando datos de las %1$s</string>
@@ -123,9 +156,12 @@
     <string name="vacio_sin_red_detalle">Conectá la red de tu empresa desde Ajustes para empezar a recibir alertas.</string>
     <string name="vacio_sin_alertas_titulo">Sin alertas guardadas</string>
     <string name="vacio_sin_alertas_detalle">Sincronizá para traer las novedades del servidor.</string>
-    <string name="vacio_con_filtro_titulo">Ninguna alerta coincide con los filtros</string>
-    <string name="vacio_con_filtro_detalle">Probá con otro período o quitá los filtros.</string>
-    <string name="aviso_sincronizado_sin_novedades">Sincronizado. No hay alertas nuevas.</string>
+    <string name="vacio_con_filtro_titulo">Sin alertas para esos filtros</string>
+    <string name="vacio_con_filtro_detalle">Probá con otro período o quitá un filtro.</string>
+    <string name="error_carga_titulo">No se pudo cargar</string>
+    <string name="error_carga_detalle">El servidor no respondió.</string>
+    <string name="error_carga_detalle_con_datos">El servidor no respondió. Los datos de las %1$s siguen disponibles sin conexión.</string>
+    <string name="aviso_sincronizado_hora">Sincronizado · %1$s · %2$s</string>
     <plurals name="aviso_sincronizado_nuevas">
         <item quantity="one">Sincronizado: %d alerta nueva.</item>
         <item quantity="other">Sincronizado: %d alertas nuevas.</item>

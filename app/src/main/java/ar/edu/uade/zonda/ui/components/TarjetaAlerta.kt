@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.theme.nota
 import java.time.ZoneId
 
 /**
@@ -52,7 +53,7 @@ fun TarjetaAlerta(
                 }
                 Text(
                     text = Formato.horaYDia(alerta.inicio, zona),
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.nota,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

@@ -7,6 +7,7 @@ import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
+import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.Motivo
@@ -53,6 +54,32 @@ fun MetodoDeteccion.nombreEnFrase(): Int = when (this) {
     MetodoDeteccion.IA -> R.string.metodo_ia_frase
     MetodoDeteccion.UMBRALES -> R.string.metodo_umbrales_frase
     MetodoDeteccion.REGLAS -> R.string.metodo_reglas_frase
+}
+
+/** El texto del chip de estado y de su opción en la hoja (Figma 51-1805). */
+@StringRes
+fun FiltroEstado.etiqueta(): Int = when (this) {
+    FiltroEstado.SIN_REVISAR -> R.string.filtro_estado_sin_revisar
+    FiltroEstado.REVISADAS -> R.string.filtro_estado_revisadas
+    FiltroEstado.FALSOS_POSITIVOS -> R.string.filtro_estado_falsos_positivos
+    FiltroEstado.TODAS -> R.string.filtro_estado_todas
+}
+
+/** El nombre completo de cada método en Más filtros y en el resumen: "Modelo de IA". */
+@StringRes
+fun MetodoDeteccion.nombreEnFiltro(): Int = when (this) {
+    MetodoDeteccion.IA -> R.string.filtro_metodo_ia
+    MetodoDeteccion.UMBRALES -> R.string.metodo_umbrales
+    MetodoDeteccion.REGLAS -> R.string.metodo_reglas
+}
+
+/** Cada período en la hoja Período (Figma 51-2072): "Últimas 24 h". */
+@StringRes
+fun Periodo.tituloEnHoja(): Int = when (this) {
+    Periodo.ULTIMAS_24_HORAS -> R.string.filtro_periodo_24h_titulo
+    Periodo.ULTIMOS_7_DIAS -> R.string.filtro_periodo_7d_titulo
+    Periodo.ULTIMOS_30_DIAS -> R.string.filtro_periodo_30d_titulo
+    Periodo.TODO -> R.string.filtro_periodo
 }
 
 /** Texto del chip de período. */

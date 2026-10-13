@@ -48,10 +48,10 @@ fun Severidad.color(): Color = tono().texto
 
 fun Severidad.fondo(): Color = tono().fondo
 
-/** Sin revisar en azul; revisada y falso positivo en gris, como en el Figma (2-3 y 35-348). */
+/** Sin revisar en azul, revisada en verde y falso positivo en gris, como en la lista del Figma (2-3). */
 fun EstadoRevision.tono(): Tono = when (this) {
     EstadoRevision.SIN_REVISAR -> Tonos.Info
-    EstadoRevision.ATAQUE_REAL -> Tonos.Neutro
+    EstadoRevision.ATAQUE_REAL -> Tonos.Baja
     EstadoRevision.FALSO_POSITIVO -> Tonos.Neutro
 }
 

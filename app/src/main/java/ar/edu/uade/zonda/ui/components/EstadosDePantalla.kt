@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,13 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.theme.Tonos
+import ar.edu.uade.zonda.ui.theme.encabezado
 import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
 import java.time.Instant
@@ -95,7 +94,7 @@ fun BannerAccesoVencido(alConectar: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-/** Círculo claro, título, detalle y, si hay, una acción de recuperación (Figma, figura 19). */
+/** Círculo claro, título, detalle y, si hay, una acción de recuperación (Figma 2-218). */
 @Composable
 fun EstadoVacio(
     titulo: String,
@@ -114,7 +113,7 @@ fun EstadoVacio(
     )
 }
 
-/** "No se pudo cargar" con Reintentar: el mismo esquema que el vacío, con el círculo rosa. */
+/** "No se pudo cargar" con Reintentar: el mismo esquema que el vacío, con el círculo rosa (Figma 2-255). */
 @Composable
 fun EstadoError(
     titulo: String,
@@ -141,22 +140,20 @@ private fun EstadoConCirculo(
     alAccionar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Figma 2-248: 24 a los costados, 40 arriba y abajo, 8 entre piezas y el botón 8 más abajo.
     Column(
         modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 32.dp, vertical = 48.dp),
-        verticalArrangement = Arrangement.Top,
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
         Box(
             modifier = Modifier
-                .size(56.dp)
+                .size(64.dp)
                 .background(colorCirculo, CircleShape),
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-        Spacer(modifier = Modifier.height(6.dp))
+        Text(text = titulo, style = MaterialTheme.typography.encabezado, textAlign = TextAlign.Center)
         Text(
             text = detalle,
             style = MaterialTheme.typography.bodyMedium,
@@ -164,21 +161,28 @@ private fun EstadoConCirculo(
             textAlign = TextAlign.Center,
         )
         if (accion != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            FilledTonalButton(onClick = alAccionar) { Text(accion) }
+            BotonTonal(texto = accion, alTocar = alAccionar, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
 
-/** Bloques gris cálido mientras llega la primera lectura de la base (nunca más de un instante). */
+/**
+ * Bloques gris cálido mientras llega la primera lectura de la base (Figma 2-292): la línea de resumen
+ * de 220 por 14 y tarjetas de 100 de alto, con 16 entre piezas.
+ */
 @Composable
-fun EsqueletoLista(modifier: Modifier = Modifier, cantidad: Int = 4) {
-    Column(modifier = modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+fun EsqueletoLista(modifier: Modifier = Modifier, cantidad: Int = 6) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Box(
+            modifier = Modifier
+                .size(width = 220.dp, height = 14.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp)),
+        )
         repeat(cantidad) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(84.dp)
+                    .height(100.dp)
                     .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
             )
         }
@@ -194,7 +198,7 @@ private fun EstadosPreview() {
             EstadoVacio(
                 titulo = stringResource(R.string.vacio_con_filtro_titulo),
                 detalle = stringResource(R.string.vacio_con_filtro_detalle),
-                accion = stringResource(R.string.filtro_quitar),
+                accion = stringResource(R.string.filtro_limpiar_filtros),
                 modifier = Modifier.height(260.dp),
             )
         }

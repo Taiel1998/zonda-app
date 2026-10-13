@@ -48,6 +48,8 @@ fun HojaInferior(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         containerColor = MaterialTheme.colorScheme.surface,
+        // Figma 51-1911: el velo es el color del texto al 40 %.
+        scrimColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
         dragHandle = { AsaDeHoja() },
     ) {
         // Con la letra agrandada o en un teléfono chico, la hoja se desplaza en lugar de cortarse.

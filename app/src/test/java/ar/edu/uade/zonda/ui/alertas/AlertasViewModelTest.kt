@@ -34,7 +34,7 @@ class AlertasViewModelTest {
     private val alertas = FakeAlertasRepository()
     private val conectividad = FakeConectividad()
 
-    private fun viewModel() = AlertasViewModel(ObservarAlertas(redes, alertas), SincronizarAlertas(redes, alertas), redes, conectividad)
+    private fun viewModel() = AlertasViewModel(ObservarAlertas(redes, alertas), SincronizarAlertas(redes, alertas), redes, alertas, conectividad)
 
     private suspend fun ReceiveTurbine<AlertasUiState>.esperar(condicion: (AlertasUiState) -> Boolean): AlertasUiState {
         var estado = awaitItem()
@@ -128,7 +128,7 @@ class AlertasViewModelTest {
 
             viewModel.sincronizar()
             val sincronizado = esperar { it.aviso != null && !it.sincronizando }
-            assertEquals(AvisoAlertas.Sincronizado(nuevas = 2, altasNuevas = 1, accionesEnviadas = 1), sincronizado.aviso)
+            assertEquals(AvisoAlertas.Sincronizado(hora = Fixtures.AHORA, nuevas = 2, altasNuevas = 1, manual = true), sincronizado.aviso)
             assertFalse(sincronizado.sincronizando)
 
             viewModel.avisoMostrado()
@@ -159,6 +159,48 @@ class AlertasViewModelTest {
             assertNull(viewModel.estado.value.aviso)
             viewModel.sincronizar(manual = true)
             assertTrue(esperar { it.aviso != null }.aviso is AvisoAlertas.Error)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `sin nada guardado y con la sincronizacion fallida muestra el error, que se va al sincronizar bien`() = runTest {
+        redes.agregar(Fixtures.red("red-1"))
+        alertas.errorAlSincronizar = ErrorZonda.ErrorDelServidor(503)
+        val viewModel = viewModel()
+
+        viewModel.estado.test {
+            assertEquals(ContenidoAlertas.Error, esperar { it.contenido is ContenidoAlertas.Error }.contenido)
+
+            alertas.errorAlSincronizar = null
+            viewModel.sincronizar()
+            assertEquals(ContenidoAlertas.Vacio(conFiltro = false), esperar { it.contenido is ContenidoAlertas.Vacio }.contenido)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `con algo guardado un error de sincronizacion no reemplaza la lista`() = runTest {
+        conRedYAlertas()
+        alertas.errorAlSincronizar = ErrorZonda.ErrorDelServidor(503)
+        val viewModel = viewModel()
+
+        viewModel.estado.test {
+            esperar { it.contenido is ContenidoAlertas.Lista }
+            viewModel.aplicarFiltro(FiltroAlertas(estado = FiltroEstado.FALSOS_POSITIVOS))
+            assertEquals(ContenidoAlertas.Vacio(conFiltro = true), esperar { it.contenido is ContenidoAlertas.Vacio }.contenido)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `las opciones de mas filtros salen de las alertas guardadas`() = runTest {
+        conRedYAlertas()
+
+        viewModel().estado.test {
+            val estado = esperar { it.opciones.servicios.isNotEmpty() }
+            assertEquals(listOf("ssh"), estado.opciones.servicios)
+            assertEquals(listOf("192.168.10.50"), estado.opciones.destinos.map { it.ip })
             cancelAndIgnoreRemainingEvents()
         }
     }

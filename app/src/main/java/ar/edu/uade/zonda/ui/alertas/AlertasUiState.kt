@@ -1,22 +1,28 @@
 package ar.edu.uade.zonda.ui.alertas
 
 import ar.edu.uade.zonda.domain.model.Alerta
-import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import java.time.Instant
 
-/** Qué se muestra en el cuerpo de la pantalla Alertas (plan, sección 4.4). */
+/** Qué se muestra en el cuerpo de la pantalla Alertas (Figma 2-3, 2-218, 2-255 y 2-292). */
 sealed interface ContenidoAlertas {
 
-    /** Todavía no llegó la primera lectura de la base: esqueleto. */
+    /** Todavía no llegó la primera lectura de la base: esqueleto (Figma 2-292). */
     data object Cargando : ContenidoAlertas
 
     /** No hay ninguna red pareada: primer inicio pendiente. */
     data object SinRed : ContenidoAlertas
 
-    /** La lista está vacía; si hay un filtro activo se ofrece quitarlo. */
+    /** La lista está vacía; si hay un filtro puesto se ofrece limpiarlo (Figma 2-218). */
     data class Vacio(val conFiltro: Boolean) : ContenidoAlertas
+
+    /**
+     * No hay nada guardado y la sincronización falló (Figma 2-255). Con algo guardado no se reemplaza
+     * la lista: el error va en el aviso inferior.
+     */
+    data object Error : ContenidoAlertas
 
     data class Lista(
         val alertas: List<Alerta>,
@@ -25,10 +31,16 @@ sealed interface ContenidoAlertas {
     ) : ContenidoAlertas
 }
 
-/** Avisos de un solo uso (snackbar): la pantalla los muestra y llama a `avisoMostrado()`. */
+/** Avisos de un solo uso (el aviso inferior): la pantalla los muestra y llama a `avisoMostrado()`. */
 sealed interface AvisoAlertas {
 
-    data class Sincronizado(val nuevas: Int, val altasNuevas: Int, val accionesEnviadas: Int) : AvisoAlertas
+    /** [manual]: la persona tocó sincronizar, y el aviso dice "Sincronizado · dom 27/09 · 02:15". */
+    data class Sincronizado(
+        val hora: Instant,
+        val nuevas: Int,
+        val altasNuevas: Int,
+        val manual: Boolean,
+    ) : AvisoAlertas
 
     data class Error(val error: ErrorZonda) : AvisoAlertas
 }
@@ -40,8 +52,8 @@ sealed interface AvisoAlertas {
 data class AlertasUiState(
     val contenido: ContenidoAlertas = ContenidoAlertas.Cargando,
     val filtro: FiltroAlertas = FiltroAlertas.TODAS,
-    /** Servicios y nombres de equipo de la red, para las opciones de Más filtros. */
-    val catalogo: Catalogo = Catalogo.VACIO,
+    /** Servicios y equipos destino de las alertas guardadas, para Más filtros. */
+    val opciones: OpcionesDeFiltro = OpcionesDeFiltro(),
     /** Hora de la última sincronización ("actualizado 02:14"); null si nunca se sincronizó. */
     val datosDe: Instant? = null,
     val sinConexion: Boolean = false,

@@ -3,10 +3,11 @@ package ar.edu.uade.zonda.ui.alertas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.Alerta
-import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.ObservarAlertas
@@ -38,6 +39,7 @@ class AlertasViewModel(
     private val observarAlertas: ObservarAlertas,
     private val sincronizarAlertas: SincronizarAlertas,
     private val redes: RedesRepository,
+    private val alertas: AlertasRepository,
     private val conectividad: Conectividad,
 ) : ViewModel() {
 
@@ -46,31 +48,49 @@ class AlertasViewModel(
     private val aviso = MutableStateFlow<AvisoAlertas?>(null)
     private val primeraLectura = MutableStateFlow(false)
 
+    /** El error de la última sincronización, o null si salió bien; sin nada guardado, reemplaza la lista. */
+    private val ultimoError = MutableStateFlow<ErrorZonda?>(null)
+
     private val lista: Flow<List<Alerta>> = filtro
         .flatMapLatest { observarAlertas(it) }
         .onEach { primeraLectura.value = true }
 
-    private val catalogo: Flow<Catalogo> = redes.observarRedActiva().flatMapLatest { red ->
-        if (red == null) flowOf(Catalogo.VACIO) else redes.observarCatalogo(red.id)
+    private val opciones: Flow<OpcionesDeFiltro> = redes.observarRedActiva().flatMapLatest { red ->
+        if (red == null) flowOf(OpcionesDeFiltro()) else alertas.observarOpcionesDeFiltro(red.id)
     }
 
-    private data class Datos(val red: Red?, val alertas: List<Alerta>, val catalogo: Catalogo, val leida: Boolean)
+    private val guardadas: Flow<Int> = redes.observarRedActiva().flatMapLatest { red ->
+        if (red == null) flowOf(0) else alertas.observarCantidad(red.id)
+    }
 
-    private data class Controles(val filtro: FiltroAlertas, val conectado: Boolean, val sincronizando: Boolean, val aviso: AvisoAlertas?)
+    private data class Datos(val red: Red?, val alertas: List<Alerta>, val opciones: OpcionesDeFiltro, val guardadas: Int, val leida: Boolean)
+
+    private data class Controles(
+        val filtro: FiltroAlertas,
+        val conectado: Boolean,
+        val sincronizando: Boolean,
+        val aviso: AvisoAlertas?,
+        val error: ErrorZonda?,
+    )
 
     val estado: StateFlow<AlertasUiState> = combine(
-        combine(redes.observarRedActiva(), lista, catalogo, primeraLectura) { red, alertas, catalogo, leida -> Datos(red, alertas, catalogo, leida) },
-        combine(filtro, conectividad.conectado, sincronizando, aviso) { filtro, conectado, sincronizando, aviso -> Controles(filtro, conectado, sincronizando, aviso) },
+        combine(redes.observarRedActiva(), lista, opciones, guardadas, primeraLectura) { red, alertas, opciones, guardadas, leida ->
+            Datos(red, alertas, opciones, guardadas, leida)
+        },
+        combine(filtro, conectividad.conectado, sincronizando, aviso, ultimoError) { filtro, conectado, sincronizando, aviso, error ->
+            Controles(filtro, conectado, sincronizando, aviso, error)
+        },
     ) { datos, controles ->
         AlertasUiState(
             contenido = when {
                 datos.red == null -> ContenidoAlertas.SinRed
                 !datos.leida -> ContenidoAlertas.Cargando
-                datos.alertas.isEmpty() -> ContenidoAlertas.Vacio(conFiltro = controles.filtro.activo)
-                else -> ContenidoAlertas.Lista(datos.alertas, sinRevisar = datos.alertas.count { it.sinRevisar })
+                datos.alertas.isNotEmpty() -> ContenidoAlertas.Lista(datos.alertas, sinRevisar = datos.alertas.count { it.sinRevisar })
+                datos.guardadas == 0 && controles.error != null -> ContenidoAlertas.Error
+                else -> ContenidoAlertas.Vacio(conFiltro = controles.filtro.activo)
             },
             filtro = controles.filtro,
-            catalogo = datos.catalogo,
+            opciones = datos.opciones,
             datosDe = datos.red?.ultimaSincronizacion,
             sinConexion = !controles.conectado,
             accesoVencido = datos.red?.accesoVencido == true,
@@ -96,6 +116,7 @@ class AlertasViewModel(
         filtro.value = nuevo
     }
 
+    /** "Limpiar filtros": la lista vuelve a mostrar todo lo guardado. */
     fun quitarFiltros() {
         filtro.value = FiltroAlertas.TODAS
     }
@@ -110,10 +131,12 @@ class AlertasViewModel(
             sincronizando.value = true
             try {
                 val resultado = sincronizarAlertas() ?: return@launch
+                ultimoError.value = null
                 if (manual || resultado.nuevas > 0) {
-                    aviso.value = AvisoAlertas.Sincronizado(resultado.nuevas, resultado.altasNuevas, resultado.accionesEnviadas)
+                    aviso.value = AvisoAlertas.Sincronizado(resultado.hora, resultado.nuevas, resultado.altasNuevas, manual)
                 }
             } catch (e: ErrorZonda) {
+                ultimoError.value = e
                 if (manual || e !is ErrorZonda.SinConexion) aviso.value = AvisoAlertas.Error(e)
             } finally {
                 sincronizando.value = false
