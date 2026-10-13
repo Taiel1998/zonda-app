@@ -16,9 +16,8 @@ data class ResultadoSincronizacion(
     val accionesEnviadas: Int,
     val accionesConError: Int,
     val hora: Instant,
-    /** Nuevas por severidad media y baja, para la notificación local según la preferencia de cada una (RF05). */
-    val mediasNuevas: Int = 0,
-    val bajasNuevas: Int = 0,
+    /** Ids de las altas nuevas: con una sola, la notificación abre su detalle. */
+    val idsAltasNuevas: List<String> = emptyList(),
 )
 
 /**
@@ -36,6 +35,12 @@ interface AlertasRepository {
 
     /** Contadores de alertas sin revisar por severidad, para el semáforo. */
     fun observarContadoresSinRevisar(redId: String): Flow<ContadoresSinRevisar>
+
+    /** Cuántas alertas de la red hay guardadas en el teléfono (Ajustes, Datos locales). */
+    fun observarCantidad(redId: String): Flow<Int>
+
+    /** Cuántas alertas hay guardadas en total, de todas las redes (Borrar datos locales). */
+    fun observarCantidadTotal(): Flow<Int>
 
     /** Alertas que empezaron desde [desde], para calcular el Resumen. */
     suspend fun obtenerAlertasDesde(redId: String, desde: Instant): List<Alerta>

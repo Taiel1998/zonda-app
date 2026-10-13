@@ -2,6 +2,7 @@ package ar.edu.uade.zonda.domain.repository
 
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.DatosPareo
+import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
@@ -51,4 +52,8 @@ interface RedesRepository {
 
     /** Catálogo de servicios y nombres de equipos de la red (`GET /catalogo`), el último guardado. */
     fun observarCatalogo(redId: String): Flow<Catalogo>
+
+    /** Protocolo, certificado y vencimiento del acceso, leídos de una llamada a `GET /salud` (Detalles técnicos). */
+    suspend fun detallesDeConexion(redId: String): DetallesConexion
 }
+

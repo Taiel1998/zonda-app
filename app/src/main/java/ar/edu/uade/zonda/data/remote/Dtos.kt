@@ -102,6 +102,8 @@ data class PareoSalidaDto(
     val red: RedDto,
     val vence: String,
     val dispositivoId: String,
+    /** Cuándo se emitió el token. Un servidor anterior puede no mandarlo. */
+    val emitido: String? = null,
 )
 
 data class CatalogoDto(

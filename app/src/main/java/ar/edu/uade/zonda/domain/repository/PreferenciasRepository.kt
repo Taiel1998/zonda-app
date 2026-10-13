@@ -10,6 +10,11 @@ interface PreferenciasRepository {
 
     suspend fun guardarAvisos(preferencias: PreferenciasAvisos)
 
+    /** El interruptor "Notificaciones del sistema" de Ajustes: si la app muestra la notificación local de altas nuevas. */
+    fun observarNotificacionesActivas(): Flow<Boolean>
+
+    suspend fun guardarNotificacionesActivas(activas: Boolean)
+
     /** La bienvenida, el tutorial y las preferencias ya se mostraron: no vuelven a aparecer (RF05). */
     fun observarPrimerInicioHecho(): Flow<Boolean>
 

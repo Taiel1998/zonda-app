@@ -49,10 +49,15 @@ abstract class ZondaDatabase : RoomDatabase() {
     companion object {
         const val NOMBRE_ARCHIVO = "zonda.db"
 
-        /** Versión 2 (fase 8): `redes.accesoVencido`, para pedir un pareo nuevo después de un 401 sin borrar la caché. */
+        /**
+         * Versión 2 (fase 8): `redes.accesoVencido`, para pedir un pareo nuevo después de un 401 sin
+         * borrar la caché, y cuándo se emitió y cuándo vence el acceso, para Detalles técnicos.
+         */
         val MIGRACION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE redes ADD COLUMN accesoVencido INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE redes ADD COLUMN accesoEmitidoEn INTEGER")
+                db.execSQL("ALTER TABLE redes ADD COLUMN accesoVenceEn INTEGER")
             }
         }
 

@@ -47,6 +47,10 @@ class AlertasRepositoryImpl(
     override fun observarAlerta(redId: String, alertaId: String): Flow<Alerta?> =
         dao.observarUna(redId, alertaId).map { it?.aDominio() }
 
+    override fun observarCantidad(redId: String): Flow<Int> = dao.observarCantidad(redId)
+
+    override fun observarCantidadTotal(): Flow<Int> = dao.observarCantidadTotal()
+
     override fun observarContadoresSinRevisar(redId: String): Flow<ContadoresSinRevisar> =
         dao.observarConteoSinRevisar(redId).map { filas ->
             fun cantidad(severidad: Severidad) = filas.firstOrNull { it.severidad == severidad.name }?.cantidad ?: 0

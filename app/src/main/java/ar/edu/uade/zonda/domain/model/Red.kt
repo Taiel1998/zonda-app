@@ -16,6 +16,9 @@ data class Red(
     val activa: Boolean,
     /** El servidor respondió 401: el token venció o fue revocado. La caché sigue; hay que parear de nuevo (RNF12). */
     val accesoVencido: Boolean = false,
+    /** Cuándo se emitió y cuándo vence el acceso de este teléfono (vienen en la respuesta del pareo; 90 días). */
+    val accesoEmitido: Instant? = null,
+    val accesoVence: Instant? = null,
 ) {
     /** Nunca se sincronizó: la pantalla Estado muestra "sin datos" y nunca un semáforo verde (RF01, criterio 3). */
     val sinDatos: Boolean
@@ -82,4 +85,18 @@ enum class PasoPareo { BUSCANDO_SERVIDOR, REGISTRANDO_TELEFONO, DESCARGANDO_ALER
 data class VinculoTelegram(
     val codigo: String,
     val enlaceBot: String,
+)
+
+/**
+ * Lo que muestra Detalles técnicos sobre la conexión con el servidor de la red (Figma 66-3316).
+ * Se lee de una llamada real a `GET /salud`, así que necesita conexión.
+ */
+data class DetallesConexion(
+    /** Versión de TLS de la conexión ("TLSv1.3"), o null si es http sin cifrar (solo la API local de pruebas). */
+    val versionTls: String?,
+    /** Quién firmó el certificado del servidor, por ejemplo "Let's Encrypt". */
+    val emisorCertificado: String?,
+    val certificadoVence: Instant?,
+    /** Vencimiento del acceso de este teléfono según el servidor. */
+    val accesoVence: Instant?,
 )

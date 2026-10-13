@@ -84,8 +84,7 @@ class SincronizadorHttp(
             accionesEnviadas = envio.enviadas,
             accionesConError = envio.conError,
             hora = hora,
-            mediasNuevas = descarga.mediasNuevas,
-            bajasNuevas = descarga.bajasNuevas,
+            idsAltasNuevas = descarga.idsAltasNuevas,
         )
     }
 
@@ -172,8 +171,7 @@ class SincronizadorHttp(
         val nuevas: Int,
         val modificadas: Int,
         val altasNuevas: Int,
-        val mediasNuevas: Int,
-        val bajasNuevas: Int,
+        val idsAltasNuevas: List<String>,
     )
 
     private suspend fun descargar(redId: String, cursorInicial: String?, api: ZondaApi): ResultadoDescarga =
@@ -190,8 +188,7 @@ class SincronizadorHttp(
         var nuevas = 0
         var modificadas = 0
         var altasNuevas = 0
-        var mediasNuevas = 0
-        var bajasNuevas = 0
+        val idsAltasNuevas = mutableListOf<String>()
         var paginas = 0
         while (true) {
             val pagina = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.alertas(cursor) }
@@ -203,10 +200,9 @@ class SincronizadorHttp(
                         modificadas++
                     } else {
                         nuevas++
-                        when (alerta.severidad) {
-                            Severidad.ALTA -> altasNuevas++
-                            Severidad.MEDIA -> mediasNuevas++
-                            Severidad.BAJA -> bajasNuevas++
+                        if (alerta.severidad == Severidad.ALTA) {
+                            altasNuevas++
+                            idsAltasNuevas += alerta.id
                         }
                     }
                 }
@@ -218,7 +214,7 @@ class SincronizadorHttp(
             paginas++
             if (!pagina.hayMas || paginas >= MAXIMO_PAGINAS) break
         }
-        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, mediasNuevas, bajasNuevas)
+        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, idsAltasNuevas)
     }
 
     /** SQLite admite hasta 999 parámetros por consulta. */

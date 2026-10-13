@@ -57,6 +57,12 @@ abstract class AlertasDao {
     @Query("SELECT severidad, COUNT(*) AS cantidad FROM alertas WHERE redId = :redId AND estadoRevision = 'SIN_REVISAR' GROUP BY severidad")
     abstract fun observarConteoSinRevisar(redId: String): Flow<List<ConteoPorSeveridad>>
 
+    @Query("SELECT COUNT(*) FROM alertas WHERE redId = :redId")
+    abstract fun observarCantidad(redId: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM alertas")
+    abstract fun observarCantidadTotal(): Flow<Int>
+
     @Transaction
     @Query("SELECT * FROM alertas WHERE redId = :redId AND inicio >= :desde ORDER BY inicio DESC")
     abstract suspend fun desde(redId: String, desde: Long): List<AlertaConDetalles>

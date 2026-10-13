@@ -58,8 +58,11 @@ abstract class RedesDao {
     abstract suspend fun actualizarCursor(id: String, cursor: String?)
 
     /** Pareo repetido de una red que ya estaba (token vencido o revocado): se actualizan los datos sin perder la caché. */
-    @Query("UPDATE redes SET nombre = :nombre, urlBase = :urlBase, accesoVencido = 0 WHERE id = :id")
-    abstract suspend fun actualizarDatosDePareo(id: String, nombre: String, urlBase: String)
+    @Query(
+        "UPDATE redes SET nombre = :nombre, urlBase = :urlBase, accesoVencido = 0, " +
+            "accesoEmitidoEn = :emitido, accesoVenceEn = :vence WHERE id = :id",
+    )
+    abstract suspend fun actualizarDatosDePareo(id: String, nombre: String, urlBase: String, emitido: Long?, vence: Long?)
 
     @Query("UPDATE redes SET accesoVencido = :vencido WHERE id = :id")
     abstract suspend fun marcarAccesoVencido(id: String, vencido: Boolean)
