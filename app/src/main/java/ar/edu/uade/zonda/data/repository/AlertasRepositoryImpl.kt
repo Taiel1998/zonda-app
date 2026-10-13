@@ -12,6 +12,7 @@ import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
@@ -77,6 +78,9 @@ class AlertasRepositoryImpl(
 
     override suspend fun descargarDetalle(redId: String, alertaId: String): Alerta =
         sincronizador.descargarDetalle(redId, alertaId)
+
+    override fun observarProgresoDescarga(redId: String): Flow<ProgresoDescarga?> =
+        sincronizador.progresoDescarga.map { progreso -> progreso?.takeIf { it.redId == redId } }
 
     override suspend fun sincronizar(redId: String): ResultadoSincronizacion =
         sincronizador.sincronizar(redId)

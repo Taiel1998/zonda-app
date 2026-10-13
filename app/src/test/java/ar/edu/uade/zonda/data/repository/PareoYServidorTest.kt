@@ -44,7 +44,8 @@ class PareoYServidorTest : PruebaConBase() {
 
     @Test
     fun `parear verifica el servidor, canjea el codigo y deja la red activa con su token guardado`() = runTest {
-        val red = redes.parear(DatosPareo("http://10.0.2.2:8000/", "K7M2-QX9P"), "Pixel de Martín")
+        val pareada = redes.parear(DatosPareo("http://10.0.2.2:8000/", "K7M2-QX9P"), "Pixel de Martín")
+        val red = pareada.red
 
         assertEquals("red-oficina", red.id)
         assertEquals("Oficina", red.nombre)
@@ -59,11 +60,13 @@ class PareoYServidorTest : PruebaConBase() {
         // Detalles técnicos muestra cuándo se emitió el acceso y cuándo vence (90 días).
         assertEquals(Instant.parse("2026-10-12T00:00:00Z"), red.accesoEmitido)
         assertEquals(Instant.parse("2027-01-10T00:00:00Z"), red.accesoVence)
+        // "N alertas de los últimos 30 días listas para descargar" (Figma 35-692).
+        assertEquals(api.salud().alertas, pareada.alertasParaDescargar)
     }
 
     @Test
     fun `los detalles de una conexion por http no traen TLS ni certificado y el vencimiento sale de lo guardado`() = runTest {
-        val red = redes.parear(datos, "Pixel de Martín")
+        val red = redes.parear(datos, "Pixel de Martín").red
 
         val detalles = redes.detallesDeConexion(red.id)
 
@@ -110,7 +113,7 @@ class PareoYServidorTest : PruebaConBase() {
         base.redesDao().actualizarCursor("red-oficina", "inst1:5")
         api.codigosDePareo += "AAAA-BBBB"
 
-        val red = redes.parear(DatosPareo("http://192.168.0.10:8000", "AAAA-BBBB"), "x")
+        val red = redes.parear(DatosPareo("http://192.168.0.10:8000", "AAAA-BBBB"), "x").red
 
         assertEquals("token-2", redes.tokenDe("red-oficina"))
         assertEquals("http://192.168.0.10:8000", red.urlBase)

@@ -22,6 +22,8 @@ data class PaginaAlertasDto(
     val cursorSiguiente: String,
     val hayMas: Boolean,
     val horaServidor: String?,
+    /** Solo en la primera página de la primera sincronización: cuántas alertas trae en total ("120 de 213"). */
+    val total: Int? = null,
 )
 
 data class AlertaDto(
@@ -104,6 +106,8 @@ data class PareoSalidaDto(
     val dispositivoId: String,
     /** Cuándo se emitió el token. Un servidor anterior puede no mandarlo. */
     val emitido: String? = null,
+    /** Alertas de los últimos 30 días que tiene la red para descargar (Figma 35-692). */
+    val alertas30Dias: Int = 0,
 )
 
 data class CatalogoDto(

@@ -3,6 +3,7 @@ package ar.edu.uade.zonda.domain.repository
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Revision
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -59,6 +60,12 @@ interface AlertasRepository {
      * desde el cursor de la red. Lanza [ar.edu.uade.zonda.domain.model.ErrorZonda] si no pudo ni empezar.
      */
     suspend fun sincronizar(redId: String): ResultadoSincronizacion
+
+    /**
+     * Cómo va la primera descarga de la red (la que baja los últimos 30 días después del pareo), o
+     * null si no hay ninguna en curso.
+     */
+    fun observarProgresoDescarga(redId: String): Flow<ProgresoDescarga?>
 
     /** Borra todas las alertas de una red (al quitar el dispositivo o borrar los datos locales). */
     suspend fun borrarDeRed(redId: String)

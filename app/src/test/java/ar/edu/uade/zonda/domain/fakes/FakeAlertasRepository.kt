@@ -7,6 +7,7 @@ import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
@@ -33,6 +34,9 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
     var resultadoSincronizacion = ResultadoSincronizacion(0, 0, 0, 0, 0, Instant.EPOCH)
     var errorAlSincronizar: ErrorZonda? = null
     val sincronizaciones = mutableListOf<String>()
+
+    /** La primera descarga en curso, para la tarjeta de Estado. */
+    val progresoDescarga = MutableStateFlow<ProgresoDescarga?>(null)
 
     val todas: List<Alerta>
         get() = alertas.value
@@ -96,6 +100,9 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
         errorAlSincronizar?.let { throw it }
         return resultadoSincronizacion
     }
+
+    override fun observarProgresoDescarga(redId: String): Flow<ProgresoDescarga?> =
+        progresoDescarga.map { progreso -> progreso?.takeIf { it.redId == redId } }
 
     override suspend fun borrarDeRed(redId: String) {
         alertas.value = alertas.value.filter { it.redId != redId }

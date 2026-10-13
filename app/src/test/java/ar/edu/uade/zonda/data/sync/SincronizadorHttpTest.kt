@@ -17,6 +17,7 @@ import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
@@ -47,6 +48,7 @@ class SincronizadorHttpTest : PruebaConBase() {
 
     private val api = ApiFalsa()
     private val almacen = FakeAlmacenSeguro()
+    private lateinit var sincronizador: SincronizadorHttp
     private lateinit var alertas: AlertasRepositoryImpl
     private lateinit var redes: RedesRepositoryImpl
     private lateinit var acciones: AccionesPendientesRepositoryImpl
@@ -56,7 +58,7 @@ class SincronizadorHttpTest : PruebaConBase() {
     @Before
     fun preparar() {
         val proveedor = ProveedorDeApiFalso(api)
-        val sincronizador = SincronizadorHttp(base, proveedor, reloj = { Fixtures.AHORA })
+        sincronizador = SincronizadorHttp(base, proveedor, reloj = { Fixtures.AHORA })
         alertas = AlertasRepositoryImpl(base.alertasDao(), sincronizador, reloj = { Fixtures.AHORA })
         redes = RedesRepositoryImpl(base.redesDao(), almacen, proveedor, reloj = { Fixtures.AHORA })
         acciones = AccionesPendientesRepositoryImpl(base.accionesPendientesDao())
@@ -103,6 +105,43 @@ class SincronizadorHttpTest : PruebaConBase() {
         assertEquals(mapOf("192.168.10.50" to "srv-web", "192.168.10.9" to "pc-09"), redes.observarCatalogo("red-1").first().equipos)
         assertEquals(listOf("smb", "ssh"), redes.observarCatalogo("red-1").first().servicios)
         assertEquals(Severidad.ALTA, redes.observarSeveridades("red-1").first().severidadDe(TipoAtaque.ESCANEO))
+    }
+
+    @Test
+    fun `la primera descarga publica cuantas van y el total, y al terminar no queda nada`() = runTest {
+        conRed()
+        publicarCinco()
+        api.tamanioPagina = 2
+        val vistos = mutableListOf<ProgresoDescarga?>()
+        // Antes de cada página se mira cómo va la barra de Estado (Figma 50-616: "120 de 213").
+        api.alPedirPagina = { vistos += sincronizador.progresoDescarga.value }
+
+        alertas.sincronizar("red-1")
+
+        assertEquals(
+            listOf(
+                ProgresoDescarga("red-1", descargadas = 0, total = null),
+                ProgresoDescarga("red-1", descargadas = 2, total = 5),
+                ProgresoDescarga("red-1", descargadas = 4, total = 5),
+            ),
+            vistos,
+        )
+        assertNull(sincronizador.progresoDescarga.value)
+        assertNull(alertas.observarProgresoDescarga("red-1").first())
+    }
+
+    @Test
+    fun `desde el cursor no hay barra de primera descarga`() = runTest {
+        conRed()
+        publicarCinco()
+        alertas.sincronizar("red-1")
+        api.publicar(DtoFixtures.alerta("a-6", severidad = "alta"))
+        val vistos = mutableListOf<ProgresoDescarga?>()
+        api.alPedirPagina = { vistos += sincronizador.progresoDescarga.value }
+
+        alertas.sincronizar("red-1")
+
+        assertEquals(listOf<ProgresoDescarga?>(null), vistos)
     }
 
     @Test

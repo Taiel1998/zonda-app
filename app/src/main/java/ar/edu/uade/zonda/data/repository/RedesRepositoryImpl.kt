@@ -19,6 +19,7 @@ import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.RedPareada
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import ar.edu.uade.zonda.domain.repository.RedesRepository
@@ -63,7 +64,7 @@ class RedesRepositoryImpl(
      * válido antes de mandar el código; después `POST /pareo`, que entrega el token una sola vez.
      * Verifica aunque [ParearRed] ya lo haya hecho, para que nunca se mande el código a ciegas.
      */
-    override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): Red {
+    override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): RedPareada {
         val api = try {
             apis.sinToken(datos.urlBase)
         } catch (e: IllegalArgumentException) {
@@ -85,7 +86,10 @@ class RedesRepositoryImpl(
             accesoVence = salida.vence.aInstante(),
         )
         guardarRedPareada(red, salida.token)
-        return dao.obtener(red.id)?.aDominio() ?: red
+        return RedPareada(
+            red = dao.obtener(red.id)?.aDominio() ?: red,
+            alertasParaDescargar = salida.alertas30Dias,
+        )
     }
 
     /**
