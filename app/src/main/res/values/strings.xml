@@ -17,60 +17,32 @@
 
     <!-- Acceso vencido (401): hay que parear de nuevo sin perder lo guardado -->
     <string name="acceso_vencido_banner">El acceso a esta red venció. Lo guardado sigue a la vista.</string>
-    <string name="acceso_vencido_corto">Acceso vencido: hay que conectar de nuevo.</string>
+    <string name="acceso_vencido_corto">Acceso vencido: hay que conectar de nuevo</string>
     <string name="acceso_vencido_conectar">Conectar de nuevo</string>
 
     <!-- Notificación local (RF05) -->
-    <string name="canal_sonido">Alertas con sonido</string>
-    <string name="canal_sonido_descripcion">Las severidades que elegiste avisar con sonido.</string>
-    <string name="canal_vibracion">Alertas con vibración</string>
-    <string name="canal_vibracion_descripcion">Las severidades que elegiste avisar con vibración.</string>
-    <string name="canal_silencio">Alertas en silencio</string>
-    <string name="canal_silencio_descripcion">Avisos sin sonido ni vibración.</string>
     <string name="notificacion_titulo">Zonda · %1$s</string>
     <string name="notificacion_resumen">Alertas nuevas para revisar</string>
     <plurals name="notificacion_altas">
         <item quantity="one">%d alerta nueva de severidad alta</item>
         <item quantity="other">%d alertas nuevas de severidad alta</item>
     </plurals>
-    <plurals name="notificacion_medias">
-        <item quantity="one">%d alerta nueva de severidad media</item>
-        <item quantity="other">%d alertas nuevas de severidad media</item>
-    </plurals>
-    <plurals name="notificacion_bajas">
-        <item quantity="one">%d alerta nueva de severidad baja</item>
-        <item quantity="other">%d alertas nuevas de severidad baja</item>
-    </plurals>
 
     <!-- Ajustes (RF05 y RF06) -->
-    <string name="ajustes_redes">Redes</string>
     <string name="ajustes_sin_redes">No hay ninguna red conectada.</string>
-    <string name="ajustes_red_activa_etiqueta">Activa</string>
-    <string name="ajustes_activar">Activar</string>
-    <string name="ajustes_agregar_red">Agregar otra red</string>
+    <string name="ajustes_agregar_red">Agregar red</string>
     <string name="ajustes_telegram">Telegram</string>
-    <string name="ajustes_telegram_pronto">Los avisos por Telegram se conectan en la próxima entrega.</string>
-    <string name="ajustes_severidades">Severidad de cada tipo de ataque</string>
-    <string name="ajustes_cambiar_severidades">Cambiar</string>
-    <string name="ajustes_severidades_intro">Elegí qué tan grave es cada tipo de ataque. Eso define el color del semáforo y cómo te avisa cada alerta. Los cambios valen para todos los teléfonos pareados a esta red.</string>
-    <string name="ajustes_guardar_severidades">Guardar para toda la red</string>
+    <string name="ajustes_telegram_pronto">La conexión con Telegram llega en la próxima versión de la app.</string>
+    <string name="ajustes_severidades">Severidad por ataque</string>
+    <string name="ajustes_severidades_intro">Elegí la severidad de cada tipo de ataque. La severidad define qué alertas te interrumpen y cuáles esperan en la lista.</string>
+    <string name="ajustes_guardar_severidades">Guardar</string>
     <string name="ajustes_severidades_guardadas">Severidades guardadas. Se envían a la red.</string>
     <string name="ajustes_detalles_tecnicos">Detalles técnicos</string>
-    <string name="ajustes_red_activa">Red activa</string>
     <string name="ajustes_ultima_sincronizacion">Última sincronización</string>
-    <string name="ajustes_cursor">Cursor</string>
-    <string name="ajustes_este_telefono">Este teléfono</string>
-    <string name="ajustes_version">Versión de la app</string>
-    <string name="ajustes_sincronizacion_fondo">En segundo plano</string>
-    <string name="ajustes_sincronizacion_fondo_valor">cada 15 min con red</string>
     <string name="ajustes_datos_locales">Datos locales</string>
     <string name="ajustes_borrar_datos">Borrar datos locales</string>
-    <string name="ajustes_borrar_datos_confirmar">Se borran las alertas, las revisiones y las acciones pendientes guardadas en este teléfono. Las redes siguen conectadas y vuelven a descargar todo en la próxima sincronización.</string>
-    <string name="ajustes_borrar">Borrar</string>
-    <string name="ajustes_datos_borrados">Datos locales borrados.</string>
+    <string name="ajustes_datos_borrados">Datos locales borrados. Tocá Sincronizar ahora para descargar de nuevo.</string>
     <string name="ajustes_quitar_dispositivo">Quitar este dispositivo</string>
-    <string name="ajustes_quitar_dispositivo_confirmar">Este teléfono deja de tener acceso a la red %1$s: se revoca su token y se borra todo lo guardado de esa red. Para volver, hace falta un código de pareo nuevo.</string>
-    <string name="ajustes_quitar">Quitar</string>
     <string name="ajustes_dispositivo_quitado">Dispositivo quitado de la red.</string>
 
     <!-- Severidad, estado de revisión, envío, métodos y veredictos -->
@@ -269,7 +241,7 @@
     <string name="bienvenida_condiciones_enlace">condiciones de uso y privacidad</string>
     <string name="bienvenida_empezar">Empezar</string>
     <string name="bienvenida_omitir">Ya conozco Zonda: omitir la introducción</string>
-    <string name="condiciones_titulo">Condiciones de uso</string>
+    <string name="condiciones_titulo">Condiciones de uso y privacidad</string>
     <string name="condiciones_texto">Zonda es una herramienta de apoyo para el equipo de IT de tu empresa. Muestra las alertas que genera el sistema de detección instalado en la red y permite registrar cómo se revisó cada una.\n\nQué guarda el teléfono: las alertas de los últimos 30 días, las revisiones y los datos de conexión de cada red. Todo queda en una base cifrada que no va a ninguna copia de seguridad. El acceso a cada red se guarda en el almacenamiento seguro de Android y nunca se muestra.\n\nQué viaja y por dónde: las alertas y las revisiones viajan cifradas (HTTPS) entre el teléfono y el servidor de tu empresa. Por Telegram viajan solo la severidad, el servicio y la hora; nunca las direcciones IP, que son datos personales según la Ley 25.326.\n\nQué no hace Zonda: no bloquea tráfico ni decide por vos. Revisar una alerta es dejar registrado lo que vos decidiste.\n\nDesde Ajustes podés borrar todos los datos del teléfono o quitar este dispositivo de una red.</string>
     <string name="tutorial_omitir">Omitir</string>
     <string name="tutorial_siguiente">Siguiente</string>
@@ -283,11 +255,11 @@
     <string name="tutorial_3_texto">Marcás si fue un ataque real o un falso positivo, con un motivo y un comentario. Sin red, se guarda y se envía después.</string>
     <string name="inicio_antes_de_empezar">Antes de empezar</string>
     <string name="avisos_intro">Elegí cómo querés que Zonda te avise. Podés cambiar todo esto después desde Ajustes.</string>
-    <string name="avisos_titulo">Avisos por severidad</string>
-    <string name="avisos_texto">Elegí cómo te avisa cada severidad. El aviso siempre dice la severidad con palabras, además del color.</string>
+    <string name="avisos_titulo">Avisos por Telegram</string>
+    <string name="avisos_texto">Elegí cómo te avisa cada severidad. El mensaje siempre dice la severidad con palabras, además del color.</string>
     <string name="avisos_continuar">Continuar</string>
     <string name="notificaciones_titulo">Notificaciones en el teléfono</string>
-    <string name="notificaciones_texto">Zonda muestra una notificación cuando la sincronización trae alertas nuevas, con el aviso que elegiste para cada severidad. Android te va a pedir confirmar el permiso.</string>
+    <string name="notificaciones_texto">Zonda muestra una notificación cuando la sincronización trae una alerta alta. Android te va a pedir confirmar el permiso.</string>
     <string name="notificaciones_permitir">Permitir notificaciones</string>
     <string name="notificaciones_permitidas">Las notificaciones están permitidas.</string>
     <string name="notificaciones_rechazadas">Sin permiso, Zonda no puede mostrar notificaciones. La app sigue funcionando; podés activarlas desde los ajustes del sistema.</string>
@@ -408,4 +380,126 @@
     <string name="descarga_titulo">Descargando alertas…</string>
     <string name="descarga_progreso">%1$d de %2$d · últimos 30 días · solo la primera vez</string>
     <string name="descarga_sin_total">%1$d alertas · últimos 30 días · solo la primera vez</string>
+
+    <!-- Notificación local de altas nuevas: un solo canal (informe, sección 6) -->
+    <string name="canal_alertas">Alertas altas</string>
+    <string name="canal_alertas_descripcion">Avisa cuando la sincronización trae alertas altas nuevas.</string>
+    <string name="telegram_bot">@zonda_alertas_bot</string>
+    <string name="accion_guardar">Guardar</string>
+    <string name="aviso_ok">OK</string>
+
+    <!-- Ajustes (Figma 4-66, 51-1137, 4-130, 51-1314, 66-3710, 66-3808, 66-3906, 66-4011 y 51-1451) -->
+    <string name="ajustes_seccion_red">Red</string>
+    <plurals name="ajustes_red_detalle">
+        <item quantity="one">%1$s · %2$d red pareada</item>
+        <item quantity="other">%1$s · %2$d redes pareadas</item>
+    </plurals>
+    <string name="ajustes_detalles_tecnicos_detalle">Protocolo de la conexión y vencimiento del acceso</string>
+    <string name="ajustes_seccion_avisos">Avisos</string>
+    <string name="ajustes_telegram_conectado">Conectado · %1$s · %2$s</string>
+    <string name="ajustes_telegram_sin_conectar">Telegram sin conectar</string>
+    <string name="ajustes_telegram_sin_conectar_texto">Los avisos inmediatos no te van a llegar hasta que vincules Telegram. Es un solo paso.</string>
+    <string name="ajustes_conectar_telegram">Conectar Telegram</string>
+    <string name="ajustes_avisos_por_severidad">Avisos por severidad</string>
+    <string name="aviso_frase_sonido">con sonido</string>
+    <string name="aviso_frase_vibracion">con vibración</string>
+    <string name="aviso_frase_sin_aviso">sin aviso</string>
+    <string name="ajustes_severidad_por_tipo">Severidad por tipo de ataque</string>
+    <string name="ajustes_severidad_por_tipo_detalle">Qué ataques son altos, medios o bajos</string>
+    <string name="ajustes_notificaciones_sistema">Notificaciones del sistema</string>
+    <string name="ajustes_notificaciones_permitidas">Permitidas · avisan cuando la sincronización trae alertas altas nuevas</string>
+    <string name="ajustes_notificaciones_desactivadas">Desactivadas · solo te avisa Telegram</string>
+    <string name="ajustes_notificaciones_bloqueadas_titulo">Notificaciones desactivadas</string>
+    <string name="ajustes_notificaciones_bloqueadas_texto">Sin este permiso no vas a ver los avisos de Zonda en el teléfono, aunque Telegram los reciba.</string>
+    <string name="ajustes_notificaciones_bloqueadas_nota">Lleva directo a las notificaciones de Zonda en el sistema</string>
+    <string name="ajustes_hoy">Hoy %1$s</string>
+    <string name="ajustes_ayer">Ayer %1$s</string>
+    <plurals name="ajustes_alertas_en_telefono">
+        <item quantity="one">%1$s · %2$d alerta en el teléfono</item>
+        <item quantity="other">%1$s · %2$d alertas en el teléfono</item>
+    </plurals>
+    <string name="ajustes_sin_datos_guardados">Sin datos guardados · 0 alertas en el teléfono</string>
+    <string name="ajustes_seccion_dispositivo">Este dispositivo</string>
+    <string name="ajustes_quitar_dispositivo_detalle">Revoca el acceso de este teléfono en el servidor y borra sus alertas guardadas</string>
+    <string name="ajustes_seccion_ayuda">Ayuda</string>
+    <string name="ajustes_ver_introduccion">Ver la introducción de nuevo</string>
+    <string name="ajustes_condiciones">Condiciones de uso y privacidad</string>
+    <string name="ajustes_borrar_titulo">¿Borrar los datos de este teléfono?</string>
+    <plurals name="ajustes_borrar_texto">
+        <item quantity="one">Se borra la alerta guardada y las acciones que todavía no se enviaron. El servidor no cambia: las alertas se vuelven a descargar al sincronizar.</item>
+        <item quantity="other">Se borran las %d alertas guardadas y las acciones que todavía no se enviaron. El servidor no cambia: las alertas se vuelven a descargar al sincronizar.</item>
+    </plurals>
+    <string name="ajustes_borrar_confirmar">Borrar datos</string>
+    <string name="ajustes_quitar_titulo">¿Quitar este dispositivo?</string>
+    <string name="ajustes_quitar_texto">Se revoca el acceso de este teléfono en el servidor de %1$s y se borran las alertas guardadas de esa red. Para volver a usar Zonda con esa red vas a necesitar un código de pareo nuevo.</string>
+    <plurals name="ajustes_quitar_resumen">
+        <item quantity="one">%1$s · %2$s · %3$d alerta guardada</item>
+        <item quantity="other">%1$s · %2$s · %3$d alertas guardadas</item>
+    </plurals>
+    <string name="ajustes_quitar_confirmar">Quitar dispositivo</string>
+    <string name="aviso_sincronizado_nada">Sincronizado: no hay alertas nuevas.</string>
+    <plurals name="aviso_sincronizado_llegaron">
+        <item quantity="one">Sincronizado: llegó %d alerta nueva.</item>
+        <item quantity="other">Sincronizado: llegaron %d alertas nuevas.</item>
+    </plurals>
+    <string name="aviso_red_activa">Red activa: %1$s. Estado y Alertas ya muestran sus datos.</string>
+
+    <!-- Redes (Figma 51-1583 y 66-4123) -->
+    <string name="redes_titulo">Redes</string>
+    <string name="redes_intro">Elegí qué red ver. Cada una guarda sus alertas por separado y tiene su propio acceso.</string>
+    <plurals name="redes_altas">
+        <item quantity="one">%1$d alerta alta activa · actualizado %2$s</item>
+        <item quantity="other">%1$d alertas altas activas · actualizado %2$s</item>
+    </plurals>
+    <plurals name="redes_medias">
+        <item quantity="one">%1$d alerta media · actualizado %2$s</item>
+        <item quantity="other">%1$d alertas medias · actualizado %2$s</item>
+    </plurals>
+    <string name="redes_tranquila">Tranquila · actualizado %1$s</string>
+    <string name="redes_sin_datos">Sin datos todavía</string>
+    <string name="redes_nota">Los avisos de Telegram dicen de qué red vienen. Desde el menú de cada red se puede quitar este dispositivo de esa red.</string>
+    <string name="redes_agregar">Agregar red</string>
+    <string name="redes_agregar_nota">Se parea igual que la primera: con el código de pareo de esa red, estando en su red o conectado a su VPN.</string>
+    <string name="redes_menu">Opciones de %1$s</string>
+
+    <!-- Avisos por severidad (Figma 51-1688) -->
+    <string name="avisos_sonido_titulo">Sonido de los avisos</string>
+    <string name="avisos_sonido_telegram">El sonido de Telegram lo define Telegram: abrí el chat de %1$s → Notificaciones → Sonido.</string>
+    <string name="avisos_sonido_zonda">Las notificaciones de Zonda usan el sonido del sistema. \"Notificaciones del sistema\" abre esa configuración.</string>
+    <string name="avisos_cambiar_severidad">Cambiar la severidad de cada tipo de ataque</string>
+
+    <!-- Detalles técnicos (Figma 66-3316 y 66-3400) -->
+    <string name="detalles_conexion">Conexión</string>
+    <string name="detalles_protocolo">Protocolo</string>
+    <string name="detalles_certificado">Certificado</string>
+    <string name="detalles_valido_hasta">Válido hasta</string>
+    <string name="detalles_servidor">Servidor</string>
+    <string name="detalles_acceso">Acceso de este teléfono</string>
+    <string name="detalles_nombre">Nombre</string>
+    <string name="detalles_emitido">Emitido</string>
+    <string name="detalles_vence">Vence</string>
+    <string name="detalles_estado">Estado</string>
+    <string name="detalles_activo">Activo</string>
+    <string name="detalles_vencido">Vencido</string>
+    <string name="detalles_vence_con_dias">%1$s (%2$d días)</string>
+    <string name="detalles_se_renueva">%1$s · se renueva solo</string>
+    <string name="detalles_http">HTTP · sin cifrar (solo pruebas)</string>
+    <string name="detalles_https">HTTPS · %1$s</string>
+    <string name="detalles_https_sin_version">HTTPS</string>
+    <string name="detalles_leyendo">Consultando…</string>
+    <string name="detalles_sin_respuesta">Sin respuesta del servidor</string>
+    <string name="detalles_sin_certificado">Sin certificado</string>
+    <string name="detalles_sin_registro">Sin registro</string>
+    <string name="detalles_nota">Para renovar el acceso, se parea de nuevo. Si perdés el teléfono, pedile al administrador que lo revoque desde el servidor.</string>
+
+    <!-- Condiciones de uso desde Ajustes (Figma 66-3558) -->
+    <string name="condiciones_ajustes_titulo">Condiciones de uso</string>
+    <string name="condiciones_guarda_titulo">Qué guarda Zonda</string>
+    <string name="condiciones_ajustes_guarda">Las alertas de los últimos 30 días, cifradas en el teléfono, y las revisiones que hagas.</string>
+    <string name="condiciones_no_se_envia_titulo">Qué no se envía</string>
+    <string name="condiciones_no_se_envia">Por Telegram solo viajan la severidad, el servicio y la hora. Nunca direcciones IP ni nombres de equipos.</string>
+    <string name="condiciones_datos_titulo">Datos personales</string>
+    <string name="condiciones_ajustes_datos">Las direcciones IP son datos personales (Ley 25.326). Solo viajan por la conexión cifrada con el servidor de tu empresa.</string>
+    <string name="condiciones_derechos_titulo">Tus derechos</string>
+    <string name="condiciones_derechos">Podés borrar los datos del teléfono o quitar este dispositivo cuando quieras, desde Ajustes.</string>
 </resources>

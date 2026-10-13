@@ -85,11 +85,6 @@ class AppContainer(context: Context) {
     /** Notificaciones locales de alertas nuevas; los canales se crean al arrancar la app. */
     val notificador: Notificador by lazy { Notificador(appContext) }
 
-    /** Versión de la app, para Detalles técnicos. */
-    val versionDeLaApp: String by lazy {
-        runCatching { appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName }.getOrNull() ?: "?"
-    }
-
     /** Cómo se llama este teléfono en el servidor ("Google Pixel 7"): es el autor de sus revisiones. */
     val nombreDelTelefono: String = listOf(Build.MANUFACTURER.orEmpty(), Build.MODEL.orEmpty())
         .map { it.trim() }

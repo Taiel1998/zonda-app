@@ -18,6 +18,7 @@ object Formato {
     private val HORA_CON_SEGUNDOS = DateTimeFormatter.ofPattern("HH:mm:ss", LOCALE)
     private val DIA = DateTimeFormatter.ofPattern("EEE dd/MM", LOCALE)
     private val FECHA_Y_HORA = DateTimeFormatter.ofPattern("dd/MM HH:mm", LOCALE)
+    private val FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy", LOCALE)
 
     /** `02:09` */
     fun hora(instante: Instant, zona: ZoneId = ZoneId.systemDefault()): String = HORA.format(instante.atZone(zona))
@@ -35,6 +36,20 @@ object Formato {
 
     /** `27/09 02:12`, para el historial y la hora de los datos de otro día. */
     fun fechaYHora(instante: Instant, zona: ZoneId = ZoneId.systemDefault()): String = FECHA_Y_HORA.format(instante.atZone(zona))
+
+    /** `07/12/2026`, para fechas de vencimiento. */
+    fun fecha(instante: Instant, zona: ZoneId = ZoneId.systemDefault()): String = FECHA.format(instante.atZone(zona))
+
+    /** Cuántos días hay entre una fecha y otra (Detalles técnicos: "Vence 27/12/2026 (90 días)"). */
+    fun diasEntre(desde: Instant, hasta: Instant): Long = Duration.between(desde, hasta).toDays()
+
+    /** Si dos instantes caen el mismo día del calendario (para "Hoy 02:14"). */
+    fun mismoDia(a: Instant, b: Instant, zona: ZoneId = ZoneId.systemDefault()): Boolean =
+        a.atZone(zona).toLocalDate() == b.atZone(zona).toLocalDate()
+
+    /** Si [instante] cae el día anterior a [ahora] (para "Ayer 23:50"). */
+    fun ayer(instante: Instant, ahora: Instant, zona: ZoneId = ZoneId.systemDefault()): Boolean =
+        instante.atZone(zona).toLocalDate() == ahora.atZone(zona).toLocalDate().minusDays(1)
 
     /** `42 s`, `18 min 10 s`, `1 h 5 min`. Las alertas tienen resolución de segundos. */
     fun duracion(duracion: Duration): String {

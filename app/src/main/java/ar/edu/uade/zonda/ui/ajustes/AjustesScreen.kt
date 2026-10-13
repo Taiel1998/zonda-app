@@ -3,87 +3,79 @@ package ar.edu.uade.zonda.ui.ajustes
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.ui.EstadoPermiso
 import ar.edu.uade.zonda.ui.Formato
-import ar.edu.uade.zonda.ui.components.SelectorDeAvisos
-import ar.edu.uade.zonda.ui.etiqueta
+import ar.edu.uade.zonda.ui.abrirAjustesDeNotificaciones
+import ar.edu.uade.zonda.ui.components.AvisoInferior
+import ar.edu.uade.zonda.ui.components.BarraSuperior
+import ar.edu.uade.zonda.ui.components.BotonTonal
+import ar.edu.uade.zonda.ui.components.BotonTonalPeligro
+import ar.edu.uade.zonda.ui.components.FilaConInterruptor
+import ar.edu.uade.zonda.ui.components.FilaNavegable
+import ar.edu.uade.zonda.ui.components.FilaTexto
+import ar.edu.uade.zonda.ui.components.HojaConfirmacion
+import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
+import ar.edu.uade.zonda.ui.components.TarjetaAdvertencia
+import ar.edu.uade.zonda.ui.components.TarjetaSeccion
 import ar.edu.uade.zonda.ui.mensaje
-import ar.edu.uade.zonda.ui.primerinicio.TIPOS_EN_PANTALLA
-import ar.edu.uade.zonda.ui.primerinicio.TarjetaNotificaciones
-import ar.edu.uade.zonda.ui.theme.Tonos
+import ar.edu.uade.zonda.ui.rememberPermisoNotificaciones
 import ar.edu.uade.zonda.ui.viewModelDeZonda
+import java.time.Instant
 import java.time.ZoneId
+import kotlinx.coroutines.launch
 
-/** Lo que la persona puede hacer en Ajustes. Los valores por defecto no hacen nada (cómodo en las pruebas). */
-class AccionesAjustes(
-    val alActivarRed: (String) -> Unit = {},
-    val alAgregarRed: () -> Unit = {},
-    val alConectarDeNuevo: () -> Unit = {},
-    val alCambiarAviso: (Severidad, ModoAviso) -> Unit = { _, _ -> },
-    val alEditarSeveridades: () -> Unit = {},
-    val alSincronizar: () -> Unit = {},
-    val alBorrarDatos: () -> Unit = {},
-    val alQuitarDispositivo: () -> Unit = {},
-    val alQuedarSinRedes: () -> Unit = {},
-    val alAvisoMostrado: () -> Unit = {},
-)
+/** El margen de las pantallas de Ajustes en el Figma: 16 a los costados y arriba, 24 abajo, 16 entre tarjetas. */
+internal val MargenAjustes = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 24.dp)
+internal val EntreTarjetas = Arrangement.spacedBy(16.dp)
 
 /**
- * Pantalla Ajustes (RF05 y RF06; informe, 11.10): redes, Telegram (fase 10), avisos por severidad,
- * severidad de cada tipo de ataque, notificaciones, detalles técnicos y datos locales.
+ * Ajustes (RF05 y RF06; Figma 4-66 y 51-1137): una lista de tarjetas que abren otras pantallas.
+ * Red (Redes y Detalles técnicos), Avisos (Telegram, avisos por severidad, severidad por tipo de ataque
+ * y el interruptor de notificaciones), Datos locales, Este dispositivo y Ayuda. Las confirmaciones son
+ * hojas inferiores con el botón rojo.
  */
 @Composable
 fun AjustesScreen(
+    alAbrirRedes: () -> Unit,
+    alAbrirDetallesTecnicos: () -> Unit,
+    alAbrirAvisos: () -> Unit,
+    alAbrirSeveridades: () -> Unit,
+    alVerIntroduccion: () -> Unit,
+    alVerCondiciones: () -> Unit,
     alAgregarRed: () -> Unit,
-    alConectarDeNuevo: () -> Unit,
-    alEditarSeveridades: () -> Unit,
     alQuedarSinRedes: () -> Unit,
     viewModel: AjustesViewModel = ajustesViewModel(),
 ) {
@@ -91,28 +83,36 @@ fun AjustesScreen(
     AjustesContenido(
         estado = estado,
         acciones = AccionesAjustes(
-            alActivarRed = viewModel::activarRed,
-            alAgregarRed = alAgregarRed,
-            alConectarDeNuevo = alConectarDeNuevo,
-            alCambiarAviso = viewModel::cambiarAviso,
-            alEditarSeveridades = {
-                viewModel.empezarAEditarSeveridades()
-                alEditarSeveridades()
+            alAbrirRedes = alAbrirRedes,
+            alAbrirDetallesTecnicos = alAbrirDetallesTecnicos,
+            alAbrirAvisos = {
+                viewModel.empezarAEditarAvisos()
+                alAbrirAvisos()
             },
+            alAbrirSeveridades = {
+                viewModel.empezarAEditarSeveridades()
+                alAbrirSeveridades()
+            },
+            alConectarTelegram = viewModel::conectarTelegram,
+            alCambiarNotificaciones = viewModel::cambiarNotificaciones,
             alSincronizar = viewModel::sincronizarAhora,
             alBorrarDatos = viewModel::borrarDatosLocales,
-            alQuitarDispositivo = viewModel::quitarDispositivo,
+            alQuitarDispositivo = { viewModel.quitarDispositivo() },
+            alVerIntroduccion = alVerIntroduccion,
+            alVerCondiciones = alVerCondiciones,
+            alAgregarRed = alAgregarRed,
             alQuedarSinRedes = alQuedarSinRedes,
             alAvisoMostrado = viewModel::avisoMostrado,
         ),
     )
 }
 
-/** El ViewModel de Ajustes, el mismo para la pantalla y para la edición de severidades. */
+/** El ViewModel de Ajustes. Redes, Avisos por severidad y Severidad por ataque pasan el de Ajustes como [dueño]. */
 @Composable
-fun ajustesViewModel(dueño: androidx.lifecycle.ViewModelStoreOwner? = null): AjustesViewModel = viewModelDeZonda(dueño) { contenedor ->
+fun ajustesViewModel(dueño: ViewModelStoreOwner? = null): AjustesViewModel = viewModelDeZonda(dueño) { contenedor ->
     AjustesViewModel(
         redes = contenedor.redes,
+        alertas = contenedor.alertas,
         preferencias = contenedor.preferencias,
         sincronizarAlertas = contenedor.sincronizarAlertas,
         cambiarSeveridades = contenedor.cambiarSeveridades,
@@ -120,206 +120,278 @@ fun ajustesViewModel(dueño: androidx.lifecycle.ViewModelStoreOwner? = null): Aj
         borrarDatosLocales = contenedor.borrarDatosLocales,
         alcanceDeEnvio = contenedor.alcanceDeLaApp,
         nombreDelTelefono = contenedor.nombreDelTelefono,
-        versionDeLaApp = contenedor.versionDeLaApp,
     )
 }
 
-private enum class Confirmacion { BORRAR_DATOS, QUITAR_DISPOSITIVO }
+/** Lo que se puede hacer desde Ajustes; separado para probar la pantalla sin ViewModel. */
+data class AccionesAjustes(
+    val alAbrirRedes: () -> Unit = {},
+    val alAbrirDetallesTecnicos: () -> Unit = {},
+    val alAbrirAvisos: () -> Unit = {},
+    val alAbrirSeveridades: () -> Unit = {},
+    val alConectarTelegram: () -> Unit = {},
+    val alCambiarNotificaciones: (Boolean) -> Unit = {},
+    val alSincronizar: () -> Unit = {},
+    val alBorrarDatos: () -> Unit = {},
+    val alQuitarDispositivo: () -> Unit = {},
+    val alVerIntroduccion: () -> Unit = {},
+    val alVerCondiciones: () -> Unit = {},
+    val alAgregarRed: () -> Unit = {},
+    val alQuedarSinRedes: () -> Unit = {},
+    val alAvisoMostrado: () -> Unit = {},
+)
 
-@OptIn(ExperimentalMaterial3Api::class)
+private enum class HojaAjustes { BORRAR_DATOS, QUITAR_DISPOSITIVO }
+
 @Composable
-fun AjustesContenido(estado: AjustesUiState, acciones: AccionesAjustes, zona: ZoneId = ZoneId.systemDefault()) {
+fun AjustesContenido(
+    estado: AjustesUiState,
+    acciones: AccionesAjustes,
+    zona: ZoneId = ZoneId.systemDefault(),
+    ahora: Instant = Instant.now(),
+) {
     val snackbar = remember { SnackbarHostState() }
     val contexto = LocalContext.current
-    var confirmacion by rememberSaveable { mutableStateOf<Confirmacion?>(null) }
+    var hoja by rememberSaveable { mutableStateOf<HojaAjustes?>(null) }
+    val permiso = rememberPermisoNotificaciones { concedido -> if (concedido) acciones.alCambiarNotificaciones(true) }
+    val alcance = rememberCoroutineScope()
 
     LaunchedEffect(estado.aviso) {
         val aviso = estado.aviso ?: return@LaunchedEffect
+        // El aviso se consume enseguida; se muestra en otro alcance para que consumirlo no lo corte.
+        acciones.alAvisoMostrado()
         if (aviso is AvisoAjustes.DispositivoQuitado && !aviso.quedanRedes) {
-            // Sin redes no queda nada que mostrar acá: se vuelve a Conexión sin esperar al aviso.
-            acciones.alAvisoMostrado()
+            // Sin redes no queda nada que mostrar acá: se vuelve a Conexión.
             acciones.alQuedarSinRedes()
             return@LaunchedEffect
         }
-        snackbar.showSnackbar(textoDelAviso(contexto, aviso))
-        acciones.alAvisoMostrado()
+        val (texto, accion) = textoDelAviso(contexto, aviso)
+        alcance.launch {
+            val resultado = snackbar.showSnackbar(message = texto, actionLabel = accion, duration = SnackbarDuration.Short)
+            if (aviso is AvisoAjustes.Error && resultado == SnackbarResult.ActionPerformed) acciones.alSincronizar()
+        }
     }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.destino_ajustes)) }) },
-        snackbarHost = { SnackbarHost(snackbar) },
+        topBar = { BarraSuperior(titulo = stringResource(R.string.destino_ajustes)) },
+        snackbarHost = { SnackbarHost(snackbar) { AvisoInferior(it) } },
     ) { relleno ->
         Column(
             modifier = Modifier
                 .padding(relleno)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(MargenAjustes),
+            verticalArrangement = EntreTarjetas,
         ) {
-            Seccion(titulo = stringResource(R.string.ajustes_redes)) {
-                if (estado.redes.isEmpty()) {
-                    Text(text = stringResource(R.string.ajustes_sin_redes), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                estado.redes.forEachIndexed { indice, red ->
-                    if (indice > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    FilaRed(red = red, acciones = acciones)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(onClick = acciones.alAgregarRed, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.ajustes_agregar_red))
-                }
-            }
-
-            Seccion(titulo = stringResource(R.string.ajustes_telegram)) {
-                Text(text = stringResource(R.string.ajustes_telegram_pronto), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
-            Seccion(titulo = stringResource(R.string.avisos_titulo)) {
-                Text(text = stringResource(R.string.avisos_texto), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                SelectorDeAvisos(avisos = estado.avisos, alCambiar = acciones.alCambiarAviso)
-            }
-
-            Seccion(titulo = stringResource(R.string.ajustes_severidades)) {
-                TIPOS_EN_PANTALLA.forEach { tipo ->
-                    FilaDato(stringResource(tipo.etiqueta()), stringResource(estado.severidades.severidadDe(tipo).etiqueta()))
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = stringResource(R.string.severidades_nota), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(onClick = acciones.alEditarSeveridades, enabled = estado.redActiva != null, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.ajustes_cambiar_severidades))
-                }
-            }
-
-            TarjetaNotificaciones()
-
-            Seccion(titulo = stringResource(R.string.ajustes_detalles_tecnicos)) {
-                val red = estado.redActiva
-                if (red != null) {
-                    FilaDato(stringResource(R.string.ajustes_red_activa), red.nombre)
-                    FilaDato(stringResource(R.string.conexion_direccion_corta), red.urlBase)
-                    FilaDato(
-                        stringResource(R.string.ajustes_ultima_sincronizacion),
-                        red.ultimaSincronizacion?.let { Formato.fechaYHora(it, zona) } ?: stringResource(R.string.alertas_sin_sincronizar),
+            val red = estado.redActiva
+            TarjetaSeccion(titulo = stringResource(R.string.ajustes_seccion_red)) {
+                if (red == null) {
+                    FilaNavegable(
+                        titulo = stringResource(R.string.ajustes_agregar_red),
+                        detalle = stringResource(R.string.ajustes_sin_redes),
+                        alTocar = acciones.alAgregarRed,
                     )
-                    FilaDato(stringResource(R.string.ajustes_cursor), red.cursor ?: "–")
-                }
-                FilaDato(stringResource(R.string.ajustes_este_telefono), estado.nombreDelTelefono)
-                FilaDato(stringResource(R.string.ajustes_version), estado.versionDeLaApp)
-                FilaDato(stringResource(R.string.ajustes_sincronizacion_fondo), stringResource(R.string.ajustes_sincronizacion_fondo_valor))
-            }
-
-            Seccion(titulo = stringResource(R.string.ajustes_datos_locales)) {
-                if (estado.sincronizando) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(stringResource(R.string.conexion_conectando))
-                    }
                 } else {
-                    FilledTonalButton(onClick = acciones.alSincronizar, enabled = estado.redActiva != null, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.accion_sincronizar))
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(onClick = { confirmacion = Confirmacion.BORRAR_DATOS }, enabled = estado.redes.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.ajustes_borrar_datos))
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { confirmacion = Confirmacion.QUITAR_DISPOSITIVO },
-                    enabled = estado.redActiva != null,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.ajustes_quitar_dispositivo))
+                    FilaNavegable(
+                        titulo = red.nombre,
+                        detalle = pluralStringResource(R.plurals.ajustes_red_detalle, estado.redes.size, direccion(red), estado.redes.size),
+                        alTocar = acciones.alAbrirRedes,
+                    )
+                    FilaNavegable(
+                        titulo = stringResource(R.string.ajustes_detalles_tecnicos),
+                        detalle = stringResource(R.string.ajustes_detalles_tecnicos_detalle),
+                        alTocar = acciones.alAbrirDetallesTecnicos,
+                    )
                 }
             }
-        }
-    }
 
-    confirmacion?.let { actual ->
-        val esBorrar = actual == Confirmacion.BORRAR_DATOS
-        AlertDialog(
-            onDismissRequest = { confirmacion = null },
-            title = { Text(stringResource(if (esBorrar) R.string.ajustes_borrar_datos else R.string.ajustes_quitar_dispositivo)) },
-            text = {
-                Text(
-                    if (esBorrar) {
-                        stringResource(R.string.ajustes_borrar_datos_confirmar)
-                    } else {
-                        stringResource(R.string.ajustes_quitar_dispositivo_confirmar, estado.redActiva?.nombre.orEmpty())
-                    },
+            TarjetaSeccion(titulo = stringResource(R.string.ajustes_seccion_avisos)) {
+                if (red?.telegramVinculado == true) {
+                    FilaNavegable(
+                        titulo = stringResource(R.string.ajustes_telegram),
+                        detalle = stringResource(R.string.ajustes_telegram_conectado, stringResource(R.string.telegram_bot), estado.nombreDelTelefono),
+                        alTocar = acciones.alConectarTelegram,
+                    )
+                } else {
+                    TarjetaAdvertencia(
+                        titulo = stringResource(R.string.ajustes_telegram_sin_conectar),
+                        texto = stringResource(R.string.ajustes_telegram_sin_conectar_texto),
+                        accion = stringResource(R.string.ajustes_conectar_telegram),
+                        alAccionar = acciones.alConectarTelegram,
+                    )
+                }
+                FilaNavegable(
+                    titulo = stringResource(R.string.ajustes_avisos_por_severidad),
+                    detalle = resumenDeAvisos(estado.avisos),
+                    alTocar = acciones.alAbrirAvisos,
                 )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmacion = null
-                        if (esBorrar) acciones.alBorrarDatos() else acciones.alQuitarDispositivo()
-                    },
-                ) {
-                    Text(stringResource(if (esBorrar) R.string.ajustes_borrar else R.string.ajustes_quitar))
+                FilaNavegable(
+                    titulo = stringResource(R.string.ajustes_severidad_por_tipo),
+                    detalle = stringResource(R.string.ajustes_severidad_por_tipo_detalle),
+                    alTocar = acciones.alAbrirSeveridades,
+                )
+                if (permiso.estado == EstadoPermiso.RECHAZADO) {
+                    TarjetaAdvertencia(
+                        titulo = stringResource(R.string.ajustes_notificaciones_bloqueadas_titulo),
+                        texto = stringResource(R.string.ajustes_notificaciones_bloqueadas_texto),
+                        accion = stringResource(R.string.abrir_ajustes),
+                        alAccionar = { abrirAjustesDeNotificaciones(contexto) },
+                        nota = stringResource(R.string.ajustes_notificaciones_bloqueadas_nota),
+                    )
+                } else {
+                    val activas = estado.notificacionesActivas && permiso.estado == EstadoPermiso.CONCEDIDO
+                    FilaConInterruptor(
+                        titulo = stringResource(R.string.ajustes_notificaciones_sistema),
+                        detalle = stringResource(if (activas) R.string.ajustes_notificaciones_permitidas else R.string.ajustes_notificaciones_desactivadas),
+                        activo = activas,
+                        alCambiar = { prender ->
+                            if (!prender) acciones.alCambiarNotificaciones(false)
+                            else if (permiso.estado == EstadoPermiso.CONCEDIDO) acciones.alCambiarNotificaciones(true)
+                            else permiso.pedir()
+                        },
+                    )
                 }
+            }
+
+            TarjetaSeccion(titulo = stringResource(R.string.ajustes_datos_locales)) {
+                FilaTexto(
+                    titulo = stringResource(R.string.ajustes_ultima_sincronizacion),
+                    detalle = ultimaSincronizacion(red, estado.alertasDeLaRedActiva, ahora, zona),
+                )
+                Row(modifier = Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    BotonTonal(
+                        texto = stringResource(R.string.accion_sincronizar),
+                        alTocar = acciones.alSincronizar,
+                        habilitado = red != null && !estado.sincronizando,
+                        cargando = estado.sincronizando,
+                        relleno = RellenoBotonAngosto,
+                        modifier = Modifier.weight(1f),
+                    )
+                    BotonTonalPeligro(
+                        texto = stringResource(R.string.ajustes_borrar_datos),
+                        alTocar = { hoja = HojaAjustes.BORRAR_DATOS },
+                        relleno = RellenoBotonAngosto,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            if (red != null) {
+                TarjetaSeccion(titulo = stringResource(R.string.ajustes_seccion_dispositivo)) {
+                    FilaNavegable(
+                        titulo = stringResource(R.string.ajustes_quitar_dispositivo),
+                        detalle = stringResource(R.string.ajustes_quitar_dispositivo_detalle),
+                        colorTitulo = MaterialTheme.colorScheme.error,
+                        alTocar = { hoja = HojaAjustes.QUITAR_DISPOSITIVO },
+                    )
+                }
+            }
+
+            TarjetaSeccion(titulo = stringResource(R.string.ajustes_seccion_ayuda)) {
+                FilaNavegable(titulo = stringResource(R.string.ajustes_ver_introduccion), alTocar = acciones.alVerIntroduccion)
+                FilaNavegable(titulo = stringResource(R.string.ajustes_condiciones), alTocar = acciones.alVerCondiciones)
+            }
+        }
+    }
+
+    when (hoja) {
+        HojaAjustes.BORRAR_DATOS -> HojaConfirmacion(
+            titulo = stringResource(R.string.ajustes_borrar_titulo),
+            texto = pluralStringResource(R.plurals.ajustes_borrar_texto, estado.alertasGuardadas, estado.alertasGuardadas),
+            textoConfirmar = stringResource(R.string.ajustes_borrar_confirmar),
+            alConfirmar = {
+                hoja = null
+                acciones.alBorrarDatos()
             },
-            dismissButton = { TextButton(onClick = { confirmacion = null }) { Text(stringResource(R.string.revisar_cancelar)) } },
+            alCerrar = { hoja = null },
         )
-    }
-}
-
-@Composable
-private fun FilaRed(red: Red, acciones: AccionesAjustes) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = red.nombre, style = MaterialTheme.typography.titleSmall)
-            Text(text = red.urlBase.removePrefix("https://"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (red.accesoVencido) {
-                Text(text = stringResource(R.string.acceso_vencido_corto), style = MaterialTheme.typography.bodySmall, color = Tonos.Media.texto)
-            }
+        HojaAjustes.QUITAR_DISPOSITIVO -> estado.redActiva?.let { red ->
+            HojaQuitarDispositivo(
+                red = red,
+                nombreDelTelefono = estado.nombreDelTelefono,
+                alertasGuardadas = estado.alertasDeLaRedActiva,
+                alConfirmar = {
+                    hoja = null
+                    acciones.alQuitarDispositivo()
+                },
+                alCerrar = { hoja = null },
+            )
         }
-        Spacer(modifier = Modifier.width(8.dp))
-        when {
-            red.accesoVencido -> FilledTonalButton(onClick = acciones.alConectarDeNuevo) { Text(stringResource(R.string.acceso_vencido_conectar)) }
-            red.activa -> Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = stringResource(R.string.ajustes_red_activa_etiqueta), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            }
-            else -> TextButton(onClick = { acciones.alActivarRed(red.id) }) { Text(stringResource(R.string.ajustes_activar)) }
-        }
+        null -> Unit
     }
 }
 
+/** "¿Quitar este dispositivo?" (Figma 51-1451), desde Ajustes o desde el menú de cada red. */
 @Composable
-private fun Seccion(titulo: String, contenido: @Composable () -> Unit) {
-    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(text = titulo, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.height(8.dp))
-            contenido()
-        }
-    }
+fun HojaQuitarDispositivo(
+    red: Red,
+    nombreDelTelefono: String,
+    alertasGuardadas: Int,
+    alConfirmar: () -> Unit,
+    alCerrar: () -> Unit,
+) {
+    HojaConfirmacion(
+        titulo = stringResource(R.string.ajustes_quitar_titulo),
+        texto = stringResource(R.string.ajustes_quitar_texto, red.nombre),
+        textoConfirmar = stringResource(R.string.ajustes_quitar_confirmar),
+        resumen = pluralStringResource(R.plurals.ajustes_quitar_resumen, alertasGuardadas, nombreDelTelefono, red.nombre, alertasGuardadas),
+        alConfirmar = alConfirmar,
+        alCerrar = alCerrar,
+    )
 }
 
+/** La dirección de la red sin el esquema, como en el Figma: "zonda-empresa.duckdns.org". */
+fun direccion(red: Red): String = red.urlBase.substringAfter("://").trimEnd('/')
+
+/** "Alta con sonido · Media con vibración · Baja sin aviso". */
 @Composable
-private fun FilaDato(etiqueta: String, valor: String) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text = etiqueta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(text = valor, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+private fun resumenDeAvisos(avisos: PreferenciasAvisos): String =
+    Severidad.entries.map { severidad ->
+        val nombre = stringResource(
+            when (severidad) {
+                Severidad.ALTA -> R.string.severidad_alta
+                Severidad.MEDIA -> R.string.severidad_media
+                Severidad.BAJA -> R.string.severidad_baja
+            },
+        )
+        val modo = stringResource(
+            when (avisos.para(severidad)) {
+                ModoAviso.SONIDO -> R.string.aviso_frase_sonido
+                ModoAviso.VIBRACION -> R.string.aviso_frase_vibracion
+                ModoAviso.SIN_AVISO -> R.string.aviso_frase_sin_aviso
+            },
+        )
+        "$nombre $modo"
+    }.joinToString(" · ")
+
+/** "Hoy 02:14 · 213 alertas en el teléfono", o "Sin datos guardados · 0 alertas en el teléfono". */
+@Composable
+private fun ultimaSincronizacion(red: Red?, alertas: Int, ahora: Instant, zona: ZoneId): String {
+    val ultima = red?.ultimaSincronizacion ?: return stringResource(R.string.ajustes_sin_datos_guardados)
+    val cuando = when {
+        Formato.mismoDia(ultima, ahora, zona) -> stringResource(R.string.ajustes_hoy, Formato.hora(ultima, zona))
+        Formato.ayer(ultima, ahora, zona) -> stringResource(R.string.ajustes_ayer, Formato.hora(ultima, zona))
+        else -> Formato.fechaYHora(ultima, zona)
     }
+    return pluralStringResource(R.plurals.ajustes_alertas_en_telefono, alertas, cuando, alertas)
 }
 
-private fun textoDelAviso(contexto: Context, aviso: AvisoAjustes): String = when (aviso) {
-    is AvisoAjustes.Sincronizado -> if (aviso.nuevas == 0) {
-        contexto.getString(R.string.aviso_sincronizado_sin_novedades)
-    } else {
-        contexto.resources.getQuantityString(R.plurals.aviso_sincronizado_nuevas, aviso.nuevas, aviso.nuevas)
+/** El texto del aviso inferior y su acción ("OK", o "Reintentar" en los errores). */
+fun textoDelAviso(contexto: Context, aviso: AvisoAjustes): Pair<String, String?> {
+    val ok = contexto.getString(R.string.aviso_ok)
+    return when (aviso) {
+        is AvisoAjustes.Sincronizado -> if (aviso.nuevas == 0) {
+            contexto.getString(R.string.aviso_sincronizado_nada) to ok
+        } else {
+            contexto.resources.getQuantityString(R.plurals.aviso_sincronizado_llegaron, aviso.nuevas, aviso.nuevas) to ok
+        }
+        AvisoAjustes.SeveridadesGuardadas -> contexto.getString(R.string.ajustes_severidades_guardadas) to ok
+        AvisoAjustes.DatosBorrados -> contexto.getString(R.string.ajustes_datos_borrados) to ok
+        is AvisoAjustes.DispositivoQuitado -> contexto.getString(R.string.ajustes_dispositivo_quitado) to ok
+        is AvisoAjustes.RedActivada -> contexto.getString(R.string.aviso_red_activa, aviso.nombre) to ok
+        AvisoAjustes.TelegramPronto -> contexto.getString(R.string.ajustes_telegram_pronto) to ok
+        is AvisoAjustes.Error -> contexto.getString(aviso.error.mensaje()) to contexto.getString(R.string.error_reintentar)
     }
-    AvisoAjustes.SeveridadesGuardadas -> contexto.getString(R.string.ajustes_severidades_guardadas)
-    AvisoAjustes.DatosBorrados -> contexto.getString(R.string.ajustes_datos_borrados)
-    is AvisoAjustes.DispositivoQuitado -> contexto.getString(R.string.ajustes_dispositivo_quitado)
-    is AvisoAjustes.Error -> contexto.getString(aviso.error.mensaje())
 }
