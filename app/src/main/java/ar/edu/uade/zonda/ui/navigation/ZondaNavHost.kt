@@ -48,6 +48,7 @@ import ar.edu.uade.zonda.ui.alertas.AlertasScreen
 import ar.edu.uade.zonda.ui.conexion.ConexionScreen
 import ar.edu.uade.zonda.ui.detalle.RutaDetalle
 import ar.edu.uade.zonda.ui.detalle.detalleAlerta
+import ar.edu.uade.zonda.ui.estado.DescargaInicialViewModel
 import ar.edu.uade.zonda.ui.estado.EstadoScreen
 import ar.edu.uade.zonda.ui.inicio.ArranqueViewModel
 import ar.edu.uade.zonda.ui.inicio.DestinoInicial
@@ -146,9 +147,14 @@ fun ZondaNavHost(
                     ConexionScreen(
                         alTerminar = { navController.irAPrincipal() },
                         alVolver = if (navController.previousBackStackEntry == null) null else ({ navController.popBackStack() }),
+                        alVerDetallesTecnicos = { navController.navigate(Rutas.DETALLES_TECNICOS) },
                     )
                 }
-                composable(Rutas.ESTADO) { EstadoScreen() }
+                composable(Rutas.ESTADO) {
+                    val descarga = viewModelDeZonda { DescargaInicialViewModel(it.redes, it.alertas) }
+                    val progreso by descarga.progreso.collectAsStateWithLifecycle()
+                    EstadoScreen(progreso = progreso)
+                }
                 composable(
                     route = Rutas.ALERTAS,
                     arguments = listOf(EnlacesInternos.ARG_RED, EnlacesInternos.ARG_ESTADO, EnlacesInternos.ARG_SEVERIDAD).map { nombre ->
@@ -226,8 +232,14 @@ fun ZondaNavHost(
                         },
                     )
                 }
+                // Desde Ajustes: "Omitir" vuelve y "Configurar mis avisos" abre los avisos por severidad.
                 composable(Rutas.INTRODUCCION) {
-                    TutorialScreen(alTerminar = { navController.popBackStack() })
+                    TutorialScreen(
+                        alOmitir = { navController.popBackStack() },
+                        alTerminar = {
+                            navController.navigate(Rutas.AVISOS_POR_SEVERIDAD) { popUpTo(Rutas.INTRODUCCION) { inclusive = true } }
+                        },
+                    )
                 }
                 composable(Rutas.CONDICIONES_DE_USO) {
                     CondicionesScreen(alVolver = { navController.popBackStack() })

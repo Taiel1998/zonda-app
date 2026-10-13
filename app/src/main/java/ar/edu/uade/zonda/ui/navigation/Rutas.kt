@@ -14,7 +14,6 @@ object Rutas {
     // Primer inicio (RF05): un grafo anidado con su propio ViewModel compartido
     const val PRIMER_INICIO = "primer_inicio"
     const val BIENVENIDA = "bienvenida"
-    const val CONDICIONES = "condiciones"
     const val TUTORIAL = "tutorial"
     const val AVISOS = "avisos"
     const val SEVERIDADES_INICIALES = "severidades_iniciales"
