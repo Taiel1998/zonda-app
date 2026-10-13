@@ -18,6 +18,7 @@ object Formato {
     private val HORA_CON_SEGUNDOS = DateTimeFormatter.ofPattern("HH:mm:ss", LOCALE)
     private val DIA = DateTimeFormatter.ofPattern("EEE dd/MM", LOCALE)
     private val FECHA_Y_HORA = DateTimeFormatter.ofPattern("dd/MM HH:mm", LOCALE)
+    private val FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy", LOCALE)
 
     /** `02:09` */
     fun hora(instante: Instant, zona: ZoneId = ZoneId.systemDefault()): String = HORA.format(instante.atZone(zona))
@@ -35,6 +36,27 @@ object Formato {
 
     /** `27/09 02:12`, para el historial y la hora de los datos de otro día. */
     fun fechaYHora(instante: Instant, zona: ZoneId = ZoneId.systemDefault()): String = FECHA_Y_HORA.format(instante.atZone(zona))
+
+    /** `07/12/2026`, para fechas de vencimiento. */
+    fun fecha(instante: Instant, zona: ZoneId = ZoneId.systemDefault()): String = FECHA.format(instante.atZone(zona))
+
+    /** Cuántos días hay entre una fecha y otra (Detalles técnicos: "Vence 27/12/2026 (90 días)"). */
+    fun diasEntre(desde: Instant, hasta: Instant): Long = Duration.between(desde, hasta).toDays()
+
+    /** Si dos instantes caen el mismo día del calendario (para "Hoy 02:14"). */
+    fun mismoDia(a: Instant, b: Instant, zona: ZoneId = ZoneId.systemDefault()): Boolean =
+        a.atZone(zona).toLocalDate() == b.atZone(zona).toLocalDate()
+
+    /** `hoy`, `ayer` o `dom 27/09`: el día de una revisión ("Celular Martín · hoy 02:12 · enviada"). */
+    fun diaRelativo(instante: Instant, ahora: Instant, zona: ZoneId = ZoneId.systemDefault()): String = when {
+        mismoDia(instante, ahora, zona) -> "hoy"
+        ayer(instante, ahora, zona) -> "ayer"
+        else -> dia(instante, zona)
+    }
+
+    /** Si [instante] cae el día anterior a [ahora] (para "Ayer 23:50"). */
+    fun ayer(instante: Instant, ahora: Instant, zona: ZoneId = ZoneId.systemDefault()): Boolean =
+        instante.atZone(zona).toLocalDate() == ahora.atZone(zona).toLocalDate().minusDays(1)
 
     /** `42 s`, `18 min 10 s`, `1 h 5 min`. Las alertas tienen resolución de segundos. */
     fun duracion(duracion: Duration): String {
@@ -60,6 +82,10 @@ object Formato {
     /** `192.168.30.50 · pc-rrhh`, o solo la IP si el catálogo no tiene el nombre. */
     fun ipYNombre(equipo: Equipo): String = if (equipo.nombre == null) equipo.ip else "${equipo.ip} · ${equipo.nombre}"
 
-    /** `SSH · puerto 22` */
+    /** `SSH · 22`, como en la tarjeta de la lista. */
     fun servicioYPuerto(servicio: String, puerto: Int): String = "${servicio.uppercase(LOCALE)} · $puerto"
+
+    /** `SSH · TCP/22`, como en el detalle. Sin el protocolo (alertas guardadas antes de que la API lo mandara), `SSH · 22`. */
+    fun servicioProtocoloYPuerto(servicio: String, protocolo: String?, puerto: Int): String =
+        if (protocolo == null) servicioYPuerto(servicio, puerto) else "${servicio.uppercase(LOCALE)} · ${protocolo.uppercase(LOCALE)}/$puerto"
 }

@@ -4,28 +4,41 @@ Convenciones: campos en camelCase; enums en minúsculas con guion bajo; fechas e
 (UTC). `tipoAtaque` es null cuando la alerta la detectaron solo las reglas o los umbrales.
 """
 
+from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 TipoAtaque = Literal["fuerza_bruta", "escaneo", "ddos", "probable_falsa_alarma", "sin_tipificar"]
 Severidad = Literal["alta", "media", "baja"]
 EstadoRevision = Literal["sin_revisar", "ataque_real", "falso_positivo"]
 Resultado = Literal["ataque_real", "falso_positivo"]
+# Los motivos del Figma (pantallas "revisar: ataque real" y "revisar: falso positivo").
 Motivo = Literal[
     "escalado_al_proveedor",
-    "equipo_aislado",
-    "credenciales_cambiadas",
-    "en_investigacion",
+    "bloqueado_manualmente",
+    "contrasena_cambiada",
+    "investigando",
     "tarea_programada",
-    "herramienta_autorizada",
-    "prueba_del_equipo_de_it",
-    "servicio_nuevo",
+    "backup",
+    "equipo_nuevo",
+    "usuario_autorizado",
+    "otro",
 ]
 
 MOTIVOS_POR_RESULTADO: dict[str, set[str]] = {
-    "ataque_real": {"escalado_al_proveedor", "equipo_aislado", "credenciales_cambiadas", "en_investigacion"},
-    "falso_positivo": {"tarea_programada", "herramienta_autorizada", "prueba_del_equipo_de_it", "servicio_nuevo"},
+    "ataque_real": {"escalado_al_proveedor", "bloqueado_manualmente", "contrasena_cambiada", "investigando"},
+    "falso_positivo": {"tarea_programada", "backup", "equipo_nuevo", "usuario_autorizado", "otro"},
+}
+
+# Los motivos que tuvo la API antes y su equivalente actual, para las revisiones ya guardadas.
+MOTIVOS_ANTERIORES: dict[str, str] = {
+    "equipo_aislado": "bloqueado_manualmente",
+    "credenciales_cambiadas": "contrasena_cambiada",
+    "en_investigacion": "investigando",
+    "herramienta_autorizada": "usuario_autorizado",
+    "prueba_del_equipo_de_it": "otro",
+    "servicio_nuevo": "equipo_nuevo",
 }
 
 # Clave que representa el tipo vacío (null) en la tabla de severidades.
@@ -51,7 +64,10 @@ class Revision(BaseModel):
     motivo: Motivo
     comentario: str
     autor: str
+    # Cuándo llegó al servidor.
     fecha: str
+    # Cuándo se revisó en el teléfono; null en las revisiones anteriores a este campo.
+    revisadaEn: str | None = None
 
 
 class Alerta(BaseModel):
@@ -66,6 +82,8 @@ class Alerta(BaseModel):
     destinoIp: str
     destinoNombre: str | None
     servicio: str
+    # Protocolo de transporte del episodio ("tcp" o "udp"): el detalle muestra "SSH · TCP/22".
+    protocolo: str
     puerto: int
     puertoReferencia: int
     puertosDistintos: int
@@ -84,6 +102,8 @@ class PaginaAlertas(BaseModel):
     cursorSiguiente: str
     hayMas: bool
     horaServidor: str
+    # Solo en la primera página (sin cursor): cuántas alertas trae la sincronización completa.
+    total: int | None = None
 
 
 class Salud(BaseModel):
@@ -110,9 +130,32 @@ class RevisionEntrada(BaseModel):
     accionId: str = Field(min_length=8, max_length=64)
     resultado: Resultado
     motivo: Motivo
-    comentario: str = Field(min_length=1, max_length=1000)
+    comentario: str = Field(max_length=1000)
     versionVista: int | None = None
     forzar: bool = False
+    # Cuándo se revisó en el teléfono (ISO 8601 con zona). Sin conexión puede ser bastante antes del envío.
+    revisadaEn: str | None = None
+
+    @field_validator("comentario")
+    @classmethod
+    def comentario_con_texto(cls, valor: str) -> str:
+        # El comentario es obligatorio (RF04, criterio 2): uno con solo espacios tampoco vale.
+        if not valor.strip():
+            raise ValueError("El comentario es obligatorio")
+        return valor
+
+    @field_validator("revisadaEn")
+    @classmethod
+    def revisada_en_con_zona(cls, valor: str | None) -> str | None:
+        if valor is None:
+            return None
+        try:
+            momento = datetime.fromisoformat(valor)
+        except ValueError as error:
+            raise ValueError("revisadaEn no es una fecha ISO 8601") from error
+        if momento.tzinfo is None:
+            raise ValueError("revisadaEn tiene que tener la zona horaria")
+        return valor
 
 
 class Conflicto(BaseModel):
@@ -129,8 +172,11 @@ class PareoEntrada(BaseModel):
 class PareoSalida(BaseModel):
     token: str
     red: dict
+    emitido: str
     vence: str
     dispositivoId: str
+    # Alertas de los últimos 30 días que la app va a descargar ("Red conectada", Figma 35-692).
+    alertas30Dias: int = 0
 
 
 class VinculoTelegram(BaseModel):

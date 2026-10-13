@@ -41,6 +41,9 @@ fun RedEntity.aDominio(): Red = Red(
     ultimaSincronizacion = ultimaSincronizacion?.aInstant(),
     telegramVinculado = telegramVinculado,
     activa = activa,
+    accesoVencido = accesoVencido,
+    accesoEmitido = accesoEmitidoEn?.aInstant(),
+    accesoVence = accesoVenceEn?.aInstant(),
 )
 
 fun Red.aEntidad(creadaEn: Instant): RedEntity = RedEntity(
@@ -52,15 +55,19 @@ fun Red.aEntidad(creadaEn: Instant): RedEntity = RedEntity(
     telegramVinculado = telegramVinculado,
     activa = activa,
     creadaEn = creadaEn.aMilis(),
+    accesoVencido = accesoVencido,
+    accesoEmitidoEn = accesoEmitido?.aMilis(),
+    accesoVenceEn = accesoVence?.aMilis(),
 )
 
 fun RevisionEntity.aDominio(): Revision = Revision(
     resultado = ResultadoRevision.valueOf(resultado),
-    motivo = Motivo.valueOf(motivo),
+    motivo = Motivo.desdeNombre(motivo),
     comentario = comentario,
     autor = autor,
     fecha = fecha.aInstant(),
     origen = OrigenRevision.valueOf(origen),
+    revisadaEn = revisadaEn?.aInstant(),
 )
 
 fun Revision.aEntidad(alertaId: String): RevisionEntity = RevisionEntity(
@@ -71,6 +78,7 @@ fun Revision.aEntidad(alertaId: String): RevisionEntity = RevisionEntity(
     autor = autor,
     fecha = fecha.aMilis(),
     origen = origen.name,
+    revisadaEn = revisadaEn?.aMilis(),
 )
 
 fun AlertaConDetalles.aDominio(): Alerta {
@@ -86,6 +94,7 @@ fun AlertaConDetalles.aDominio(): Alerta {
         origen = Equipo(alerta.origenIp, alerta.origenNombre),
         destino = Equipo(alerta.destinoIp, alerta.destinoNombre),
         servicio = alerta.servicio,
+        protocolo = alerta.protocolo,
         puerto = alerta.puerto,
         puertoReferencia = alerta.puertoReferencia,
         puertosDistintos = alerta.puertosDistintos,
@@ -121,6 +130,7 @@ fun Alerta.aEntidad(): AlertaEntity = AlertaEntity(
     destinoIp = destino.ip,
     destinoNombre = destino.nombre,
     servicio = servicio,
+    protocolo = protocolo,
     puerto = puerto,
     puertoReferencia = puertoReferencia,
     puertosDistintos = puertosDistintos,
@@ -150,7 +160,7 @@ fun AccionPendienteEntity.aDominio(): AccionPendiente = AccionPendiente(
     revision = if (resultado != null && motivo != null && comentario != null && fechaRevision != null) {
         Revision(
             resultado = ResultadoRevision.valueOf(resultado),
-            motivo = Motivo.valueOf(motivo),
+            motivo = Motivo.desdeNombre(motivo),
             comentario = comentario,
             autor = null,
             fecha = fechaRevision.aInstant(),
@@ -168,11 +178,12 @@ fun AccionPendienteEntity.aDominio(): AccionPendiente = AccionPendiente(
     revisionAjena = if (ajenaResultado != null && ajenaMotivo != null && ajenaFecha != null) {
         Revision(
             resultado = ResultadoRevision.valueOf(ajenaResultado),
-            motivo = Motivo.valueOf(ajenaMotivo),
+            motivo = Motivo.desdeNombre(ajenaMotivo),
             comentario = ajenaComentario.orEmpty(),
             autor = ajenaAutor,
             fecha = ajenaFecha.aInstant(),
             origen = OrigenRevision.SERVIDOR,
+            revisadaEn = ajenaRevisadaEn?.aInstant(),
         )
     } else {
         null
@@ -199,6 +210,7 @@ fun AccionPendiente.aEntidad(): AccionPendienteEntity = AccionPendienteEntity(
     ajenaComentario = revisionAjena?.comentario,
     ajenaAutor = revisionAjena?.autor,
     ajenaFecha = revisionAjena?.fecha?.aMilis(),
+    ajenaRevisadaEn = revisionAjena?.revisadaEn?.aMilis(),
 )
 
 /** Sin filas guardadas rige la severidad recomendada. */

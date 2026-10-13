@@ -2,12 +2,14 @@ package ar.edu.uade.zonda.domain.fakes
 
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.DatosPareo
+import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.ErrorZonda
-import kotlinx.coroutines.CompletableDeferred
 import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.RedPareada
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import ar.edu.uade.zonda.domain.repository.RedesRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -31,6 +33,15 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
     /** Si no es null, el pareo espera hasta que la prueba lo complete (para ver los pasos intermedios). */
     var esperaAlParear: CompletableDeferred<Unit>? = null
 
+    /** Lo que devuelve [detallesDeConexion], o el error que lanza. */
+    var detallesConexion = DetallesConexion(versionTls = "TLSv1.3", emisorCertificado = "Let's Encrypt", certificadoVence = null, accesoVence = null)
+    var errorDetalles: ErrorZonda? = null
+
+    override suspend fun detallesDeConexion(redId: String): DetallesConexion {
+        errorDetalles?.let { throw it }
+        return detallesConexion
+    }
+
     override suspend fun verificarServidor(urlBase: String) {
         verificaciones += urlBase
         errorAlVerificar?.let { throw it }
@@ -51,7 +62,10 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
         redes.value = redes.value.map { it.copy(activa = it.id == redId) }
     }
 
-    override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): Red {
+    /** Cuántas alertas de los últimos 30 días informa el pareo. */
+    var alertasAlParear = 213
+
+    override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): RedPareada {
         pareos += datos
         esperaAlParear?.await()
         errorAlParear?.let { throw it }
@@ -65,12 +79,20 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
             activa = true,
         )
         redes.value = redes.value.map { it.copy(activa = false) } + red
-        return red
+        return RedPareada(red, alertasParaDescargar = alertasAlParear)
     }
 
     override suspend fun quitarDispositivo(redId: String) {
         redesQuitadas += redId
         redes.value = redes.value.filter { it.id != redId }
+    }
+
+    override suspend fun marcarAccesoVencido(redId: String, vencido: Boolean) {
+        redes.value = redes.value.map { if (it.id == redId) it.copy(accesoVencido = vencido) else it }
+    }
+
+    override suspend fun reiniciarSincronizacion(redId: String) {
+        redes.value = redes.value.map { if (it.id == redId) it.copy(cursor = null, ultimaSincronizacion = null) else it }
     }
 
     override fun observarSeveridades(redId: String): Flow<SeveridadPorTipo> =

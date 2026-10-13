@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** Por dónde entra la app al tocar el ícono (plan, sección 4.4). */
 enum class DestinoInicial {
@@ -31,7 +32,7 @@ enum class DestinoInicial {
 
 /** Decide la pantalla de entrada. Es null mientras se abre la base: la primera vez, SQLCipher tarda unos segundos. */
 class ArranqueViewModel(
-    redes: RedesRepository,
+    private val redes: RedesRepository,
     preferencias: PreferenciasRepository,
 ) : ViewModel() {
 
@@ -39,4 +40,9 @@ class ArranqueViewModel(
         combine(redes.observarRedActiva(), preferencias.observarPrimerInicioHecho()) { red, hecho ->
             DestinoInicial.para(hayRedPareada = red != null, primerInicioHecho = hecho)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Un enlace interno de otra red (la notificación de esa red) la deja activa antes de mostrar sus alertas. */
+    fun activarRed(redId: String) {
+        viewModelScope.launch { redes.activar(redId) }
+    }
 }

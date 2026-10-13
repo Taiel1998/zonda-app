@@ -65,7 +65,7 @@ class RevisarAlertaTest {
     @Test
     fun `una alerta inexistente da NoEncontrado`() = runTest {
         val error = runCatching {
-            casoDeUso("red-1", "no-existe", ResultadoRevision.ATAQUE_REAL, Motivo.EN_INVESTIGACION, "Comentario")
+            casoDeUso("red-1", "no-existe", ResultadoRevision.ATAQUE_REAL, Motivo.INVESTIGANDO, "Comentario")
         }.exceptionOrNull()
 
         assertTrue(error is ErrorZonda.NoEncontrado)
@@ -73,8 +73,8 @@ class RevisarAlertaTest {
 
     @Test
     fun `revisar dos veces la misma alerta deja una sola accion en la cola`() = runTest {
-        casoDeUso("red-1", "a-1", ResultadoRevision.ATAQUE_REAL, Motivo.EN_INVESTIGACION, "Primera")
-        val segunda = casoDeUso("red-1", "a-1", ResultadoRevision.FALSO_POSITIVO, Motivo.SERVICIO_NUEVO, "Cambio de opinión")
+        casoDeUso("red-1", "a-1", ResultadoRevision.ATAQUE_REAL, Motivo.INVESTIGANDO, "Primera")
+        val segunda = casoDeUso("red-1", "a-1", ResultadoRevision.FALSO_POSITIVO, Motivo.EQUIPO_NUEVO, "Cambio de opinión")
 
         assertEquals("accion-2", segunda.id)
         assertEquals(listOf(segunda), acciones.todas)

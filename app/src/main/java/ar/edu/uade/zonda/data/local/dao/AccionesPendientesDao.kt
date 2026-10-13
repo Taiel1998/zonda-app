@@ -49,11 +49,19 @@ abstract class AccionesPendientesDao {
         """
         UPDATE acciones_pendientes
         SET estado = 'CONFLICTO', ajenaResultado = :resultado, ajenaMotivo = :motivo,
-            ajenaComentario = :comentario, ajenaAutor = :autor, ajenaFecha = :fecha
+            ajenaComentario = :comentario, ajenaAutor = :autor, ajenaFecha = :fecha, ajenaRevisadaEn = :revisadaEn
         WHERE id = :id
         """,
     )
-    abstract suspend fun marcarConflicto(id: String, resultado: String, motivo: String, comentario: String, autor: String?, fecha: Long)
+    abstract suspend fun marcarConflicto(
+        id: String,
+        resultado: String,
+        motivo: String,
+        comentario: String,
+        autor: String?,
+        fecha: Long,
+        revisadaEn: Long?,
+    )
 
     /** Reintento manual de una acción con error: vuelve a pendiente con los intentos en cero. */
     @Query("UPDATE acciones_pendientes SET estado = 'PENDIENTE', intentos = 0, ultimoError = NULL WHERE id = :id")

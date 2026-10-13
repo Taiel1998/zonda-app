@@ -13,6 +13,10 @@ def test_la_primera_sincronizacion_recorre_todas_las_paginas_por_cursor(cliente,
     assert len(primera["alertas"]) == 10
     assert primera["hayMas"] is True
     assert ":" in primera["cursorSiguiente"]
+    # La primera página dice cuántas trae la sincronización completa; las siguientes, no.
+    assert primera["total"] == cliente.get("/salud").json()["alertas"]
+    segunda = cliente.get("/alertas", headers=auth, params={"desde": primera["cursorSiguiente"]}).json()
+    assert segunda["total"] is None
 
     alertas = todas_las_alertas(cliente, auth)
 
@@ -103,3 +107,24 @@ def todas_las_alertas_con(cliente, auth, **filtros):
         cursor = pagina["cursorSiguiente"]
         if not pagina["hayMas"]:
             return alertas
+
+
+def test_la_primera_sincronizacion_trae_solo_los_ultimos_30_dias(cliente, auth):
+    base = cliente.app.state.base
+    vieja = (datetime.now(timezone.utc) - timedelta(days=40)).isoformat(timespec="seconds")
+    with base.transaccion() as con:
+        alerta_id = con.execute("SELECT id FROM alertas ORDER BY secuencia LIMIT 1").fetchone()["id"]
+        con.execute("UPDATE alertas SET creada_en = ? WHERE id = ?", (vieja, alerta_id))
+
+    primera = cliente.get("/alertas", headers=auth).json()
+    alertas = todas_las_alertas(cliente, auth)
+
+    assert primera["total"] == cliente.get("/salud").json()["alertas"] - 1
+    assert alerta_id not in {a["id"] for a in alertas}
+
+
+def test_cada_alerta_dice_su_protocolo(cliente, auth):
+    protocolos = {a["protocolo"] for a in todas_las_alertas(cliente, auth)}
+
+    # El detalle muestra "SSH · TCP/22"; la semilla tiene episodios TCP y UDP (DNS, NetBIOS).
+    assert protocolos == {"tcp", "udp"}

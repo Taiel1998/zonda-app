@@ -1,5 +1,7 @@
 package ar.edu.uade.zonda.ui.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -7,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
@@ -16,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.theme.nota
 import java.time.ZoneId
 
 /**
@@ -30,11 +34,14 @@ fun TarjetaAlerta(
     modifier: Modifier = Modifier,
     zona: ZoneId = ZoneId.systemDefault(),
 ) {
+    // Figma 35-363: borde gris por dentro, esquinas de 12, 12 de margen más el borde y 8 entre filas.
     OutlinedCard(
         onClick = { alTocar(alerta.id) },
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+        Column(modifier = Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IndicadorSeveridad(alerta.severidad)
                 Spacer(modifier = Modifier.width(6.dp))
@@ -46,26 +53,21 @@ fun TarjetaAlerta(
                 }
                 Text(
                     text = Formato.horaYDia(alerta.inicio, zona),
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.nota,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = Formato.servicioYPuerto(alerta.servicio, alerta.puerto),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                alerta.metodos.sorted().forEach { metodo ->
-                    Spacer(modifier = Modifier.width(6.dp))
-                    EtiquetaMetodo(metodo)
-                }
+                alerta.metodos.sorted().forEach { metodo -> EtiquetaMetodo(metodo) }
             }
         }
     }

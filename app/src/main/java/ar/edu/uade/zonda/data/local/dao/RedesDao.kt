@@ -58,8 +58,18 @@ abstract class RedesDao {
     abstract suspend fun actualizarCursor(id: String, cursor: String?)
 
     /** Pareo repetido de una red que ya estaba (token vencido o revocado): se actualizan los datos sin perder la caché. */
-    @Query("UPDATE redes SET nombre = :nombre, urlBase = :urlBase WHERE id = :id")
-    abstract suspend fun actualizarDatosDePareo(id: String, nombre: String, urlBase: String)
+    @Query(
+        "UPDATE redes SET nombre = :nombre, urlBase = :urlBase, accesoVencido = 0, " +
+            "accesoEmitidoEn = :emitido, accesoVenceEn = :vence WHERE id = :id",
+    )
+    abstract suspend fun actualizarDatosDePareo(id: String, nombre: String, urlBase: String, emitido: Long?, vence: Long?)
+
+    @Query("UPDATE redes SET accesoVencido = :vencido WHERE id = :id")
+    abstract suspend fun marcarAccesoVencido(id: String, vencido: Boolean)
+
+    /** Borrar datos locales: sin cursor ni hora, la sincronización siguiente baja todo de nuevo. */
+    @Query("UPDATE redes SET cursor = NULL, ultimaSincronizacion = NULL WHERE id = :id")
+    abstract suspend fun reiniciarSincronizacion(id: String)
 
     @Query("UPDATE redes SET telegramVinculado = :vinculado WHERE id = :id")
     abstract suspend fun marcarTelegram(id: String, vinculado: Boolean)

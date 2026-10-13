@@ -22,6 +22,10 @@ interface ZondaApi {
     @GET("salud")
     suspend fun salud(): SaludDto
 
+    /** La misma ruta, con la respuesta cruda: Detalles técnicos lee de ahí la versión de TLS y el certificado. */
+    @GET("salud")
+    suspend fun saludConRespuesta(): Response<SaludDto>
+
     /** Alertas nuevas o modificadas desde el cursor, de a 200, en orden de cambio. */
     @GET("alertas")
     suspend fun alertas(@Query("desde") desde: String?): PaginaAlertasDto

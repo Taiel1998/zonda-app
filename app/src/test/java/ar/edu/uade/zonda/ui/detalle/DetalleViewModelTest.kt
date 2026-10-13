@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.ui.detalle
 
+import androidx.lifecycle.viewModelScope
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import ar.edu.uade.zonda.domain.Fixtures
@@ -23,6 +24,7 @@ import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import ar.edu.uade.zonda.ui.ReglaDispatcherPrincipal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -176,7 +178,7 @@ class DetalleViewModelTest {
         viewModel.elegirMotivo(Motivo.ESCALADO_AL_PROVEEDOR, "Escalé la alerta al proveedor.")
         assertEquals("Escalé la alerta al proveedor.", viewModel.formulario.value?.comentario)
         viewModel.cambiarComentario("Avisé al proveedor y bloqueé el acceso")
-        viewModel.elegirMotivo(Motivo.EQUIPO_AISLADO, "Aislé el equipo.")
+        viewModel.elegirMotivo(Motivo.BLOQUEADO_MANUALMENTE, "Bloqueé el acceso SSH de pc-09 y avisé al proveedor.")
         assertEquals("Avisé al proveedor y bloqueé el acceso", viewModel.formulario.value?.comentario)
         assertTrue(viewModel.formulario.value!!.puedeConfirmar)
 
@@ -186,7 +188,7 @@ class DetalleViewModelTest {
         assertEquals(AvisoDetalle.RevisionGuardada(conConexion = true), viewModel.aviso.value)
         val alerta = alertas.observarAlerta("red-1", "a-1").first()!!
         assertEquals(EstadoRevision.ATAQUE_REAL, alerta.estadoRevision)
-        assertEquals(Motivo.EQUIPO_AISLADO, alerta.revisionActual?.motivo)
+        assertEquals(Motivo.BLOQUEADO_MANUALMENTE, alerta.revisionActual?.motivo)
         assertEquals("Avisé al proveedor y bloqueé el acceso", alerta.revisionActual?.comentario)
         assertEquals(1, acciones.todas.size)
         assertTrue("todavía se puede deshacer", alertas.sincronizaciones.isEmpty())
@@ -217,13 +219,37 @@ class DetalleViewModelTest {
     }
 
     @Test
+    fun `la revision recien hecha se marca para mostrarla abajo y deshacer lo saca aunque la pantalla se cierre`() = runTest {
+        alertas.agregar(Fixtures.alerta("a-1"))
+        val viewModel = viewModel("a-1", backgroundScope)
+
+        viewModel.estado.test {
+            assertFalse((esperar { it is DetalleUiState.Contenido } as DetalleUiState.Contenido).recienRevisada)
+            viewModel.abrirRevision()
+            viewModel.elegirResultado(ResultadoRevision.ATAQUE_REAL)
+            viewModel.elegirMotivo(Motivo.INVESTIGANDO, "Estoy revisando los registros del servidor; sigo mañana.")
+            viewModel.confirmarRevision()
+            esperar { (it as? DetalleUiState.Contenido)?.recienRevisada == true }
+
+            viewModel.deshacer()
+            esperar { (it as? DetalleUiState.Contenido)?.recienRevisada == false }
+            cancelAndIgnoreRemainingEvents()
+        }
+        // El descarte corre en el alcance de la app: termina aunque el detalle ya se haya cerrado.
+        viewModel.viewModelScope.cancel()
+        advanceTimeBy(ESPERA * 2)
+        assertTrue(acciones.todas.isEmpty())
+        assertEquals(EstadoRevision.SIN_REVISAR, alertas.observarAlerta("red-1", "a-1").first()!!.estadoRevision)
+    }
+
+    @Test
     fun `sin conexion la revision queda pendiente y sale sola cuando vuelve la red`() = runTest {
         alertas.agregar(Fixtures.alerta("a-1"))
         conectividad.estado.value = false
         val viewModel = viewModel("a-1", backgroundScope)
         viewModel.abrirRevision()
         viewModel.elegirResultado(ResultadoRevision.ATAQUE_REAL)
-        viewModel.elegirMotivo(Motivo.EN_INVESTIGACION, "Lo estoy investigando.")
+        viewModel.elegirMotivo(Motivo.INVESTIGANDO, "Estoy revisando los registros del servidor; sigo mañana.")
 
         viewModel.confirmarRevision()
         assertEquals(AvisoDetalle.RevisionGuardada(conConexion = false), viewModel.aviso.value)

@@ -2,11 +2,15 @@ package ar.edu.uade.zonda.domain.fakes
 
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
+import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.FiltroServicio
+import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
@@ -18,7 +22,8 @@ import kotlinx.coroutines.flow.map
 
 /**
  * Repositorio de alertas en memoria para probar los casos de uso sin Room ni red.
- * Aplica los filtros de estado, severidad, servicio, destino y método; el período no (no hay reloj).
+ * Aplica los filtros de estado, severidad, servicio, destino y método; el período no (no hay reloj):
+ * eso lo prueba AlertasRepositoryImplTest contra la base.
  */
 class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepository {
 
@@ -34,6 +39,9 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
     var errorAlSincronizar: ErrorZonda? = null
     val sincronizaciones = mutableListOf<String>()
 
+    /** La primera descarga en curso, para la tarjeta de Estado. */
+    val progresoDescarga = MutableStateFlow<ProgresoDescarga?>(null)
+
     val todas: List<Alerta>
         get() = alertas.value
 
@@ -47,8 +55,25 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
             lista.filter { it.redId == redId && filtro.acepta(it) }.sortedByDescending { it.inicio }
         }
 
+    override fun observarOpcionesDeFiltro(redId: String): Flow<OpcionesDeFiltro> =
+        alertas.map { lista ->
+            val deLaRed = lista.filter { it.redId == redId }
+            OpcionesDeFiltro(
+                servicios = deLaRed.groupBy { it.servicio }.entries
+                    .sortedWith(compareByDescending<Map.Entry<String, List<Alerta>>> { it.value.size }.thenBy { it.key })
+                    .map { it.key },
+                destinos = deLaRed.groupBy { it.destino.ip }.entries
+                    .sortedWith(compareByDescending<Map.Entry<String, List<Alerta>>> { it.value.size }.thenBy { it.key })
+                    .map { (ip, deEseDestino) -> Equipo(ip, deEseDestino.firstNotNullOfOrNull { it.destino.nombre }) },
+            )
+        }
+
     override fun observarAlerta(redId: String, alertaId: String): Flow<Alerta?> =
         alertas.map { lista -> lista.firstOrNull { it.redId == redId && it.id == alertaId } }
+
+    override fun observarCantidad(redId: String): Flow<Int> = alertas.map { lista -> lista.count { it.redId == redId } }
+
+    override fun observarCantidadTotal(): Flow<Int> = alertas.map { it.size }
 
     override fun observarContadoresSinRevisar(redId: String): Flow<ContadoresSinRevisar> =
         alertas.map { lista ->
@@ -93,6 +118,9 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
         return resultadoSincronizacion
     }
 
+    override fun observarProgresoDescarga(redId: String): Flow<ProgresoDescarga?> =
+        progresoDescarga.map { progreso -> progreso?.takeIf { it.redId == redId } }
+
     override suspend fun borrarDeRed(redId: String) {
         alertas.value = alertas.value.filter { it.redId != redId }
     }
@@ -102,9 +130,15 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
     }
 
     private fun FiltroAlertas.acepta(alerta: Alerta): Boolean =
-        (estado == null || alerta.estadoRevision == estado) &&
-            (severidad == null || alerta.severidad == severidad) &&
-            (servicio == null || alerta.servicio == servicio) &&
+        (estado.estados?.contains(alerta.estadoRevision) ?: true) &&
+            (severidades.isEmpty() || alerta.severidad in severidades) &&
+            aceptaServicio(alerta.servicio) &&
             (destinoIp == null || alerta.destino.ip == destinoIp) &&
             (metodo == null || metodo in alerta.metodos)
+
+    private fun FiltroAlertas.aceptaServicio(nombre: String): Boolean = when (val elegido = servicio) {
+        null -> true
+        is FiltroServicio.Uno -> nombre == elegido.nombre
+        is FiltroServicio.Otros -> nombre !in elegido.conChip
+    }
 }

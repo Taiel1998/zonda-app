@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
@@ -30,51 +31,39 @@ import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.etiqueta
-import ar.edu.uade.zonda.ui.theme.EnvioConflicto
-import ar.edu.uade.zonda.ui.theme.EnvioError
-import ar.edu.uade.zonda.ui.theme.EnvioPendiente
-import ar.edu.uade.zonda.ui.theme.EstadoFalsoPositivo
-import ar.edu.uade.zonda.ui.theme.EstadoFalsoPositivoFondo
-import ar.edu.uade.zonda.ui.theme.EstadoRevisada
-import ar.edu.uade.zonda.ui.theme.EstadoRevisadaFondo
-import ar.edu.uade.zonda.ui.theme.EstadoSinRevisar
-import ar.edu.uade.zonda.ui.theme.EstadoSinRevisarFondo
-import ar.edu.uade.zonda.ui.theme.SeveridadAlta
-import ar.edu.uade.zonda.ui.theme.SeveridadAltaFondo
-import ar.edu.uade.zonda.ui.theme.SeveridadBaja
-import ar.edu.uade.zonda.ui.theme.SeveridadBajaFondo
-import ar.edu.uade.zonda.ui.theme.SeveridadMedia
-import ar.edu.uade.zonda.ui.theme.SeveridadMediaFondo
-import ar.edu.uade.zonda.ui.theme.VeredictoAnomalo
-import ar.edu.uade.zonda.ui.theme.VeredictoAnomaloFondo
-import ar.edu.uade.zonda.ui.theme.VeredictoNormal
-import ar.edu.uade.zonda.ui.theme.VeredictoNormalFondo
+import ar.edu.uade.zonda.ui.theme.Tono
+import ar.edu.uade.zonda.ui.theme.Tonos
+import ar.edu.uade.zonda.ui.theme.ZondaTheme
 
-// Indicadores de la página Componentes de Figma: severidad, estado de revisión, envío pendiente,
-// método de detección y veredicto. El color nunca va solo: siempre con texto (RNF09).
+// Indicadores del Figma: severidad, estado de revisión, envío pendiente, método de detección y
+// veredicto. El color nunca va solo: siempre con texto (RNF09).
 
-fun Severidad.color(): Color = when (this) {
-    Severidad.ALTA -> SeveridadAlta
-    Severidad.MEDIA -> SeveridadMedia
-    Severidad.BAJA -> SeveridadBaja
+fun Severidad.tono(): Tono = when (this) {
+    Severidad.ALTA -> Tonos.Alta
+    Severidad.MEDIA -> Tonos.Media
+    Severidad.BAJA -> Tonos.Baja
 }
 
-fun Severidad.fondo(): Color = when (this) {
-    Severidad.ALTA -> SeveridadAltaFondo
-    Severidad.MEDIA -> SeveridadMediaFondo
-    Severidad.BAJA -> SeveridadBajaFondo
+fun Severidad.color(): Color = tono().texto
+
+fun Severidad.fondo(): Color = tono().fondo
+
+/** Sin revisar en azul, revisada en verde y falso positivo en gris, como en la lista del Figma (2-3). */
+fun EstadoRevision.tono(): Tono = when (this) {
+    EstadoRevision.SIN_REVISAR -> Tonos.Info
+    EstadoRevision.ATAQUE_REAL -> Tonos.Baja
+    EstadoRevision.FALSO_POSITIVO -> Tonos.Neutro
 }
 
 /** Etiqueta chica con fondo de color y texto en mayúsculas, opcionalmente con un punto de color. */
 @Composable
 fun Etiqueta(
     texto: String,
-    colorTexto: Color,
-    colorFondo: Color,
+    tono: Tono,
     modifier: Modifier = Modifier,
     conPunto: Boolean = false,
 ) {
-    Surface(color = colorFondo, shape = RoundedCornerShape(6.dp), modifier = modifier) {
+    Surface(color = tono.fondo, shape = RoundedCornerShape(6.dp), modifier = modifier) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -83,15 +72,15 @@ fun Etiqueta(
                 Box(
                     modifier = Modifier
                         .size(7.dp)
-                        .background(colorTexto, CircleShape),
+                        .background(tono.punto, CircleShape),
                 )
-                Spacer(modifier = Modifier.width(5.dp))
+                Spacer(modifier = Modifier.width(6.dp))
             }
             Text(
                 text = texto.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
-                color = colorTexto,
-                fontWeight = FontWeight.Bold,
+                color = tono.texto,
+                fontWeight = FontWeight.SemiBold,
             )
         }
     }
@@ -101,8 +90,7 @@ fun Etiqueta(
 fun IndicadorSeveridad(severidad: Severidad, modifier: Modifier = Modifier) {
     Etiqueta(
         texto = stringResource(severidad.etiqueta()),
-        colorTexto = severidad.color(),
-        colorFondo = severidad.fondo(),
+        tono = severidad.tono(),
         modifier = modifier,
         conPunto = true,
     )
@@ -110,30 +98,34 @@ fun IndicadorSeveridad(severidad: Severidad, modifier: Modifier = Modifier) {
 
 @Composable
 fun IndicadorEstadoRevision(estado: EstadoRevision, modifier: Modifier = Modifier) {
-    val (color, fondo) = when (estado) {
-        EstadoRevision.SIN_REVISAR -> EstadoSinRevisar to EstadoSinRevisarFondo
-        EstadoRevision.ATAQUE_REAL -> EstadoRevisada to EstadoRevisadaFondo
-        EstadoRevision.FALSO_POSITIVO -> EstadoFalsoPositivo to EstadoFalsoPositivoFondo
-    }
-    Etiqueta(texto = stringResource(estado.etiqueta()), colorTexto = color, colorFondo = fondo, modifier = modifier)
+    Etiqueta(texto = stringResource(estado.etiqueta()), tono = estado.tono(), modifier = modifier)
 }
 
-/** "pendiente", "no enviada" o "revisada por otra persona", con su ícono (informe, figura 24). */
+/**
+ * Reloj y "pendiente" (con la hora, si se pasa), "no enviada" o "revisada por otra persona"
+ * (informe, figura 24).
+ */
 @Composable
-fun IndicadorEnvio(envio: EstadoEnvio, modifier: Modifier = Modifier) {
+fun IndicadorEnvio(envio: EstadoEnvio, modifier: Modifier = Modifier, hora: String? = null) {
     val (color, icono) = when (envio) {
-        EstadoEnvio.PENDIENTE, EstadoEnvio.ENVIANDO -> EnvioPendiente to Icons.Filled.Refresh
-        EstadoEnvio.ERROR -> EnvioError to Icons.Filled.Warning
-        EstadoEnvio.CONFLICTO -> EnvioConflicto to Icons.Filled.Info
+        EstadoEnvio.PENDIENTE, EstadoEnvio.ENVIANDO -> Tonos.Info.texto to Icons.Outlined.Schedule
+        EstadoEnvio.ERROR -> Tonos.Alta.texto to Icons.Outlined.ErrorOutline
+        EstadoEnvio.CONFLICTO -> Tonos.Media.texto to Icons.Outlined.Info
     }
+    // Figma 35-363: reloj de 14 y "pendiente" en Medium 11 azul; la hora al lado, en gris.
+    val estilo = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium)
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Icon(imageVector = icono, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
-        Spacer(modifier = Modifier.width(3.dp))
-        Text(text = stringResource(envio.etiqueta()), style = MaterialTheme.typography.labelMedium, color = color)
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(text = stringResource(envio.etiqueta()), style = estilo, color = color)
+        if (hora != null) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(text = hora, style = estilo, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
-/** Etiqueta gris con el método que detectó la alerta: IA, Umbrales o Reglas. */
+/** Etiqueta gris cálido con el método que detectó la alerta: IA, Umbrales o Reglas. */
 @Composable
 fun EtiquetaMetodo(metodo: MetodoDeteccion, modifier: Modifier = Modifier) {
     Surface(
@@ -154,8 +146,26 @@ fun EtiquetaMetodo(metodo: MetodoDeteccion, modifier: Modifier = Modifier) {
 @Composable
 fun IndicadorVeredicto(anomalo: Boolean, modifier: Modifier = Modifier) {
     if (anomalo) {
-        Etiqueta(stringResource(R.string.veredicto_anomalo), VeredictoAnomalo, VeredictoAnomaloFondo, modifier)
+        Etiqueta(stringResource(R.string.veredicto_anomalo), Tonos.Alta, modifier)
     } else {
-        Etiqueta(stringResource(R.string.veredicto_normal), VeredictoNormal, VeredictoNormalFondo, modifier)
+        Etiqueta(stringResource(R.string.veredicto_normal), Tonos.Baja, modifier)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun IndicadoresPreview() {
+    ZondaTheme {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            IndicadorSeveridad(Severidad.ALTA)
+            Spacer(modifier = Modifier.width(6.dp))
+            IndicadorSeveridad(Severidad.MEDIA)
+            Spacer(modifier = Modifier.width(6.dp))
+            IndicadorSeveridad(Severidad.BAJA)
+            Spacer(modifier = Modifier.width(6.dp))
+            IndicadorEstadoRevision(EstadoRevision.SIN_REVISAR)
+            Spacer(modifier = Modifier.width(6.dp))
+            IndicadorEnvio(EstadoEnvio.PENDIENTE, hora = "02:09")
+        }
     }
 }

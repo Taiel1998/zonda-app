@@ -3,6 +3,8 @@ package ar.edu.uade.zonda.domain.repository
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
+import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Revision
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -16,6 +18,8 @@ data class ResultadoSincronizacion(
     val accionesEnviadas: Int,
     val accionesConError: Int,
     val hora: Instant,
+    /** Ids de las altas nuevas: con una sola, la notificación abre su detalle. */
+    val idsAltasNuevas: List<String> = emptyList(),
 )
 
 /**
@@ -28,11 +32,20 @@ interface AlertasRepository {
     /** Alertas de una red, de la más reciente a la más antigua, con el filtro aplicado. Se actualiza solo. */
     fun observarAlertas(redId: String, filtro: FiltroAlertas): Flow<List<Alerta>>
 
+    /** Los servicios y los equipos destino de las alertas guardadas, para las opciones de Más filtros. */
+    fun observarOpcionesDeFiltro(redId: String): Flow<OpcionesDeFiltro>
+
     /** Una alerta por id, o null si todavía no está en el teléfono. */
     fun observarAlerta(redId: String, alertaId: String): Flow<Alerta?>
 
     /** Contadores de alertas sin revisar por severidad, para el semáforo. */
     fun observarContadoresSinRevisar(redId: String): Flow<ContadoresSinRevisar>
+
+    /** Cuántas alertas de la red hay guardadas en el teléfono (Ajustes, Datos locales). */
+    fun observarCantidad(redId: String): Flow<Int>
+
+    /** Cuántas alertas hay guardadas en total, de todas las redes (Borrar datos locales). */
+    fun observarCantidadTotal(): Flow<Int>
 
     /** Alertas que empezaron desde [desde], para calcular el Resumen. */
     suspend fun obtenerAlertasDesde(redId: String, desde: Instant): List<Alerta>
@@ -51,6 +64,12 @@ interface AlertasRepository {
      * desde el cursor de la red. Lanza [ar.edu.uade.zonda.domain.model.ErrorZonda] si no pudo ni empezar.
      */
     suspend fun sincronizar(redId: String): ResultadoSincronizacion
+
+    /**
+     * Cómo va la primera descarga de la red (la que baja los últimos 30 días después del pareo), o
+     * null si no hay ninguna en curso.
+     */
+    fun observarProgresoDescarga(redId: String): Flow<ProgresoDescarga?>
 
     /** Borra todas las alertas de una red (al quitar el dispositivo o borrar los datos locales). */
     suspend fun borrarDeRed(redId: String)

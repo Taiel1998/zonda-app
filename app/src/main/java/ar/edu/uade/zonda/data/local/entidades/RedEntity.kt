@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.data.local.entidades
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
@@ -18,6 +19,10 @@ data class RedEntity(
     val telegramVinculado: Boolean,
     val activa: Boolean,
     val creadaEn: Long,
+    // Columnas agregadas en la versión 2 de la base (ZondaDatabase.MIGRACION_1_2).
+    @ColumnInfo(defaultValue = "0") val accesoVencido: Boolean = false,
+    val accesoEmitidoEn: Long? = null,
+    val accesoVenceEn: Long? = null,
 )
 
 /** Severidad elegida por la red para cada tipo de ataque. Si no hay filas, rige la recomendada. */

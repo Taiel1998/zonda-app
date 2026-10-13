@@ -41,6 +41,12 @@ class PreferenciasRepositoryImpl(
         }
     }
 
+    override fun observarNotificacionesActivas(): Flow<Boolean> = dataStore.data.map { it[NOTIFICACIONES_ACTIVAS] ?: true }
+
+    override suspend fun guardarNotificacionesActivas(activas: Boolean) {
+        dataStore.edit { it[NOTIFICACIONES_ACTIVAS] = activas }
+    }
+
     override fun observarPrimerInicioHecho(): Flow<Boolean> = dataStore.data.map { it[PRIMER_INICIO_HECHO] ?: false }
 
     override suspend fun marcarPrimerInicioHecho() {
@@ -61,5 +67,6 @@ class PreferenciasRepositoryImpl(
         val AVISO_BAJA = stringPreferencesKey("aviso_baja")
         val PRIMER_INICIO_HECHO = booleanPreferencesKey("primer_inicio_hecho")
         val RECORRIDO_HECHO = booleanPreferencesKey("recorrido_hecho")
+        val NOTIFICACIONES_ACTIVAS = booleanPreferencesKey("notificaciones_activas")
     }
 }

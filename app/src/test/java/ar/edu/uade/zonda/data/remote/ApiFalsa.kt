@@ -49,6 +49,9 @@ class ApiFalsa : ZondaApi {
 
     fun alertaGuardada(id: String): AlertaDto = alertas.getValue(id)
 
+    /** Se llama al pedir cada página de alertas, antes de responder (para mirar el progreso de la descarga). */
+    var alPedirPagina: ((desde: String?) -> Unit)? = null
+
     /** Publica (o republica) una alerta: toma el número de secuencia siguiente, como en la API. */
     fun publicar(alerta: AlertaDto) {
         secuencia++
@@ -79,6 +82,8 @@ class ApiFalsa : ZondaApi {
         errores[operacion]?.let { throw it }
     }
 
+    override suspend fun saludConRespuesta(): retrofit2.Response<SaludDto> = retrofit2.Response.success(salud())
+
     override suspend fun salud(): SaludDto {
         fallarSiCorresponde("salud")
         return SaludDto("0.3.0", "2026-10-12T04:05:29+00:00", alertas.size, RedDto(redId, redNombre), null)
@@ -86,6 +91,7 @@ class ApiFalsa : ZondaApi {
 
     override suspend fun alertas(desde: String?): PaginaAlertasDto {
         fallarSiCorresponde("alertas")
+        alPedirPagina?.invoke(desde)
         var desdeSecuencia = 0
         if (desde != null) {
             val partes = desde.split(":")
@@ -97,7 +103,9 @@ class ApiFalsa : ZondaApi {
             .sortedBy { secuencias.getValue(it.id) }
         val pagina = pendientes.take(tamanioPagina)
         val ultima = pagina.lastOrNull()?.let { secuencias.getValue(it.id) } ?: desdeSecuencia
-        return PaginaAlertasDto(pagina, "$instancia:$ultima", pendientes.size > tamanioPagina, "2026-10-12T12:00:00+00:00")
+        // Como el servidor: la primera página de una sincronización desde cero dice cuántas trae en total.
+        val total = if (desde == null) pendientes.size else null
+        return PaginaAlertasDto(pagina, "$instancia:$ultima", pendientes.size > tamanioPagina, "2026-10-12T12:00:00+00:00", total)
     }
 
     override suspend fun alerta(id: String): AlertaDto {
@@ -153,7 +161,7 @@ class ApiFalsa : ZondaApi {
         if (codigo in codigosUsados) throw errorHttp(410)
         codigosUsados += codigo
         dispositivosPareados++
-        return PareoSalidaDto("token-$dispositivosPareados", RedDto(redId, redNombre), "2027-01-10T00:00:00+00:00", "d-$dispositivosPareados")
+        return PareoSalidaDto("token-$dispositivosPareados", RedDto(redId, redNombre), "2027-01-10T00:00:00+00:00", "d-$dispositivosPareados", "2026-10-12T00:00:00+00:00", alertas.size)
     }
 
     override suspend fun vincularTelegram(): VinculoTelegramDto {

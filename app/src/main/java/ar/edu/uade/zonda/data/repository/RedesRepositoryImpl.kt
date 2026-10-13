@@ -7,6 +7,7 @@ import ar.edu.uade.zonda.data.local.entidades.RedEntity
 import ar.edu.uade.zonda.data.mapper.aDominio
 import ar.edu.uade.zonda.data.mapper.aEntidad
 import ar.edu.uade.zonda.data.mapper.aEntidades
+import ar.edu.uade.zonda.data.mapper.aInstante
 import ar.edu.uade.zonda.data.remote.OperacionHttp
 import ar.edu.uade.zonda.data.remote.PareoEntradaDto
 import ar.edu.uade.zonda.data.remote.ProveedorDeApi
@@ -15,11 +16,14 @@ import ar.edu.uade.zonda.data.remote.conErroresTraducidos
 import ar.edu.uade.zonda.data.seguridad.AlmacenSeguro
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.DatosPareo
+import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.RedPareada
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import ar.edu.uade.zonda.domain.repository.RedesRepository
+import java.security.cert.X509Certificate
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -60,7 +64,7 @@ class RedesRepositoryImpl(
      * válido antes de mandar el código; después `POST /pareo`, que entrega el token una sola vez.
      * Verifica aunque [ParearRed] ya lo haya hecho, para que nunca se mande el código a ciegas.
      */
-    override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): Red {
+    override suspend fun parear(datos: DatosPareo, nombreDispositivo: String): RedPareada {
         val api = try {
             apis.sinToken(datos.urlBase)
         } catch (e: IllegalArgumentException) {
@@ -78,9 +82,14 @@ class RedesRepositoryImpl(
             ultimaSincronizacion = null,
             telegramVinculado = false,
             activa = true,
+            accesoEmitido = salida.emitido?.aInstante() ?: reloj(),
+            accesoVence = salida.vence.aInstante(),
         )
         guardarRedPareada(red, salida.token)
-        return dao.obtener(red.id)?.aDominio() ?: red
+        return RedPareada(
+            red = dao.obtener(red.id)?.aDominio() ?: red,
+            alertasParaDescargar = salida.alertas30Dias,
+        )
     }
 
     /**
@@ -91,7 +100,7 @@ class RedesRepositoryImpl(
         if (dao.obtener(red.id) == null) {
             dao.insertarComoActiva(red.aEntidad(creadaEn = reloj()))
         } else {
-            dao.actualizarDatosDePareo(red.id, red.nombre, red.urlBase)
+            dao.actualizarDatosDePareo(red.id, red.nombre, red.urlBase, red.accesoEmitido?.toEpochMilli(), red.accesoVence?.toEpochMilli())
             dao.activar(red.id)
         }
         almacen.guardar(claveToken(red.id), token)
@@ -119,6 +128,25 @@ class RedesRepositoryImpl(
         almacen.borrar(claveToken(redId))
         apis.olvidar(redId)
     }
+
+    override suspend fun detallesDeConexion(redId: String): DetallesConexion {
+        val red = dao.obtener(redId)?.aDominio() ?: throw ErrorZonda.NoEncontrado()
+        val respuesta = conErroresTraducidos {
+            apis.para(red).saludConRespuesta().also { if (!it.isSuccessful) throw HttpException(it) }
+        }
+        val handshake = respuesta.raw().handshake
+        val certificado = handshake?.peerCertificates?.firstOrNull() as? X509Certificate
+        return DetallesConexion(
+            versionTls = handshake?.tlsVersion?.javaName,
+            emisorCertificado = certificado?.let { organizacion(it.issuerX500Principal.name) },
+            certificadoVence = certificado?.notAfter?.toInstant(),
+            accesoVence = respuesta.body()?.tokenVence?.aInstante() ?: red.accesoVence,
+        )
+    }
+
+    override suspend fun marcarAccesoVencido(redId: String, vencido: Boolean) = dao.marcarAccesoVencido(redId, vencido)
+
+    override suspend fun reiniciarSincronizacion(redId: String) = dao.reiniciarSincronizacion(redId)
 
     override fun observarSeveridades(redId: String): Flow<SeveridadPorTipo> =
         dao.observarSeveridades(redId).map { it.aDominio() }
@@ -154,5 +182,15 @@ class RedesRepositoryImpl(
     companion object {
         /** Clave con la que se guarda el token de cada red en el almacenamiento seguro. */
         fun claveToken(redId: String) = "token_$redId"
+
+        /**
+         * La organización de un nombre X.500 ("CN=R11,O=Let's Encrypt,C=US" da "Let's Encrypt"); si no
+         * tiene, el CN. Las comas dentro de un valor vienen escapadas ("O=Ejemplo\, Inc.").
+         */
+        fun organizacion(nombreX500: String): String? {
+            val partes = nombreX500.split(Regex("""(?<!\\),""")).map { it.trim() }
+            fun valor(clave: String) = partes.firstOrNull { it.startsWith("$clave=") }?.substringAfter("=")?.replace("\\,", ",")
+            return valor("O") ?: valor("CN")
+        }
     }
 }

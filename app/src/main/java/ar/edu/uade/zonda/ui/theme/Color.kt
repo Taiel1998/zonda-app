@@ -1,41 +1,64 @@
 package ar.edu.uade.zonda.ui.theme
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 
-// Color base de Zonda: un verde azulado, que transmite calma (informe, sección 11.3).
-val VerdeZonda = Color(0xFF0E6B5B)
-val VerdeZondaOscuro = Color(0xFF0A4F43)
-val VerdeZondaClaro = Color(0xFFD7F0E8)
-val VerdeZondaMuyClaro = Color(0xFFF2FAF7)
+// Colores del Figma de la etapa 1, confirmados con el cuentagotas en varios cuadros. El verde base
+// transmite calma; el ámbar y el rojo quedan para lo que requiere atención, siempre junto a un ícono
+// y una palabra (informe, sección 11.3).
 
-// Colores de severidad. Nunca van solos: siempre con ícono y texto (RNF09).
-val SeveridadAlta = Color(0xFFB3261E)
-val SeveridadAltaFondo = Color(0xFFF9DEDC)
-val SeveridadMedia = Color(0xFF9A5B00)
-val SeveridadMediaFondo = Color(0xFFFFE8C2)
-val SeveridadBaja = Color(0xFF4A5C66)
-val SeveridadBajaFondo = Color(0xFFE2E8EB)
+/** Verde base: botón principal, enlaces e íconos activos. */
+val VerdeZonda = Color(0xFF0F6E56)
 
-// Estado de revisión en la tarjeta: sin revisar (azul), revisada (verde) y falso positivo (gris).
-val EstadoSinRevisar = Color(0xFF1B4F8F)
-val EstadoSinRevisarFondo = Color(0xFFDCE9F7)
-val EstadoRevisada = Color(0xFF2E6B2F)
-val EstadoRevisadaFondo = Color(0xFFDFF0D8)
-val EstadoFalsoPositivo = SeveridadBaja
-val EstadoFalsoPositivoFondo = SeveridadBajaFondo
+/** Verde claro: chip elegido, botón tonal y píldora de la barra inferior. */
+val VerdeZondaClaro = Color(0xFFE1F5EE)
 
-// Estado de envío de una acción: pendiente (azul), con error (rojo) y en conflicto (naranja).
-val EnvioPendiente = Color(0xFF1B5FBF)
-val EnvioError = SeveridadAlta
-val EnvioConflicto = SeveridadMedia
+/** Acción del aviso inferior (Deshacer, OK), sobre el fondo oscuro. */
+val VerdeAccionAviso = Color(0xFF9FE1CB)
 
-// Veredicto de cada método en el detalle (RF03).
-val VeredictoAnomalo = SeveridadAlta
-val VeredictoAnomaloFondo = SeveridadAltaFondo
-val VeredictoNormal = EstadoRevisada
-val VeredictoNormalFondo = EstadoRevisadaFondo
+val Blanco = Color(0xFFFFFFFF)
 
-// Semáforo de la pantalla Estado (RF01).
-val SemaforoRojo = Color(0xFFC62828)
-val SemaforoAmarillo = Color(0xFFF9A825)
-val SemaforoVerde = Color(0xFF2E7D32)
+/** Fondo crema de la barra inferior y de los recuadros de resumen. */
+val CremaBarra = Color(0xFFF7F5EF)
+
+/** Gris cálido: etiquetas de método, esqueleto de carga y recuadros neutros. */
+val GrisCalido = Color(0xFFEDEBE4)
+
+/** Bordes de tarjetas, chips y campos. */
+val Borde = Color(0xFFD3D1C7)
+
+val Texto = Color(0xFF1C1B1F)
+
+/** Texto secundario y de ayuda: 6,5:1 sobre blanco, pasa AA (RNF09). */
+val TextoSecundario = Color(0xFF5F5E5A)
+
+/** Rojo de peligro: errores, el botón "Quitar dispositivo" y el texto de "Borrar datos locales". */
+val RojoPeligro = Color(0xFFA32D2D)
+val RojoPeligroFondo = Color(0xFFFCEBEB)
+
+/** Fondo del aviso inferior (snackbar). */
+val GrisAviso = Color(0xFF2C2C2A)
+
+/** Fondo del escáner del QR y texto claro sobre él (Figma 35-464 y 49-284). */
+val FondoEscaner = Color(0xFF1E1E1C)
+val TextoEscaner = Color(0xFFE4E2DA)
+
+/** Los tres colores de un tono: el del texto, el del fondo y el del punto que lo acompaña. */
+@Immutable
+data class Tono(val texto: Color, val fondo: Color, val punto: Color)
+
+/**
+ * Tonos de severidad y de estado. No son roles de Material 3, por eso van en un objeto propio.
+ * El color nunca va solo: siempre con texto (RNF09).
+ */
+object Tonos {
+    val Alta = Tono(texto = Color(0xFFA32D2D), fondo = Color(0xFFFCEBEB), punto = Color(0xFFE24B4A))
+    val Media = Tono(texto = Color(0xFF854F0B), fondo = Color(0xFFFAEEDA), punto = Color(0xFFEF9F27))
+    val Baja = Tono(texto = Color(0xFF3B6D11), fondo = Color(0xFFEAF3DE), punto = Color(0xFF639922))
+
+    /** Azul informativo: "Sin revisar", lo pendiente y "Revisada desde otro teléfono". */
+    val Info = Tono(texto = Color(0xFF185FA5), fondo = Color(0xFFE6F1FB), punto = Color(0xFF185FA5))
+
+    /** Gris: "Falso positivo" y el semáforo sin datos. */
+    val Neutro = Tono(texto = TextoSecundario, fondo = GrisCalido, punto = Color(0xFF8A8983))
+}

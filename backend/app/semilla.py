@@ -82,17 +82,18 @@ def cargar_si_vacia(con: sqlite3.Connection, ruta_semilla: Path, multiplicar: in
         con.execute(
             """
             INSERT INTO alertas (
-                id, creada_en, inicio, fin, cantidad_flujos, uid_referencia, origen_ip, destino_ip, servicio,
+                id, creada_en, inicio, fin, cantidad_flujos, uid_referencia, origen_ip, destino_ip, servicio, protocolo,
                 puerto, puerto_referencia, puertos_distintos, tipo_ataque, confianza_tipo,
                 veredicto_ia, error_reconstruccion, umbral_ia,
                 veredicto_umbrales, contexto_60s, umbral_servicio, servicio_sin_linea_base,
                 veredicto_reglas, par_destino, par_en_catalogo,
                 estado_revision, version, actualizada_en, secuencia
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'sin_revisar', 1, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'sin_revisar', 1, ?, ?)
             """,
             (
                 identificador, iso(creada_en), iso(inicio), iso(fin),
                 int(alerta["cantidadFlujos"]), alerta["uidReferencia"], alerta["origenIp"], alerta["destinoIp"], alerta["servicio"],
+                alerta.get("protocolo", "tcp"),
                 int(alerta["puerto"]), int(alerta.get("puertoReferencia", alerta["puerto"])), int(alerta.get("puertosDistintos", 1)),
                 alerta.get("tipoAtaque"), alerta.get("confianzaTipo"),
                 int(bool(alerta["veredictoIa"])), float(alerta["errorReconstruccion"]), float(alerta["umbralIa"]),

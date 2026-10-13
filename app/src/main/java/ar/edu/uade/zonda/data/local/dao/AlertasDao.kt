@@ -9,6 +9,7 @@ import ar.edu.uade.zonda.data.local.entidades.AlertaConDetalles
 import ar.edu.uade.zonda.data.local.entidades.AlertaEntity
 import ar.edu.uade.zonda.data.local.entidades.ConteoPorSeveridad
 import ar.edu.uade.zonda.data.local.entidades.RevisionEntity
+import ar.edu.uade.zonda.data.local.entidades.ValorFrecuente
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -19,18 +20,20 @@ import kotlinx.coroutines.flow.Flow
 abstract class AlertasDao {
 
     /**
-     * Lista filtrada (RF02). Cada filtro en null significa "todas"; así una sola consulta cubre todas
-     * las combinaciones sin armar SQL a mano.
+     * Lista filtrada (RF02). Un filtro en null, o con su bandera de "todos" prendida, no filtra; así una
+     * sola consulta cubre todas las combinaciones sin armar SQL a mano. [otrosServicios] es el chip "Otros"
+     * de Más filtros: los servicios que no están en [serviciosConChip].
      */
     @Transaction
     @Query(
         """
         SELECT * FROM alertas
         WHERE redId = :redId
-          AND (:estado IS NULL OR estadoRevision = :estado)
-          AND (:severidad IS NULL OR severidad = :severidad)
+          AND (:todosLosEstados OR estadoRevision IN (:estados))
+          AND (:todasLasSeveridades OR severidad IN (:severidades))
           AND (:desde IS NULL OR inicio >= :desde)
           AND (:servicio IS NULL OR servicio = :servicio)
+          AND (NOT :otrosServicios OR servicio NOT IN (:serviciosConChip))
           AND (:destinoIp IS NULL OR destinoIp = :destinoIp)
           AND (:metodo IS NULL
                OR (:metodo = 'IA' AND veredictoIa = 1)
@@ -41,10 +44,14 @@ abstract class AlertasDao {
     )
     abstract fun observar(
         redId: String,
-        estado: String?,
-        severidad: String?,
+        todosLosEstados: Boolean,
+        estados: List<String>,
+        todasLasSeveridades: Boolean,
+        severidades: List<String>,
         desde: Long?,
         servicio: String?,
+        otrosServicios: Boolean,
+        serviciosConChip: List<String>,
         destinoIp: String?,
         metodo: String?,
     ): Flow<List<AlertaConDetalles>>
@@ -56,6 +63,20 @@ abstract class AlertasDao {
     /** Contadores del semáforo (RF01): solo las sin revisar, agrupadas por severidad. */
     @Query("SELECT severidad, COUNT(*) AS cantidad FROM alertas WHERE redId = :redId AND estadoRevision = 'SIN_REVISAR' GROUP BY severidad")
     abstract fun observarConteoSinRevisar(redId: String): Flow<List<ConteoPorSeveridad>>
+
+    @Query("SELECT COUNT(*) FROM alertas WHERE redId = :redId")
+    abstract fun observarCantidad(redId: String): Flow<Int>
+
+    /** Los servicios de las alertas guardadas, del más frecuente al menos (opciones de Más filtros). */
+    @Query("SELECT servicio AS valor, NULL AS nombre, COUNT(*) AS cantidad FROM alertas WHERE redId = :redId GROUP BY servicio ORDER BY cantidad DESC, servicio")
+    abstract fun observarServicios(redId: String): Flow<List<ValorFrecuente>>
+
+    /** Los equipos destino de las alertas guardadas, con su nombre si el catálogo lo tiene. */
+    @Query("SELECT destinoIp AS valor, MAX(destinoNombre) AS nombre, COUNT(*) AS cantidad FROM alertas WHERE redId = :redId GROUP BY destinoIp ORDER BY cantidad DESC, destinoIp")
+    abstract fun observarDestinos(redId: String): Flow<List<ValorFrecuente>>
+
+    @Query("SELECT COUNT(*) FROM alertas")
+    abstract fun observarCantidadTotal(): Flow<Int>
 
     @Transaction
     @Query("SELECT * FROM alertas WHERE redId = :redId AND inicio >= :desde ORDER BY inicio DESC")

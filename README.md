@@ -33,12 +33,13 @@ Arquitectura MVVM con las tres capas de Clean Architecture, en un solo módulo c
 
 ```
 ar.edu.uade.zonda
-├── ZondaApp.kt          Application: crea el contenedor de dependencias
+├── ZondaApp.kt          Application: crea el contenedor, configura WorkManager y programa la sincronización
 ├── MainActivity.kt      única Activity; arma el tema y la navegación
 ├── di/                  AppContainer, contenedor manual de dependencias
 ├── domain/              modelos, reglas y casos de uso en Kotlin puro (sin Android)
-├── data/                Room, Retrofit, Keystore, DataStore, mappers y repositorios
-├── sync/                sincronización en segundo plano y cola de acciones pendientes
+├── data/                Room, Retrofit, Keystore, DataStore, mappers, repositorios y el sincronizador
+├── sync/                el worker de sincronización en segundo plano y la conectividad
+├── notificaciones/      la notificación local de alertas altas nuevas
 └── ui/                  pantallas en Compose, ViewModels, navegación, tema y componentes
 ```
 

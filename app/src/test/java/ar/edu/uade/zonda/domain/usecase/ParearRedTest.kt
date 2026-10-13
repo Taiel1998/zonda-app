@@ -4,8 +4,10 @@ import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.PasoPareo
+import java.time.Instant
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -18,12 +20,14 @@ class ParearRedTest {
     fun `normaliza la direccion y el codigo, verifica el servidor y despues parea`() = runTest {
         val pasos = mutableListOf<PasoPareo>()
 
-        val red = parear(DatosPareo(" zonda-empresa.duckdns.org/ ", "k7m2 qx9p"), "  Pixel 7 ") { pasos += it }
+        val pareada = parear(DatosPareo(" zonda-empresa.duckdns.org/ ", "k7m2 qx9p"), "  Pixel 7 ") { pasos += it }
 
         assertEquals(listOf("https://zonda-empresa.duckdns.org"), redes.verificaciones)
         assertEquals(listOf(DatosPareo("https://zonda-empresa.duckdns.org", "K7M2-QX9P")), redes.pareos)
+        // La descarga de las alertas ya no es un paso del pareo: pasa en Estado (Figma 49-521 y 50-616).
         assertEquals(listOf(PasoPareo.BUSCANDO_SERVIDOR, PasoPareo.REGISTRANDO_TELEFONO), pasos)
-        assertTrue(red.activa)
+        assertTrue(pareada.red.activa)
+        assertEquals(213, pareada.alertasParaDescargar)
     }
 
     @Test
@@ -63,5 +67,20 @@ class ParearRedTest {
         assertEquals("K7M2-QX9P", DatosPareo.normalizarCodigo("k7m2-qx9p"))
         assertEquals("K7M2-QX9P", DatosPareo.normalizarCodigo("K7M2QX9P"))
         assertEquals("K7M2", DatosPareo.normalizarCodigo(" k7m2 "))
+    }
+
+    @Test
+    fun `el QR trae la direccion, el codigo y cuando vence`() {
+        val datos = DatosPareo.desdeQr("zonda:https://zonda-empresa.duckdns.org#K7M2-QX9P;vence=2026-10-12T02:19:00+00:00")
+
+        assertEquals(DatosPareo("https://zonda-empresa.duckdns.org", "K7M2-QX9P", Instant.parse("2026-10-12T02:19:00Z")), datos)
+    }
+
+    @Test
+    fun `un QR sin vence, o con la fecha mal escrita, sigue sirviendo y uno que no es de Zonda no`() {
+        assertEquals(DatosPareo("https://zonda.duckdns.org", "K7M2-QX9P"), DatosPareo.desdeQr("zonda:https://zonda.duckdns.org#K7M2-QX9P"))
+        assertEquals(DatosPareo("https://zonda.duckdns.org", "K7M2-QX9P"), DatosPareo.desdeQr("zonda:https://zonda.duckdns.org/#k7m2-qx9p;vence=ayer"))
+        assertNull(DatosPareo.desdeQr("https://zonda.duckdns.org#K7M2-QX9P"))
+        assertNull(DatosPareo.desdeQr("zonda:https://zonda.duckdns.org#K7M2;vence=2026-10-12T02:19:00+00:00"))
     }
 }

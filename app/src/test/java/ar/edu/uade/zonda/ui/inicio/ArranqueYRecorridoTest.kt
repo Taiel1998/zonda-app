@@ -1,10 +1,11 @@
 package ar.edu.uade.zonda.ui.inicio
 
 import ar.edu.uade.zonda.domain.Fixtures
+import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakePreferenciasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.ui.ReglaDispatcherPrincipal
-import ar.edu.uade.zonda.ui.navigation.Rutas
+import ar.edu.uade.zonda.ui.recorrido.PantallaRecorrido
 import ar.edu.uade.zonda.ui.recorrido.PasoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.RecorridoViewModel
 import kotlinx.coroutines.test.runTest
@@ -67,9 +68,27 @@ class ArranqueYRecorridoTest {
 
         assertEquals(11, vistos.size)
         assertEquals(PasoRecorrido.entries, vistos)
-        assertEquals(listOf(Rutas.ESTADO, Rutas.ALERTAS, Rutas.AJUSTES), vistos.map { it.ruta }.distinct())
+        // Estado, Alertas, el detalle de la primera alerta, el Resumen (por ahora desde Estado) y Ajustes.
+        assertEquals(
+            listOf(PantallaRecorrido.ESTADO, PantallaRecorrido.ALERTAS, PantallaRecorrido.DETALLE, PantallaRecorrido.RESUMEN, PantallaRecorrido.AJUSTES),
+            vistos.map { it.pantalla }.distinct(),
+        )
         assertTrue(preferencias.recorrido.value)
         assertNull(viewModel.paso.value)
+    }
+
+    @Test
+    fun `el paso del detalle abre la alerta mas reciente de la red activa`() = runTest {
+        val preferencias = FakePreferenciasRepository(primerInicioHecho = true)
+        val alertas = FakeAlertasRepository(
+            listOf(
+                Fixtures.alerta("vieja", creadaEn = Fixtures.AHORA.minus(java.time.Duration.ofHours(5))),
+                Fixtures.alerta("reciente"),
+            ),
+        )
+        val viewModel = RecorridoViewModel(preferencias, FakeRedesRepository(listOf(Fixtures.red("red-1"))), alertas)
+
+        assertEquals("reciente", viewModel.alertaDelDetalle.value)
     }
 
     @Test

@@ -1,7 +1,7 @@
 """Las rutas del contrato (informe, sección 13.3). Cada una dice qué recibe, qué devuelve y qué error da."""
 
 import sqlite3
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
@@ -62,9 +62,20 @@ def nombre_equipo(con: sqlite3.Connection, ip: str) -> str | None:
 def historial_de(con: sqlite3.Connection, alerta_id: str) -> list[Revision]:
     filas = con.execute("SELECT * FROM revisiones WHERE alerta_id = ? ORDER BY id ASC", (alerta_id,)).fetchall()
     return [
-        Revision(resultado=f["resultado"], motivo=f["motivo"], comentario=f["comentario"], autor=f["autor"], fecha=f["fecha"])
+        revision_dto(f)
         for f in filas
     ]
+
+
+def revision_dto(fila: sqlite3.Row) -> Revision:
+    return Revision(
+        resultado=fila["resultado"],
+        motivo=fila["motivo"],
+        comentario=fila["comentario"],
+        autor=fila["autor"],
+        fecha=fila["fecha"],
+        revisadaEn=fila["revisada_en"],
+    )
 
 
 def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
@@ -80,6 +91,7 @@ def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
         destinoIp=fila["destino_ip"],
         destinoNombre=nombre_equipo(con, fila["destino_ip"]),
         servicio=fila["servicio"],
+        protocolo=fila["protocolo"],
         puerto=fila["puerto"],
         puertoReferencia=fila["puerto_referencia"],
         puertosDistintos=fila["puertos_distintos"],
@@ -171,7 +183,15 @@ def listar_alertas(
         # La severidad sale del tipo según la tabla de la red; se filtra en SQL para que cada página venga completa.
         sql += " AND COALESCE(tipo_ataque, ?) IN (SELECT tipo_ataque FROM severidades WHERE severidad = ?)"
         parametros.extend([CLAVE_SIN_TIPO, severidad])
-    tamanio = request.app.state.config.tamanio_pagina
+    cfg = request.app.state.config
+    total = None
+    if not desde:
+        # La primera sincronización trae lo que la app guarda (los últimos 30 días) y avisa cuántas son,
+        # para la barra "120 de 213" de la descarga inicial.
+        sql += " AND creada_en >= ?"
+        parametros.append(iso(ahora() - timedelta(days=cfg.dias_cache)))
+        total = con.execute(f"SELECT COUNT(*) FROM ({sql})", parametros).fetchone()[0]
+    tamanio = cfg.tamanio_pagina
     sql += " ORDER BY secuencia ASC LIMIT ?"
     parametros.append(tamanio + 1)
     filas = con.execute(sql, parametros).fetchall()
@@ -179,7 +199,7 @@ def listar_alertas(
     filas = filas[:tamanio]
     alertas = [alerta_dto(con, fila) for fila in filas]
     ultima = filas[-1]["secuencia"] if filas else secuencia_desde
-    return PaginaAlertas(alertas=alertas, cursorSiguiente=f"{instancia}:{ultima}", hayMas=hay_mas, horaServidor=iso(ahora()))
+    return PaginaAlertas(alertas=alertas, cursorSiguiente=f"{instancia}:{ultima}", hayMas=hay_mas, horaServidor=iso(ahora()), total=total)
 
 
 @router.get("/alertas/{alerta_id}", response_model=Alerta)
@@ -213,21 +233,28 @@ def revisar_alerta(
             if ajena is not None:
                 conflicto = Conflicto(
                     mensaje="Otra persona revisó esta alerta después de tu última sincronización",
-                    revisionAjena=Revision(resultado=ajena["resultado"], motivo=ajena["motivo"], comentario=ajena["comentario"], autor=ajena["autor"], fecha=ajena["fecha"]),
+                    revisionAjena=revision_dto(ajena),
                     alerta=alerta_dto(con, fila),
                 )
                 raise HTTPException(status_code=409, detail=conflicto.model_dump())
         momento = ahora()
         nueva_version = fila["version"] + 1
         con.execute(
-            "INSERT INTO revisiones (alerta_id, accion_id, resultado, motivo, comentario, autor, fecha, dispositivo_id, version_resultante) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (alerta_id, entrada.accionId, entrada.resultado, entrada.motivo, entrada.comentario.strip(), dispositivo["nombre"], iso(momento), dispositivo["id"], nueva_version),
+            "INSERT INTO revisiones (alerta_id, accion_id, resultado, motivo, comentario, autor, fecha, revisada_en, dispositivo_id, version_resultante) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (alerta_id, entrada.accionId, entrada.resultado, entrada.motivo, entrada.comentario.strip(), dispositivo["nombre"], iso(momento), revisada_en(entrada.revisadaEn, momento), dispositivo["id"], nueva_version),
         )
         con.execute(
             "UPDATE alertas SET estado_revision = ?, version = ?, actualizada_en = ?, secuencia = ? WHERE id = ?",
             (entrada.resultado, nueva_version, iso(momento), Base.siguiente_secuencia(con), alerta_id),
         )
         return alerta_dto(con, con.execute("SELECT * FROM alertas WHERE id = ?", (alerta_id,)).fetchone())
+
+
+def revisada_en(valor: str | None, recibida: datetime) -> str:
+    """La hora de revisión del teléfono, nunca posterior a la llegada: un reloj adelantado no la corre al futuro."""
+    if valor is None:
+        return iso(recibida)
+    return iso(min(datetime.fromisoformat(valor), recibida).astimezone(timezone.utc))
 
 
 @router.get("/severidades")
@@ -256,9 +283,18 @@ def guardar_severidades(entrada: dict[str, Severidad], request: Request, disposi
 def parear(entrada: PareoEntrada, request: Request) -> PareoSalida:
     """Canjea el código de un uso por el token del teléfono (400 inválido, 410 vencido o usado)."""
     cfg = request.app.state.config
+    limite = iso(ahora() - timedelta(days=cfg.dias_cache))
     with _base(request).transaccion() as con:
         datos = canjear_codigo_pareo(con, entrada.codigo, entrada.nombreDispositivo, cfg.dias_token)
-    return PareoSalida(token=datos["token"], red={"id": cfg.red_id, "nombre": cfg.red_nombre}, vence=datos["vence"], dispositivoId=datos["dispositivoId"])
+        recientes = con.execute("SELECT COUNT(*) FROM alertas WHERE creada_en >= ?", (limite,)).fetchone()[0]
+    return PareoSalida(
+        token=datos["token"],
+        red={"id": cfg.red_id, "nombre": cfg.red_nombre},
+        emitido=datos["emitido"],
+        vence=datos["vence"],
+        dispositivoId=datos["dispositivoId"],
+        alertas30Dias=recientes,
+    )
 
 
 @router.post("/telegram/vinculo", response_model=VinculoTelegram)

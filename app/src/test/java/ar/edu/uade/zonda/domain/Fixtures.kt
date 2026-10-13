@@ -30,6 +30,7 @@ object Fixtures {
         id: String = "red-1",
         activa: Boolean = true,
         ultimaSincronizacion: Instant? = AHORA,
+        accesoVencido: Boolean = false,
     ) = Red(
         id = id,
         nombre = "Oficina",
@@ -38,6 +39,7 @@ object Fixtures {
         ultimaSincronizacion = ultimaSincronizacion,
         telegramVinculado = false,
         activa = activa,
+        accesoVencido = accesoVencido,
     )
 
     fun revision(

@@ -2,7 +2,9 @@ package ar.edu.uade.zonda.domain.repository
 
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.DatosPareo
+import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.RedPareada
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import kotlinx.coroutines.flow.Flow
@@ -25,12 +27,19 @@ interface RedesRepository {
 
     /**
      * Verifica el servidor, canjea el código por un token (`POST /pareo`), guarda el token en el
-     * almacenamiento seguro y deja la red pareada y activa. Lanza [ar.edu.uade.zonda.domain.model.ErrorZonda].
+     * almacenamiento seguro y deja la red pareada y activa. Devuelve también cuántas alertas tiene
+     * para descargar. Lanza [ar.edu.uade.zonda.domain.model.ErrorZonda].
      */
-    suspend fun parear(datos: DatosPareo, nombreDispositivo: String): Red
+    suspend fun parear(datos: DatosPareo, nombreDispositivo: String): RedPareada
 
     /** Revoca el token en el servidor (`DELETE /dispositivos/actual`) y borra el token y todos los datos de la red. */
     suspend fun quitarDispositivo(redId: String)
+
+    /** El servidor respondió 401 (o volvió a aceptar el token): la app pide un pareo nuevo sin borrar la caché. */
+    suspend fun marcarAccesoVencido(redId: String, vencido: Boolean)
+
+    /** Borrar datos locales: la red queda pareada pero sin cursor ni hora; la sincronización siguiente baja todo. */
+    suspend fun reiniciarSincronizacion(redId: String)
 
     /** Severidad por tipo de ataque elegida para la red. Vale para todos los teléfonos pareados a ella. */
     fun observarSeveridades(redId: String): Flow<SeveridadPorTipo>
@@ -45,4 +54,8 @@ interface RedesRepository {
 
     /** Catálogo de servicios y nombres de equipos de la red (`GET /catalogo`), el último guardado. */
     fun observarCatalogo(redId: String): Flow<Catalogo>
+
+    /** Protocolo, certificado y vencimiento del acceso, leídos de una llamada a `GET /salud` (Detalles técnicos). */
+    suspend fun detallesDeConexion(redId: String): DetallesConexion
 }
+
