@@ -225,7 +225,8 @@ fun DetalleContenido(
         }
     }
 
-    if (formulario != null) HojaRevision(formulario = formulario, acciones = acciones)
+    val alertaRevisada = (estado as? DetalleUiState.Contenido)?.alerta
+    if (formulario != null && alertaRevisada != null) HojaRevision(formulario = formulario, alerta = alertaRevisada, acciones = acciones)
 }
 
 @Composable

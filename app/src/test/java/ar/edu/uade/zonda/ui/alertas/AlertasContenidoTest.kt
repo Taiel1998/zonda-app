@@ -74,7 +74,7 @@ class AlertasContenidoTest {
     @Test
     fun `sin resultados con un filtro activo ofrece quitar los filtros`() {
         var quitados = false
-        val estado = AlertasUiState(contenido = ContenidoAlertas.Vacio(conFiltro = true), filtro = FiltroAlertas(severidad = Severidad.BAJA))
+        val estado = AlertasUiState(contenido = ContenidoAlertas.Vacio(conFiltro = true), filtro = FiltroAlertas(severidades = setOf(Severidad.BAJA)))
 
         compose.setContent {
             ZondaTheme {

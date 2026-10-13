@@ -7,8 +7,8 @@ import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeConectividad
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.domain.model.ErrorZonda
-import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.Severidad
@@ -89,12 +89,12 @@ class AlertasViewModelTest {
         viewModel.estado.test {
             esperar { it.contenido is ContenidoAlertas.Lista }
 
-            viewModel.aplicarFiltro(FiltroAlertas(estado = EstadoRevision.ATAQUE_REAL))
+            viewModel.aplicarFiltro(FiltroAlertas(estado = FiltroEstado.REVISADAS))
             val filtrado = esperar { (it.contenido as? ContenidoAlertas.Lista)?.alertas?.size == 1 }
             assertEquals("a-3", (filtrado.contenido as ContenidoAlertas.Lista).alertas.single().id)
             assertTrue(filtrado.filtro.activo)
 
-            viewModel.aplicarFiltro(FiltroAlertas(estado = EstadoRevision.FALSO_POSITIVO, periodo = Periodo.ULTIMAS_24_HORAS))
+            viewModel.aplicarFiltro(FiltroAlertas(estado = FiltroEstado.FALSOS_POSITIVOS, periodo = Periodo.ULTIMAS_24_HORAS))
             val vacio = esperar { it.contenido is ContenidoAlertas.Vacio }
             assertEquals(ContenidoAlertas.Vacio(conFiltro = true), vacio.contenido)
 

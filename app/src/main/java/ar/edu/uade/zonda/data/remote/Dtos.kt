@@ -38,6 +38,8 @@ data class AlertaDto(
     val destinoIp: String,
     val destinoNombre: String?,
     val servicio: String,
+    /** "tcp" o "udp". Un servidor anterior no lo manda. */
+    val protocolo: String? = null,
     val puerto: Int,
     val puertoReferencia: Int,
     val puertosDistintos: Int,
@@ -70,7 +72,10 @@ data class RevisionDto(
     val motivo: String,
     val comentario: String,
     val autor: String?,
+    /** Cuándo llegó al servidor. */
     val fecha: String,
+    /** Cuándo se revisó en el teléfono; null en las revisiones anteriores a este dato. */
+    val revisadaEn: String? = null,
 )
 
 /** Cuerpo de `POST /alertas/{id}/revision`. */
@@ -81,6 +86,8 @@ data class RevisionEntradaDto(
     val comentario: String,
     val versionVista: Int?,
     val forzar: Boolean,
+    /** Cuándo se revisó en el teléfono (ISO 8601 en UTC): sin conexión sale bastante después. */
+    val revisadaEn: String? = null,
 )
 
 /** Cuerpo de un 409: la API lo manda dentro de `detail`. */

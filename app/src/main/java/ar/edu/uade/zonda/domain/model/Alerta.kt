@@ -19,6 +19,8 @@ data class Alerta(
     val origen: Equipo,
     val destino: Equipo,
     val servicio: String,
+    /** Protocolo de transporte ("tcp" o "udp"); null en las alertas guardadas antes de que la API lo mandara. */
+    val protocolo: String? = null,
     /** Puerto más frecuente del episodio. */
     val puerto: Int,
     /** Puerto del flujo de referencia (el primero del episodio). */

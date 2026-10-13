@@ -34,8 +34,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import ar.edu.uade.zonda.R
-import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.ajustes.AjustesScreen
 import ar.edu.uade.zonda.ui.ajustes.AjustesViewModel
@@ -274,8 +274,8 @@ private const val ENLACE_APLICADO = "enlace_aplicado"
 
 /** El filtro de un enlace interno (`estado=sin_revisar&severidad=alta`), o null si no trae ninguno. */
 private fun filtroDelEnlace(argumentos: Bundle?): FiltroAlertas? {
-    val estado = argumentos?.getString(EnlacesInternos.ARG_ESTADO)?.let { valor -> EstadoRevision.entries.firstOrNull { it.name.equals(valor, ignoreCase = true) } }
+    val estado = argumentos?.getString(EnlacesInternos.ARG_ESTADO)?.let { valor -> FiltroEstado.entries.firstOrNull { it.name.equals(valor, ignoreCase = true) } }
     val severidad = argumentos?.getString(EnlacesInternos.ARG_SEVERIDAD)?.let { valor -> Severidad.entries.firstOrNull { it.name.equals(valor, ignoreCase = true) } }
     if (estado == null && severidad == null) return null
-    return FiltroAlertas(estado = estado, severidad = severidad)
+    return FiltroAlertas(estado = estado ?: FiltroEstado.TODAS, severidades = setOfNotNull(severidad))
 }

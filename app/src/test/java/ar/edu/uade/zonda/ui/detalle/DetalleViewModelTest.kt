@@ -176,7 +176,7 @@ class DetalleViewModelTest {
         viewModel.elegirMotivo(Motivo.ESCALADO_AL_PROVEEDOR, "Escalé la alerta al proveedor.")
         assertEquals("Escalé la alerta al proveedor.", viewModel.formulario.value?.comentario)
         viewModel.cambiarComentario("Avisé al proveedor y bloqueé el acceso")
-        viewModel.elegirMotivo(Motivo.EQUIPO_AISLADO, "Aislé el equipo.")
+        viewModel.elegirMotivo(Motivo.BLOQUEADO_MANUALMENTE, "Bloqueé el acceso SSH de pc-09 y avisé al proveedor.")
         assertEquals("Avisé al proveedor y bloqueé el acceso", viewModel.formulario.value?.comentario)
         assertTrue(viewModel.formulario.value!!.puedeConfirmar)
 
@@ -186,7 +186,7 @@ class DetalleViewModelTest {
         assertEquals(AvisoDetalle.RevisionGuardada(conConexion = true), viewModel.aviso.value)
         val alerta = alertas.observarAlerta("red-1", "a-1").first()!!
         assertEquals(EstadoRevision.ATAQUE_REAL, alerta.estadoRevision)
-        assertEquals(Motivo.EQUIPO_AISLADO, alerta.revisionActual?.motivo)
+        assertEquals(Motivo.BLOQUEADO_MANUALMENTE, alerta.revisionActual?.motivo)
         assertEquals("Avisé al proveedor y bloqueé el acceso", alerta.revisionActual?.comentario)
         assertEquals(1, acciones.todas.size)
         assertTrue("todavía se puede deshacer", alertas.sincronizaciones.isEmpty())
@@ -223,7 +223,7 @@ class DetalleViewModelTest {
         val viewModel = viewModel("a-1", backgroundScope)
         viewModel.abrirRevision()
         viewModel.elegirResultado(ResultadoRevision.ATAQUE_REAL)
-        viewModel.elegirMotivo(Motivo.EN_INVESTIGACION, "Lo estoy investigando.")
+        viewModel.elegirMotivo(Motivo.INVESTIGANDO, "Estoy revisando los registros del servidor; sigo mañana.")
 
         viewModel.confirmarRevision()
         assertEquals(AvisoDetalle.RevisionGuardada(conConexion = false), viewModel.aviso.value)

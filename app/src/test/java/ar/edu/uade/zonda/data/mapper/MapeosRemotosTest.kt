@@ -42,6 +42,7 @@ class MapeosRemotosTest {
         assertEquals(Equipo("172.16.0.1", "gw-borde"), alerta.origen)
         assertEquals(Equipo("192.168.10.50", "srv-web"), alerta.destino)
         assertEquals("ftp", alerta.servicio)
+        assertEquals("tcp", alerta.protocolo)
         assertEquals(21, alerta.puerto)
         assertEquals(TipoAtaque.FUERZA_BRUTA, alerta.tipoAtaque)
         assertEquals(1.0, alerta.confianzaTipo!!, 0.0)
@@ -72,7 +73,7 @@ class MapeosRemotosTest {
             severidad = "media",
             estadoRevision = "falso_positivo",
             version = 2,
-            historial = listOf(RevisionDto("falso_positivo", "prueba_del_equipo_de_it", "Prueba de IT", "Pixel de Martín", "2026-10-12T05:00:00+00:00")),
+            historial = listOf(RevisionDto("falso_positivo", "usuario_autorizado", "Prueba de IT", "Pixel de Martín", "2026-10-12T05:00:00+00:00", "2026-10-12T04:56:00+00:00")),
         )
 
         val alerta = dto.aDominio("red-1")
@@ -83,12 +84,32 @@ class MapeosRemotosTest {
         assertEquals(EstadoRevision.FALSO_POSITIVO, alerta.estadoRevision)
         val revision = alerta.revisionActual!!
         assertEquals(ResultadoRevision.FALSO_POSITIVO, revision.resultado)
-        assertEquals(Motivo.PRUEBA_DEL_EQUIPO_DE_IT, revision.motivo)
+        assertEquals(Motivo.USUARIO_AUTORIZADO, revision.motivo)
         assertEquals("Prueba de IT", revision.comentario)
         assertEquals("Pixel de Martín", revision.autor)
         assertEquals(Instant.parse("2026-10-12T05:00:00Z"), revision.fecha)
+        assertEquals(Instant.parse("2026-10-12T04:56:00Z"), revision.revisadaEn)
         assertEquals(OrigenRevision.SERVIDOR, revision.origen)
         assertEquals(listOf(revision), alerta.historial)
+    }
+
+    @Test
+    fun `un motivo anterior al Figma llega con su nombre nuevo y una alerta sin protocolo queda sin el`() {
+        val dto = DtoFixtures.alerta(
+            estadoRevision = "falso_positivo",
+            historial = listOf(
+                RevisionDto("ataque_real", "equipo_aislado", "Lo aislamos", "Pixel", "2026-10-12T04:00:00+00:00"),
+                RevisionDto("falso_positivo", "prueba_del_equipo_de_it", "Prueba de IT", "Pixel", "2026-10-12T05:00:00+00:00"),
+            ),
+        )
+
+        val alerta = dto.aDominio("red-1")
+
+        assertEquals(listOf(Motivo.BLOQUEADO_MANUALMENTE, Motivo.OTRO), alerta.historial.map { it.motivo })
+        assertNull(alerta.historial.first().revisadaEn)
+        assertEquals(alerta.historial.first().fecha, alerta.historial.first().hechaEn)
+        assertNull(alerta.protocolo)
+        assertThrows(IllegalArgumentException::class.java) { Motivo.desdeNombre("MOTIVO_INVENTADO") }
     }
 
     @Test
@@ -125,8 +146,11 @@ class MapeosRemotosTest {
         assertEquals("Comentario de prueba", entrada.comentario)
         assertEquals(1, entrada.versionVista)
         assertFalse(entrada.forzar)
+        // La hora en que se revisó en el teléfono, en UTC, para el historial (decisión 21).
+        assertEquals("2026-10-12T12:00:00Z", entrada.revisadaEn)
         val json = gson.toJson(entrada)
         assertTrue(json, json.contains("\"accionId\":\"accion-7\"") && json.contains("\"versionVista\":1") && json.contains("\"forzar\":false"))
+        assertTrue(json, json.contains("\"revisadaEn\":\"2026-10-12T12:00:00Z\""))
         assertEquals(entrada, gson.fromJson(json, RevisionEntradaDto::class.java))
         assertNull(Fixtures.accion(alertaId = null, revision = null).aRevisionEntrada())
     }
@@ -139,7 +163,7 @@ class MapeosRemotosTest {
               "inicio": "2026-10-11T14:02:00+00:00", "fin": "2026-10-11T14:20:10+00:00",
               "cantidadFlujos": 1198, "uidReferencia": "CxYz1...",
               "origenIp": "172.16.0.1", "origenNombre": "gw-borde", "destinoIp": "192.168.10.50", "destinoNombre": "srv-web",
-              "servicio": "ftp", "puerto": 21, "puertoReferencia": 21, "puertosDistintos": 1,
+              "servicio": "ftp", "protocolo": "tcp", "puerto": 21, "puertoReferencia": 21, "puertosDistintos": 1,
               "tipoAtaque": "fuerza_bruta", "confianzaTipo": 1.0, "severidad": "alta",
               "veredictos": {
                 "ia": true, "errorReconstruccion": 0.0412, "umbralIa": 0.00306383,

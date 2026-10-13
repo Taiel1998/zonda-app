@@ -122,7 +122,15 @@ class SincronizadorHttp(
                 enviadas++
             } catch (e: ErrorZonda.Conflicto) {
                 val ajena = e.revisionAjena
-                accionesDao.marcarConflicto(accion.id, ajena.resultado.name, ajena.motivo.name, ajena.comentario, ajena.autor, ajena.fecha.toEpochMilli())
+                accionesDao.marcarConflicto(
+                    id = accion.id,
+                    resultado = ajena.resultado.name,
+                    motivo = ajena.motivo.name,
+                    comentario = ajena.comentario,
+                    autor = ajena.autor,
+                    fecha = ajena.fecha.toEpochMilli(),
+                    revisadaEn = ajena.revisadaEn?.toEpochMilli(),
+                )
             } catch (e: ErrorZonda.SinConexion) {
                 devolverAPendiente(accion)
                 throw e

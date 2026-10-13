@@ -1,7 +1,9 @@
 package ar.edu.uade.zonda.ui
 
+import android.content.res.Resources
 import androidx.annotation.StringRes
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
@@ -80,13 +82,14 @@ fun ResultadoRevision.etiqueta(): Int = when (this) {
 @StringRes
 fun Motivo.etiqueta(): Int = when (this) {
     Motivo.ESCALADO_AL_PROVEEDOR -> R.string.motivo_escalado_al_proveedor
-    Motivo.EQUIPO_AISLADO -> R.string.motivo_equipo_aislado
-    Motivo.CREDENCIALES_CAMBIADAS -> R.string.motivo_credenciales_cambiadas
-    Motivo.EN_INVESTIGACION -> R.string.motivo_en_investigacion
+    Motivo.BLOQUEADO_MANUALMENTE -> R.string.motivo_bloqueado_manualmente
+    Motivo.CONTRASENA_CAMBIADA -> R.string.motivo_contrasena_cambiada
+    Motivo.INVESTIGANDO -> R.string.motivo_investigando
     Motivo.TAREA_PROGRAMADA -> R.string.motivo_tarea_programada
-    Motivo.HERRAMIENTA_AUTORIZADA -> R.string.motivo_herramienta_autorizada
-    Motivo.PRUEBA_DEL_EQUIPO_DE_IT -> R.string.motivo_prueba_del_equipo_de_it
-    Motivo.SERVICIO_NUEVO -> R.string.motivo_servicio_nuevo
+    Motivo.BACKUP -> R.string.motivo_backup
+    Motivo.EQUIPO_NUEVO -> R.string.motivo_equipo_nuevo
+    Motivo.USUARIO_AUTORIZADO -> R.string.motivo_usuario_autorizado
+    Motivo.OTRO -> R.string.motivo_otro
 }
 
 @StringRes
@@ -106,17 +109,21 @@ fun ModoAviso.etiqueta(): Int = when (this) {
     ModoAviso.SIN_AVISO -> R.string.modo_sin_aviso
 }
 
-/** El comentario que propone cada motivo al revisar; la persona lo puede editar (RF04). */
-@StringRes
-fun Motivo.comentarioPropuesto(): Int = when (this) {
-    Motivo.ESCALADO_AL_PROVEEDOR -> R.string.comentario_escalado_al_proveedor
-    Motivo.EQUIPO_AISLADO -> R.string.comentario_equipo_aislado
-    Motivo.CREDENCIALES_CAMBIADAS -> R.string.comentario_credenciales_cambiadas
-    Motivo.EN_INVESTIGACION -> R.string.comentario_en_investigacion
-    Motivo.TAREA_PROGRAMADA -> R.string.comentario_tarea_programada
-    Motivo.HERRAMIENTA_AUTORIZADA -> R.string.comentario_herramienta_autorizada
-    Motivo.PRUEBA_DEL_EQUIPO_DE_IT -> R.string.comentario_prueba_del_equipo_de_it
-    Motivo.SERVICIO_NUEVO -> R.string.comentario_servicio_nuevo
+/**
+ * El comentario que propone cada motivo al revisar, el de su pantalla del Figma; la persona lo puede
+ * editar (RF04). Los que nombran equipos usan los de la alerta, para no proponer un nombre ajeno.
+ */
+fun Motivo.comentarioPropuesto(recursos: Resources, alerta: Alerta): String = when (this) {
+    Motivo.ESCALADO_AL_PROVEEDOR -> recursos.getString(R.string.comentario_escalado_al_proveedor)
+    Motivo.BLOQUEADO_MANUALMENTE ->
+        recursos.getString(R.string.comentario_bloqueado_manualmente, alerta.servicio.uppercase(), alerta.origen.etiqueta)
+    Motivo.CONTRASENA_CAMBIADA -> recursos.getString(R.string.comentario_contrasena_cambiada)
+    Motivo.INVESTIGANDO -> recursos.getString(R.string.comentario_investigando)
+    Motivo.TAREA_PROGRAMADA -> recursos.getString(R.string.comentario_tarea_programada)
+    Motivo.BACKUP -> recursos.getString(R.string.comentario_backup, alerta.origen.etiqueta, alerta.destino.etiqueta)
+    Motivo.EQUIPO_NUEVO -> recursos.getString(R.string.comentario_equipo_nuevo, alerta.origen.etiqueta)
+    Motivo.USUARIO_AUTORIZADO -> recursos.getString(R.string.comentario_usuario_autorizado)
+    Motivo.OTRO -> recursos.getString(R.string.comentario_otro)
 }
 
 /** El mensaje que ve la persona por cada error de datos (informe, sección 14.3). */

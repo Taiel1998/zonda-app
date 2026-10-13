@@ -33,9 +33,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.ui.comentarioPropuesto
 import ar.edu.uade.zonda.ui.etiqueta
@@ -44,16 +46,16 @@ import ar.edu.uade.zonda.ui.theme.Tonos
 /** Hoja inferior Revisar (Figma, figura 12). Cerrarla deslizando equivale a Cancelar. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HojaRevision(formulario: FormularioRevision, acciones: AccionesDetalle) {
+fun HojaRevision(formulario: FormularioRevision, alerta: Alerta, acciones: AccionesDetalle) {
     val estadoHoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = acciones.alCancelarRevision, sheetState = estadoHoja) {
-        ContenidoHojaRevision(formulario, acciones)
+        ContenidoHojaRevision(formulario, alerta, acciones)
     }
 }
 
 /** El contenido de la hoja, separado para dibujarlo en las pruebas sin la ventana de la hoja. */
 @Composable
-fun ContenidoHojaRevision(formulario: FormularioRevision, acciones: AccionesDetalle, modifier: Modifier = Modifier) {
+fun ContenidoHojaRevision(formulario: FormularioRevision, alerta: Alerta, acciones: AccionesDetalle, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
@@ -62,7 +64,7 @@ fun ContenidoHojaRevision(formulario: FormularioRevision, acciones: AccionesDeta
     ) {
         val resultado = formulario.resultado
         if (formulario.paso == PasoRevision.MOTIVO && resultado != null) {
-            PasoMotivo(formulario, resultado, acciones)
+            PasoMotivo(formulario, resultado, alerta, acciones)
         } else {
             PasoResultado(formulario, acciones)
         }
@@ -130,7 +132,7 @@ private fun OpcionResultado(titulo: String, detalle: String, color: Color, selec
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PasoMotivo(formulario: FormularioRevision, resultado: ResultadoRevision, acciones: AccionesDetalle) {
+private fun PasoMotivo(formulario: FormularioRevision, resultado: ResultadoRevision, alerta: Alerta, acciones: AccionesDetalle) {
     val titulo = if (resultado == ResultadoRevision.ATAQUE_REAL) R.string.revisar_paso2_titulo_ataque else R.string.revisar_paso2_titulo_falso
     Text(text = stringResource(titulo), style = MaterialTheme.typography.titleLarge)
     Spacer(modifier = Modifier.height(6.dp))
@@ -142,7 +144,8 @@ private fun PasoMotivo(formulario: FormularioRevision, resultado: ResultadoRevis
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(modifier = Modifier.height(4.dp))
-    val propuestos = formulario.motivos.associateWith { stringResource(it.comentarioPropuesto()) }
+    val recursos = LocalContext.current.resources
+    val propuestos = formulario.motivos.associateWith { it.comentarioPropuesto(recursos, alerta) }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         formulario.motivos.forEach { motivo ->
             FilterChip(

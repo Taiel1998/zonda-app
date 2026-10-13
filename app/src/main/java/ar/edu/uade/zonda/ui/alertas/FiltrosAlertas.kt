@@ -31,7 +31,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Catalogo
-import ar.edu.uade.zonda.domain.model.EstadoRevision
+import ar.edu.uade.zonda.domain.model.FiltroEstado
+import ar.edu.uade.zonda.domain.model.FiltroServicio
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Periodo
@@ -55,7 +56,7 @@ fun FiltrosAlertas(
     modifier: Modifier = Modifier,
 ) {
     var hoja by remember { mutableStateOf<HojaFiltro?>(null) }
-    val masActivos = listOfNotNull(filtro.servicio, filtro.destinoIp, filtro.metodo).size
+    val masActivos = filtro.cantidadMasFiltros
 
     Row(
         modifier = modifier
@@ -64,18 +65,18 @@ fun FiltrosAlertas(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         ChipFiltro(
-            texto = stringResource(filtro.estado?.etiquetaDeFiltro() ?: R.string.filtro_estado_todas),
-            seleccionado = filtro.estado != null,
+            texto = stringResource(filtro.estado.etiquetaDeFiltro()),
+            seleccionado = true,
             alTocar = { hoja = HojaFiltro.ESTADO },
         )
         ChipFiltro(
-            texto = stringResource(filtro.severidad?.etiqueta() ?: R.string.filtro_severidad),
-            seleccionado = filtro.severidad != null,
+            texto = filtro.severidades.singleOrNull()?.let { stringResource(it.etiqueta()) } ?: stringResource(R.string.filtro_severidad),
+            seleccionado = filtro.severidades.isNotEmpty(),
             alTocar = { hoja = HojaFiltro.SEVERIDAD },
         )
         ChipFiltro(
             texto = stringResource(filtro.periodo.etiqueta()),
-            seleccionado = filtro.periodo != Periodo.TODO,
+            seleccionado = filtro.periodo != FiltroAlertas.TODAS.periodo,
             alTocar = { hoja = HojaFiltro.PERIODO },
         )
         ChipFiltro(
@@ -89,10 +90,10 @@ fun FiltrosAlertas(
         HojaFiltro.ESTADO -> HojaDeOpciones(
             titulo = stringResource(R.string.filtro_estado_titulo),
             opciones = listOf(
-                Opcion<EstadoRevision?>(EstadoRevision.SIN_REVISAR, stringResource(R.string.filtro_estado_sin_revisar), stringResource(R.string.filtro_estado_sin_revisar_detalle)),
-                Opcion(EstadoRevision.ATAQUE_REAL, stringResource(R.string.filtro_estado_revisadas)),
-                Opcion(EstadoRevision.FALSO_POSITIVO, stringResource(R.string.filtro_estado_falsos_positivos)),
-                Opcion(null, stringResource(R.string.filtro_estado_todas), stringResource(R.string.filtro_estado_todas_detalle)),
+                Opcion(FiltroEstado.SIN_REVISAR, stringResource(R.string.filtro_estado_sin_revisar), stringResource(R.string.filtro_estado_sin_revisar_detalle)),
+                Opcion(FiltroEstado.REVISADAS, stringResource(R.string.filtro_estado_revisadas)),
+                Opcion(FiltroEstado.FALSOS_POSITIVOS, stringResource(R.string.filtro_estado_falsos_positivos)),
+                Opcion(FiltroEstado.TODAS, stringResource(R.string.filtro_estado_todas), stringResource(R.string.filtro_estado_todas_detalle)),
             ),
             seleccionada = filtro.estado,
             alCerrar = { hoja = null },
@@ -102,9 +103,9 @@ fun FiltrosAlertas(
             titulo = stringResource(R.string.filtro_severidad_titulo),
             opciones = Severidad.entries.map { Opcion<Severidad?>(it, stringResource(it.etiqueta())) } +
                 Opcion(null, stringResource(R.string.filtro_severidad_todas)),
-            seleccionada = filtro.severidad,
+            seleccionada = filtro.severidades.singleOrNull(),
             alCerrar = { hoja = null },
-            alAplicar = { alCambiar(filtro.copy(severidad = it)); hoja = null },
+            alAplicar = { alCambiar(filtro.copy(severidades = setOfNotNull(it))); hoja = null },
         )
         HojaFiltro.PERIODO -> HojaDeOpciones(
             titulo = stringResource(R.string.filtro_periodo_titulo),
@@ -112,7 +113,6 @@ fun FiltrosAlertas(
                 Opcion(Periodo.ULTIMAS_24_HORAS, stringResource(R.string.filtro_periodo_24h), stringResource(R.string.filtro_periodo_24h_detalle)),
                 Opcion(Periodo.ULTIMOS_7_DIAS, stringResource(R.string.filtro_periodo_7d)),
                 Opcion(Periodo.ULTIMOS_30_DIAS, stringResource(R.string.filtro_periodo_30d)),
-                Opcion(Periodo.TODO, stringResource(R.string.filtro_periodo_todo), stringResource(R.string.filtro_periodo_todo_detalle)),
             ),
             seleccionada = filtro.periodo,
             alCerrar = { hoja = null },
@@ -129,10 +129,11 @@ fun FiltrosAlertas(
 }
 
 /** El texto del chip de Estado muestra el valor elegido ("Revisadas"), no el nombre del filtro. */
-private fun EstadoRevision.etiquetaDeFiltro(): Int = when (this) {
-    EstadoRevision.SIN_REVISAR -> R.string.filtro_estado_sin_revisar
-    EstadoRevision.ATAQUE_REAL -> R.string.filtro_estado_revisadas
-    EstadoRevision.FALSO_POSITIVO -> R.string.filtro_estado_falsos_positivos
+private fun FiltroEstado.etiquetaDeFiltro(): Int = when (this) {
+    FiltroEstado.SIN_REVISAR -> R.string.filtro_estado_sin_revisar
+    FiltroEstado.REVISADAS -> R.string.filtro_estado_revisadas
+    FiltroEstado.FALSOS_POSITIVOS -> R.string.filtro_estado_falsos_positivos
+    FiltroEstado.TODAS -> R.string.filtro_estado_todas
 }
 
 @Composable
@@ -153,7 +154,7 @@ private fun HojaMasFiltros(
     alAplicar: (FiltroAlertas) -> Unit,
 ) {
     val estadoHoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var servicio by remember(filtro) { mutableStateOf(filtro.servicio) }
+    var servicio by remember(filtro) { mutableStateOf((filtro.servicio as? FiltroServicio.Uno)?.nombre) }
     var destino by remember(filtro) { mutableStateOf(filtro.destinoIp) }
     var metodo by remember(filtro) { mutableStateOf(filtro.metodo) }
 
@@ -191,7 +192,7 @@ private fun HojaMasFiltros(
                     Text(stringResource(R.string.filtro_limpiar))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(onClick = { alAplicar(filtro.copy(servicio = servicio, destinoIp = destino, metodo = metodo)) }) {
+                Button(onClick = { alAplicar(filtro.copy(servicio = servicio?.let(FiltroServicio::Uno), destinoIp = destino, metodo = metodo)) }) {
                     Text(stringResource(R.string.filtro_aplicar))
                 }
             }

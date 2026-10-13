@@ -3,6 +3,7 @@ package ar.edu.uade.zonda.domain.repository
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Revision
 import java.time.Instant
@@ -30,6 +31,9 @@ interface AlertasRepository {
 
     /** Alertas de una red, de la más reciente a la más antigua, con el filtro aplicado. Se actualiza solo. */
     fun observarAlertas(redId: String, filtro: FiltroAlertas): Flow<List<Alerta>>
+
+    /** Los servicios y los equipos destino de las alertas guardadas, para las opciones de Más filtros. */
+    fun observarOpcionesDeFiltro(redId: String): Flow<OpcionesDeFiltro>
 
     /** Una alerta por id, o null si todavía no está en el teléfono. */
     fun observarAlerta(redId: String, alertaId: String): Flow<Alerta?>

@@ -60,7 +60,7 @@ class DetalleContenidoTest {
         var elegido: ResultadoRevision? = null
 
         compose.setContent {
-            ZondaTheme { ContenidoHojaRevision(FormularioRevision(), AccionesDetalle(alElegirResultado = { elegido = it })) }
+            ZondaTheme { ContenidoHojaRevision(FormularioRevision(), Fixtures.alerta(), AccionesDetalle(alElegirResultado = { elegido = it })) }
         }
 
         compose.onNodeWithText("¿Qué resultó ser esta alerta?").assertIsDisplayed()
@@ -79,6 +79,7 @@ class DetalleContenidoTest {
             ZondaTheme {
                 ContenidoHojaRevision(
                     formulario,
+                    Fixtures.alerta(),
                     AccionesDetalle(alElegirMotivo = { motivo, comentario -> motivoElegido = motivo to comentario }, alConfirmarRevision = { confirmada = true }),
                 )
             }
@@ -87,7 +88,7 @@ class DetalleContenidoTest {
         compose.onNodeWithText("Falso positivo: ¿por qué?").assertIsDisplayed()
         compose.onNodeWithText("Confirmar revisión").assertIsNotEnabled()
         compose.onNodeWithText("Tarea programada").performClick()
-        assertEquals(Motivo.TAREA_PROGRAMADA to "Era una tarea programada, como un respaldo o una actualización.", motivoElegido)
+        assertEquals(Motivo.TAREA_PROGRAMADA to "Es la copia nocturna que corre todos los domingos.", motivoElegido)
 
         formulario = formulario.copy(motivo = Motivo.TAREA_PROGRAMADA, comentario = "Respaldo nocturno")
         compose.onNodeWithText("Confirmar revisión").assertIsEnabled().performClick()

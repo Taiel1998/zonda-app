@@ -65,14 +65,16 @@
     <string name="veredicto_normal">Normal</string>
     <string name="resultado_ataque_real">Ataque real</string>
     <string name="resultado_falso_positivo">Falso positivo</string>
+    <!-- Motivos del Figma (66-2852 y 66-2942) -->
     <string name="motivo_escalado_al_proveedor">Escalado al proveedor</string>
-    <string name="motivo_equipo_aislado">Equipo aislado</string>
-    <string name="motivo_credenciales_cambiadas">Credenciales cambiadas</string>
-    <string name="motivo_en_investigacion">En investigación</string>
+    <string name="motivo_bloqueado_manualmente">Bloqueado manualmente</string>
+    <string name="motivo_contrasena_cambiada">Contraseña cambiada</string>
+    <string name="motivo_investigando">Investigando</string>
     <string name="motivo_tarea_programada">Tarea programada</string>
-    <string name="motivo_herramienta_autorizada">Herramienta autorizada</string>
-    <string name="motivo_prueba_del_equipo_de_it">Prueba del equipo de IT</string>
-    <string name="motivo_servicio_nuevo">Servicio nuevo</string>
+    <string name="motivo_backup">Backup</string>
+    <string name="motivo_equipo_nuevo">Equipo nuevo</string>
+    <string name="motivo_usuario_autorizado">Usuario autorizado</string>
+    <string name="motivo_otro">Otro</string>
 
     <!-- Alertas: resumen y filtros -->
     <plurals name="alertas_cantidad">
@@ -194,15 +196,18 @@
     <string name="revisar_volver">Volver</string>
     <string name="revisar_confirmar">Confirmar revisión</string>
 
-    <!-- Comentario que propone cada motivo (se puede editar) -->
-    <string name="comentario_escalado_al_proveedor">Escalé la alerta al proveedor de seguridad.</string>
-    <string name="comentario_equipo_aislado">Aislé el equipo de la red hasta revisarlo.</string>
-    <string name="comentario_credenciales_cambiadas">Cambié las credenciales de la cuenta afectada.</string>
-    <string name="comentario_en_investigacion">Lo estoy investigando; actualizo cuando sepa más.</string>
-    <string name="comentario_tarea_programada">Era una tarea programada, como un respaldo o una actualización.</string>
-    <string name="comentario_herramienta_autorizada">Era una herramienta autorizada por IT.</string>
-    <string name="comentario_prueba_del_equipo_de_it">Era una prueba del equipo de IT.</string>
-    <string name="comentario_servicio_nuevo">Es un servicio nuevo que todavía no está en el catálogo.</string>
+    <!-- Comentario que propone cada motivo, el de su pantalla del Figma (se puede editar). Los que
+         nombran equipos usan los de la alerta: el servicio y el origen al bloquear, origen y destino
+         en el backup y el origen en el equipo nuevo. -->
+    <string name="comentario_escalado_al_proveedor">Avisé al proveedor de seguridad; están revisando el servidor.</string>
+    <string name="comentario_bloqueado_manualmente">Bloqueé el acceso %1$s de %2$s y avisé al proveedor.</string>
+    <string name="comentario_contrasena_cambiada">Cambié la contraseña de la cuenta usada y revisé los accesos.</string>
+    <string name="comentario_investigando">Estoy revisando los registros del servidor; sigo mañana.</string>
+    <string name="comentario_tarea_programada">Es la copia nocturna que corre todos los domingos.</string>
+    <string name="comentario_backup">Es el backup semanal de %1$s hacia %2$s.</string>
+    <string name="comentario_equipo_nuevo">%1$s es un equipo nuevo que se configuró hoy.</string>
+    <string name="comentario_usuario_autorizado">Es un acceso autorizado del administrador.</string>
+    <string name="comentario_otro">Prueba de conectividad que hizo el proveedor.</string>
 
     <!-- Aviso con Deshacer, conflicto y envío fallido -->
     <string name="aviso_revision_guardada">Revisión guardada.</string>
