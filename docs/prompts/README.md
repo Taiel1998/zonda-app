@@ -33,4 +33,4 @@ Un archivo por sesión de trabajo o por fase, con la fecha, qué se pidió, qué
 | 13 y 14/10/2026 | `2026-10-14-fase10-telegram.md` | Fase 10: Telegram |
 | 14/10/2026 | `2026-10-14-fase11-https.md` | Fase 11: HTTPS final |
 | 14/10/2026 | `2026-10-14-estado.md` | La pantalla de Estado |
-| 14/10/2026 | `2026-10-14-fase12-cierre.md` | Fase 12: APK firmado, guion de la demo, README y este registro, y después `zonda emitir` para la demo |
+| 14/10/2026 | `2026-10-14-fase12-cierre.md` | Fase 12: APK firmado, guion de la demo, README y este registro, y después `zonda emitir` y `zonda tranquila` para la demo |

@@ -56,11 +56,14 @@ No hay interfaz web de administración; se usan comandos en la computadora de la
 .\zonda.cmd revoke d-xxxxxxxx # revoca el token de un teléfono (la app pide un pareo nuevo)
 .\zonda.cmd emitir            # crea ya una alerta alta de fuerza bruta por SSH, para la demo
 .\zonda.cmd emitir escaneo    # una de otro tipo; con el servicio: .\zonda.cmd emitir fuerza_bruta ftp
+.\zonda.cmd tranquila         # otra persona revisa desde su teléfono las altas y medias sin revisar, para la demo
 ```
 
 El QR contiene `zonda:<ZONDA_URL_PUBLICA>#<código>;vence=<fecha ISO>`, por ejemplo `zonda:https://zonda-empresa.duckdns.org#K7M2-QX9P;vence=2026-10-12T02:19:00+00:00`. En Linux o macOS: `python -m app.cli pair`.
 
 `zonda emitir [tipo] [servicio]` crea una alerta nueva en el momento: copia una existente de ese tipo con la hora de ahora, con la misma función que el emisor de `ZONDA_EMITIR_CADA`, pero sin azar. El emisor copia cualquiera y, con la semilla de ejemplo, solo una de cada siete sale alta; en la demo hace falta una alta cuando la pedimos (paso 7 del guion). Si hay un teléfono con Telegram vinculado, el aviso sale en unos 5 segundos, y la app la trae en la sincronización siguiente. Los tipos son los de la tabla de severidades: `fuerza_bruta`, `escaneo`, `ddos`, `probable_falsa_alarma`, `sin_tipificar` y `solo_reglas_o_umbrales` (las que detectaron solo las reglas o los umbrales). Sin argumentos es fuerza bruta por SSH; con un tipo y sin servicio, cualquiera de ese tipo. Si no hay ninguna alerta para copiar, lo dice y termina con error. Como los otros comandos, escribe directo en la base de la API (`ZONDA_DB_PATH` o `backend/zonda.db`): la API no tiene ninguna ruta para crear alertas.
+
+`zonda tranquila [--nombre "Teléfono de Laura"]` hace de otra persona del equipo que revisa desde su teléfono todas las altas y medias sin revisar, como falso positivo con el motivo tarea programada. Es el final de la demo (paso 11 del guion): al sincronizar, el teléfono de la demo las trae revisadas y Estado pasa a verde. Las bajas no se tocan, porque no cambian el color. La revisión se guarda con la misma función que `POST /alertas/{id}/revision` (`app/revisiones.py`): queda en el historial con el nombre de ese teléfono, sube la versión y cambia la secuencia del cursor. Si después alguien manda una revisión de lo que vio antes, la API responde el `409` de siempre, con la revisión de la otra persona. El teléfono se parea solo la primera vez, con un código de un uso que se canjea en el momento, y después se vuelve a usar: aparece en `zonda dispositivos` y se puede revocar como cualquier otro. Si no queda ninguna alta ni media sin revisar, lo dice y no cambia nada. Escribe en la misma base que la API, así que anda con la API levantada o sin ella.
 
 ## Contrato
 
@@ -193,9 +196,10 @@ app/modelos.py     esquemas de entrada y salida (pydantic), el contrato con la a
 app/auth.py        tokens por dispositivo (hash SHA-256, 90 días), códigos de un uso
 app/semilla.py     carga de alertas_semilla.json con las fechas corridas
 app/rutas.py       las rutas del contrato
+app/revisiones.py  cómo se guarda una revisión: la usan la ruta y zonda tranquila
 app/emisor.py      alertas nuevas para la demo, cada N segundos o una a pedido con zonda emitir
 app/telegram.py    bot de Telegram: vínculo con /start y aviso de cada alerta nueva
-app/cli.py         zonda pair, revoke, dispositivos, emitir
+app/cli.py         zonda pair, revoke, dispositivos, emitir, tranquila
 tests/             pytest con TestClient y una base nueva por test
 Caddyfile          HTTPS delante de la API: TLS 1.2 y 1.3, Let's Encrypt por DNS, sin el puerto 80
 demo.cmd           la demo con HTTPS en una ventana (arranca scripts/demo.ps1)
