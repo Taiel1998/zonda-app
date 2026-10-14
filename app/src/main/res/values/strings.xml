@@ -226,13 +226,14 @@
     <string name="detalle_pendiente_de_sincronizar">Pendiente de sincronizar</string>
     <string name="detalle_revision_pendiente_banner">Sin conexión · tu revisión se enviará al reconectar</string>
     <string name="accion_compartir">Compartir</string>
-    <!-- Lo que comparte el detalle: lo mismo que el aviso, sin direcciones IP ni nombres de equipos -->
-    <string name="detalle_compartir_texto">Alerta %1$s · %2$s · %3$s\n%4$d conexiones en 60 s. Tocá para ver el detalle en Zonda. El aviso no incluye direcciones IP.\n%5$s</string>
+    <!-- Lo que comparte el detalle: lo mismo que el aviso de Telegram, sin direcciones IP ni nombres de equipos (RNF02) -->
+    <string name="detalle_compartir_texto">Alerta %1$s · %2$s · %3$s\nTocá para ver el detalle en Zonda.\nRed: %4$s\n%5$s</string>
     <!-- Historial (Figma 51-2379) -->
     <string name="historial_enviada">Enviada al servidor</string>
     <string name="historial_revisada">Revisada: %1$s · %2$s</string>
     <string name="historial_quedo_pendiente">sin conexión, quedó pendiente</string>
     <string name="historial_detectada">Detectada por %1$s</string>
+    <string name="historial_aviso_telegram">Aviso enviado por Telegram</string>
     <!-- Pendiente de descarga (Figma 3-139) -->
     <string name="detalle_pendiente_de_descarga">Pendiente de descarga</string>
     <string name="detalle_sin_descargar_banner">Sin conexión con el servidor · el detalle todavía no está en el teléfono</string>
@@ -240,6 +241,11 @@
     <string name="detalle_descarga_texto">Origen, destino, cantidad de conexiones y el veredicto de cada método se piden al servidor; el aviso no los trae. La app lo intenta sola cada 15 minutos y apenas detecta red.</string>
     <string name="detalle_descarga_reintentar">Reintentar ahora</string>
     <string name="detalle_descarga_volver">Volver a la lista</string>
+    <string name="detalle_aviso_de_las">Aviso de Telegram de las %1$s</string>
+    <string name="detalle_lo_que_trajo">Lo que trajo el aviso</string>
+    <string name="detalle_trajo_severidad">Severidad</string>
+    <string name="detalle_trajo_servicio">Servicio</string>
+    <string name="detalle_trajo_hora">Hora de detección</string>
 
     <!-- Revisión en dos pasos (RF04) -->
     <string name="revisar_paso1_titulo">¿Qué resultó ser esta alerta?</string>
@@ -333,9 +339,9 @@
     <string name="tutorial_semaforo_detalle">Última detección hace 5 min · actualizado 02:14</string>
     <string name="tutorial_aviso_paso">1. Llega el aviso por Telegram</string>
     <string name="tutorial_aviso_origen">Telegram · Zonda alertas · ahora</string>
-    <!-- El aviso de ejemplo sigue al Figma (8-7). Si cambia el texto del aviso de Telegram (fase 10), cambia también acá. -->
-    <string name="tutorial_aviso_titulo">Alerta ALTA · SSH · servidor de sueldos</string>
-    <string name="tutorial_aviso_texto">65 conexiones en 60 s desde una estación de RRHH. Tocá para ver el detalle. El aviso no incluye direcciones IP.</string>
+    <!-- El aviso de ejemplo es el texto que manda el bot (backend/app/telegram.py): sin nombres de equipos (RNF02). -->
+    <string name="tutorial_aviso_titulo">Alerta ALTA · SSH · 02:09</string>
+    <string name="tutorial_aviso_texto">Tocá para ver el detalle en Zonda.\nRed: Oficina central</string>
     <string name="tutorial_lo_tocas">↓ Lo tocás</string>
     <string name="tutorial_detalle_paso">2. Se abre el detalle de esa alerta</string>
     <string name="tutorial_ruta">pc-rrhh → srv-sueldos</string>

@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.AvisoRecibido
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
@@ -115,6 +116,8 @@ class AccionesDetalle(
 fun DetalleScreen(
     alertaId: String,
     alVolver: () -> Unit,
+    /** Lo que trajo el enlace del aviso de Telegram, si se abrió desde ahí. */
+    avisoRecibido: AvisoRecibido? = null,
     viewModel: DetalleViewModel = viewModelDeZonda { contenedor ->
         DetalleViewModel(
             obtenerDetalle = contenedor.obtenerDetalleAlerta,
@@ -128,6 +131,7 @@ fun DetalleScreen(
             alcanceDeEnvio = contenedor.alcanceDeLaApp,
             alertaId = alertaId,
             nombreDelTelefono = contenedor.nombreDelTelefono,
+            avisoRecibido = avisoRecibido,
         )
     },
 ) {
@@ -239,7 +243,7 @@ fun DetalleContenido(
     }
 
     val alertaVisible = (estado as? DetalleUiState.Contenido)?.alerta
-    val textoParaCompartir = alertaVisible?.let { textoParaCompartir(it, zona) }
+    val textoParaCompartir = (estado as? DetalleUiState.Contenido)?.let { textoParaCompartir(it.alerta, it.nombreDeLaRed, zona) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -281,7 +285,7 @@ fun DetalleContenido(
                     titulo = stringResource(R.string.vacio_sin_red_titulo),
                     detalle = stringResource(R.string.vacio_sin_red_detalle),
                 )
-                is DetalleUiState.NoDisponible -> PendienteDeDescarga(estado, acciones)
+                is DetalleUiState.NoDisponible -> PendienteDeDescarga(estado, acciones, zona)
                 is DetalleUiState.Contenido -> {
                     val modo = modoDe(estado)
                     if (estado.sinConexion) {
@@ -553,7 +557,7 @@ private data class EventoHistorial(val momento: Instant, val titulo: String, val
 /**
  * Figma 51-2475: la línea de tiempo, de lo último a lo primero. Cada revisión dice cuándo se hizo y,
  * si salió más tarde (se hizo sin conexión), también cuándo llegó al servidor (decisión 21). El aviso
- * de Telegram se suma cuando el servidor lo informe (fase 10).
+ * de Telegram aparece con la hora en que salió, que informa el servidor.
  */
 @Composable
 private fun TarjetaHistorial(alerta: Alerta, nombreDelTelefono: String, zona: ZoneId) {
@@ -578,6 +582,7 @@ private fun TarjetaHistorial(alerta: Alerta, nombreDelTelefono: String, zona: Zo
     }
     val metodos = alerta.metodos.sorted().map { stringResource(it.nombreEnHistorial()) }
     eventos += EventoHistorial(alerta.inicio, stringResource(R.string.historial_detectada, enumerar(metodos)), null)
+    alerta.avisoTelegram?.let { eventos += EventoHistorial(it, stringResource(R.string.historial_aviso_telegram), null) }
 
     Panel {
         TituloSeccion(stringResource(R.string.detalle_historial))
@@ -656,11 +661,11 @@ private fun TarjetaEnvioFallido(accion: AccionPendiente, acciones: AccionesDetal
 
 /**
  * Figma 3-139: la alerta no está en el teléfono (llegó el enlace del aviso sin red). El detalle se pide
- * a la API cuando haya conexión; lo que trae el enlace se suma en la fase 10. Si el servidor dice que
- * ya no existe, se muestra el error.
+ * a la API cuando haya conexión; mientras tanto se muestra lo que trajo el aviso (RF03, criterio 3).
+ * Si el servidor dice que ya no existe, se muestra el error.
  */
 @Composable
-private fun PendienteDeDescarga(estado: DetalleUiState.NoDisponible, acciones: AccionesDetalle) {
+private fun PendienteDeDescarga(estado: DetalleUiState.NoDisponible, acciones: AccionesDetalle, zona: ZoneId) {
     val error = estado.error
     if (error != null && error !is ErrorZonda.SinConexion) {
         EstadoError(
@@ -678,7 +683,12 @@ private fun PendienteDeDescarga(estado: DetalleUiState.NoDisponible, acciones: A
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row { Etiqueta(texto = stringResource(R.string.detalle_pendiente_de_descarga), tono = Tonos.Info) }
+        val aviso = estado.aviso
+        if (aviso == null) {
+            Row { Etiqueta(texto = stringResource(R.string.detalle_pendiente_de_descarga), tono = Tonos.Info) }
+        } else {
+            LoQueTrajoElAviso(aviso, zona)
+        }
         // Figma 51-2609: recuadro crema con el título SemiBold 14 y el texto Regular 13, los dos grises.
         Surface(color = CremaBarra, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -692,17 +702,47 @@ private fun PendienteDeDescarga(estado: DetalleUiState.NoDisponible, acciones: A
 }
 
 /**
- * Lo que comparte el detalle: lo mismo que el aviso, sin direcciones IP ni nombres de equipos
- * ("Alerta ALTA · SSH · 02:09") y el enlace que abre la alerta en Zonda.
+ * Figma 3-139: lo que trajo el aviso mientras el detalle no está en el teléfono. Arriba, como el
+ * encabezado del detalle: la severidad, "Pendiente de descarga", el servicio y la hora del aviso.
+ * Abajo, la tarjeta con la severidad, el servicio y la hora de detección. Nada más: el aviso no trae
+ * direcciones IP ni nombres de equipos.
  */
 @Composable
-private fun textoParaCompartir(alerta: Alerta, zona: ZoneId): String = stringResource(
+private fun LoQueTrajoElAviso(aviso: AvisoRecibido, zona: ZoneId) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IndicadorSeveridad(aviso.severidad)
+            Etiqueta(texto = stringResource(R.string.detalle_pendiente_de_descarga), tono = Tonos.Info)
+        }
+        Text(text = aviso.servicio.uppercase(), style = MaterialTheme.typography.encabezado)
+        aviso.enviadoEn?.let { enviado ->
+            Text(
+                text = stringResource(R.string.detalle_aviso_de_las, Formato.hora(enviado, zona)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+    Panel {
+        TituloSeccion(stringResource(R.string.detalle_lo_que_trajo))
+        FilaDato(stringResource(R.string.detalle_trajo_severidad), stringResource(aviso.severidad.etiqueta()))
+        FilaDato(stringResource(R.string.detalle_trajo_servicio), aviso.servicio.uppercase())
+        aviso.deteccion?.let { FilaDato(stringResource(R.string.detalle_trajo_hora), Formato.hora(it, zona)) }
+    }
+}
+
+/**
+ * Lo que comparte el detalle: lo mismo que el aviso de Telegram, sin direcciones IP ni nombres de
+ * equipos ("Alerta ALTA · SSH · 02:09", de qué red viene) y el enlace que abre la alerta en Zonda.
+ */
+@Composable
+private fun textoParaCompartir(alerta: Alerta, red: String, zona: ZoneId): String = stringResource(
     R.string.detalle_compartir_texto,
     stringResource(alerta.severidad.etiqueta()).uppercase(),
     alerta.servicio.uppercase(),
     Formato.hora(alerta.inicio, zona),
-    alerta.veredictos.umbrales.contexto60s,
-    RutaDetalle.ENLACE_AVISO.replace("{${RutaDetalle.ARG_ID}}", alerta.id),
+    red,
+    RutaDetalle.enlaceDelAviso(alerta),
 )
 
 /** El autor de la revisión; las de este teléfono que todavía no salieron llevan su nombre. */

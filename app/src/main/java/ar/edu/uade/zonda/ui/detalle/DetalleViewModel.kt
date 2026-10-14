@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.AvisoRecibido
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.Motivo
@@ -61,6 +62,8 @@ class DetalleViewModel(
     private val alertaId: String,
     private val esperaDeshacer: Long = ESPERA_DESHACER_MS,
     private val nombreDelTelefono: String = "",
+    /** Lo que trajo el enlace del aviso, para mostrarlo mientras la alerta no está en el teléfono. */
+    private val avisoRecibido: AvisoRecibido? = null,
 ) : ViewModel() {
 
     private val descargando = MutableStateFlow(false)
@@ -102,9 +105,10 @@ class DetalleViewModel(
                 datosDe = red.ultimaSincronizacion,
                 recienRevisada = recien,
                 nombreDelTelefono = nombreDelTelefono,
+                nombreDeLaRed = red.nombre,
             )
             enCurso -> DetalleUiState.Cargando
-            else -> DetalleUiState.NoDisponible(sinConexion = !conectado, error = error)
+            else -> DetalleUiState.NoDisponible(sinConexion = !conectado, error = error, aviso = avisoRecibido)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetalleUiState.Cargando)
 
