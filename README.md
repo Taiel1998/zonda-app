@@ -79,7 +79,7 @@ ar.edu.uade.zonda
 Los datos circulan así: la pantalla emite eventos, el ViewModel llama a un caso de uso, el caso de uso habla con la interfaz del repositorio, y la implementación decide entre la base local (Room) y la API (Retrofit). La base local es la fuente de verdad de la interfaz: la red solo la actualiza, y como Room avisa cada cambio con un `Flow`, la pantalla se actualiza sola.
 
 ```mermaid
-flowchart LR
+flowchart TB
     pantalla["Pantalla en Compose"] -->|eventos| vm["ViewModel"]
     vm -->|StateFlow con el UiState| pantalla
     vm --> cu["Casos de uso"]
@@ -98,7 +98,7 @@ La única flecha que sube es la punteada: la capa de datos depende de las interf
 ### Infraestructura
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph telefono["Teléfono"]
         app["App Zonda"]
         tg["Telegram"]
