@@ -64,6 +64,7 @@ import ar.edu.uade.zonda.ui.recorrido.RecorridoViewModel
 import ar.edu.uade.zonda.ui.recorrido.RegistroRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.resumen.ResumenScreen
+import ar.edu.uade.zonda.ui.telegram.TelegramScreen
 import ar.edu.uade.zonda.ui.theme.etiquetaBarra
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 
@@ -224,6 +225,7 @@ fun ZondaNavHost(
                                 alAbrirDetallesTecnicos = { navController.navigate(Rutas.DETALLES_TECNICOS) },
                                 alAbrirAvisos = { navController.navigate(Rutas.AVISOS_POR_SEVERIDAD) },
                                 alAbrirSeveridades = { navController.navigate(Rutas.SEVERIDADES) },
+                                alAbrirTelegram = { navController.navigate(Rutas.TELEGRAM) },
                                 alVerIntroduccion = { navController.navigate(Rutas.INTRODUCCION) },
                                 alVerCondiciones = { navController.navigate(Rutas.CONDICIONES_DE_USO) },
                                 alAgregarRed = { navController.navigate(Rutas.CONEXION) },
@@ -241,6 +243,9 @@ fun ZondaNavHost(
                         }
                         composable(Rutas.DETALLES_TECNICOS) {
                             DetallesTecnicosScreen(alVolver = { navController.popBackStack() })
+                        }
+                        composable(Rutas.TELEGRAM) {
+                            TelegramScreen(alVolver = { navController.popBackStack() })
                         }
                         composable(Rutas.AVISOS_POR_SEVERIDAD) { entrada ->
                             AvisosPorSeveridadScreen(

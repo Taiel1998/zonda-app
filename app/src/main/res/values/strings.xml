@@ -32,7 +32,6 @@
     <string name="ajustes_sin_redes">No hay ninguna red conectada.</string>
     <string name="ajustes_agregar_red">Agregar red</string>
     <string name="ajustes_telegram">Telegram</string>
-    <string name="ajustes_telegram_pronto">La conexión con Telegram llega en la próxima versión de la app.</string>
     <string name="ajustes_severidades">Severidad por ataque</string>
     <string name="ajustes_severidades_intro">Elegí la severidad de cada tipo de ataque. La severidad define qué alertas te interrumpen y cuáles esperan en la lista.</string>
     <string name="ajustes_guardar_severidades">Guardar</string>
@@ -518,6 +517,7 @@
     <string name="aviso_frase_sonido">con sonido</string>
     <string name="aviso_frase_vibracion">con vibración</string>
     <string name="aviso_frase_sin_aviso">sin aviso</string>
+    <string name="aviso_resumen_ajustes">%1$s. Se cambia desde Ajustes.</string>
     <string name="ajustes_severidad_por_tipo">Severidad por tipo de ataque</string>
     <string name="ajustes_severidad_por_tipo_detalle">Qué ataques son altos, medios o bajos</string>
     <string name="ajustes_notificaciones_sistema">Notificaciones del sistema</string>
@@ -721,4 +721,29 @@
     <string name="resumen_enviado_drive">Resumen guardado en Drive.</string>
     <string name="resumen_copiado">Imagen copiada. Pegala donde quieras.</string>
     <string name="resumen_no_se_pudo_compartir">No se pudo compartir el resumen. Probá de nuevo.</string>
+
+    <!-- Telegram (Figma 50-942, 50-1003, 66-4205 y 66-3484). Los avisos inferiores no están en el Figma: los revisa Meli. -->
+    <string name="telegram_conectar_titulo">Conectar Telegram</string>
+    <string name="telegram_encabezado">Recibí los avisos por Telegram</string>
+    <string name="telegram_como_se_hace">Cómo se hace</string>
+    <string name="telegram_paso_abrir">Tocá \"Abrir Telegram\": se abre el chat de %1$s</string>
+    <string name="telegram_paso_iniciar">En Telegram, tocá \"Iniciar\"</string>
+    <string name="telegram_paso_volver">Volvé a Zonda: este teléfono queda vinculado</string>
+    <string name="telegram_que_viaja">Qué viaja por Telegram</string>
+    <string name="telegram_que_viaja_texto">Solo la severidad, el servicio y la hora de cada alerta. Nunca direcciones IP ni nombres de equipos.</string>
+    <string name="telegram_abrir">Abrir Telegram</string>
+    <string name="telegram_ahora_no">Ahora no</string>
+    <string name="telegram_despues">Podés hacerlo después desde Ajustes → Telegram.</string>
+    <string name="telegram_conectado">Telegram conectado</string>
+    <string name="telegram_van_a_llegar">Los avisos de %1$s van a llegar al chat de %2$s en este teléfono.</string>
+    <string name="telegram_llegan">Los avisos de %1$s llegan al chat de %2$s en %3$s.</string>
+    <string name="telegram_como_avisa">Cómo avisa</string>
+    <string name="telegram_con_sonido">Con sonido</string>
+    <string name="telegram_con_vibracion">Con vibración</string>
+    <string name="telegram_sin_aviso">Sin aviso</string>
+    <string name="telegram_enviar_prueba">Enviar un aviso de prueba</string>
+    <string name="telegram_desvincular">Desvincular Telegram</string>
+    <string name="telegram_prueba_enviada">Aviso de prueba enviado. Fijate en el chat de %1$s.</string>
+    <string name="telegram_desvinculado">Telegram desvinculado. Los avisos de esta red ya no llegan a ese chat.</string>
+    <string name="telegram_no_se_abrio">No se pudo abrir Telegram. Instalalo desde la tienda de aplicaciones y probá de nuevo.</string>
 </resources>

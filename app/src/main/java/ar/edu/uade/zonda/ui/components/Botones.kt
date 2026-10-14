@@ -140,6 +140,7 @@ fun BotonTonalPeligro(
     alTocar: () -> Unit,
     modifier: Modifier = Modifier,
     relleno: PaddingValues = RellenoBoton,
+    habilitado: Boolean = true,
 ) {
     BotonLleno(
         texto = texto,
@@ -149,6 +150,7 @@ fun BotonTonalPeligro(
             contentColor = MaterialTheme.colorScheme.error,
         ),
         modifier = modifier,
+        habilitado = habilitado,
         relleno = relleno,
     )
 }
