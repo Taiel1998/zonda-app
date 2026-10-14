@@ -13,13 +13,20 @@ Estos archivos van en la raíz del repositorio `Taiel1998/Taiel1998.github.io` (
 
 ## Huellas que tienen que estar en `assetlinks.json`
 
-Una por cada máquina que compile el APK que se instala en el teléfono de la demo, porque el certificado de debug es distinto en cada máquina. Para obtener la huella de una máquina:
+Hoy hay dos:
+
+| Huella | Certificado |
+|---|---|
+| `E1:C5:9A:59:…:14:EF:F5` | El de debug de la máquina donde se compila la app (cada máquina tiene el suyo) |
+| `D0:77:0B:5A:…:B6:10:4F` | La clave de release del equipo (decisión 28), con la que se firma el APK de la prueba con usuarios y de la demo |
+
+Si otra máquina compila el APK de debug que se instala en un teléfono, hay que sumar su huella. Para obtenerla:
 
 ```powershell
 & "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -J-Duser.language=en -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android
 ```
 
-Copiar la línea `SHA256:` al arreglo `sha256_cert_fingerprints`. Cuando haya un APK firmado para la entrega, agregar también la huella de ese keystore.
+Copiar la línea `SHA256:` al arreglo `sha256_cert_fingerprints`. La huella de un APK ya firmado, sin abrir el keystore, sale de `apksigner verify --print-certs app-release.apk` (la línea `certificate SHA-256 digest`, en minúsculas y sin los dos puntos).
 
 ## Cómo comprobar la verificación en el teléfono
 
