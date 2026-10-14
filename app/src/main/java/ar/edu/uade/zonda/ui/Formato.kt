@@ -1,11 +1,15 @@
 package ar.edu.uade.zonda.ui
 
 import ar.edu.uade.zonda.domain.model.Equipo
+import ar.edu.uade.zonda.domain.model.Proporcion
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * Cómo se muestran fechas, duraciones y números en toda la app. Kotlin puro, sin Compose, para
@@ -19,6 +23,9 @@ object Formato {
     private val DIA = DateTimeFormatter.ofPattern("EEE dd/MM", LOCALE)
     private val FECHA_Y_HORA = DateTimeFormatter.ofPattern("dd/MM HH:mm", LOCALE)
     private val FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy", LOCALE)
+    private val DIA_Y_MES = DateTimeFormatter.ofPattern("dd/MM", LOCALE)
+    private val DIA_Y_MES_CORTO = DateTimeFormatter.ofPattern("d/M", LOCALE)
+    private val DIA_Y_MES_ARCHIVO = DateTimeFormatter.ofPattern("dd-MM", LOCALE)
 
     /** `02:09` */
     fun hora(instante: Instant, zona: ZoneId = ZoneId.systemDefault()): String = HORA.format(instante.atZone(zona))
@@ -88,4 +95,44 @@ object Formato {
     /** `SSH · TCP/22`, como en el detalle. Sin el protocolo (alertas guardadas antes de que la API lo mandara), `SSH · 22`. */
     fun servicioProtocoloYPuerto(servicio: String, protocolo: String?, puerto: Int): String =
         if (protocolo == null) servicioYPuerto(servicio, puerto) else "${servicio.uppercase(LOCALE)} · ${protocolo.uppercase(LOCALE)}/$puerto"
+
+    // Resumen (RF07)
+
+    /** `27/09`: los extremos del período ("del 21/09 al 27/09"). */
+    fun diaYMes(dia: LocalDate): String = DIA_Y_MES.format(dia)
+
+    /** `28/8`: el comienzo de cada semana del gráfico de 30 días. */
+    fun diaYMesCorto(dia: LocalDate): String = DIA_Y_MES_CORTO.format(dia)
+
+    /** `21-09`: para el nombre de la imagen ("Resumen_21-09_27-09.png"). */
+    fun diaYMesParaArchivo(dia: LocalDate): String = DIA_Y_MES_ARCHIVO.format(dia)
+
+    /** `vie`: debajo de cada barra de 7 días. */
+    fun diaDeLaSemanaCorto(dia: LocalDate): String =
+        dia.dayOfWeek.getDisplayName(TextStyle.SHORT, LOCALE).replace(".", "").lowercase(LOCALE)
+
+    /** `viernes`: "El viernes concentra 18 alertas". */
+    fun diaDeLaSemana(dia: LocalDate): String = dia.dayOfWeek.getDisplayName(TextStyle.FULL, LOCALE).lowercase(LOCALE)
+
+    /** `Viernes 25/09`: el chip del día elegido. */
+    fun diaDeLaSemanaYFecha(dia: LocalDate): String =
+        diaDeLaSemana(dia).replaceFirstChar { it.titlecase(LOCALE) } + " " + diaYMes(dia)
+
+    /** `71 %`, redondeado y con espacio, como el Figma; null si no hay base. */
+    fun porcentaje(proporcion: Proporcion): String? = proporcion.valor?.let { "${(it * 100).roundToInt()} %" }
+
+    /** `14 min`, `1 h 20 min`, `2 d 3 h`: el tiempo hasta la primera revisión, sin segundos salvo que sea menos de un minuto. */
+    fun duracionCorta(duracion: Duration): String {
+        val segundos = duracion.seconds.coerceAtLeast(0)
+        if (segundos < 60) return "$segundos s"
+        val minutos = (segundos + 30) / 60
+        return when {
+            minutos < 60 -> "$minutos min"
+            minutos < 24 * 60 -> if (minutos % 60 == 0L) "${minutos / 60} h" else "${minutos / 60} h ${minutos % 60} min"
+            else -> {
+                val horas = minutos / 60
+                if (horas % 24 == 0L) "${horas / 24} d" else "${horas / 24} d ${horas % 24} h"
+            }
+        }
+    }
 }
