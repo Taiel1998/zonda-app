@@ -1,15 +1,25 @@
-# Caddy publica la API con HTTPS delante de uvicorn (que solo escucha en 127.0.0.1:8000).
-# El certificado lo emite Let's Encrypt con validación por DNS en DuckDNS, porque el nombre apunta
-# a una dirección privada y Let's Encrypt no puede llegar por HTTP (informe, sección 13.4).
-# Los valores {$...} salen del archivo .env: caddy run --envfile .env
+# Caddy publica la API con HTTPS delante de uvicorn, que solo escucha en 127.0.0.1:8000 (informe,
+# sección 13.4; docs/decisiones.md, decisión 26). Los valores {$...} salen de .env: lo arranca
+# demo.cmd con caddy run --envfile .env.
 {
-	email {$CADDY_EMAIL}
+	# Sin el puerto 80: la app nunca usa http, así que no hace falta redirigir a https, y un pedido
+	# sin cifrar no encuentra nada que lo atienda.
+	auto_https disable_redirects
+	# Quien entra por la IP (sin el nombre) recibe igual el certificado del nombre: el teléfono lo
+	# rechaza porque no coincide con la dirección y no manda nada (el caso malo del RNF04).
+	default_sni {$ZONDA_DOMINIO}
 }
 
 {$ZONDA_DOMINIO} {
 	tls {
-		dns duckdns {$DUCKDNS_TOKEN}
+		# TLS 1.2 y 1.3; un cliente que solo ofrece 1.0 o 1.1 queda afuera (RNF04).
 		protocols tls1.2 tls1.3
+		# El certificado lo emite Let's Encrypt con el desafío por DNS: el nombre apunta a una IP
+		# privada y Let's Encrypt no puede entrar a la notebook, así que Caddy prueba que el nombre
+		# es nuestro escribiendo un registro en DuckDNS. Caddy lo renueva solo.
+		issuer acme {
+			dns duckdns {$DUCKDNS_TOKEN}
+		}
 	}
 	reverse_proxy 127.0.0.1:8000
 }
