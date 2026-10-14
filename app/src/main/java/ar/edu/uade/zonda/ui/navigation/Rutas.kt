@@ -31,6 +31,9 @@ object Rutas {
 
     /** Severidad por ataque de la red activa, desde Ajustes o desde Avisos por severidad (RF06). */
     const val SEVERIDADES = "severidades"
+
+    /** El Resumen de 7 o 30 días (RF07), desde el ícono de barras de Estado. */
+    const val RESUMEN = "resumen"
 }
 
 /**
