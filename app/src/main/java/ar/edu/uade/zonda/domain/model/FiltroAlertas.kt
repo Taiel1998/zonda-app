@@ -4,8 +4,9 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * Período de la lista de alertas (RF02) y del Resumen (RF07). La lista ofrece los tres primeros (Figma
- * 51-2072); [TODO] queda para el Resumen.
+ * Período de la lista de alertas (RF02). La lista ofrece los tres primeros (Figma 51-2072); [TODO] es
+ * todo lo guardado y lo usa el Resumen para leer las alertas, que después corta por días del calendario
+ * (ver [PeriodoResumen]).
  */
 enum class Periodo(val horas: Long?) {
     ULTIMAS_24_HORAS(24),

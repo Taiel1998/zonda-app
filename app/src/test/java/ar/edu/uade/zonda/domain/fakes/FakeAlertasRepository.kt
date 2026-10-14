@@ -85,9 +85,6 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
             )
         }
 
-    override suspend fun obtenerAlertasDesde(redId: String, desde: Instant): List<Alerta> =
-        alertas.value.filter { it.redId == redId && !it.inicio.isBefore(desde) }
-
     override suspend fun aplicarRevisionLocal(redId: String, alertaId: String, revision: Revision): Alerta {
         val actual = alertas.value.firstOrNull { it.redId == redId && it.id == alertaId } ?: throw ErrorZonda.NoEncontrado()
         // Igual que la base real: una revisión local reemplaza a la anterior que no llegó al servidor.
