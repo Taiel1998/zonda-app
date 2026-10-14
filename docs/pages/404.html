@@ -9,20 +9,30 @@
     main { max-width: 480px; margin: 0 auto; }
     h1 { color: #0e6b5b; }
     code { background: #d7f0e8; padding: 2px 6px; border-radius: 4px; }
+    .boton { display: inline-block; margin: 8px 0 16px; padding: 12px 24px; border-radius: 20px; background: #0f6e56; color: #ffffff; font-weight: 600; text-decoration: none; }
   </style>
 </head>
 <body>
   <main>
     <h1>Abrí Zonda para ver esta alerta</h1>
     <p id="mensaje">Este enlace se abre con la app Zonda instalada en el teléfono.</p>
+    <a id="abrir" class="boton" hidden>Abrir en Zonda</a>
     <p>Si ya la tenés instalada y llegaste acá igual, abrila desde el ícono: la alerta aparece en la lista al sincronizar.</p>
   </main>
   <script>
-    // El enlace tiene la forma /a/{id}. Se muestra el id para que la persona pueda buscar la alerta en la app.
+    // El enlace tiene la forma /a/{id}?red=...&severidad=...: se muestra el id para buscar la alerta en la app.
     var partes = location.pathname.split("/").filter(Boolean);
     if (partes.length === 2 && partes[0] === "a") {
       document.getElementById("mensaje").innerHTML =
         "Alerta <code>" + partes[1].replace(/[^a-zA-Z0-9-]/g, "") + "</code>. Este enlace se abre con la app Zonda instalada en el teléfono.";
+      // El navegador interno de Telegram no abre la app sola. En Android, un intent con el paquete de
+      // la app la abre con el mismo enlace; si no está instalada, se queda en esta página.
+      if (/Android/i.test(navigator.userAgent)) {
+        var boton = document.getElementById("abrir");
+        boton.href = "intent://" + location.host + location.pathname + location.search +
+          "#Intent;scheme=https;package=ar.edu.uade.zonda;S.browser_fallback_url=" + encodeURIComponent(location.href) + ";end";
+        boton.hidden = false;
+      }
     }
   </script>
 </body>

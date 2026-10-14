@@ -1,6 +1,6 @@
 # Archivos para el dominio público del enlace del aviso
 
-El enlace que manda el bot de Telegram es `https://taiel1998.github.io/a/{id}`. Para que Android lo abra directo en la app (App Link), el dominio tiene que publicar `/.well-known/assetlinks.json` con la huella del certificado con el que se firma el APK.
+El enlace que manda el bot de Telegram es `https://taiel1998.github.io/a/{id}?red=&severidad=&servicio=&deteccion=&aviso=`: el id y lo mismo que dice el aviso. Para que Android lo abra directo en la app (App Link), el dominio tiene que publicar `/.well-known/assetlinks.json` con la huella del certificado con el que se firma el APK.
 
 Estos archivos van en la raíz del repositorio `Taiel1998/Taiel1998.github.io` (GitHub Pages de usuario, que sirve desde la raíz del dominio; una página de proyecto no sirve porque cuelga de una subcarpeta):
 
@@ -8,7 +8,7 @@ Estos archivos van en la raíz del repositorio `Taiel1998/Taiel1998.github.io` (
 |---|---|
 | `.nojekyll` | Para que GitHub Pages publique la carpeta `.well-known` (Jekyll ignora las carpetas que empiezan con punto) |
 | `.well-known/assetlinks.json` | Verificación del App Link: paquete de la app y huellas SHA-256 de los certificados de firma |
-| `404.html` | Atiende cualquier `/a/{id}` cuando la app no está instalada: indica abrir Zonda |
+| `404.html` | Atiende cualquier `/a/{id}` cuando el enlace no abre la app (no está instalada, o lo abrió el navegador interno de Telegram): indica abrir Zonda y, en Android, muestra "Abrir en Zonda", que abre la alerta con un intent al paquete de la app |
 | `index.html` | Página mínima del dominio |
 
 ## Huellas que tienen que estar en `assetlinks.json`
