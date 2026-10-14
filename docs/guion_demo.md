@@ -9,12 +9,12 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 - La notebook con el repositorio, `backend\.env` completo (`ZONDA_DOMINIO`, `DUCKDNS_TOKEN` y `TELEGRAM_BOT_TOKEN`) y `backend\caddy\caddy.exe`.
 - Un teléfono con Android 8.0 o más nuevo, con el APK de release instalado (`zonda-1.0.0.apk`, firmado con la clave del equipo), Telegram con la sesión iniciada, datos móviles y el hotspot.
 - Un cable USB de datos y la depuración USB activada, para mostrar la pantalla del teléfono en el proyector con Android Studio (ventana Running Devices).
-- Las herramientas del equipo para preparar la demo, que no están en el repositorio: `emitir_alerta.py` (larga una alerta alta en el momento que queremos) y `revisar_altas_y_medias.py` (hace de otra persona que revisa desde su teléfono).
+- La herramienta del equipo `revisar_altas_y_medias.py`, que no está en el repositorio: hace de otra persona que revisa desde su teléfono. La alerta alta del paso 7 la larga `.\zonda.cmd emitir`, que es parte del backend.
 
 ## 2. El día anterior
 
 1. Ensayo completo con el teléfono de la demo y la notebook conectada a su hotspot. Es la prueba que todavía falta en un teléfono real: que la red del hotspot resuelva el nombre de DuckDNS (riesgo 2), el aviso de Telegram y el sin conexión con los datos móviles.
-2. En `backend\.env`: `ZONDA_REVISAR_SEMILLA=1`, para que el Resumen tenga revisiones, y `ZONDA_EMITIR_CADA=0`, para que las alertas nuevas aparezcan cuando las larguemos nosotros.
+2. En `backend\.env`: `ZONDA_REVISAR_SEMILLA=1`, para que el Resumen tenga revisiones, y `ZONDA_EMITIR_CADA=0`, para que las alertas nuevas aparezcan cuando las larguemos nosotros con `.\zonda.cmd emitir`.
 3. Instalar el APK firmado. Si el teléfono tenía la versión de debug, desinstalarla antes: tiene otra firma y Android no instala una encima de la otra.
 4. Con el teléfono por USB, `adb shell pm get-app-links ar.edu.uade.zonda` tiene que decir `verified` para `taiel1998.github.io` (en Android 8, `adb shell dumpsys package d` dice `always`). Si no, el botón del aviso abre el navegador.
 
@@ -78,7 +78,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 
 **Muestra.**
 
-1. En la terminal de la notebook: `.venv\Scripts\python.exe "C:\APP TPO\equipo\herramientas\emitir_alerta.py"`. A los 5 segundos suena el teléfono: "Alerta ALTA · SSH · " con la hora, "Tocá para ver el detalle en Zonda." y "Red: Oficina central".
+1. En la terminal de la notebook, en `backend`: `.\zonda.cmd emitir`. Responde "Alerta nueva …: fuerza_bruta por SSH, severidad alta." y a los 5 segundos suena el teléfono: "Alerta ALTA · SSH · " con la hora, "Tocá para ver el detalle en Zonda." y "Red: Oficina central".
 2. Tocar "Ver el detalle en Zonda": se abre la app directo en el detalle, sin pasar por el navegador.
 3. El detalle: con la semilla de ejemplo es "pc-rrhh → srv-sueldos", "SSH · TCP/22", 58 conexiones en 60 segundos y el veredicto de cada método: "Modelo de IA" y "Umbrales estadísticos" dicen "ANÓMALO" y "Reglas estáticas" dice "NORMAL".
 
