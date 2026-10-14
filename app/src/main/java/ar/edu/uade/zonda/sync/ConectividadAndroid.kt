@@ -29,8 +29,11 @@ class ConectividadAndroid(context: Context) : Conectividad {
                 trySend(true)
             }
 
+            // Es la red por defecto: si se pierde, no queda ninguna (si otra la reemplaza, llega onAvailable).
+            // No se pregunta la red activa porque en este momento Android todavía puede devolver la perdida,
+            // y con el modo avión el aviso de sin conexión no aparecía.
             override fun onLost(network: Network) {
-                trySend(hayConexionAhora())
+                trySend(false)
             }
 
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
