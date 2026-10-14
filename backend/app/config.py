@@ -19,6 +19,7 @@ class Config:
     bot_usuario: str = "zonda_alertas_bot"
     emitir_cada: int = 0
     multiplicar: int = 1
+    revisar_semilla: bool = False
     dias_token: int = 90
     minutos_codigo: int = 10
     dias_cache: int = 30
@@ -37,5 +38,6 @@ class Config:
             bot_usuario=leer("ZONDA_TELEGRAM_BOT", "zonda_alertas_bot"),
             emitir_cada=int(leer("ZONDA_EMITIR_CADA", "0")),
             multiplicar=int(leer("ZONDA_MULTIPLICAR", "1")),
+            revisar_semilla=leer("ZONDA_REVISAR_SEMILLA", "0").strip().lower() in ("1", "true", "si", "sí"),
             tamanio_pagina=int(leer("ZONDA_TAMANIO_PAGINA", "200")),
         )

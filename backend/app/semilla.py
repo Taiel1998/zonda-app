@@ -30,8 +30,18 @@ def _fecha(texto: str) -> datetime:
     return datetime.fromisoformat(texto).astimezone(timezone.utc)
 
 
-def cargar_si_vacia(con: sqlite3.Connection, ruta_semilla: Path, multiplicar: int = 1, ahora: datetime | None = None) -> int:
-    """Si la tabla de alertas está vacía, carga la semilla. Devuelve cuántas alertas insertó."""
+def cargar_si_vacia(
+    con: sqlite3.Connection,
+    ruta_semilla: Path,
+    multiplicar: int = 1,
+    ahora: datetime | None = None,
+    revisar: bool = False,
+) -> int:
+    """Si la tabla de alertas está vacía, carga la semilla. Devuelve cuántas alertas insertó.
+
+    Con [revisar], deja revisada una parte, como si el equipo ya hubiera trabajado con la app
+    (ZONDA_REVISAR_SEMILLA, para la demo y las capturas del Resumen).
+    """
     if con.execute("SELECT COUNT(*) FROM alertas").fetchone()[0] > 0:
         return 0
     con.execute("INSERT OR IGNORE INTO meta (clave, valor) VALUES ('instancia', ?)", (uuid.uuid4().hex[:8],))
@@ -103,9 +113,61 @@ def cargar_si_vacia(con: sqlite3.Connection, ruta_semilla: Path, multiplicar: in
             ),
         )
         insertadas += 1
+    if revisar:
+        _revisar_parte(con, filas, momento)
     return insertadas
 
 
 def _siguiente_secuencia(con: sqlite3.Connection) -> int:
     fila = con.execute("UPDATE meta SET valor = CAST(valor AS INTEGER) + 1 WHERE clave = 'secuencia' RETURNING valor").fetchone()
     return int(fila[0])
+
+
+# Un comentario por motivo, como los que propone la app pero sin nombres de equipos.
+COMENTARIO_POR_MOTIVO = {
+    "escalado_al_proveedor": "Avisé al proveedor de seguridad; están revisando el servidor.",
+    "bloqueado_manualmente": "Bloqueé el acceso desde ese equipo y avisé al proveedor.",
+    "contrasena_cambiada": "Cambié la contraseña de la cuenta usada y revisé los accesos.",
+    "investigando": "Estoy revisando los registros del servidor; sigo mañana.",
+    "tarea_programada": "Es la copia nocturna que corre todos los domingos.",
+    "backup": "Es el backup semanal entre esos dos equipos.",
+    "equipo_nuevo": "Es un equipo nuevo que se configuró esta semana.",
+    "usuario_autorizado": "Es un acceso autorizado del administrador.",
+}
+MOTIVOS_SEMILLA = {
+    "ataque_real": ["bloqueado_manualmente", "contrasena_cambiada", "escalado_al_proveedor", "investigando"],
+    "falso_positivo": ["tarea_programada", "backup", "equipo_nuevo", "usuario_autorizado"],
+}
+AUTOR_SEMILLA = "Teléfono de Martín"
+PARTE_REVISADA = 0.75
+
+
+def _revisar_parte(con: sqlite3.Connection, filas: list, momento: datetime) -> None:
+    """Revisa tres de cada cuatro alertas de más de dos horas; las más nuevas quedan sin revisar.
+
+    El resultado sale de la etiqueta del dataset (benigno es falso positivo) y la hora de revisión,
+    de unos minutos a un día después de la alerta, la mayoría dentro de la primera hora. Todo con una
+    semilla fija, así la demo da siempre las mismas cifras.
+    """
+    aleatorio = random.Random(11)
+    for identificador, alerta, _inicio, _fin, creada_en in filas:
+        if creada_en > momento - timedelta(hours=2) or aleatorio.random() >= PARTE_REVISADA:
+            continue
+        resultado = "falso_positivo" if alerta.get("etiquetaVerdad") == "benigno" else "ataque_real"
+        motivo = aleatorio.choice(MOTIVOS_SEMILLA[resultado])
+        sorteo = aleatorio.random()
+        if sorteo < 0.6:
+            demora = timedelta(minutes=aleatorio.randint(3, 55))
+        elif sorteo < 0.9:
+            demora = timedelta(minutes=aleatorio.randint(61, 6 * 60))
+        else:
+            demora = timedelta(minutes=aleatorio.randint(6 * 60, 30 * 60))
+        revisada = min(creada_en + demora, momento - timedelta(minutes=5))
+        con.execute(
+            "INSERT INTO revisiones (alerta_id, accion_id, resultado, motivo, comentario, autor, fecha, revisada_en, dispositivo_id, version_resultante) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (identificador, f"semilla-{identificador}", resultado, motivo, COMENTARIO_POR_MOTIVO[motivo], AUTOR_SEMILLA, iso(revisada), iso(revisada), "semilla", 2),
+        )
+        con.execute(
+            "UPDATE alertas SET estado_revision = ?, version = 2, actualizada_en = ? WHERE id = ?",
+            (resultado, iso(revisada), identificador),
+        )

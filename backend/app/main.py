@@ -28,7 +28,7 @@ def crear_app(config: Config | None = None) -> FastAPI:
         base = Base(cfg.db_path)
         base.iniciar()
         with base.transaccion() as con:
-            insertadas = cargar_si_vacia(con, cfg.semilla, cfg.multiplicar)
+            insertadas = cargar_si_vacia(con, cfg.semilla, cfg.multiplicar, revisar=cfg.revisar_semilla)
         app.state.base = base
         app.state.config = cfg
         app.state.alertas_cargadas = insertadas
