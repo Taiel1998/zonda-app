@@ -22,7 +22,7 @@ import ar.edu.uade.zonda.ui.components.TarjetaDescarga
  */
 @Composable
 fun EstadoScreen(
-    estado: EstadoUiState = EstadoUiState.Cargando,
+    estado: EstadoUiState = EstadoUiState(),
     progreso: ProgresoDescarga? = null,
     alAbrirResumen: () -> Unit = {},
 ) {
