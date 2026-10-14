@@ -49,7 +49,6 @@ import ar.edu.uade.zonda.ui.alertas.AlertasScreen
 import ar.edu.uade.zonda.ui.conexion.ConexionScreen
 import ar.edu.uade.zonda.ui.detalle.RutaDetalle
 import ar.edu.uade.zonda.ui.detalle.detalleAlerta
-import ar.edu.uade.zonda.ui.estado.DescargaInicialViewModel
 import ar.edu.uade.zonda.ui.estado.EstadoScreen
 import ar.edu.uade.zonda.ui.inicio.ArranqueViewModel
 import ar.edu.uade.zonda.ui.inicio.DestinoInicial
@@ -185,9 +184,12 @@ fun ZondaNavHost(
                             )
                         }
                         composable(Rutas.ESTADO) {
-                            val descarga = viewModelDeZonda { DescargaInicialViewModel(it.redes, it.alertas) }
-                            val progreso by descarga.progreso.collectAsStateWithLifecycle()
-                            EstadoScreen(progreso = progreso, alAbrirResumen = { navController.navigate(Rutas.RESUMEN) })
+                            EstadoScreen(
+                                alAbrirResumen = { navController.navigate(Rutas.RESUMEN) },
+                                alAbrirDetalle = { alertaId -> navController.navigate(RutaDetalle.crear(alertaId)) },
+                                alVerTodas = { navController.irAPestania(Rutas.ALERTAS) },
+                                alConectar = { navController.navigate(Rutas.CONEXION) },
+                            )
                         }
                         composable(Rutas.RESUMEN) {
                             ResumenScreen(alVolver = { navController.popBackStack() })

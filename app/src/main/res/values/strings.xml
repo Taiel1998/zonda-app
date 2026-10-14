@@ -12,9 +12,6 @@
     <string name="accion_sincronizar">Sincronizar ahora</string>
     <string name="error_reintentar">Reintentar</string>
 
-    <!-- Marcadores de posición (se van reemplazando en cada fase) -->
-    <string name="estado_placeholder">Acá vas a ver el semáforo de la red y cuántas alertas faltan revisar.</string>
-
     <!-- Acceso vencido (401): hay que parear de nuevo sin perder lo guardado -->
     <string name="acceso_vencido_banner">El acceso a esta red venció. Lo guardado sigue a la vista.</string>
     <string name="acceso_vencido_corto">Acceso vencido: hay que conectar de nuevo</string>
@@ -502,6 +499,41 @@
     <string name="descarga_titulo">Descargando alertas…</string>
     <string name="descarga_progreso">%1$d de %2$d · últimos 30 días · solo la primera vez</string>
     <string name="descarga_sin_total">%1$d alertas · últimos 30 días · solo la primera vez</string>
+    <!-- Para el raro caso de rojo o amarillo sin la hora de la última alerta (la lista todavía no llegó). -->
+    <string name="semaforo_actualizado">Actualizado %1$s</string>
+
+    <!-- Pantalla Estado (RF01; Figma 1-3, 1-178, 1-222 y 99-122 a 99-442). Los que no están en el Figma
+         (lista vacía, notas de Alta y Media, sin datos con la red pareada y alertas nuevas) son para que Meli los revise. -->
+    <string name="estado_ayuda_contadores">Alertas sin revisar, por severidad. Tocá una para filtrar la lista.</string>
+    <string name="estado_ayuda_altas">Mostrando solo altas sin revisar. Tocá el contador de nuevo para ver todas.</string>
+    <string name="estado_ayuda_medias">Mostrando solo medias sin revisar. Tocá el contador de nuevo para ver todas.</string>
+    <string name="estado_ayuda_bajas">Mostrando solo bajas sin revisar. Tocá el contador de nuevo para ver todas.</string>
+    <string name="estado_lista_sin_revisar">Sin revisar</string>
+    <string name="estado_lista_altas">Solo altas sin revisar</string>
+    <string name="estado_lista_medias">Solo medias sin revisar</string>
+    <string name="estado_lista_bajas">Solo bajas sin revisar</string>
+    <string name="estado_lista_sin_altas">Sin alertas altas sin revisar</string>
+    <string name="estado_lista_sin_medias">Sin alertas medias sin revisar</string>
+    <string name="estado_lista_sin_bajas">Sin alertas bajas sin revisar</string>
+    <string name="estado_ver_todas">Ver todas →</string>
+    <string name="estado_ver_todas_descripcion">Ver todas las alertas</string>
+    <string name="estado_nota_vacia">No queda ninguna alerta sin revisar. Las nuevas aparecen acá apenas se sincronizan.</string>
+    <string name="estado_nota_sin_altas">No hay alertas altas sin revisar. Si llega una, el semáforo se pone en rojo.</string>
+    <string name="estado_nota_sin_medias">No hay alertas medias sin revisar. Si llega una y no hay altas, el semáforo se pone en amarillo.</string>
+    <string name="estado_nota_sin_bajas">No hay alertas bajas sin revisar. Las bajas no cambian el semáforo: esperan en la lista hasta que las revises.</string>
+    <string name="estado_conecta_titulo">Conectá con la red de tu empresa</string>
+    <string name="estado_conecta_detalle">Necesitás el código de pareo que el administrador genera en la computadora del servidor Zonda.</string>
+    <string name="estado_conecta_accion">Configurar conexión</string>
+    <string name="estado_sin_datos_detalle">Todavía no llegaron las alertas de esta red. Con el teléfono en la red de tu empresa o en su VPN, tocá Sincronizar ahora.</string>
+
+    <!-- Aviso de sincronizado de Estado (Figma 99-2; RF01, criterio 5) -->
+    <string name="estado_sincronizado_titulo">Sincronizado</string>
+    <string name="estado_sincronizado_fecha">%1$s · %2$s</string>
+    <string name="estado_sincronizado_al_dia">Ya tenés las alertas más recientes.</string>
+    <plurals name="estado_sincronizado_nuevas">
+        <item quantity="one">Llegó %d alerta nueva.</item>
+        <item quantity="other">Llegaron %d alertas nuevas.</item>
+    </plurals>
 
     <!-- Notificación local de altas nuevas: un solo canal (informe, sección 6) -->
     <string name="canal_alertas">Alertas altas</string>

@@ -39,9 +39,8 @@ import ar.edu.uade.zonda.ui.theme.ZondaTheme
  * La barra de Estado (Figma 1-3): el logo de 28 a 16 del borde, "Zonda" en Medium 22 a 12 del logo y,
  * a la derecha, el ícono del Resumen y el de sincronizar, con 12 entre los dos y 16 hasta el borde.
  *
- * Es una pieza de la pantalla Estado, que escribe Taiel; mientras tanto la usa la Estado provisoria
- * para abrir el Resumen. El de sincronizar aparece solo si se le pasa [alSincronizar]. Los dos íconos
- * quedan marcados para los pasos 3 y 4 del recorrido.
+ * El de sincronizar aparece solo si se le pasa [alSincronizar]: Estado lo saca sin datos y sin red,
+ * como el cuadro 1-222. Los dos íconos quedan marcados para los pasos 3 y 4 del recorrido.
  */
 @Composable
 fun BarraEstado(
