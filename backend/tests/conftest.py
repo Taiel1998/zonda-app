@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.auth import crear_codigo_pareo
+from app.cli import main as cli
 from app.config import RAIZ, Config
 from app.main import crear_app
 from app.telegram import BotTelegram, ClienteTelegram
@@ -31,6 +32,13 @@ def cliente(config):
     app = crear_app(config)
     with TestClient(app) as cliente:
         yield cliente
+
+
+@pytest.fixture
+def zonda(config, monkeypatch):
+    """Los comandos de zonda.cmd como se corren en la notebook, pero sobre la base nueva de este test."""
+    monkeypatch.setattr("app.cli.Config.desde_entorno", classmethod(lambda cls: config))
+    return cli
 
 
 def parear(cliente: TestClient, nombre: str = "Teléfono de prueba") -> str:
