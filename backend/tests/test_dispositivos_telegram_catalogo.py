@@ -17,7 +17,7 @@ def test_catalogo_tiene_equipos_y_servicios(cliente, auth):
     assert catalogo["servicios"] == sorted(catalogo["servicios"])
 
 
-def test_vinculo_de_telegram_entrega_codigo_y_enlace_al_bot(cliente, auth):
+def test_vinculo_de_telegram_entrega_codigo_y_enlace_al_bot(cliente, auth, bot):
     vinculo = cliente.post("/telegram/vinculo", headers=auth).json()
 
     assert len(vinculo["codigo"]) == 9 and vinculo["codigo"][4] == "-"
