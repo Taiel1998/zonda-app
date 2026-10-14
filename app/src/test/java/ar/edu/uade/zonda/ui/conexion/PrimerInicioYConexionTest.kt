@@ -234,6 +234,17 @@ class PrimerInicioYConexionTest {
     }
 
     @Test
+    fun `con una direccion http explica que Zonda solo se conecta por HTTPS`() {
+        mostrar(ConexionUiState.Fallo("http://192.168.0.10:8000", ErrorPareo.SERVIDOR_NO_VERIFICADO))
+
+        compose.onNodeWithText("No se pudo verificar el servidor").assertIsDisplayed()
+        compose.onNodeWithText("http://192.168.0.10:8000").assertIsDisplayed()
+        compose.onNodeWithText("La dirección empieza con http://, sin cifrar, y Zonda solo se conecta por HTTPS. La app no envió el código ni ningún otro dato.").assertIsDisplayed()
+        compose.onNodeWithText("Avisale al administrador: la dirección del código tiene que empezar con https://.").assertIsDisplayed()
+        compose.onNodeWithText("Si estás fuera de la empresa", substring = true).assertDoesNotExist()
+    }
+
+    @Test
     fun `con el codigo vencido ofrece escanear otro o ingresar otro a mano`() {
         var escanear = false
         var aMano = false

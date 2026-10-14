@@ -432,6 +432,9 @@
     <string name="error_pareo_no_verificado_titulo">No se pudo verificar el servidor</string>
     <string name="error_pareo_no_verificado_texto">La dirección respondió, pero su certificado no es válido para ese nombre. La app no envió el código ni ningún otro dato.</string>
     <string name="error_pareo_no_verificado_vpn">Avisale al administrador. Si estás fuera de la empresa, conectate a la VPN y reintentá.</string>
+    <!-- El mismo cuadro (50-729) con una dirección http, que Android no deja usar. No está en el Figma: lo revisa Meli. -->
+    <string name="error_pareo_sin_https_texto">La dirección empieza con http://, sin cifrar, y Zonda solo se conecta por HTTPS. La app no envió el código ni ningún otro dato.</string>
+    <string name="error_pareo_sin_https_admin">Avisale al administrador: la dirección del código tiene que empezar con https://.</string>
     <string name="error_pareo_otro_titulo">El servidor no respondió bien</string>
     <string name="error_pareo_otro_texto">Probá de nuevo en unos minutos.</string>
     <string name="pareo_escanear_otro">Escanear otro código</string>

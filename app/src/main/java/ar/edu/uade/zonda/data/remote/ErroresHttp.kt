@@ -5,6 +5,7 @@ import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Revision
 import com.google.gson.JsonParseException
 import java.io.IOException
+import java.net.UnknownServiceException
 import java.security.cert.CertificateException
 import javax.net.ssl.SSLException
 import retrofit2.HttpException
@@ -32,6 +33,9 @@ suspend fun <T> conErroresTraducidos(operacion: OperacionHttp = OperacionHttp.GE
         // Android no pudo verificar el certificado: no se mandó ni el código ni el token.
         throw ErrorZonda.ServidorNoVerificado(e)
     } catch (e: CertificateException) {
+        throw ErrorZonda.ServidorNoVerificado(e)
+    } catch (e: UnknownServiceException) {
+        // Una dirección http que Android no deja usar (en release, ninguna): el pedido no llegó a salir.
         throw ErrorZonda.ServidorNoVerificado(e)
     } catch (e: IOException) {
         // Sin red, servidor apagado, nombre que no resuelve o tiempo de espera agotado.
