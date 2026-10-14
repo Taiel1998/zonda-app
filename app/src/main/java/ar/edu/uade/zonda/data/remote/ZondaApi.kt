@@ -48,8 +48,22 @@ interface ZondaApi {
     @POST("pareo")
     suspend fun parear(@Body entrada: PareoEntradaDto): PareoSalidaDto
 
+    @GET("telegram")
+    suspend fun telegram(): EstadoTelegramDto
+
     @POST("telegram/vinculo")
-    suspend fun vincularTelegram(): VinculoTelegramDto
+    suspend fun vincularTelegram(@Body entrada: VinculoEntradaDto): VinculoTelegramDto
+
+    /** Responde 204 sin cuerpo. */
+    @DELETE("telegram/vinculo")
+    suspend fun desvincularTelegram(): Response<Unit>
+
+    /** Responde 204 sin cuerpo. */
+    @POST("telegram/prueba")
+    suspend fun avisoDePrueba(): Response<Unit>
+
+    @PUT("telegram/avisos")
+    suspend fun guardarAvisos(@Body avisos: AvisosDto): AvisosDto
 
     /** Responde 204 sin cuerpo, por eso devuelve la respuesta cruda. */
     @DELETE("dispositivos/actual")

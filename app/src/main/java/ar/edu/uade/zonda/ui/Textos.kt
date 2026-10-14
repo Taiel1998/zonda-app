@@ -174,4 +174,6 @@ fun ErrorZonda.mensaje(): Int = when (this) {
     is ErrorZonda.CodigoVencido -> R.string.error_codigo_vencido
     is ErrorZonda.ErrorDelServidor -> R.string.error_del_servidor
     is ErrorZonda.Validacion -> R.string.error_validacion
+    is ErrorZonda.TelegramNoDisponible -> R.string.error_telegram_no_disponible
+    is ErrorZonda.TelegramSinVincular -> R.string.error_telegram_sin_vincular
 }

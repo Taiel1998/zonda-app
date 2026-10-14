@@ -23,7 +23,10 @@ class ApiFalsa : ZondaApi {
     var redId = "red-oficina"
     var redNombre = "Oficina"
 
-    /** Por operación (`salud`, `alertas`, `alerta`, `revisar`, `severidades`, `catalogo`, `parear`, `vinculo`, `quitar`): qué lanzar. */
+    /**
+     * Por operación (`salud`, `alertas`, `alerta`, `revisar`, `severidades`, `catalogo`, `parear`, `vinculo`,
+     * `quitar`, `telegram`, `desvincular`, `prueba`, `avisos`): qué lanzar.
+     */
     val errores = mutableMapOf<String, Exception>()
 
     private val alertas = linkedMapOf<String, AlertaDto>()
@@ -46,6 +49,14 @@ class ApiFalsa : ZondaApi {
     var dispositivosPareados = 0
     var tokenRevocado = false
     var vinculo = VinculoTelegramDto("ABCD-EFGH", "https://t.me/zonda_alertas_bot?start=ABCD-EFGH", null)
+
+    /** Lo de Telegram de este teléfono, como lo guarda la API (`dispositivos` y su chat). */
+    var telegramVinculado = false
+    var botTelegram = "zonda_alertas_bot"
+    var avisosTelegram = AvisosDto("sonido", "vibracion", "sin_aviso")
+    val vinculosPedidos = mutableListOf<VinculoEntradaDto>()
+    var avisosGuardados = 0
+    var pruebasEnviadas = 0
 
     fun alertaGuardada(id: String): AlertaDto = alertas.getValue(id)
 
@@ -164,9 +175,37 @@ class ApiFalsa : ZondaApi {
         return PareoSalidaDto("token-$dispositivosPareados", RedDto(redId, redNombre), "2027-01-10T00:00:00+00:00", "d-$dispositivosPareados", "2026-10-12T00:00:00+00:00", alertas.size)
     }
 
-    override suspend fun vincularTelegram(): VinculoTelegramDto {
+    override suspend fun telegram(): EstadoTelegramDto {
+        fallarSiCorresponde("telegram")
+        return EstadoTelegramDto(telegramVinculado, botTelegram, null, avisosTelegram)
+    }
+
+    override suspend fun vincularTelegram(entrada: VinculoEntradaDto): VinculoTelegramDto {
         fallarSiCorresponde("vinculo")
+        vinculosPedidos += entrada
+        entrada.avisos?.let { avisosTelegram = it }
         return vinculo
+    }
+
+    override suspend fun desvincularTelegram(): Response<Unit> {
+        fallarSiCorresponde("desvincular")
+        telegramVinculado = false
+        return Response.success(204, Unit)
+    }
+
+    /** Como la API: 409 si el teléfono no tiene un chat vinculado. */
+    override suspend fun avisoDePrueba(): Response<Unit> {
+        fallarSiCorresponde("prueba")
+        if (!telegramVinculado) throw errorHttp(409)
+        pruebasEnviadas++
+        return Response.success(204, Unit)
+    }
+
+    override suspend fun guardarAvisos(avisos: AvisosDto): AvisosDto {
+        fallarSiCorresponde("avisos")
+        avisosGuardados++
+        avisosTelegram = avisos
+        return avisos
     }
 
     override suspend fun quitarDispositivo(): Response<Unit> {

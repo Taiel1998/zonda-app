@@ -5,6 +5,7 @@ import ar.edu.uade.zonda.data.local.entidades.CatalogoEquipoEntity
 import ar.edu.uade.zonda.data.local.entidades.CatalogoServicioEntity
 import ar.edu.uade.zonda.data.local.entidades.RedEntity
 import ar.edu.uade.zonda.data.mapper.aDominio
+import ar.edu.uade.zonda.data.mapper.aDto
 import ar.edu.uade.zonda.data.mapper.aEntidad
 import ar.edu.uade.zonda.data.mapper.aEntidades
 import ar.edu.uade.zonda.data.mapper.aInstante
@@ -12,12 +13,15 @@ import ar.edu.uade.zonda.data.remote.OperacionHttp
 import ar.edu.uade.zonda.data.remote.PareoEntradaDto
 import ar.edu.uade.zonda.data.remote.ProveedorDeApi
 import ar.edu.uade.zonda.data.remote.ProveedorDeApiRetrofit
+import ar.edu.uade.zonda.data.remote.VinculoEntradaDto
 import ar.edu.uade.zonda.data.remote.conErroresTraducidos
 import ar.edu.uade.zonda.data.seguridad.AlmacenSeguro
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoTelegram
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.RedPareada
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
@@ -154,12 +158,49 @@ class RedesRepositoryImpl(
     override suspend fun guardarSeveridadesLocal(redId: String, severidades: SeveridadPorTipo) =
         dao.guardarSeveridades(redId, severidades.aEntidades(redId))
 
-    override suspend fun pedirVinculoTelegram(redId: String): VinculoTelegram {
-        val red = dao.obtener(redId)?.aDominio() ?: throw ErrorZonda.NoEncontrado()
-        return conErroresTraducidos { apis.para(red).vincularTelegram() }.aDominio()
+    // ---- Telegram ----
+
+    private suspend fun red(redId: String): Red = dao.obtener(redId)?.aDominio() ?: throw ErrorZonda.NoEncontrado()
+
+    override suspend fun pedirVinculoTelegram(redId: String, avisos: PreferenciasAvisos): VinculoTelegram {
+        val api = apis.para(red(redId))
+        return conErroresTraducidos(OperacionHttp.TELEGRAM) { api.vincularTelegram(VinculoEntradaDto(avisos.aDto())) }.aDominio()
     }
 
-    override suspend fun marcarTelegramVinculado(redId: String, vinculado: Boolean) = dao.marcarTelegram(redId, vinculado)
+    override suspend fun consultarTelegram(redId: String): EstadoTelegram {
+        val api = apis.para(red(redId))
+        val estado = conErroresTraducidos(OperacionHttp.TELEGRAM) { api.telegram() }.aDominio()
+        dao.actualizarTelegram(redId, estado.vinculado, estado.bot)
+        return estado
+    }
+
+    override suspend fun desvincularTelegram(redId: String) {
+        val api = apis.para(red(redId))
+        conErroresTraducidos(OperacionHttp.TELEGRAM) {
+            val respuesta = api.desvincularTelegram()
+            if (!respuesta.isSuccessful) throw HttpException(respuesta)
+        }
+        dao.marcarTelegram(redId, false)
+    }
+
+    override suspend fun enviarAvisoDePrueba(redId: String) {
+        val api = apis.para(red(redId))
+        try {
+            conErroresTraducidos(OperacionHttp.TELEGRAM) {
+                val respuesta = api.avisoDePrueba()
+                if (!respuesta.isSuccessful) throw HttpException(respuesta)
+            }
+        } catch (e: ErrorZonda.TelegramSinVincular) {
+            // El servidor ya no tiene el chat (por ejemplo, bloquearon el bot): la red queda sin Telegram.
+            dao.marcarTelegram(redId, false)
+            throw e
+        }
+    }
+
+    override suspend fun enviarAvisosTelegram(redId: String, avisos: PreferenciasAvisos) {
+        val api = apis.para(red(redId))
+        conErroresTraducidos(OperacionHttp.TELEGRAM) { api.guardarAvisos(avisos.aDto()) }
+    }
 
     override fun observarCatalogo(redId: String): Flow<Catalogo> =
         combine(dao.observarEquipos(redId), dao.observarServicios(redId)) { equipos, servicios ->

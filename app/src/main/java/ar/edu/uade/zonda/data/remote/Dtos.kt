@@ -52,6 +52,8 @@ data class AlertaDto(
     val historial: List<RevisionDto>,
     val version: Int,
     val actualizadaEn: String,
+    /** Cuándo salió el primer aviso de Telegram; un servidor anterior no lo manda. */
+    val avisoTelegram: String? = null,
 )
 
 data class VeredictosDto(
@@ -126,4 +128,24 @@ data class VinculoTelegramDto(
     val codigo: String,
     val enlaceBot: String,
     val vence: String?,
+)
+
+/** Cómo avisa Telegram cada severidad: `sonido`, `vibracion` o `sin_aviso`. */
+data class AvisosDto(
+    val alta: String,
+    val media: String,
+    val baja: String,
+)
+
+/** Cuerpo de `POST /telegram/vinculo`: los avisos que eligió la persona. */
+data class VinculoEntradaDto(
+    val avisos: AvisosDto?,
+)
+
+/** Respuesta de `GET /telegram`. */
+data class EstadoTelegramDto(
+    val vinculado: Boolean,
+    val bot: String,
+    val vinculadoEn: String?,
+    val avisos: AvisosDto,
 )

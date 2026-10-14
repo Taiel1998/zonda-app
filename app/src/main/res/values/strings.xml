@@ -182,6 +182,8 @@
     <string name="error_codigo_vencido">El código venció o ya se usó.</string>
     <string name="error_del_servidor">El servidor no respondió. Probá de nuevo en un rato.</string>
     <string name="error_validacion">Revisá los datos ingresados.</string>
+    <string name="error_telegram_no_disponible">El servidor de esta red todavía no tiene el bot de Telegram. Avisale al administrador.</string>
+    <string name="error_telegram_sin_vincular">Telegram ya no está vinculado. Conectalo de nuevo.</string>
     <string name="error_generico">Algo salió mal.</string>
 
     <!-- Detalle -->

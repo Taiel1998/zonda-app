@@ -57,6 +57,8 @@ data class AlertaEntity(
     val estadoRevision: String,
     val version: Int,
     val actualizadaEn: Long,
+    /** Cuándo salió el primer aviso de Telegram (versión 4 de la base). */
+    val avisoTelegramEn: Long? = null,
 )
 
 /**

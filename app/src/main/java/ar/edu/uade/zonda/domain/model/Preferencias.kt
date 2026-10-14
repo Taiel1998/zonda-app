@@ -1,9 +1,15 @@
 package ar.edu.uade.zonda.domain.model
 
-/** Cómo avisa la app cuando la sincronización trae alertas nuevas de cada severidad (RF05). */
+/**
+ * Cómo avisa Telegram una alerta nueva de cada severidad (RF05; Figma 51-1688). Con vibración es un
+ * mensaje sin sonido: un bot de Telegram no puede pedir solo vibración.
+ */
 enum class ModoAviso { SONIDO, VIBRACION, SIN_AVISO }
 
-/** Preferencias de avisos de este teléfono. Por defecto solo la severidad alta interrumpe con sonido. */
+/**
+ * Preferencias de avisos de este teléfono. Por defecto solo la severidad alta interrumpe con sonido.
+ * El servidor de cada red las guarda para que su bot las use (`PUT /telegram/avisos`).
+ */
 data class PreferenciasAvisos(
     val alta: ModoAviso = ModoAviso.SONIDO,
     val media: ModoAviso = ModoAviso.VIBRACION,

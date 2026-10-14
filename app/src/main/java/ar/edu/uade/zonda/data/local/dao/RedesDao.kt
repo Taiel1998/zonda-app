@@ -33,9 +33,13 @@ abstract class RedesDao {
     @Query("UPDATE redes SET activa = 1 WHERE id = :id")
     abstract suspend fun marcarActiva(id: String)
 
-    /** Solo una red puede estar activa a la vez. */
+    /**
+     * Solo una red puede estar activa a la vez. Un id que no es de ninguna red no cambia nada: el enlace
+     * de un aviso trae el id de su red, y un enlace armado a mano no puede dejar la app sin red activa.
+     */
     @Transaction
     open suspend fun activar(id: String) {
+        if (obtener(id) == null) return
         desactivarTodas()
         marcarActiva(id)
     }
@@ -73,6 +77,10 @@ abstract class RedesDao {
 
     @Query("UPDATE redes SET telegramVinculado = :vinculado WHERE id = :id")
     abstract suspend fun marcarTelegram(id: String, vinculado: Boolean)
+
+    /** Lo que dijo el servidor de Telegram (`GET /telegram`): si hay un chat vinculado y con qué bot. */
+    @Query("UPDATE redes SET telegramVinculado = :vinculado, telegramBot = :bot WHERE id = :id")
+    abstract suspend fun actualizarTelegram(id: String, vinculado: Boolean, bot: String)
 
     @Query("SELECT * FROM severidades WHERE redId = :redId")
     abstract fun observarSeveridades(redId: String): Flow<List<SeveridadEntity>>

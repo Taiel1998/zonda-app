@@ -3,10 +3,14 @@ package ar.edu.uade.zonda.data.repository
 import ar.edu.uade.zonda.data.FakeAlmacenSeguro
 import ar.edu.uade.zonda.data.PruebaConBase
 import ar.edu.uade.zonda.data.remote.ApiFalsa
+import ar.edu.uade.zonda.data.remote.AvisosDto
 import ar.edu.uade.zonda.data.remote.ProveedorDeApiFalso
+import ar.edu.uade.zonda.data.remote.errorHttp
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import java.io.IOException
 import java.time.Instant
@@ -173,12 +177,69 @@ class PareoYServidorTest : PruebaConBase() {
     }
 
     @Test
-    fun `pedir el vinculo de Telegram devuelve el codigo y el enlace al bot`() = runTest {
+    fun `pedir el vinculo de Telegram manda los avisos y devuelve el codigo y el enlace al bot`() = runTest {
         redes.parear(datos, "x")
+        val avisos = PreferenciasAvisos(media = ModoAviso.SIN_AVISO)
 
-        val vinculo = redes.pedirVinculoTelegram("red-oficina")
+        val vinculo = redes.pedirVinculoTelegram("red-oficina", avisos)
 
         assertEquals(VinculoTelegram("ABCD-EFGH", "https://t.me/zonda_alertas_bot?start=ABCD-EFGH"), vinculo)
-        assertTrue(runCatching { redes.pedirVinculoTelegram("otra-red") }.exceptionOrNull() is ErrorZonda.NoEncontrado)
+        assertEquals(AvisosDto("sonido", "sin_aviso", "sin_aviso"), api.vinculosPedidos.single().avisos)
+        assertTrue(runCatching { redes.pedirVinculoTelegram("otra-red", avisos) }.exceptionOrNull() is ErrorZonda.NoEncontrado)
+    }
+
+    @Test
+    fun `consultar Telegram deja la red vinculada y con el usuario del bot`() = runTest {
+        redes.parear(datos, "x")
+        api.telegramVinculado = true
+        api.botTelegram = "zonda_prueba_bot"
+
+        val estado = redes.consultarTelegram("red-oficina")
+
+        assertTrue(estado.vinculado)
+        assertEquals(PreferenciasAvisos(), estado.avisos)
+        val red = redes.observarRedActiva().first()!!
+        assertTrue(red.telegramVinculado)
+        assertEquals("zonda_prueba_bot", red.telegramBot)
+    }
+
+    @Test
+    fun `el aviso de prueba sale si hay chat y sin chat la red queda sin Telegram`() = runTest {
+        redes.parear(datos, "x")
+        api.telegramVinculado = true
+        redes.consultarTelegram("red-oficina")
+
+        redes.enviarAvisoDePrueba("red-oficina")
+        assertEquals(1, api.pruebasEnviadas)
+
+        // La persona bloqueó el bot: el servidor lo desvinculó.
+        api.telegramVinculado = false
+        val error = runCatching { redes.enviarAvisoDePrueba("red-oficina") }.exceptionOrNull()
+        assertTrue(error is ErrorZonda.TelegramSinVincular)
+        assertFalse(redes.observarRedActiva().first()!!.telegramVinculado)
+    }
+
+    @Test
+    fun `desvincular Telegram y mandar los avisos al servidor`() = runTest {
+        redes.parear(datos, "x")
+        api.telegramVinculado = true
+        redes.consultarTelegram("red-oficina")
+
+        redes.desvincularTelegram("red-oficina")
+        redes.enviarAvisosTelegram("red-oficina", PreferenciasAvisos(baja = ModoAviso.SONIDO))
+
+        assertFalse(api.telegramVinculado)
+        assertFalse(redes.observarRedActiva().first()!!.telegramVinculado)
+        assertEquals("sonido", api.avisosTelegram.baja)
+    }
+
+    @Test
+    fun `sin el bot en el servidor, vincular Telegram lo dice`() = runTest {
+        redes.parear(datos, "x")
+        api.errores["vinculo"] = errorHttp(503)
+
+        val error = runCatching { redes.pedirVinculoTelegram("red-oficina", PreferenciasAvisos()) }.exceptionOrNull()
+
+        assertTrue(error is ErrorZonda.TelegramNoDisponible)
     }
 }

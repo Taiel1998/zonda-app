@@ -35,7 +35,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         RevisionEntity::class,
         AccionPendienteEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class ZondaDatabase : RoomDatabase() {
@@ -79,6 +79,17 @@ abstract class ZondaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Versión 4 (fase 10, Telegram): cuándo salió el aviso de Telegram de cada alerta, para el
+         * historial del detalle, y el usuario del bot de cada red, que dice el servidor.
+         */
+        val MIGRACION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE alertas ADD COLUMN avisoTelegramEn INTEGER")
+                db.execSQL("ALTER TABLE redes ADD COLUMN telegramBot TEXT")
+            }
+        }
+
         /** Los nombres anteriores y los del Figma, fijos acá: una migración no cambia aunque cambie el enum. */
         private val MOTIVOS_ANTERIORES = mapOf(
             "EQUIPO_AISLADO" to "BLOQUEADO_MANUALMENTE",
@@ -94,7 +105,7 @@ abstract class ZondaDatabase : RoomDatabase() {
             System.loadLibrary("sqlcipher")
             return Room.databaseBuilder(context, ZondaDatabase::class.java, NOMBRE_ARCHIVO)
                 .openHelperFactory(SupportOpenHelperFactory(clave))
-                .addMigrations(MIGRACION_1_2, MIGRACION_2_3)
+                .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4)
                 .build()
         }
     }
