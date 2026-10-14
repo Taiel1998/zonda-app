@@ -11,6 +11,17 @@
     <!-- Notificación local cuando llega una alerta alta (Android 13 o superior lo pide). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- La hoja de compartir del Resumen ofrece solo estas apps si están instaladas (Figma 107-5511);
+         desde Android 11 hay que declararlas para poder ver si están. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <package android:name="org.telegram.messenger" />
+        <package android:name="org.telegram.messenger.web" />
+        <package android:name="com.google.android.gm" />
+        <package android:name="com.google.android.apps.docs" />
+    </queries>
+
     <!-- allowBackup en false: la base local y el token no van a ninguna copia de seguridad (RNF03). -->
     <application
         android:name=".ZondaApp"
@@ -32,6 +43,18 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup"
                 tools:node="remove" />
+        </provider>
+
+        <!-- La imagen del Resumen que se comparte: solo la carpeta "compartir" de la caché, y cada app
+             recibe permiso de lectura para esa imagen nada más (res/xml/archivos_compartidos.xml). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.archivos"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/archivos_compartidos" />
         </provider>
 
         <activity
