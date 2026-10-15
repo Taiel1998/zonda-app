@@ -1,7 +1,7 @@
 """Las rutas del contrato (informe, sección 13.3). Cada una dice qué recibe, qué devuelve y qué error da."""
 
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
@@ -39,6 +39,7 @@ from .modelos import (
     VinculoEntrada,
     VinculoTelegram,
 )
+from .revisiones import aplicar_revision
 from .semilla import severidad_de
 from .telegram import BotTelegram, ErrorTelegram
 
@@ -235,24 +236,8 @@ def revisar_alerta(
                     alerta=alerta_dto(con, fila),
                 )
                 raise HTTPException(status_code=409, detail=conflicto.model_dump())
-        momento = ahora()
-        nueva_version = fila["version"] + 1
-        con.execute(
-            "INSERT INTO revisiones (alerta_id, accion_id, resultado, motivo, comentario, autor, fecha, revisada_en, dispositivo_id, version_resultante) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (alerta_id, entrada.accionId, entrada.resultado, entrada.motivo, entrada.comentario.strip(), dispositivo["nombre"], iso(momento), revisada_en(entrada.revisadaEn, momento), dispositivo["id"], nueva_version),
-        )
-        con.execute(
-            "UPDATE alertas SET estado_revision = ?, version = ?, actualizada_en = ?, secuencia = ? WHERE id = ?",
-            (entrada.resultado, nueva_version, iso(momento), Base.siguiente_secuencia(con), alerta_id),
-        )
+        aplicar_revision(con, fila, entrada, dispositivo)
         return alerta_dto(con, con.execute("SELECT * FROM alertas WHERE id = ?", (alerta_id,)).fetchone())
-
-
-def revisada_en(valor: str | None, recibida: datetime) -> str:
-    """La hora de revisión del teléfono, nunca posterior a la llegada: un reloj adelantado no la corre al futuro."""
-    if valor is None:
-        return iso(recibida)
-    return iso(min(datetime.fromisoformat(valor), recibida).astimezone(timezone.utc))
 
 
 @router.get("/severidades")

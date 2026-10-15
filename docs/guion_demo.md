@@ -9,7 +9,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 - La notebook con el repositorio, `backend\.env` completo (`ZONDA_DOMINIO`, `DUCKDNS_TOKEN` y `TELEGRAM_BOT_TOKEN`) y `backend\caddy\caddy.exe`.
 - Un teléfono con Android 8.0 o más nuevo, con el APK de release instalado (`zonda-1.0.0.apk`, firmado con la clave del equipo), Telegram con la sesión iniciada, datos móviles y el hotspot.
 - Un cable USB de datos y la depuración USB activada, para mostrar la pantalla del teléfono en el proyector con Android Studio (ventana Running Devices).
-- La herramienta del equipo `revisar_altas_y_medias.py`, que no está en el repositorio: hace de otra persona que revisa desde su teléfono. La alerta alta del paso 7 la larga `.\zonda.cmd emitir`, que es parte del backend.
+- Nada fuera del repositorio: la alerta alta del paso 7 la larga `.\zonda.cmd emitir` y la red tranquila del paso 11 la deja `.\zonda.cmd tranquila`, que hace de otra persona que revisa desde su teléfono. Los dos son comandos del backend.
 
 ## 2. El día anterior
 
@@ -109,9 +109,9 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 
 ### Paso 11. La red tranquila (45 segundos)
 
-**Muestra.** En la terminal: `.\zonda.cmd pair` y, con ese código, `.venv\Scripts\python.exe "C:\APP TPO\equipo\herramientas\revisar_altas_y_medias.py" <código>`. En el teléfono, el ícono de sincronizar: aparece el aviso "Sincronizado" con la fecha y la hora, y el semáforo pasa a verde con "La red está tranquila".
+**Muestra.** En la terminal, en `backend`: `.\zonda.cmd tranquila`. Responde "Teléfono de Laura (…) revisó como falso positivo …" con cuántas altas y medias. En el teléfono, el ícono de sincronizar: aparece el aviso "Sincronizado" con la fecha y la hora, y el semáforo pasa a verde con "La red está tranquila". Si sobra tiempo, en Alertas con el estado de revisión en "Falsos positivos", abrir una de esas: en la revisión, "Quién" dice "Teléfono de Laura".
 
-**Dice.** "Hicimos de otra persona del equipo que revisó las altas y medias desde su teléfono. Al sincronizar, este teléfono se entera y el semáforo pasa a verde."
+**Dice.** "Hicimos de Laura, otra persona del equipo, que revisó las altas y medias desde su teléfono. Al sincronizar, este teléfono se entera y el semáforo pasa a verde."
 
 ### Paso 12. El valor generado (45 segundos)
 

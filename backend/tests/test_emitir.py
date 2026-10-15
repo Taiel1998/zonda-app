@@ -5,16 +5,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.cli import main as cli
 from tests.conftest import todas_las_alertas
 from tests.test_telegram import alerta_del_boton, vincular
-
-
-@pytest.fixture
-def zonda(config, monkeypatch):
-    """El comando como se corre en la notebook, pero sobre la base nueva de este test."""
-    monkeypatch.setattr("app.cli.Config.desde_entorno", classmethod(lambda cls: config))
-    return cli
 
 
 def id_emitido(salida: str) -> str:
