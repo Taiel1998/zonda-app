@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Configuración de red de la app (RNF04; docs/decisiones.md, decisión 26).
+
+    Nada sin cifrar, hacia ninguna dirección: solo HTTPS, con el certificado verificado contra las
+    autoridades que trae Android (Let's Encrypt es una de ellas). Desde Android 9 Android ya bloquea
+    http en las apps nuevas, pero Android 8, que la app soporta (RNF11), lo deja pasar si la app no
+    tiene este archivo.
+
+    Solo valen las autoridades del sistema: un certificado que instale la persona (por ejemplo, el de
+    un proxy que quiere leer el tráfico) no alcanza para hacerse pasar por el servidor.
+
+    El build de debug reemplaza este archivo por el de src/debug, que además permite http hacia la
+    computadora donde corre la API local.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -10,7 +10,10 @@ sealed class ErrorZonda(mensaje: String, causa: Throwable? = null) : Exception(m
     /** No hay red o el servidor no responde. Lo que se hizo queda guardado y pendiente. */
     class SinConexion(causa: Throwable? = null) : ErrorZonda("Sin conexión", causa)
 
-    /** Android no pudo verificar el certificado: no se envía ni el código ni el token. */
+    /**
+     * Android no pudo verificar el certificado, o la dirección es http y Android no deja usarla
+     * (RNF04): no se envía ni el código ni el token.
+     */
     class ServidorNoVerificado(causa: Throwable? = null) : ErrorZonda("No se pudo verificar el servidor", causa)
 
     /** Respuesta 401: el token venció o fue revocado. Se pide un pareo nuevo sin borrar la caché. */

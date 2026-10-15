@@ -13,6 +13,7 @@ import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import java.io.IOException
+import java.net.UnknownServiceException
 import java.time.Instant
 import javax.net.ssl.SSLHandshakeException
 import kotlinx.coroutines.flow.first
@@ -105,6 +106,18 @@ class PareoYServidorTest : PruebaConBase() {
         api.errores["salud"] = SSLHandshakeException("certificado desconocido")
         assertTrue(runCatching { redes.parear(datos, "x") }.exceptionOrNull() is ErrorZonda.ServidorNoVerificado)
 
+        assertTrue(api.codigosUsados.isEmpty())
+        assertNull(redes.observarRedActiva().first())
+        assertTrue(almacen.valores.isEmpty())
+    }
+
+    @Test
+    fun `una direccion http que Android no deja usar es ServidorNoVerificado y el codigo no se manda`() = runTest {
+        api.errores["salud"] = UnknownServiceException("CLEARTEXT communication to 192.168.0.10 not permitted by network security policy")
+
+        val error = runCatching { redes.parear(DatosPareo("http://192.168.0.10:8000", "K7M2-QX9P"), "x") }.exceptionOrNull()
+
+        assertTrue(error is ErrorZonda.ServidorNoVerificado)
         assertTrue(api.codigosUsados.isEmpty())
         assertNull(redes.observarRedActiva().first())
         assertTrue(almacen.valores.isEmpty())

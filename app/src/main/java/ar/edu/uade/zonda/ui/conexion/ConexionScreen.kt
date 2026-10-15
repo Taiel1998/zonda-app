@@ -443,7 +443,8 @@ private fun Conectada(estado: ConexionUiState.Conectada, acciones: AccionesConex
 
 /**
  * Los errores (Figma 35-720, 50-679 y 50-729): en rojo si no se pudo conectar o verificar el
- * servidor, en ámbar si el problema es el código. Cada uno con su salida.
+ * servidor, en ámbar si el problema es el código. Cada uno con su salida. Una dirección http usa el
+ * cuadro del servidor no verificado con su propio texto (el Figma no tiene ese caso).
  */
 @Composable
 private fun Fallo(estado: ConexionUiState.Fallo, acciones: AccionesConexion, zona: ZoneId) {
@@ -454,10 +455,12 @@ private fun Fallo(estado: ConexionUiState.Fallo, acciones: AccionesConexion, zon
             stringResource(R.string.error_pareo_sin_servidor_texto),
             estado.codigoValidoHasta?.let { stringResource(R.string.error_pareo_codigo_valido_hasta, Formato.hora(it, zona)) },
         )
-        ErrorPareo.SERVIDOR_NO_VERIFICADO -> listOf(
-            stringResource(R.string.error_pareo_no_verificado_texto),
-            stringResource(R.string.error_pareo_no_verificado_vpn),
-        )
+        // Con una dirección http no hubo certificado que mirar: Android no deja usarla (RNF04).
+        ErrorPareo.SERVIDOR_NO_VERIFICADO -> if (estado.direccion.startsWith("http://", ignoreCase = true)) {
+            listOf(stringResource(R.string.error_pareo_sin_https_texto), stringResource(R.string.error_pareo_sin_https_admin))
+        } else {
+            listOf(stringResource(R.string.error_pareo_no_verificado_texto), stringResource(R.string.error_pareo_no_verificado_vpn))
+        }
         ErrorPareo.CODIGO_VENCIDO -> listOf(stringResource(R.string.error_pareo_vencido_texto))
         ErrorPareo.CODIGO_INVALIDO -> listOf(stringResource(R.string.error_pareo_invalido_texto))
         ErrorPareo.OTRO -> listOf(stringResource(R.string.error_pareo_otro_texto))

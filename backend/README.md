@@ -13,7 +13,7 @@ python -m venv .venv
 .venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Probar: http://127.0.0.1:8000/salud y la documentación automática en http://127.0.0.1:8000/docs. Desde el emulador de Android la API se alcanza en `http://10.0.2.2:8000`.
+Probar: http://127.0.0.1:8000/salud y la documentación automática en http://127.0.0.1:8000/docs. Desde el emulador de Android la API se alcanza en `http://10.0.2.2:8000`. Lo mismo hace `scripts\iniciar.ps1`. Así, sin HTTPS, la usa solo el build de debug; para la demo con HTTPS está `demo.cmd` (ver "Publicación con HTTPS").
 
 Tests:
 
@@ -26,7 +26,9 @@ Configuración: copiar `.env.ejemplo` a `.env` (no se commitea). Variables que l
 | Variable | Para qué | Por defecto |
 |---|---|---|
 | `ZONDA_RED_ID`, `ZONDA_RED_NOMBRE` | Identidad de la red que sirve este servidor (una API por red) | `red-oficina`, `Oficina central` |
-| `ZONDA_URL_PUBLICA` | Dirección que va en el QR de pareo | `http://127.0.0.1:8000` |
+| `ZONDA_URL_PUBLICA` | Dirección que va en el QR de pareo. Hace falta solo para una dirección distinta de la de `ZONDA_DOMINIO` | `https://<ZONDA_DOMINIO>`, o `http://127.0.0.1:8000` sin nombre |
+| `ZONDA_DOMINIO` | Nombre de la API en DuckDNS, por ejemplo `zonda-equipo.duckdns.org`. Lo usan Caddy, los scripts y la dirección del QR | vacío |
+| `DUCKDNS_TOKEN` | Token de la cuenta de DuckDNS, para apuntar el nombre a la notebook y para el desafío de Let's Encrypt | vacío |
 | `ZONDA_DB_PATH` | Archivo SQLite | `backend/zonda.db` |
 | `ZONDA_SEMILLA` | JSON con las alertas de muestra | `backend/alertas_semilla.json` |
 | `ZONDA_EMITIR_CADA` | Segundos entre alertas nuevas que emite el servidor durante la demo (0 apaga) | `0` |
@@ -138,20 +140,45 @@ La API tiene que correr en un solo proceso: con dos, los dos leerían los mensaj
 
 ## Publicación con HTTPS (Caddy + DuckDNS + Let's Encrypt)
 
-1. Crear un subdominio en https://www.duckdns.org (por ejemplo `zonda-equipo`) y copiar el token.
-2. Copiar `.env.ejemplo` a `.env` y completar `ZONDA_DOMINIO`, `DUCKDNS_TOKEN`, `CADDY_EMAIL` y `ZONDA_URL_PUBLICA=https://<subdominio>.duckdns.org`.
-3. Descargar Caddy para Windows con el módulo de DuckDNS desde https://caddyserver.com/download (elegir `windows amd64` y marcar `caddy-dns/duckdns`). Dejar `caddy.exe` en `backend\caddy\` (carpeta ignorada por git).
-4. Apuntar el nombre a la IP privada de la notebook: `scripts\actualizar_duckdns.ps1` (lo hace también `scripts\iniciar.ps1`).
-5. Iniciar la API (`scripts\iniciar.ps1`) y, en otra terminal, Caddy:
+El build de release de la app solo habla HTTPS, en todas las versiones de Android (RNF04, decisión 26). La API no cambia: uvicorn escucha solo dentro de la notebook (`127.0.0.1:8000`) y Caddy la publica en el puerto 443 con un certificado de Let's Encrypt para un nombre de DuckDNS que apunta a la IP privada de la notebook. Como esa IP no se ve desde internet, Let's Encrypt no puede entrar a comprobar que el nombre es nuestro: lo comprueba por DNS, con un registro que Caddy escribe en DuckDNS con el token. Así la API no queda expuesta a internet y el teléfono la encuentra con el mismo nombre aunque cambie la IP.
+
+**Una sola vez.**
+
+1. Crear la cuenta en https://www.duckdns.org y un subdominio, por ejemplo `zonda-equipo`. El token está arriba de todo de la página.
+2. En `.env`: `ZONDA_DOMINIO=zonda-equipo.duckdns.org` y `DUCKDNS_TOKEN=<token>`. No hace falta `ZONDA_URL_PUBLICA`: con el nombre, el QR lleva `https://zonda-equipo.duckdns.org`.
+3. Caddy para Windows con el módulo de DuckDNS: en https://caddyserver.com/download elegir `windows amd64` y marcar `caddy-dns/duckdns`. Va en `backend\caddy\caddy.exe` (carpeta ignorada por git). Lo probamos con la versión 2.11.7.
+
+**Cada vez, para la demo.**
 
 ```powershell
 cd backend
-caddy\caddy.exe run --envfile .env
+.\demo.cmd
 ```
 
-La primera vez Caddy pide el certificado a Let's Encrypt (tarda un minuto). Después, desde un teléfono en la misma red: `https://zonda-equipo.duckdns.org/salud`.
+`demo.cmd` hace todo en una ventana: actualiza DuckDNS con la IP de la notebook en esa red, arranca la API con el bot de Telegram (un solo proceso y sin `--reload`, como pide el bot) y después Caddy, y espera hasta que `https://<nombre>/salud` responde con el certificado. Al final dice si el nombre apunta a la notebook. La primera vez Caddy le pide el certificado a Let's Encrypt (tarda un par de minutos); después lo guarda en `%AppData%\Caddy` y lo renueva solo. Lo que escribe Caddy queda en `caddy\caddy.log`; en la ventana se ven los pedidos a la API. Ctrl+C cierra la API y Caddy (si cmd pregunta si termina el trabajo por lotes, S).
 
-**Prueba de la primera semana (riesgo 2 del plan):** si el router bloquea nombres públicos que resuelven a direcciones privadas, la página no carga aunque Caddy esté bien. Probar con el hotspot de un celular, que es lo que se usa en la demo.
+Para parear un teléfono, en otra terminal: `.\zonda.cmd pair`. Si la IP de la notebook cambia en medio de la demo: `powershell -ExecutionPolicy Bypass -File scripts\actualizar_duckdns.ps1`.
+
+La primera vez que arranca Caddy, Windows pregunta si puede usar la red: hay que aceptar también en las redes públicas, porque el hotspot de un teléfono suele quedar como pública. Si se rechazó, se cambia en Seguridad de Windows → Firewall y protección de red → Permitir una aplicación a través del firewall.
+
+**Qué dice el Caddyfile.**
+
+- TLS 1.2 y 1.3 (`protocols tls1.2 tls1.3`): un cliente que ofrece solo 1.0 o 1.1 recibe la alerta "protocol version".
+- El certificado lo emite Let's Encrypt (`issuer acme` con `dns duckdns`), sin mail: Let's Encrypt ya no manda avisos de vencimiento y Caddy lo renueva solo.
+- Sin el puerto 80 (`auto_https disable_redirects`): la app nunca usa http, así que no hace falta redirigir, y un pedido sin cifrar no encuentra nada que lo atienda.
+- Quien entra por la IP en lugar del nombre recibe igual el certificado del nombre (`default_sni`). Android ve que no coincide con la dirección y corta antes de mandar nada: en la app es "No se pudo verificar el servidor" (el caso malo del RNF04).
+
+**Cómo se prueba.** Con la demo levantada, en otra terminal:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\probar_tls.ps1
+```
+
+Con el `openssl` de Git para Windows comprueba que Caddy acepte TLS 1.3 y 1.2 y rechace 1.1 y 1.0, que el certificado sea de Let's Encrypt y valga para el nombre, y que por la IP el certificado no coincida. Para 1.0 y 1.1 baja el nivel de seguridad del propio openssl (`-cipher DEFAULT@SECLEVEL=0`): sin eso, openssl 3 ni siquiera las ofrece y la prueba no le preguntaría nada al servidor. Si la red no resuelve el nombre, se le pasa la IP con `-Ip`.
+
+**Riesgo 2 del plan.** Algunos routers bloquean los nombres públicos que apuntan a una IP privada: la página no carga aunque Caddy esté bien, y `demo.cmd` lo avisa al final. En la demo se usa el hotspot de un teléfono, con la notebook conectada a ese hotspot.
+
+**En una PyME** es el mismo esquema con un nombre del dominio propio (por ejemplo `zonda.empresa.com.ar`) y el módulo de Caddy del proveedor de DNS de la empresa, en una computadora que ya tienen.
 
 ## Cómo está organizado
 
@@ -166,4 +193,10 @@ app/emisor.py      alertas nuevas cada N segundos para la demo
 app/telegram.py    bot de Telegram: vínculo con /start y aviso de cada alerta nueva
 app/cli.py         zonda pair, revoke, dispositivos
 tests/             pytest con TestClient y una base nueva por test
+Caddyfile          HTTPS delante de la API: TLS 1.2 y 1.3, Let's Encrypt por DNS, sin el puerto 80
+demo.cmd           la demo con HTTPS en una ventana (arranca scripts/demo.ps1)
+scripts/demo.ps1                DuckDNS, la API con el bot y Caddy, y las comprobaciones
+scripts/actualizar_duckdns.ps1  apunta el nombre a la IP de la notebook en la red actual
+scripts/probar_tls.ps1          las pruebas de HTTPS con openssl s_client
+scripts/iniciar.ps1             la API sola, para desarrollo
 ```
