@@ -24,5 +24,7 @@ jobs:
       - name: Dar permiso de ejecución al wrapper
         run: chmod +x gradlew
 
-      - name: Compilar la app y correr los tests unitarios
-        run: ./gradlew assembleDebug testDebugUnitTest --no-daemon --stacktrace
+      # El release sale sin firmar: la clave no está en el CI (decisión 28). Compilarlo igual avisa
+      # si algo que solo usa el release, como su configuración de red, deja de compilar.
+      - name: Compilar la app (debug y release) y correr los tests unitarios
+        run: ./gradlew assembleDebug assembleRelease testDebugUnitTest --no-daemon --stacktrace

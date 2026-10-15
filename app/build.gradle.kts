@@ -1,8 +1,21 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     // KSP genera el código de Room (DAOs y base) en tiempo de compilación.
     alias(libs.plugins.ksp)
+}
+
+// Firma del release (decisión 28). La clave y su contraseña viven fuera del repositorio: la propiedad
+// zonda.firma, en ~/.gradle/gradle.properties, apunta a un archivo con archivo, alias y contrasenia.
+// Sin esa propiedad (el CI, otra máquina) el release sale sin firmar.
+val archivoFirma = providers.gradleProperty("zonda.firma").orNull?.let { file(it) }
+val firma = archivoFirma?.takeIf { it.isFile }?.let { archivo ->
+    Properties().apply { archivo.inputStream().use { load(it) } }
+}
+if (archivoFirma != null && firma == null) {
+    logger.warn("zonda.firma apunta a $archivoFirma, que no existe: el release sale sin firmar.")
 }
 
 android {
@@ -19,13 +32,27 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (archivoFirma != null && firma != null) {
+            create("release") {
+                storeFile = archivoFirma.resolveSibling(firma.getProperty("archivo"))
+                storePassword = firma.getProperty("contrasenia")
+                keyAlias = firma.getProperty("alias")
+                keyPassword = firma.getProperty("contrasenia")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // Con la clave de la decisión 28; si no está, queda null y el APK sale sin firmar.
+            signingConfig = signingConfigs.findByName("release")
+            // Sin R8: Gson arma los DTO por reflexión y achicar el APK pediría reglas propias (decisión 28).
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
