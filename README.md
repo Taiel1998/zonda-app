@@ -4,7 +4,7 @@ App Android de alertas de anomalías de red para PyMEs. Es el cliente móvil de 
 
 Trabajo Práctico Obligatorio de Desarrollo de Aplicaciones I (UADE, 2.º cuatrimestre 2026). Integrantes: Melinda Sellés, Rodrigo Nicolás Larrart y Taiel Vinograd.
 
-**Estado (14/10/2026):** versión 1.0.0, con los siete requisitos funcionales implementados y probados en emuladores con Android 8 y Android 16. Antes de la entrega faltan la prueba en un teléfono real con Telegram y HTTPS, la prueba con usuarios externos (semana del 26/10) y reemplazar las alertas de ejemplo por la exportación real de la plataforma.
+**Estado (15/10/2026):** versión 1.0.1, con los siete requisitos funcionales implementados, probados en emuladores con Android 8 y Android 16 y ensayados en un teléfono real con Telegram y HTTPS. Antes de la entrega faltan el ensayo con el hotspot, la prueba con usuarios externos (semana del 26/10) y reemplazar las alertas de ejemplo por la exportación real de la plataforma.
 
 ## Capturas
 
@@ -211,12 +211,13 @@ Están en [docs/decisiones.md](docs/decisiones.md), cada una con su porqué y la
 
 ## Cómo se probó
 
-- **Pruebas automáticas:** 352 en la app (una se saltea porque necesita la API real) y 52 en el backend. Cubren los casos de uso, los ViewModels, Room con sus migraciones, el cliente HTTP con un servidor de mentira, las pantallas con Compose sobre Robolectric y todas las rutas de la API, incluido el bot con un Telegram falso.
+- **Pruebas automáticas:** 357 en la app (una se saltea porque necesita la API real) y 58 en el backend. Cubren los casos de uso, los ViewModels, Room con sus migraciones, el cliente HTTP con un servidor de mentira, las pantallas con Compose sobre Robolectric y todas las rutas de la API, incluido el bot con un Telegram falso.
 - **Integración continua:** GitHub Actions compila la app (debug y release sin firmar) y corre las pruebas de la app y del backend en cada pull request.
 - **Emuladores:** cada fase se probó en un emulador con Android 16 contra la API local. La versión 1.0.0 firmada se probó en Android 16 y en Android 8.0 contra la API publicada con HTTPS: pareo (TLS 1.3 y TLS 1.2), enlace del aviso verificado, revisión, sin conexión, Resumen y red tranquila.
 - **HTTPS:** `probar_tls.ps1` contra la API publicada, con las siete pruebas en PASA; por la IP en lugar del nombre, la app no manda nada.
 - **Rendimiento:** Estado con 500 alertas en la prueba con Room, y la app con 1.008 alertas en el emulador.
-- **Falta:** la prueba en un teléfono real con Telegram y el hotspot, y la prueba con usuarios externos.
+- **Teléfono real:** el 14/10 se ensayó el guion de la demo en un Android 11 con Telegram y HTTPS, en el Wi-Fi de una casa. La flecha de volver de un detalle abierto desde el aviso de Telegram no andaba y dejaba la pantalla congelada: la 1.0.1 lo corrige (decisión 29), probado en el emulador abriendo el enlace desde otra app, como lo hace Telegram.
+- **Falta:** el ensayo con el hotspot y la prueba con usuarios externos.
 
 ## Limitaciones conocidas
 

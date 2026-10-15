@@ -7,7 +7,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 ## 1. Qué hace falta
 
 - La notebook con el repositorio, `backend\.env` completo (`ZONDA_DOMINIO`, `DUCKDNS_TOKEN` y `TELEGRAM_BOT_TOKEN`) y `backend\caddy\caddy.exe`.
-- Un teléfono con Android 8.0 o más nuevo, con el APK de release instalado (`zonda-1.0.0.apk`, firmado con la clave del equipo), Telegram con la sesión iniciada, datos móviles y el hotspot.
+- Un teléfono con Android 8.0 o más nuevo, con el APK de release instalado (`zonda-1.0.1.apk`, firmado con la clave del equipo), Telegram con la sesión iniciada, datos móviles y el hotspot.
 - Un cable USB de datos y la depuración USB activada, para mostrar la pantalla del teléfono en el proyector con Android Studio (ventana Running Devices).
 - Nada fuera del repositorio: la alerta alta del paso 7 la larga `.\zonda.cmd emitir` y la red tranquila del paso 11 la deja `.\zonda.cmd tranquila`, que hace de otra persona que revisa desde su teléfono. Los dos son comandos del backend.
 
@@ -86,7 +86,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 
 ### Paso 8. Revisar (1 minuto)
 
-**Muestra.** "Revisar", "Ataque real", el motivo "Contraseña cambiada" (la app propone un comentario que se puede cambiar) y "Confirmar revisión". Abajo aparece "Revisión guardada y enviada al servidor." con "Deshacer". Volver a Estado: el contador de Alta bajó.
+**Muestra.** "Revisar", "Ataque real", el motivo "Contraseña cambiada" (la app propone un comentario que se puede cambiar) y "Confirmar revisión". Abajo aparece "Revisión guardada y enviada al servidor." con "Deshacer". Volver a Estado con la flecha de arriba: el contador de Alta bajó. (Como el detalle se abrió desde Telegram, la flecha abre Zonda en su propia ventana; el atrás del teléfono, en cambio, vuelve a Telegram.)
 
 **Dice.** "Dos pasos para no marcar una alerta sin querer, con el motivo y el comentario obligatorios. Durante 5 segundos se puede deshacer. La revisión queda en el historial con el teléfono que la hizo y la hora. Si otra persona la revisó antes, la app muestra las dos y pregunta con cuál quedarse."
 

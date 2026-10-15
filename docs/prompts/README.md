@@ -34,3 +34,4 @@ Un archivo por sesión de trabajo o por fase, con la fecha, qué se pidió, qué
 | 14/10/2026 | `2026-10-14-fase11-https.md` | Fase 11: HTTPS final |
 | 14/10/2026 | `2026-10-14-estado.md` | La pantalla de Estado |
 | 14/10/2026 | `2026-10-14-fase12-cierre.md` | Fase 12: APK firmado, guion de la demo, README y este registro, y después `zonda emitir` y `zonda tranquila` para la demo |
+| 15/10/2026 | `2026-10-15-version-1.0.1.md` | Versión 1.0.1: la flecha del detalle abierto desde Telegram |
