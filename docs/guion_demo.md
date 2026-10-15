@@ -7,7 +7,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 ## 1. Qué hace falta
 
 - La notebook con el repositorio, `backend\.env` completo (`ZONDA_DOMINIO`, `DUCKDNS_TOKEN` y `TELEGRAM_BOT_TOKEN`) y `backend\caddy\caddy.exe`.
-- Un teléfono con Android 8.0 o más nuevo, con el APK de release instalado (`zonda-1.0.1.apk`, firmado con la clave del equipo), Telegram con la sesión iniciada, datos móviles y el hotspot.
+- Un teléfono con Android 8.0 o más nuevo, con el APK de release instalado (`zonda-1.0.2.apk`, firmado con la clave del equipo), Telegram con la sesión iniciada, datos móviles y el hotspot.
 - Un cable USB de datos y la depuración USB activada, para mostrar la pantalla del teléfono en el proyector con Android Studio (ventana Running Devices).
 - Nada fuera del repositorio: la alerta alta del paso 7 la larga `.\zonda.cmd emitir` y la red tranquila del paso 11 la deja `.\zonda.cmd tranquila`, que hace de otra persona que revisa desde su teléfono. Los dos son comandos del backend.
 
@@ -86,7 +86,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 
 ### Paso 8. Revisar (1 minuto)
 
-**Muestra.** "Revisar", "Ataque real", el motivo "Contraseña cambiada" (la app propone un comentario que se puede cambiar) y "Confirmar revisión". Abajo aparece "Revisión guardada y enviada al servidor." con "Deshacer". Volver a Estado con la flecha de arriba: el contador de Alta bajó. (Como el detalle se abrió desde Telegram, la flecha abre Zonda en su propia ventana; el atrás del teléfono, en cambio, vuelve a Telegram.)
+**Muestra.** "Revisar", "Ataque real", el motivo "Contraseña cambiada" (la app propone un comentario que se puede cambiar) y "Confirmar revisión". Abajo aparece "Revisión guardada y enviada al servidor." con "Deshacer". Volver a Estado con la flecha de arriba: el contador de Alta bajó. (Para repetirlo, en el ensayo o si algo sale mal, largar otra alerta con `.\zonda.cmd emitir` y tocar su aviso: el botón de un aviso que ya se abrió puede traer Zonda como estaba, en Estado, sin abrir el detalle.)
 
 **Dice.** "Dos pasos para no marcar una alerta sin querer, con el motivo y el comentario obligatorios. Durante 5 segundos se puede deshacer. La revisión queda en el historial con el teléfono que la hizo y la hora. Si otra persona la revisó antes, la app muestra las dos y pregunta con cuál quedarse."
 
@@ -131,6 +131,7 @@ Si hay menos tiempo: paso 1, en el paso 4 "Ya conozco Zonda: omitir la introducc
 | La app dice "No se pudo verificar el servidor" | Se escribió la IP en lugar del nombre, o el certificado no está: revisar la ventana de `demo.cmd` |
 | El aviso de Telegram no llega | Abrir la alerta desde la lista de Estado: es el mismo detalle. Contar que el aviso depende de internet y que la app igual la trae al sincronizar |
 | El botón del aviso abre la página en el navegador de Telegram | La página tiene "Abrir en Zonda", que abre la alerta en la app |
+| El botón del aviso trae Zonda en Estado, sin abrir el detalle | Pasa con un aviso que ya se abrió antes. Largar otra alerta con `.\zonda.cmd emitir` y tocar su aviso, o abrir la alerta desde la lista de Estado |
 | La API se cerró | `.\demo.cmd` de nuevo; mientras tanto la app sigue mostrando lo guardado |
 | No anda el espejo del teléfono | Mostrar el teléfono a la cámara o pasarlo |
 
