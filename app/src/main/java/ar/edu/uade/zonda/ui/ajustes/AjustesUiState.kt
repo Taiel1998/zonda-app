@@ -55,8 +55,5 @@ sealed interface AvisoAjustes {
     /** "Red activa: <red>. Estado y Alertas ya muestran sus datos." (Figma 66-4123). */
     data class RedActivada(val nombre: String) : AvisoAjustes
 
-    /** Conectar Telegram llega con la fase 10. */
-    data object TelegramPronto : AvisoAjustes
-
     data class Error(val error: ErrorZonda) : AvisoAjustes
 }

@@ -5,23 +5,28 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.domain.Fixtures
+import ar.edu.uade.zonda.domain.model.AvisoRecibido
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
+import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
 import java.time.Duration
+import java.time.Instant
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -63,7 +68,15 @@ class DetalleContenidoTest {
         accion: ar.edu.uade.zonda.domain.model.AccionPendiente? = null,
         sinConexion: Boolean = false,
         recienRevisada: Boolean = false,
-    ) = DetalleUiState.Contenido(alerta, accion, sinConexion, datosDe = Fixtures.AHORA, recienRevisada = recienRevisada, nombreDelTelefono = "Celular Martín")
+    ) = DetalleUiState.Contenido(
+        alerta,
+        accion,
+        sinConexion,
+        datosDe = Fixtures.AHORA,
+        recienRevisada = recienRevisada,
+        nombreDelTelefono = "Celular Martín",
+        nombreDeLaRed = "Oficina central",
+    )
 
     @Test
     fun `sin revisar muestra el encabezado, los datos y Revisar, y comparte sin IP ni nombres`() {
@@ -82,8 +95,12 @@ class DetalleContenidoTest {
         assertTrue(abierta)
 
         compose.onNodeWithContentDescription("Compartir").performClick()
-        assertTrue(compartido, compartido.startsWith("Alerta ALTA · SSH · 10:50\n65 conexiones en 60 s."))
-        assertTrue(compartido, compartido.endsWith("https://taiel1998.github.io/a/a-1"))
+        // El mismo texto que el aviso de Telegram, con el enlace que abre la alerta (RNF02).
+        assertTrue(compartido, compartido.startsWith("Alerta ALTA · SSH · 10:50\nTocá para ver el detalle en Zonda.\nRed: Oficina central\n"))
+        assertTrue(
+            compartido,
+            compartido.endsWith("https://taiel1998.github.io/a/a-1?red=red-1&severidad=alta&servicio=ssh&deteccion=2026-10-12T10%3A50%3A00Z"),
+        )
         assertFalse(compartido, "192.168" in compartido || "srv-web" in compartido || "pc-09" in compartido)
     }
 
@@ -189,6 +206,36 @@ class DetalleContenidoTest {
         compose.onNodeWithText("Volver a la lista").performClick()
         assertEquals(1, reintentos)
         assertTrue(vuelta)
+    }
+
+    @Test
+    fun `sin la alerta en el telefono muestra lo que trajo el aviso de Telegram`() {
+        val aviso = AvisoRecibido(
+            severidad = Severidad.ALTA,
+            servicio = "ssh",
+            deteccion = Instant.parse("2026-10-12T05:09:12Z"),
+            enviadoEn = Instant.parse("2026-10-12T05:10:03Z"),
+        )
+        dibujar(DetalleUiState.NoDisponible(sinConexion = true, error = ErrorZonda.SinConexion(), aviso = aviso))
+
+        compose.onNodeWithText("ALTA").assertIsDisplayed()
+        compose.onNodeWithText("PENDIENTE DE DESCARGA").assertIsDisplayed()
+        compose.onAllNodesWithText("SSH").assertCountEquals(2)
+        compose.onNodeWithText("Aviso de Telegram de las 05:10").assertIsDisplayed()
+        compose.onNodeWithText("Lo que trajo el aviso").assertIsDisplayed()
+        compose.onNodeWithText("Alta").assertIsDisplayed()
+        compose.onNodeWithText("Hora de detección").assertIsDisplayed()
+        compose.onNodeWithText("05:09").assertIsDisplayed()
+        compose.onNodeWithText("Reintentar ahora").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `el historial muestra cuando salio el aviso de Telegram`() {
+        val alerta = Fixtures.alerta("a-1", revision = revisionDelServidor)
+        dibujar(contenido(alerta.copy(avisoTelegram = alerta.inicio.plus(Duration.ofMinutes(1)))))
+
+        compose.onNodeWithText("Aviso enviado por Telegram").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("10:51").performScrollTo().assertIsDisplayed()
     }
 
     @Test

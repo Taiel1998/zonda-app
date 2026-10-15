@@ -55,7 +55,7 @@ class AjustesContenidoTest {
     @Test
     fun `muestra la red, Telegram sin conectar, los avisos y la ultima sincronizacion`() {
         var telegram = false
-        mostrar(AccionesAjustes(alConectarTelegram = { telegram = true }))
+        mostrar(AccionesAjustes(alAbrirTelegram = { telegram = true }))
 
         compose.onNodeWithText("Oficina").assertIsDisplayed()
         compose.onNodeWithText("zonda-equipo.duckdns.org · 1 red pareada").assertIsDisplayed()

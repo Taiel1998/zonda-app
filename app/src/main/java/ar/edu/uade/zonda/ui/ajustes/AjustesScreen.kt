@@ -32,10 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
-import ar.edu.uade.zonda.domain.model.ModoAviso
-import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
-import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.EstadoPermiso
@@ -53,7 +50,9 @@ import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
 import ar.edu.uade.zonda.ui.components.TarjetaAdvertencia
 import ar.edu.uade.zonda.ui.components.TarjetaSeccion
 import ar.edu.uade.zonda.ui.mensaje
+import ar.edu.uade.zonda.ui.nombreDelBot
 import ar.edu.uade.zonda.ui.rememberPermisoNotificaciones
+import ar.edu.uade.zonda.ui.resumenDeAvisos
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.Instant
 import java.time.ZoneId
@@ -75,6 +74,7 @@ fun AjustesScreen(
     alAbrirDetallesTecnicos: () -> Unit,
     alAbrirAvisos: () -> Unit,
     alAbrirSeveridades: () -> Unit,
+    alAbrirTelegram: () -> Unit,
     alVerIntroduccion: () -> Unit,
     alVerCondiciones: () -> Unit,
     alAgregarRed: () -> Unit,
@@ -95,7 +95,7 @@ fun AjustesScreen(
                 viewModel.empezarAEditarSeveridades()
                 alAbrirSeveridades()
             },
-            alConectarTelegram = viewModel::conectarTelegram,
+            alAbrirTelegram = alAbrirTelegram,
             alCambiarNotificaciones = viewModel::cambiarNotificaciones,
             alSincronizar = viewModel::sincronizarAhora,
             alBorrarDatos = viewModel::borrarDatosLocales,
@@ -120,6 +120,7 @@ fun ajustesViewModel(dueño: ViewModelStoreOwner? = null): AjustesViewModel = vi
         cambiarSeveridades = contenedor.cambiarSeveridades,
         quitarDispositivo = contenedor.quitarDispositivo,
         borrarDatosLocales = contenedor.borrarDatosLocales,
+        enviarAvisosTelegram = contenedor.enviarAvisosTelegram,
         alcanceDeEnvio = contenedor.alcanceDeLaApp,
         nombreDelTelefono = contenedor.nombreDelTelefono,
     )
@@ -131,7 +132,8 @@ data class AccionesAjustes(
     val alAbrirDetallesTecnicos: () -> Unit = {},
     val alAbrirAvisos: () -> Unit = {},
     val alAbrirSeveridades: () -> Unit = {},
-    val alConectarTelegram: () -> Unit = {},
+    /** La tarjeta "Telegram sin conectar" y la fila de Telegram abren su pantalla (Figma 66-4205 y 66-3484). */
+    val alAbrirTelegram: () -> Unit = {},
     val alCambiarNotificaciones: (Boolean) -> Unit = {},
     val alSincronizar: () -> Unit = {},
     val alBorrarDatos: () -> Unit = {},
@@ -216,15 +218,15 @@ fun AjustesContenido(
                 if (red?.telegramVinculado == true) {
                     FilaNavegable(
                         titulo = stringResource(R.string.ajustes_telegram),
-                        detalle = stringResource(R.string.ajustes_telegram_conectado, stringResource(R.string.telegram_bot), estado.nombreDelTelefono),
-                        alTocar = acciones.alConectarTelegram,
+                        detalle = stringResource(R.string.ajustes_telegram_conectado, nombreDelBot(red), estado.nombreDelTelefono),
+                        alTocar = acciones.alAbrirTelegram,
                     )
                 } else {
                     TarjetaAdvertencia(
                         titulo = stringResource(R.string.ajustes_telegram_sin_conectar),
                         texto = stringResource(R.string.ajustes_telegram_sin_conectar_texto),
                         accion = stringResource(R.string.ajustes_conectar_telegram),
-                        alAccionar = acciones.alConectarTelegram,
+                        alAccionar = acciones.alAbrirTelegram,
                     )
                 }
                 FilaNavegable(
@@ -350,27 +352,6 @@ fun HojaQuitarDispositivo(
 /** La dirección de la red sin el esquema, como en el Figma: "zonda-empresa.duckdns.org". */
 fun direccion(red: Red): String = red.urlBase.substringAfter("://").trimEnd('/')
 
-/** "Alta con sonido · Media con vibración · Baja sin aviso". */
-@Composable
-private fun resumenDeAvisos(avisos: PreferenciasAvisos): String =
-    Severidad.entries.map { severidad ->
-        val nombre = stringResource(
-            when (severidad) {
-                Severidad.ALTA -> R.string.severidad_alta
-                Severidad.MEDIA -> R.string.severidad_media
-                Severidad.BAJA -> R.string.severidad_baja
-            },
-        )
-        val modo = stringResource(
-            when (avisos.para(severidad)) {
-                ModoAviso.SONIDO -> R.string.aviso_frase_sonido
-                ModoAviso.VIBRACION -> R.string.aviso_frase_vibracion
-                ModoAviso.SIN_AVISO -> R.string.aviso_frase_sin_aviso
-            },
-        )
-        "$nombre $modo"
-    }.joinToString(" · ")
-
 /** "Hoy 02:14 · 213 alertas en el teléfono", o "Sin datos guardados · 0 alertas en el teléfono". */
 @Composable
 private fun ultimaSincronizacion(red: Red?, alertas: Int, ahora: Instant, zona: ZoneId): String {
@@ -396,7 +377,6 @@ fun textoDelAviso(contexto: Context, aviso: AvisoAjustes): Pair<String, String?>
         AvisoAjustes.DatosBorrados -> contexto.getString(R.string.ajustes_datos_borrados) to ok
         is AvisoAjustes.DispositivoQuitado -> contexto.getString(R.string.ajustes_dispositivo_quitado) to ok
         is AvisoAjustes.RedActivada -> contexto.getString(R.string.aviso_red_activa, aviso.nombre) to ok
-        AvisoAjustes.TelegramPronto -> contexto.getString(R.string.ajustes_telegram_pronto) to ok
         is AvisoAjustes.Error -> contexto.getString(aviso.error.mensaje()) to contexto.getString(R.string.error_reintentar)
     }
 }

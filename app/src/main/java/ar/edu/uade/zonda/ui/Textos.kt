@@ -2,6 +2,8 @@ package ar.edu.uade.zonda.ui
 
 import android.content.res.Resources
 import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
@@ -12,6 +14,8 @@ import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.Periodo
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
+import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.TipoAtaque
@@ -144,6 +148,32 @@ fun ModoAviso.etiqueta(): Int = when (this) {
     ModoAviso.SIN_AVISO -> R.string.modo_sin_aviso
 }
 
+/** "Con sonido", "Con vibración" o "Sin aviso", en "Cómo avisa" de Telegram (Figma 66-3484). */
+@StringRes
+fun ModoAviso.comoAvisa(): Int = when (this) {
+    ModoAviso.SONIDO -> R.string.telegram_con_sonido
+    ModoAviso.VIBRACION -> R.string.telegram_con_vibracion
+    ModoAviso.SIN_AVISO -> R.string.telegram_sin_aviso
+}
+
+/** "Alta con sonido · Media con vibración · Baja sin aviso" (Ajustes y Telegram conectado). */
+@Composable
+fun resumenDeAvisos(avisos: PreferenciasAvisos): String =
+    Severidad.entries.map { severidad ->
+        val modo = stringResource(
+            when (avisos.para(severidad)) {
+                ModoAviso.SONIDO -> R.string.aviso_frase_sonido
+                ModoAviso.VIBRACION -> R.string.aviso_frase_vibracion
+                ModoAviso.SIN_AVISO -> R.string.aviso_frase_sin_aviso
+            },
+        )
+        "${stringResource(severidad.etiqueta())} $modo"
+    }.joinToString(" · ")
+
+/** "@zonda_alertas_bot": el usuario del bot que dijo el servidor de la red o, mientras tanto, el de siempre. */
+@Composable
+fun nombreDelBot(red: Red?): String = red?.telegramBot?.let { "@$it" } ?: stringResource(R.string.telegram_bot)
+
 /**
  * El comentario que propone cada motivo al revisar, el de su pantalla del Figma; la persona lo puede
  * editar (RF04). Los que nombran equipos usan los de la alerta, para no proponer un nombre ajeno.
@@ -174,4 +204,6 @@ fun ErrorZonda.mensaje(): Int = when (this) {
     is ErrorZonda.CodigoVencido -> R.string.error_codigo_vencido
     is ErrorZonda.ErrorDelServidor -> R.string.error_del_servidor
     is ErrorZonda.Validacion -> R.string.error_validacion
+    is ErrorZonda.TelegramNoDisponible -> R.string.error_telegram_no_disponible
+    is ErrorZonda.TelegramSinVincular -> R.string.error_telegram_sin_vincular
 }

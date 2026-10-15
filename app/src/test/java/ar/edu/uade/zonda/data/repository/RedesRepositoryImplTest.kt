@@ -57,6 +57,16 @@ class RedesRepositoryImplTest : PruebaConBase() {
     }
 
     @Test
+    fun `activar una red que no existe no deja la app sin red activa`() = runTest {
+        redes.guardarRedPareada(Fixtures.red("red-1"), "t1")
+
+        // El enlace de un aviso trae el id de su red; uno armado a mano puede traer cualquiera.
+        redes.activar("red-que-no-existe")
+
+        assertEquals("red-1", redes.observarRedActiva().first()?.id)
+    }
+
+    @Test
     fun `sin severidades guardadas rige la recomendada y la guardada manda despues`() = runTest {
         redes.guardarRedPareada(Fixtures.red("red-1"), "t1")
 

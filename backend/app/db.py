@@ -22,7 +22,13 @@ CREATE TABLE IF NOT EXISTS dispositivos (
     creado_en TEXT NOT NULL,
     vence_en TEXT NOT NULL,
     revocado_en TEXT,
-    telegram_chat_id TEXT
+    telegram_chat_id TEXT,
+    -- Desde cuándo el chat recibe los avisos: las alertas anteriores al vínculo no se mandan.
+    telegram_vinculado_en TEXT,
+    -- Cómo avisa Telegram cada severidad en este teléfono: sonido, vibracion o sin_aviso (Figma 51-1688).
+    aviso_alta TEXT NOT NULL DEFAULT 'sonido',
+    aviso_media TEXT NOT NULL DEFAULT 'vibracion',
+    aviso_baja TEXT NOT NULL DEFAULT 'sin_aviso'
 );
 
 CREATE TABLE IF NOT EXISTS codigos_pareo (
@@ -70,10 +76,21 @@ CREATE TABLE IF NOT EXISTS alertas (
     estado_revision TEXT NOT NULL DEFAULT 'sin_revisar',
     version INTEGER NOT NULL DEFAULT 1,
     actualizada_en TEXT NOT NULL,
-    secuencia INTEGER NOT NULL
+    secuencia INTEGER NOT NULL,
+    -- Cuándo salió el primer aviso de Telegram de esta alerta (el historial del detalle lo muestra).
+    aviso_telegram_en TEXT
 );
 CREATE INDEX IF NOT EXISTS alertas_secuencia ON alertas (secuencia);
 CREATE INDEX IF NOT EXISTS alertas_estado ON alertas (estado_revision);
+
+-- Un aviso por alerta y por chat: el bot nunca manda dos veces el mismo.
+CREATE TABLE IF NOT EXISTS avisos_telegram (
+    alerta_id TEXT NOT NULL REFERENCES alertas (id) ON DELETE CASCADE,
+    chat_id TEXT NOT NULL,
+    -- Cuándo se mandó; NULL si esa severidad está en "Sin aviso" y no se mandó nada.
+    enviado_en TEXT,
+    PRIMARY KEY (alerta_id, chat_id)
+);
 
 CREATE TABLE IF NOT EXISTS revisiones (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,14 +149,23 @@ class Base:
 
     @staticmethod
     def _actualizar(con: sqlite3.Connection) -> None:
-        """Pone al día una base creada con una versión anterior: el protocolo, la hora de revisión en el teléfono y los motivos nuevos."""
+        """Pone al día una base creada con una versión anterior: el protocolo, la hora de revisión en el
+        teléfono, los motivos nuevos y lo que guarda el bot de Telegram."""
         from .modelos import MOTIVOS_ANTERIORES
 
         columnas = {fila[1] for fila in con.execute("PRAGMA table_info(alertas)")}
         if "protocolo" not in columnas:
             con.execute("ALTER TABLE alertas ADD COLUMN protocolo TEXT NOT NULL DEFAULT 'tcp'")
+        if "aviso_telegram_en" not in columnas:
+            con.execute("ALTER TABLE alertas ADD COLUMN aviso_telegram_en TEXT")
         if "revisada_en" not in {fila[1] for fila in con.execute("PRAGMA table_info(revisiones)")}:
             con.execute("ALTER TABLE revisiones ADD COLUMN revisada_en TEXT")
+        columnas = {fila[1] for fila in con.execute("PRAGMA table_info(dispositivos)")}
+        if "telegram_vinculado_en" not in columnas:
+            con.execute("ALTER TABLE dispositivos ADD COLUMN telegram_vinculado_en TEXT")
+            con.execute("ALTER TABLE dispositivos ADD COLUMN aviso_alta TEXT NOT NULL DEFAULT 'sonido'")
+            con.execute("ALTER TABLE dispositivos ADD COLUMN aviso_media TEXT NOT NULL DEFAULT 'vibracion'")
+            con.execute("ALTER TABLE dispositivos ADD COLUMN aviso_baja TEXT NOT NULL DEFAULT 'sin_aviso'")
         for viejo, nuevo in MOTIVOS_ANTERIORES.items():
             con.execute("UPDATE revisiones SET motivo = ? WHERE motivo = ?", (nuevo, viejo))
 

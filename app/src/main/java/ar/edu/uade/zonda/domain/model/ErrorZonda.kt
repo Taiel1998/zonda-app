@@ -36,4 +36,10 @@ sealed class ErrorZonda(mensaje: String, causa: Throwable? = null) : Exception(m
 
     /** Datos que no cumplen una regla del dominio, por ejemplo una revisión sin comentario. */
     class Validacion(val campo: String, mensaje: String) : ErrorZonda(mensaje)
+
+    /** Respuesta 503 en las rutas de Telegram: el servidor de la red no tiene el bot configurado. */
+    class TelegramNoDisponible : ErrorZonda("El servidor no tiene el bot de Telegram")
+
+    /** Respuesta 409 al mandar el aviso de prueba: el chat ya no está vinculado (por ejemplo, bloquearon el bot). */
+    class TelegramSinVincular : ErrorZonda("Telegram no está vinculado")
 }

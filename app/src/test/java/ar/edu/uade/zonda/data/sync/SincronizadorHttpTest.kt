@@ -15,8 +15,10 @@ import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Severidad
@@ -27,6 +29,7 @@ import ar.edu.uade.zonda.domain.usecase.CambiarSeveridades
 import ar.edu.uade.zonda.domain.usecase.ResolverEnvioRevision
 import ar.edu.uade.zonda.domain.usecase.RevisarAlerta
 import java.io.IOException
+import java.time.Instant
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
@@ -455,5 +458,58 @@ class SincronizadorHttpTest : PruebaConBase() {
     @Test
     fun `sincronizar una red que no esta pareada es NoEncontrado`() = runTest {
         assertTrue(runCatching { alertas.sincronizar("red-x") }.exceptionOrNull() is ErrorZonda.NoEncontrado)
+    }
+
+    @Test
+    fun `la sincronizacion trae si Telegram sigue vinculado, el bot y la hora del aviso de cada alerta`() = runTest {
+        conRed()
+        api.publicar(DtoFixtures.alerta("a-1").copy(avisoTelegram = "2026-10-11T14:26:00+00:00"))
+        api.telegramVinculado = true
+        api.botTelegram = "zonda_prueba_bot"
+
+        alertas.sincronizar("red-1")
+
+        val red = redes.observarRedActiva().first()!!
+        assertTrue(red.telegramVinculado)
+        assertEquals("zonda_prueba_bot", red.telegramBot)
+        assertEquals(Instant.parse("2026-10-11T14:26:00Z"), alertas.observarAlerta("red-1", "a-1").first()!!.avisoTelegram)
+        // El servidor ya tenía los avisos del teléfono: no se manda nada.
+        assertEquals(0, api.avisosGuardados)
+
+        // La persona bloqueó el bot: el servidor desvinculó el chat y la red lo refleja.
+        api.telegramVinculado = false
+        alertas.sincronizar("red-1")
+        assertFalse(redes.observarRedActiva().first()!!.telegramVinculado)
+    }
+
+    @Test
+    fun `si el servidor tiene otros avisos la sincronizacion le manda los del telefono`() = runTest {
+        sincronizador = SincronizadorHttp(
+            base,
+            ProveedorDeApiFalso(api),
+            reloj = { Fixtures.AHORA },
+            avisosDelTelefono = { PreferenciasAvisos(media = ModoAviso.SIN_AVISO) },
+        )
+        alertas = AlertasRepositoryImpl(base.alertasDao(), sincronizador, reloj = { Fixtures.AHORA })
+        conRed()
+
+        alertas.sincronizar("red-1")
+        assertEquals("sin_aviso", api.avisosTelegram.media)
+        assertEquals(1, api.avisosGuardados)
+
+        alertas.sincronizar("red-1")
+        assertEquals(1, api.avisosGuardados)
+    }
+
+    @Test
+    fun `si falla lo de Telegram la sincronizacion de alertas vale igual`() = runTest {
+        conRed()
+        publicarCinco()
+        api.errores["telegram"] = IOException("sin red")
+
+        val resultado = alertas.sincronizar("red-1")
+
+        assertEquals(5, resultado.nuevas)
+        assertFalse(redes.observarRedActiva().first()!!.telegramVinculado)
     }
 }

@@ -26,6 +26,13 @@ SEVERIDAD_RECOMENDADA = {
 }
 
 
+def severidad_de(con: sqlite3.Connection, tipo_ataque: str | None) -> str:
+    """La severidad sale del tipo, según la tabla de la red (RF06). El tipo ordena, no filtra."""
+    clave = tipo_ataque or CLAVE_SIN_TIPO
+    fila = con.execute("SELECT severidad FROM severidades WHERE tipo_ataque = ?", (clave,)).fetchone()
+    return fila["severidad"] if fila else SEVERIDAD_RECOMENDADA[clave]
+
+
 def _fecha(texto: str) -> datetime:
     return datetime.fromisoformat(texto).astimezone(timezone.utc)
 

@@ -44,6 +44,7 @@ fun RedEntity.aDominio(): Red = Red(
     accesoVencido = accesoVencido,
     accesoEmitido = accesoEmitidoEn?.aInstant(),
     accesoVence = accesoVenceEn?.aInstant(),
+    telegramBot = telegramBot,
 )
 
 fun Red.aEntidad(creadaEn: Instant): RedEntity = RedEntity(
@@ -58,6 +59,7 @@ fun Red.aEntidad(creadaEn: Instant): RedEntity = RedEntity(
     accesoVencido = accesoVencido,
     accesoEmitidoEn = accesoEmitido?.aMilis(),
     accesoVenceEn = accesoVence?.aMilis(),
+    telegramBot = telegramBot,
 )
 
 fun RevisionEntity.aDominio(): Revision = Revision(
@@ -114,6 +116,7 @@ fun AlertaConDetalles.aDominio(): Alerta {
         envio = accion?.let { EstadoEnvio.valueOf(it.estado) },
         version = alerta.version,
         actualizadaEn = alerta.actualizadaEn.aInstant(),
+        avisoTelegram = alerta.avisoTelegramEn?.aInstant(),
     )
 }
 
@@ -150,6 +153,7 @@ fun Alerta.aEntidad(): AlertaEntity = AlertaEntity(
     estadoRevision = estadoRevision.name,
     version = version,
     actualizadaEn = actualizadaEn.aMilis(),
+    avisoTelegramEn = avisoTelegram?.aMilis(),
 )
 
 fun AccionPendienteEntity.aDominio(): AccionPendiente = AccionPendiente(

@@ -33,7 +33,10 @@ Configuración: copiar `.env.ejemplo` a `.env` (no se commitea). Variables que l
 | `ZONDA_MULTIPLICAR` | Copias de la semilla, solo para probar la lista con 1.000 alertas | `1` |
 | `ZONDA_REVISAR_SEMILLA` | Con `1`, la semilla arranca con tres de cada cuatro alertas de más de dos horas ya revisadas, para la demo y las capturas del Resumen; vale al cargar la semilla en una base nueva | `0` |
 | `ZONDA_TAMANIO_PAGINA` | Alertas por página de `GET /alertas`; con un número chico se ve la barra de la primera descarga | `200` |
-| `ZONDA_TELEGRAM_BOT` | Usuario del bot, para el enlace de vinculación | `zonda_alertas_bot` |
+| `TELEGRAM_BOT_TOKEN` | Token del bot de Telegram (lo da BotFather). Sin token la API anda igual, sin bot | vacío |
+| `ZONDA_TELEGRAM_BOT` | Usuario del bot, por si Telegram no responde al arrancar; si responde, vale el que dice Telegram | `zonda_alertas_bot` |
+| `ZONDA_ENLACE_AVISO` | Comienzo del enlace de cada aviso, el App Link que abre la alerta en la app | `https://taiel1998.github.io/a/` |
+| `ZONDA_TELEGRAM_API` | Dirección de la API de bots. Solo para probar con un Telegram simulado | `https://api.telegram.org` |
 
 ## Datos de muestra y fechas corridas
 
@@ -66,7 +69,11 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
 | `POST /alertas/{id}/revision` | `{accionId, resultado, motivo, comentario, versionVista, forzar, revisadaEn}` → la alerta actualizada | 401, 404, 409 con `revisionAjena` y la alerta, 422 motivo que no corresponde o comentario vacío |
 | `GET /severidades`, `PUT /severidades` | `{tipo: severidad}` → la tabla completa; el PUT marca todas las alertas como modificadas | 401, 422 tipo desconocido |
 | `POST /pareo` | `{codigo, nombreDispositivo}` → `{token, red, emitido, vence, dispositivoId, alertas30Dias}` | 400 inválido, 410 vencido o usado |
-| `POST /telegram/vinculo` | token → `{codigo, enlaceBot, vence}` | 401 |
+| `GET /telegram` | token → `{vinculado, bot, vinculadoEn, avisos}` de este teléfono | 401 |
+| `POST /telegram/vinculo` | `{avisos}` opcional → `{codigo, enlaceBot, vence}`; guarda los avisos | 401, 503 sin bot |
+| `DELETE /telegram/vinculo` | token → 204; el chat deja de recibir los avisos y el bot se despide | 401 |
+| `POST /telegram/prueba` | token → 204; el bot manda un aviso de prueba al chat | 401, 409 sin Telegram vinculado, 502 Telegram no respondió, 503 sin bot |
+| `PUT /telegram/avisos` | `{alta, media, baja}` con `sonido`, `vibracion` o `sin_aviso` → lo guardado | 401, 422 valor desconocido |
 | `DELETE /dispositivos/actual` | token → 204 | 401 |
 | `GET /catalogo` | token → `{equipos {ip: nombre}, servicios []}` | 401 |
 
@@ -85,13 +92,15 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
     "umbrales": true, "contexto60s": 65, "umbralServicio": 1, "servicioSinLineaBase": false,
     "reglas": false, "parDestino": "192.168.10.50:21", "parEnCatalogo": true
   },
-  "estadoRevision": "sin_revisar", "historial": [], "version": 1, "actualizadaEn": "2026-10-11T14:25:10+00:00"
+  "estadoRevision": "sin_revisar", "historial": [], "version": 1, "actualizadaEn": "2026-10-11T14:25:10+00:00",
+  "avisoTelegram": null
 }
 ```
 
 - `protocolo`: el transporte del episodio, `tcp` o `udp`. El detalle lo muestra junto al puerto ("SSH · TCP/22").
 - `tipoAtaque`: `fuerza_bruta`, `escaneo`, `ddos`, `probable_falsa_alarma`, `sin_tipificar` o `null` (la detectaron solo las reglas o los umbrales).
 - `severidad` sale del tipo según la tabla de la red (`PUT /severidades`). Por defecto: fuerza bruta y sin tipificar en alta; escaneo, denegación de servicio y tipo vacío en media; probable falsa alarma en baja. Ninguna alerta se oculta: el tipo ordena.
+- `avisoTelegram`: cuándo salió el primer aviso de Telegram de la alerta, o `null`. Cuando sale, la alerta cuenta como modificada y los teléfonos la vuelven a bajar; el historial del detalle lo muestra.
 - `estadoRevision`: `sin_revisar`, `ataque_real`, `falso_positivo`. `resultado` y `motivo` de la revisión: ataque real admite `escalado_al_proveedor`, `bloqueado_manualmente`, `contrasena_cambiada`, `investigando`; falso positivo admite `tarea_programada`, `backup`, `equipo_nuevo`, `usuario_autorizado`, `otro`. El comentario es obligatorio. Las revisiones guardadas con los motivos anteriores se pasan a los nuevos al arrancar.
 
 ### Sincronización por cursor
@@ -103,6 +112,29 @@ Cada cambio en una alerta (alta nueva, revisión, cambio de severidades) le asig
 `accionId` es el identificador único que genera el teléfono por cada acción: si la misma acción se reenvía, la API devuelve la alerta sin aplicarla dos veces. `versionVista` es la versión de la alerta que la persona vio al revisar; si otra persona la revisó después (la versión del servidor es mayor), la API responde `409` con esa revisión y la app pregunta si aplica la propia igual (`forzar: true`).
 
 Cada revisión del `historial` trae dos horas: `revisadaEn`, cuándo se revisó en el teléfono (la manda la app), y `fecha`, cuándo llegó al servidor. Sin conexión, la revisión queda en el teléfono y sale después, así que las dos pueden diferir; el historial del detalle muestra las dos. Si la app no manda `revisadaEn`, vale la hora de llegada, y una hora posterior a la llegada (reloj adelantado) también se toma como la de llegada. Las revisiones guardadas antes de este campo lo traen en `null`.
+
+## Bot de Telegram
+
+El aviso inmediato de cada alerta llega por un bot de Telegram (informe, sección 6). El bot corre dentro de la API: si `TELEGRAM_BOT_TOKEN` está en `.env`, al arrancar uvicorn arrancan también dos tareas, una que lee los mensajes del bot (long polling con `getUpdates`) y otra que cada 5 segundos busca alertas nuevas y manda los avisos (`sendMessage`). Habla con la API de bots por HTTP con httpx, sin una biblioteca aparte.
+
+**Crear el bot (una vez).** En Telegram, abrir @BotFather y mandar `/newbot`: nombre "Zonda alertas" y usuario `zonda_alertas_bot` (si está tomado, otro que termine en `bot`). BotFather responde con el token: va en `.env` como `TELEGRAM_BOT_TOKEN=...`. El token es una contraseña: no va al repositorio, ni a los registros, ni a un chat. Al arrancar, la API le pregunta a Telegram el usuario del bot, así que el enlace de vinculación sale bien aunque se haya elegido otro.
+
+**Vincular el chat.** La app pide `POST /telegram/vinculo`, que devuelve un código de un uso (10 minutos) y el enlace `https://t.me/<bot>?start=<código>`. La app abre el enlace, la persona toca Iniciar y Telegram le manda al bot `/start <código>`: el bot asocia ese chat con el teléfono que pidió el código y responde qué viaja por Telegram. Solo en chats privados, porque en un grupo los avisos los leería cualquiera. La app se entera con `GET /telegram`.
+
+**Los avisos.** Cada alerta creada después del vínculo genera un aviso por chat, según cómo avisa esa severidad en ese teléfono (`PUT /telegram/avisos`): con sonido, con vibración (un mensaje sin sonido, porque un bot no puede pedir solo vibración) o sin aviso. La tabla `avisos_telegram` guarda uno por alerta y por chat, así nunca sale dos veces. Si Telegram no responde, se reintenta en la vuelta siguiente; si la persona bloqueó el bot, el teléfono queda sin Telegram.
+
+```
+Alerta ALTA · SSH · 02:09
+Tocá para ver el detalle en Zonda.
+Red: Oficina central
+[Ver el detalle en Zonda]
+```
+
+Por Telegram viajan solo la severidad, el servicio y la hora, y de qué red viene (RNF02): nunca direcciones IP ni nombres de equipos, que se ven en la app por el canal cifrado. El botón abre `https://taiel1998.github.io/a/<id>?red=&severidad=&servicio=&deteccion=&aviso=`: además del id lleva lo mismo que dice el aviso, para que la app lo muestre si todavía no tiene la alerta (RF03, criterio 3).
+
+**Cómo se prueba.** `tests/test_telegram.py` usa un Telegram falso (`tests/conftest.py`): vínculo, códigos vencidos o usados, grupos, cada modo de aviso, avisos que no se repiten, el bot bloqueado y que ningún aviso ni enlace tenga una IP o un nombre de equipo de la semilla. Con el bot de verdad: `ZONDA_EMITIR_CADA=60` en `.env` para que aparezca una alerta por minuto, vincular Telegram desde la app y esperar el aviso.
+
+La API tiene que correr en un solo proceso: con dos, los dos leerían los mensajes del mismo bot y Telegram rechaza al segundo.
 
 ## Publicación con HTTPS (Caddy + DuckDNS + Let's Encrypt)
 
@@ -131,6 +163,7 @@ app/auth.py        tokens por dispositivo (hash SHA-256, 90 días), códigos de 
 app/semilla.py     carga de alertas_semilla.json con las fechas corridas
 app/rutas.py       las rutas del contrato
 app/emisor.py      alertas nuevas cada N segundos para la demo
+app/telegram.py    bot de Telegram: vínculo con /start y aviso de cada alerta nueva
 app/cli.py         zonda pair, revoke, dispositivos
 tests/             pytest con TestClient y una base nueva por test
 ```

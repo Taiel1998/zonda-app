@@ -1,7 +1,7 @@
 """Configuración de la API, leída del entorno y del archivo backend/.env (que no se commitea)."""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -17,6 +17,10 @@ class Config:
     red_nombre: str = "Oficina central"
     url_publica: str = "http://127.0.0.1:8000"
     bot_usuario: str = "zonda_alertas_bot"
+    # El token del bot es una contraseña: repr=False para que no aparezca si se imprime la configuración.
+    telegram_token: str = field(default="", repr=False)
+    telegram_api: str = "https://api.telegram.org"
+    enlace_aviso: str = "https://taiel1998.github.io/a/"
     emitir_cada: int = 0
     multiplicar: int = 1
     revisar_semilla: bool = False
@@ -36,6 +40,9 @@ class Config:
             red_nombre=leer("ZONDA_RED_NOMBRE", "Oficina central"),
             url_publica=leer("ZONDA_URL_PUBLICA", "http://127.0.0.1:8000"),
             bot_usuario=leer("ZONDA_TELEGRAM_BOT", "zonda_alertas_bot"),
+            telegram_token=leer("TELEGRAM_BOT_TOKEN", "").strip(),
+            telegram_api=leer("ZONDA_TELEGRAM_API", "https://api.telegram.org").rstrip("/"),
+            enlace_aviso=leer("ZONDA_ENLACE_AVISO", "https://taiel1998.github.io/a/"),
             emitir_cada=int(leer("ZONDA_EMITIR_CADA", "0")),
             multiplicar=int(leer("ZONDA_MULTIPLICAR", "1")),
             revisar_semilla=leer("ZONDA_REVISAR_SEMILLA", "0").strip().lower() in ("1", "true", "si", "sí"),

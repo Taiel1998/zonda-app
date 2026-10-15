@@ -1,7 +1,9 @@
 package ar.edu.uade.zonda.data.mapper
 
 import ar.edu.uade.zonda.data.remote.AlertaDto
+import ar.edu.uade.zonda.data.remote.AvisosDto
 import ar.edu.uade.zonda.data.remote.CatalogoDto
+import ar.edu.uade.zonda.data.remote.EstadoTelegramDto
 import ar.edu.uade.zonda.data.remote.RevisionDto
 import ar.edu.uade.zonda.data.remote.RevisionEntradaDto
 import ar.edu.uade.zonda.data.remote.VinculoTelegramDto
@@ -10,8 +12,11 @@ import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.EstadoRevision
+import ar.edu.uade.zonda.domain.model.EstadoTelegram
+import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.Severidad
@@ -69,6 +74,7 @@ fun AlertaDto.aDominio(redId: String): Alerta {
         envio = null,
         version = version,
         actualizadaEn = actualizadaEn.aInstante(),
+        avisoTelegram = avisoTelegram?.aInstante(),
     )
 }
 
@@ -107,3 +113,18 @@ fun Map<String, String>.aSeveridadPorTipo(): SeveridadPorTipo =
 fun CatalogoDto.aDominio(): Catalogo = Catalogo(equipos = equipos, servicios = servicios)
 
 fun VinculoTelegramDto.aDominio(): VinculoTelegram = VinculoTelegram(codigo = codigo, enlaceBot = enlaceBot)
+
+/** `sonido`, `vibracion` y `sin_aviso` ↔ SONIDO, VIBRACION y SIN_AVISO. */
+fun PreferenciasAvisos.aDto(): AvisosDto = AvisosDto(
+    alta = alta.name.lowercase(),
+    media = media.name.lowercase(),
+    baja = baja.name.lowercase(),
+)
+
+fun AvisosDto.aDominio(): PreferenciasAvisos = PreferenciasAvisos(
+    alta = ModoAviso.valueOf(alta.uppercase()),
+    media = ModoAviso.valueOf(media.uppercase()),
+    baja = ModoAviso.valueOf(baja.uppercase()),
+)
+
+fun EstadoTelegramDto.aDominio(): EstadoTelegram = EstadoTelegram(vinculado = vinculado, bot = bot, avisos = avisos.aDominio())

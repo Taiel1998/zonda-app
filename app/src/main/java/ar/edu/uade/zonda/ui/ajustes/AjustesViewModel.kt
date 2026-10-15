@@ -14,6 +14,7 @@ import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.BorrarDatosLocales
 import ar.edu.uade.zonda.domain.usecase.CambiarSeveridades
+import ar.edu.uade.zonda.domain.usecase.EnviarAvisosTelegram
 import ar.edu.uade.zonda.domain.usecase.QuitarDispositivo
 import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import kotlinx.coroutines.CoroutineScope
@@ -45,6 +46,7 @@ class AjustesViewModel(
     private val cambiarSeveridades: CambiarSeveridades,
     private val quitarDispositivo: QuitarDispositivo,
     private val borrarDatosLocales: BorrarDatosLocales,
+    private val enviarAvisosTelegram: EnviarAvisosTelegram,
     private val alcanceDeEnvio: CoroutineScope,
     nombreDelTelefono: String,
 ) : ViewModel() {
@@ -156,11 +158,13 @@ class AjustesViewModel(
         controles.update { it.copy(borradorAvisos = null) }
     }
 
+    /** Guarda en el teléfono y se lo manda al bot de cada red; sin conexión lo manda la sincronización. */
     fun guardarAvisos() {
         val borrador = controles.value.borradorAvisos ?: return
         viewModelScope.launch {
             preferencias.guardarAvisos(borrador)
             controles.update { it.copy(borradorAvisos = null) }
+            alcanceDeEnvio.launch { enviarAvisosTelegram(borrador) }
         }
     }
 
@@ -192,16 +196,11 @@ class AjustesViewModel(
         }
     }
 
-    // ---- Notificaciones y Telegram ----
+    // ---- Notificaciones ----
 
     /** El interruptor "Notificaciones del sistema": si la app muestra la notificación local de altas nuevas. */
     fun cambiarNotificaciones(activas: Boolean) {
         viewModelScope.launch { preferencias.guardarNotificacionesActivas(activas) }
-    }
-
-    /** "Conectar Telegram" anda con la fase 10; hasta entonces lo dice un aviso. */
-    fun conectarTelegram() {
-        controles.update { it.copy(aviso = AvisoAjustes.TelegramPronto) }
     }
 
     // ---- Datos locales ----
