@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -245,8 +244,9 @@ fun DetalleContenido(
     val alertaVisible = (estado as? DetalleUiState.Contenido)?.alerta
     val textoParaCompartir = (estado as? DetalleUiState.Contenido)?.let { textoParaCompartir(it.alerta, it.nombreDeLaRed, zona) }
 
+    // Sin barra de pestañas: los márgenes por defecto dejan el aviso y el final del contenido arriba de la
+    // barra de navegación de Android, que con los tres botones ocupa 48 dp (decisión 30).
     Scaffold(
-        contentWindowInsets = WindowInsets(0),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             BarraSuperior(
