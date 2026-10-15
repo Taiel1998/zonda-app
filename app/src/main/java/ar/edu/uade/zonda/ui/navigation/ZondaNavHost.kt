@@ -74,7 +74,8 @@ import ar.edu.uade.zonda.ui.viewModelDeZonda
  * - Entrada por el ícono: sin red pareada, el primer inicio (o Conexión si la introducción ya se hizo);
  *   con red, Estado.
  * - Entradas externas: el enlace del aviso de Telegram abre el detalle de esa alerta; la notificación
- *   local abre la pestaña Alertas.
+ *   local abre la pestaña Alertas. Telegram abre Zonda dentro de su propia tarea, con el detalle como
+ *   única pantalla; la flecha del detalle abre entonces Zonda en su tarea, en Estado ([volver]).
  * - Una barra inferior con Estado, Alertas y Ajustes, y una pila de pantallas que se cierran con Volver
  *   (el Resumen se abre desde Estado). La barra solo se ve en los tres destinos principales.
  * - El recorrido de once pasos se muestra sobre las pestañas la primera vez (RF05).
@@ -301,7 +302,8 @@ fun ZondaNavHost(
                         composable(Rutas.CONDICIONES_DE_USO) {
                             CondicionesScreen(alVolver = { navController.popBackStack() })
                         }
-                        detalleAlerta(alVolver = { navController.popBackStack() }, alPedirRed = arranque::activarRed)
+                        // El detalle puede ser la única pantalla (abierto desde Telegram): la flecha usa volver().
+                        detalleAlerta(alVolver = { navController.volver() }, alPedirRed = arranque::activarRed)
                     }
                 }
             }

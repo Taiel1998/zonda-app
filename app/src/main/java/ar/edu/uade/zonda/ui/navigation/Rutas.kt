@@ -76,3 +76,15 @@ fun NavHostController.irAPestania(ruta: String) {
         restoreState = true
     }
 }
+
+/**
+ * La flecha de volver del detalle, que también se abre desde el aviso de Telegram (cambios 20 y 21).
+ * Con pantallas atrás vuelve a la anterior. Telegram abre el enlace sin pedir una tarea nueva, así que
+ * Zonda queda dentro de la tarea de Telegram con el detalle como única pantalla: ahí abre Zonda en su
+ * propia tarea, en la pantalla principal, y cierra esta copia. Eso es `navigateUp()`. Antes se usaba
+ * `popBackStack()`, que sacaba esa única pantalla de la pila: la flecha no hacía nada a la vista y el
+ * detalle quedaba congelado, sin mostrar los cambios (por ejemplo, el conflicto ya resuelto).
+ */
+fun NavHostController.volver() {
+    navigateUp()
+}
