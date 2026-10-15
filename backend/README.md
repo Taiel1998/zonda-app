@@ -31,7 +31,7 @@ Configuración: copiar `.env.ejemplo` a `.env` (no se commitea). Variables que l
 | `DUCKDNS_TOKEN` | Token de la cuenta de DuckDNS, para apuntar el nombre a la notebook y para el desafío de Let's Encrypt | vacío |
 | `ZONDA_DB_PATH` | Archivo SQLite | `backend/zonda.db` |
 | `ZONDA_SEMILLA` | JSON con las alertas de muestra | `backend/alertas_semilla.json` |
-| `ZONDA_EMITIR_CADA` | Segundos entre alertas nuevas que emite el servidor durante la demo (0 apaga) | `0` |
+| `ZONDA_EMITIR_CADA` | Segundos entre alertas nuevas que emite el servidor durante la demo (0 apaga). Para una alerta de un tipo en el momento justo, `zonda emitir` | `0` |
 | `ZONDA_MULTIPLICAR` | Copias de la semilla, solo para probar la lista con 1.000 alertas | `1` |
 | `ZONDA_REVISAR_SEMILLA` | Con `1`, la semilla arranca con tres de cada cuatro alertas de más de dos horas ya revisadas, para la demo y las capturas del Resumen; vale al cargar la semilla en una base nueva | `0` |
 | `ZONDA_TAMANIO_PAGINA` | Alertas por página de `GET /alertas`; con un número chico se ve la barra de la primera descarga | `200` |
@@ -54,9 +54,13 @@ No hay interfaz web de administración; se usan comandos en la computadora de la
 .\zonda.cmd pair              # código de pareo de un uso (vence a los 10 minutos), con el QR en pantalla y en PNG
 .\zonda.cmd dispositivos      # teléfonos pareados, con estado y vencimiento del token
 .\zonda.cmd revoke d-xxxxxxxx # revoca el token de un teléfono (la app pide un pareo nuevo)
+.\zonda.cmd emitir            # crea ya una alerta alta de fuerza bruta por SSH, para la demo
+.\zonda.cmd emitir escaneo    # una de otro tipo; con el servicio: .\zonda.cmd emitir fuerza_bruta ftp
 ```
 
 El QR contiene `zonda:<ZONDA_URL_PUBLICA>#<código>;vence=<fecha ISO>`, por ejemplo `zonda:https://zonda-empresa.duckdns.org#K7M2-QX9P;vence=2026-10-12T02:19:00+00:00`. En Linux o macOS: `python -m app.cli pair`.
+
+`zonda emitir [tipo] [servicio]` crea una alerta nueva en el momento: copia una existente de ese tipo con la hora de ahora, con la misma función que el emisor de `ZONDA_EMITIR_CADA`, pero sin azar. El emisor copia cualquiera y, con la semilla de ejemplo, solo una de cada siete sale alta; en la demo hace falta una alta cuando la pedimos (paso 7 del guion). Si hay un teléfono con Telegram vinculado, el aviso sale en unos 5 segundos, y la app la trae en la sincronización siguiente. Los tipos son los de la tabla de severidades: `fuerza_bruta`, `escaneo`, `ddos`, `probable_falsa_alarma`, `sin_tipificar` y `solo_reglas_o_umbrales` (las que detectaron solo las reglas o los umbrales). Sin argumentos es fuerza bruta por SSH; con un tipo y sin servicio, cualquiera de ese tipo. Si no hay ninguna alerta para copiar, lo dice y termina con error. Como los otros comandos, escribe directo en la base de la API (`ZONDA_DB_PATH` o `backend/zonda.db`): la API no tiene ninguna ruta para crear alertas.
 
 ## Contrato
 
@@ -134,7 +138,7 @@ Red: Oficina central
 
 Por Telegram viajan solo la severidad, el servicio y la hora, y de qué red viene (RNF02): nunca direcciones IP ni nombres de equipos, que se ven en la app por el canal cifrado. El botón abre `https://taiel1998.github.io/a/<id>?red=&severidad=&servicio=&deteccion=&aviso=`: además del id lleva lo mismo que dice el aviso, para que la app lo muestre si todavía no tiene la alerta (RF03, criterio 3).
 
-**Cómo se prueba.** `tests/test_telegram.py` usa un Telegram falso (`tests/conftest.py`): vínculo, códigos vencidos o usados, grupos, cada modo de aviso, avisos que no se repiten, el bot bloqueado y que ningún aviso ni enlace tenga una IP o un nombre de equipo de la semilla. Con el bot de verdad: `ZONDA_EMITIR_CADA=60` en `.env` para que aparezca una alerta por minuto, vincular Telegram desde la app y esperar el aviso.
+**Cómo se prueba.** `tests/test_telegram.py` usa un Telegram falso (`tests/conftest.py`): vínculo, códigos vencidos o usados, grupos, cada modo de aviso, avisos que no se repiten, el bot bloqueado y que ningún aviso ni enlace tenga una IP o un nombre de equipo de la semilla. Con el bot de verdad: vincular Telegram desde la app y correr `.\zonda.cmd emitir`, o poner `ZONDA_EMITIR_CADA=60` en `.env` para que aparezca una alerta por minuto, y esperar el aviso.
 
 La API tiene que correr en un solo proceso: con dos, los dos leerían los mensajes del mismo bot y Telegram rechaza al segundo.
 
@@ -189,9 +193,9 @@ app/modelos.py     esquemas de entrada y salida (pydantic), el contrato con la a
 app/auth.py        tokens por dispositivo (hash SHA-256, 90 días), códigos de un uso
 app/semilla.py     carga de alertas_semilla.json con las fechas corridas
 app/rutas.py       las rutas del contrato
-app/emisor.py      alertas nuevas cada N segundos para la demo
+app/emisor.py      alertas nuevas para la demo, cada N segundos o una a pedido con zonda emitir
 app/telegram.py    bot de Telegram: vínculo con /start y aviso de cada alerta nueva
-app/cli.py         zonda pair, revoke, dispositivos
+app/cli.py         zonda pair, revoke, dispositivos, emitir
 tests/             pytest con TestClient y una base nueva por test
 Caddyfile          HTTPS delante de la API: TLS 1.2 y 1.3, Let's Encrypt por DNS, sin el puerto 80
 demo.cmd           la demo con HTTPS en una ventana (arranca scripts/demo.ps1)
