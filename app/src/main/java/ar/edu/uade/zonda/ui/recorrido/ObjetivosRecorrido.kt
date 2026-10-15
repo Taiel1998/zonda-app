@@ -20,9 +20,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 
 /**
  * Lo que resalta cada paso del recorrido (Figma 107-3321 a 107-4731). Cada pantalla marca sus
- * elementos con [objetivoDelRecorrido]. La barra de Estado ya marca el ícono del Resumen (y el de
- * sincronizar cuando lo tenga); el semáforo y los contadores se marcan cuando se escriba Estado, y
- * mientras tanto esos pasos muestran la tarjeta sola.
+ * elementos con [objetivoDelRecorrido]: Estado marca el semáforo y los contadores, y su barra el
+ * ícono de sincronizar y el del Resumen.
  */
 enum class ObjetivoRecorrido {
     // Estado

@@ -65,6 +65,29 @@ object Formato {
     fun ayer(instante: Instant, ahora: Instant, zona: ZoneId = ZoneId.systemDefault()): Boolean =
         instante.atZone(zona).toLocalDate() == ahora.atZone(zona).toLocalDate().minusDays(1)
 
+    /**
+     * `5 min`, `3 h`, `2 días`: cuánto pasó desde [desde] hasta [ahora], para "Última detección hace
+     * 5 min" en el semáforo. Menos de un minuto es `menos de 1 min`.
+     */
+    fun haceCuanto(desde: Instant, ahora: Instant): String {
+        val minutos = Duration.between(desde, ahora).toMinutes().coerceAtLeast(0)
+        val dias = minutos / (24 * 60)
+        return when {
+            minutos < 1 -> "menos de 1 min"
+            minutos < 60 -> "$minutos min"
+            dias < 1 -> "${minutos / 60} h"
+            dias == 1L -> "1 día"
+            else -> "$dias días"
+        }
+    }
+
+    /**
+     * La hora de los datos de "actualizado 02:14": sola si es de hoy, como el Figma, y con el día si no
+     * (`ayer 23:50`, `dom 27/09 02:14`), para que datos viejos no parezcan de hoy.
+     */
+    fun horaDeLosDatos(instante: Instant, ahora: Instant, zona: ZoneId = ZoneId.systemDefault()): String =
+        if (mismoDia(instante, ahora, zona)) hora(instante, zona) else "${diaRelativo(instante, ahora, zona)} ${hora(instante, zona)}"
+
     /** `42 s`, `18 min 10 s`, `1 h 5 min`. Las alertas tienen resolución de segundos. */
     fun duracion(duracion: Duration): String {
         val segundos = duracion.seconds.coerceAtLeast(0)

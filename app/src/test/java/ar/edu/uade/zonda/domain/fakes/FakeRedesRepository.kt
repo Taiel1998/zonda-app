@@ -56,6 +56,11 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
         redes.value = redes.value + red
     }
 
+    /** Reemplaza la red con el mismo id, por ejemplo con la hora de su primera sincronización. */
+    fun actualizar(red: Red) {
+        redes.value = redes.value.map { if (it.id == red.id) red else it }
+    }
+
     override fun observarRedes(): Flow<List<Red>> = redes
 
     override fun observarRedActiva(): Flow<Red?> = redes.map { lista -> lista.firstOrNull { it.activa } }

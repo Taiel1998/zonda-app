@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -31,6 +32,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Severidad
@@ -43,8 +45,7 @@ import ar.edu.uade.zonda.ui.theme.numeroContador
 import ar.edu.uade.zonda.ui.theme.rotulo
 import ar.edu.uade.zonda.ui.theme.tituloHoja
 
-// Piezas de la pantalla Estado (RF01; Figma 1-3, 1-178, 1-222 y 50-616). Las usa también el tutorial.
-// La pantalla y su ViewModel los escribe Taiel.
+// Piezas de la pantalla Estado (RF01; Figma 1-3, 1-178, 1-222, 50-616 y 99-122). Las usa también el tutorial.
 
 /**
  * Semáforo de la red: el círculo del color del estado, la etiqueta ("Atención", "Tranquila" o
@@ -86,10 +87,13 @@ fun Semaforo(
     }
 }
 
+/** El borde del contador elegido (Figma 99-122): va por fuera del contenido, así que el contador crece. */
+private val BordeElegido = 2.dp
+
 /**
  * Contador de alertas sin revisar de una severidad. Tocarlo filtra la lista de la misma pantalla y
- * otro toque la vuelve a mostrar completa (RF01, CA4); elegido, lleva un borde del color de la
- * severidad. Sin [alTocar] es solo de lectura, como en el tutorial.
+ * otro toque la vuelve a mostrar completa (RF01, CA4); elegido, lleva un borde de 2 del color del
+ * punto de la severidad. Sin [alTocar] es solo de lectura, como en el tutorial.
  */
 @Composable
 fun ContadorSeveridad(
@@ -102,10 +106,12 @@ fun ContadorSeveridad(
     val tono = severidad.tono()
     val nombre = stringResource(severidad.etiqueta())
     val descripcion = stringResource(R.string.contador_descripcion, cantidad, nombre)
-    val borde = if (elegido) BorderStroke(2.dp, tono.texto) else null
-    // Figma 35-263: 12 de margen, 2 entre el número (SemiBold 24) y el nombre (Medium 12).
+    val borde = if (elegido) BorderStroke(BordeElegido, tono.punto) else null
+    // Figma 35-263: 12 de margen, 2 entre el número (SemiBold 24) y el nombre (Medium 12). Elegido, el
+    // borde se suma por fuera de esos 12 (99-122: el contador pasa de 70 a 74 de alto).
+    val margen = if (elegido) 12.dp + BordeElegido else 12.dp
     val contenido: @Composable () -> Unit = {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.padding(margen), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(text = cantidad.toString(), style = MaterialTheme.typography.numeroContador, color = tono.texto)
             Text(text = nombre, style = MaterialTheme.typography.rotulo, color = tono.texto)
         }
@@ -134,7 +140,11 @@ fun ContadorSeveridad(
     }
 }
 
-/** Los tres contadores, uno al lado del otro, con 12 entre ellos. */
+/**
+ * Los tres contadores, uno al lado del otro, con 12 entre ellos y arriba alineados. Sin ninguno elegido
+ * miden lo mismo; el elegido suma su borde (4 más de ancho y de alto) y los otros dos se achican para que
+ * la fila siga ocupando el mismo ancho, como en el Figma (99-122, 99-300 y 99-442).
+ */
 @Composable
 fun FilaContadores(
     altas: Int,
@@ -144,20 +154,43 @@ fun FilaContadores(
     elegida: Severidad? = null,
     alTocar: ((Severidad) -> Unit)? = null,
 ) {
-    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        listOf(Severidad.ALTA to altas, Severidad.MEDIA to medias, Severidad.BAJA to bajas).forEach { (severidad, cantidad) ->
-            ContadorSeveridad(
-                severidad = severidad,
-                cantidad = cantidad,
-                elegido = elegida == severidad,
-                alTocar = alTocar?.let { { it(severidad) } },
-                modifier = Modifier.weight(1f),
-            )
+    val contadores = listOf(Severidad.ALTA to altas, Severidad.MEDIA to medias, Severidad.BAJA to bajas)
+    Layout(
+        modifier = modifier.fillMaxWidth(),
+        content = {
+            contadores.forEach { (severidad, cantidad) ->
+                ContadorSeveridad(
+                    severidad = severidad,
+                    cantidad = cantidad,
+                    elegido = elegida == severidad,
+                    alTocar = alTocar?.let { { it(severidad) } },
+                )
+            }
+        },
+    ) { medibles, restricciones ->
+        val entre = 12.dp.roundToPx()
+        val extra = if (elegida == null) 0 else (BordeElegido * 2).roundToPx()
+        val libre = restricciones.maxWidth - 2 * entre - extra
+        val base = libre / 3
+        // Los píxeles que sobran de dividir por tres van a los primeros, para que la fila llene el ancho.
+        val anchos = contadores.mapIndexed { i, (severidad, _) ->
+            base + (if (i < libre - 3 * base) 1 else 0) + (if (severidad == elegida) extra else 0)
+        }
+        val ubicables = medibles.mapIndexed { i, medible -> medible.measure(Constraints.fixedWidth(anchos[i])) }
+        layout(restricciones.maxWidth, ubicables.maxOf { it.height }) {
+            var x = 0
+            ubicables.forEach { ubicable ->
+                ubicable.placeRelative(x, 0)
+                x += ubicable.width + entre
+            }
         }
     }
 }
 
-/** La leyenda de los tres colores, que se ve cuando la red está tranquila (informe, 11.6). */
+/**
+ * La leyenda de los tres colores, que se ve cuando la red está tranquila (informe, 11.6). Figma 99-49:
+ * fondo crema, esquinas de 12, 14 de margen, 10 entre filas y círculos de 14 a 10 del texto Regular 13.
+ */
 @Composable
 fun LeyendaSemaforo(modifier: Modifier = Modifier) {
     Surface(
@@ -165,7 +198,7 @@ fun LeyendaSemaforo(modifier: Modifier = Modifier) {
         shape = RoundedCornerShape(12.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             FilaLeyenda(Tonos.Alta, stringResource(R.string.leyenda_rojo))
             FilaLeyenda(Tonos.Media, stringResource(R.string.leyenda_amarillo))
             FilaLeyenda(Tonos.Baja, stringResource(R.string.leyenda_verde))
@@ -178,7 +211,7 @@ private fun FilaLeyenda(tono: Tono, texto: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .size(12.dp)
+                .size(14.dp)
                 .background(tono.punto, CircleShape),
         )
         Spacer(modifier = Modifier.width(10.dp))

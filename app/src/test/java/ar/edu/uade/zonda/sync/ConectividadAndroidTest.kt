@@ -68,4 +68,19 @@ class ConectividadAndroidTest {
         }
         assertEquals(0, sombra.networkCallbacks.size)
     }
+
+    @Test
+    fun `perder la red por defecto es quedarse sin conexion aunque Android todavia la muestre activa`() = runTest {
+        redActivaConInternet(true)
+
+        ConectividadAndroid(contexto).conectado.test {
+            assertTrue(awaitItem())
+
+            // Así llega el modo avión en el emulador: primero el aviso y después se actualiza la red activa.
+            sombra.networkCallbacks.single().onLost(ShadowNetwork.newInstance(1))
+            assertFalse(awaitItem())
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

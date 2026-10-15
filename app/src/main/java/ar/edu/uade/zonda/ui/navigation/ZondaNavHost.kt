@@ -46,10 +46,10 @@ import ar.edu.uade.zonda.ui.ajustes.DetallesTecnicosScreen
 import ar.edu.uade.zonda.ui.ajustes.RedesScreen
 import ar.edu.uade.zonda.ui.ajustes.ajustesViewModel
 import ar.edu.uade.zonda.ui.alertas.AlertasScreen
+import ar.edu.uade.zonda.ui.alertas.alertasViewModel
 import ar.edu.uade.zonda.ui.conexion.ConexionScreen
 import ar.edu.uade.zonda.ui.detalle.RutaDetalle
 import ar.edu.uade.zonda.ui.detalle.detalleAlerta
-import ar.edu.uade.zonda.ui.estado.DescargaInicialViewModel
 import ar.edu.uade.zonda.ui.estado.EstadoScreen
 import ar.edu.uade.zonda.ui.inicio.ArranqueViewModel
 import ar.edu.uade.zonda.ui.inicio.DestinoInicial
@@ -185,9 +185,16 @@ fun ZondaNavHost(
                             )
                         }
                         composable(Rutas.ESTADO) {
-                            val descarga = viewModelDeZonda { DescargaInicialViewModel(it.redes, it.alertas) }
-                            val progreso by descarga.progreso.collectAsStateWithLifecycle()
-                            EstadoScreen(progreso = progreso, alAbrirResumen = { navController.navigate(Rutas.RESUMEN) })
+                            EstadoScreen(
+                                alAbrirResumen = { navController.navigate(Rutas.RESUMEN) },
+                                alAbrirDetalle = { alertaId -> navController.navigate(RutaDetalle.crear(alertaId)) },
+                                alVerTodas = {
+                                    // La lista completa, como el Figma (de 1-3 a 2-3), aunque Alertas tuviera un filtro puesto.
+                                    navController.irAPestania(Rutas.ALERTAS)
+                                    navController.currentBackStackEntry?.savedStateHandle?.set(VER_TODAS, true)
+                                },
+                                alConectar = { navController.navigate(Rutas.CONEXION) },
+                            )
                         }
                         composable(Rutas.RESUMEN) {
                             ResumenScreen(alVolver = { navController.popBackStack() })
@@ -213,10 +220,19 @@ fun ZondaNavHost(
                                     filtroDelEnlace(entrada.arguments)
                                 }
                             }
+                            val viewModel = alertasViewModel()
+                            val verTodas by entrada.savedStateHandle.getStateFlow(VER_TODAS, false).collectAsStateWithLifecycle()
+                            LaunchedEffect(verTodas) {
+                                if (verTodas) {
+                                    viewModel.quitarFiltros()
+                                    entrada.savedStateHandle[VER_TODAS] = false
+                                }
+                            }
                             AlertasScreen(
                                 alAbrirDetalle = { alertaId -> navController.navigate(RutaDetalle.crear(alertaId)) },
                                 alConectarDeNuevo = { navController.navigate(Rutas.CONEXION) },
                                 filtroPedido = filtroPedido,
+                                viewModel = viewModel,
                             )
                         }
                         composable(Rutas.AJUSTES) {
@@ -322,6 +338,9 @@ private fun viewModelDeAjustes(navController: NavHostController, entrada: NavBac
 }
 
 private const val ENLACE_APLICADO = "enlace_aplicado"
+
+/** "Ver todas" de Estado: Alertas quita los filtros al llegar. */
+private const val VER_TODAS = "ver_todas"
 
 /** El filtro de un enlace interno (`estado=sin_revisar&severidad=alta`), o null si no trae ninguno. */
 private fun filtroDelEnlace(argumentos: Bundle?): FiltroAlertas? {
