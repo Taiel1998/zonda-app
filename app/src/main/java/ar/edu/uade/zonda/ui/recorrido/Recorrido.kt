@@ -63,8 +63,7 @@ enum class PantallaRecorrido { ESTADO, ALERTAS, DETALLE, RESUMEN, AJUSTES }
 
 /**
  * Los once pasos del recorrido (RF05; Figma 107-3321 a 107-4731), cada uno con su pantalla y lo que
- * resalta. El Resumen todavía no existe (fase 9): sus dos pasos se muestran en Estado, que es desde
- * donde se abre.
+ * resalta. Los dos del Resumen lo abren encima de Estado, que es desde donde se abre.
  */
 enum class PasoRecorrido(
     val pantalla: PantallaRecorrido,
@@ -139,8 +138,8 @@ private val TextoPuntos = Color(0xFF40403D)
 
 /**
  * La capa del recorrido sobre toda la app: el velo negro al 50 % con el elemento del paso a la vista,
- * el borde verde y la tarjeta al lado, abajo si entra y si no arriba. Sin el elemento (Estado y el
- * Resumen todavía no lo marcan) queda la tarjeta sola, en el medio. Lo de atrás no se puede tocar.
+ * el borde verde y la tarjeta al lado, abajo si entra y si no arriba. Sin el elemento (Estado todavía
+ * no marca el semáforo ni los contadores) queda la tarjeta sola, en el medio. Lo de atrás no se puede tocar.
  */
 @Composable
 fun CapaRecorrido(

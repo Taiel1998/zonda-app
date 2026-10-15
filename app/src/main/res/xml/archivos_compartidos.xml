@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lo único que la app comparte por FileProvider: la imagen del Resumen, que no tiene IP ni nombres
+     de equipos (RNF02). Se guarda en la caché y se reemplaza en cada envío. -->
+<paths>
+    <cache-path
+        name="compartir"
+        path="compartir/" />
+</paths>

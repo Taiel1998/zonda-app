@@ -79,10 +79,6 @@ abstract class AlertasDao {
     abstract fun observarCantidadTotal(): Flow<Int>
 
     @Transaction
-    @Query("SELECT * FROM alertas WHERE redId = :redId AND inicio >= :desde ORDER BY inicio DESC")
-    abstract suspend fun desde(redId: String, desde: Long): List<AlertaConDetalles>
-
-    @Transaction
     @Query("SELECT * FROM alertas WHERE id = :alertaId")
     abstract suspend fun obtener(alertaId: String): AlertaConDetalles?
 

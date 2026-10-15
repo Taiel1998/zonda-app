@@ -47,6 +47,7 @@ object Fixtures {
         motivo: Motivo = Motivo.ESCALADO_AL_PROVEEDOR,
         fecha: Instant = AHORA,
         origen: OrigenRevision = OrigenRevision.ESTE_TELEFONO,
+        revisadaEn: Instant? = null,
     ) = Revision(
         resultado = resultado,
         motivo = motivo,
@@ -54,6 +55,7 @@ object Fixtures {
         autor = null,
         fecha = fecha,
         origen = origen,
+        revisadaEn = revisadaEn,
     )
 
     fun alerta(

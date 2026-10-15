@@ -26,9 +26,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.ui.Formato
@@ -94,7 +96,10 @@ fun BannerAccesoVencido(alConectar: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-/** Círculo claro, título, detalle y, si hay, una acción de recuperación (Figma 2-218). */
+/**
+ * Círculo claro, título, detalle y, si hay, una acción de recuperación (Figma 2-218). El Resumen sin
+ * alertas usa el círculo verde de 56 con el tilde (Figma 52-2976).
+ */
 @Composable
 fun EstadoVacio(
     titulo: String,
@@ -102,14 +107,21 @@ fun EstadoVacio(
     modifier: Modifier = Modifier,
     accion: String? = null,
     alAccionar: () -> Unit = {},
+    colorCirculo: Color = MaterialTheme.colorScheme.surfaceVariant,
+    tamanioCirculo: Dp = 64.dp,
+    icono: ImageVector? = null,
+    colorIcono: Color = Color.Unspecified,
 ) {
     EstadoConCirculo(
-        colorCirculo = MaterialTheme.colorScheme.surfaceVariant,
+        colorCirculo = colorCirculo,
         titulo = titulo,
         detalle = detalle,
         accion = accion,
         alAccionar = alAccionar,
         modifier = modifier,
+        tamanioCirculo = tamanioCirculo,
+        icono = icono,
+        colorIcono = colorIcono,
     )
 }
 
@@ -139,6 +151,9 @@ private fun EstadoConCirculo(
     accion: String?,
     alAccionar: () -> Unit,
     modifier: Modifier = Modifier,
+    tamanioCirculo: Dp = 64.dp,
+    icono: ImageVector? = null,
+    colorIcono: Color = Color.Unspecified,
 ) {
     // Figma 2-248: 24 a los costados, 40 arriba y abajo, 8 entre piezas y el botón 8 más abajo.
     Column(
@@ -150,9 +165,12 @@ private fun EstadoConCirculo(
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
+                .size(tamanioCirculo)
                 .background(colorCirculo, CircleShape),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            if (icono != null) Icon(imageVector = icono, contentDescription = null, tint = colorIcono, modifier = Modifier.size(24.dp))
+        }
         Text(text = titulo, style = MaterialTheme.typography.encabezado, textAlign = TextAlign.Center)
         Text(
             text = detalle,

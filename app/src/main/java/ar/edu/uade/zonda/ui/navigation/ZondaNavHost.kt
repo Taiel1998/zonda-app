@@ -63,6 +63,7 @@ import ar.edu.uade.zonda.ui.recorrido.PantallaRecorrido
 import ar.edu.uade.zonda.ui.recorrido.RecorridoViewModel
 import ar.edu.uade.zonda.ui.recorrido.RegistroRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
+import ar.edu.uade.zonda.ui.resumen.ResumenScreen
 import ar.edu.uade.zonda.ui.theme.etiquetaBarra
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 
@@ -73,8 +74,8 @@ import ar.edu.uade.zonda.ui.viewModelDeZonda
  *   con red, Estado.
  * - Entradas externas: el enlace del aviso de Telegram abre el detalle de esa alerta; la notificación
  *   local abre la pestaña Alertas.
- * - Una barra inferior con Estado, Alertas y Ajustes, y una pila de pantallas que se cierran con Volver.
- *   La barra solo se ve en los tres destinos principales.
+ * - Una barra inferior con Estado, Alertas y Ajustes, y una pila de pantallas que se cierran con Volver
+ *   (el Resumen se abre desde Estado). La barra solo se ve en los tres destinos principales.
  * - El recorrido de once pasos se muestra sobre las pestañas la primera vez (RF05).
  */
 @Composable
@@ -99,20 +100,30 @@ fun ZondaNavHost(
     val pasoRecorrido by recorrido.paso.collectAsStateWithLifecycle()
     val alertaDelRecorrido by recorrido.alertaDelDetalle.collectAsStateWithLifecycle()
     val enDetalle = rutaActual == RutaDetalle.PATRON
+    val enResumen = rutaActual == Rutas.RESUMEN
     val registroRecorrido = remember { RegistroRecorrido() }
 
-    // El recorrido navega solo a la pantalla de cada paso; el del detalle abre la primera alerta.
+    // El recorrido navega solo a la pantalla de cada paso: el del detalle abre la primera alerta y los
+    // del Resumen lo abren encima de Estado, como el ícono de barras.
     LaunchedEffect(pasoRecorrido, rutaActual) {
         val paso = pasoRecorrido ?: return@LaunchedEffect
-        if (!enPestania && !enDetalle) return@LaunchedEffect
+        if (!enPestania && !enDetalle && !enResumen) return@LaunchedEffect
         val alerta = alertaDelRecorrido
         if (paso.pantalla == PantallaRecorrido.DETALLE && alerta != null) {
             if (!enDetalle) navController.navigate(RutaDetalle.crear(alerta))
             return@LaunchedEffect
         }
+        if (paso.pantalla == PantallaRecorrido.RESUMEN) {
+            if (!enResumen) {
+                if (enDetalle) navController.popBackStack()
+                navController.irAPestania(Rutas.ESTADO)
+                navController.navigate(Rutas.RESUMEN)
+            }
+            return@LaunchedEffect
+        }
         val ruta = rutaDelRecorrido(paso.pantalla)
-        // Al dejar el detalle se cierra, para que la pestaña Alertas no lo vuelva a abrir después.
-        if (enDetalle) navController.popBackStack()
+        // Al dejar el detalle o el Resumen se cierran, para que no se vuelvan a abrir después.
+        if (enDetalle || enResumen) navController.popBackStack()
         if (rutaActual != ruta) navController.irAPestania(ruta)
     }
 
@@ -175,7 +186,10 @@ fun ZondaNavHost(
                         composable(Rutas.ESTADO) {
                             val descarga = viewModelDeZonda { DescargaInicialViewModel(it.redes, it.alertas) }
                             val progreso by descarga.progreso.collectAsStateWithLifecycle()
-                            EstadoScreen(progreso = progreso)
+                            EstadoScreen(progreso = progreso, alAbrirResumen = { navController.navigate(Rutas.RESUMEN) })
+                        }
+                        composable(Rutas.RESUMEN) {
+                            ResumenScreen(alVolver = { navController.popBackStack() })
                         }
                         composable(
                             route = Rutas.ALERTAS,
@@ -271,16 +285,17 @@ fun ZondaNavHost(
                 }
             }
             val paso = pasoRecorrido
-            if (paso != null && (enPestania || enDetalle)) {
+            if (paso != null && (enPestania || enDetalle || enResumen)) {
                 CapaRecorrido(paso = paso, registro = registroRecorrido, alSiguiente = recorrido::siguiente, alOmitir = recorrido::terminar)
             }
         }
     }
 }
 
-/** La pestaña de cada pantalla del recorrido. El Resumen se abre desde Estado (todavía no existe, fase 9). */
+/** La ruta de cada pantalla del recorrido: el detalle va sobre Alertas y el Resumen sobre Estado. */
 private fun rutaDelRecorrido(pantalla: PantallaRecorrido): String = when (pantalla) {
-    PantallaRecorrido.ESTADO, PantallaRecorrido.RESUMEN -> Rutas.ESTADO
+    PantallaRecorrido.ESTADO -> Rutas.ESTADO
+    PantallaRecorrido.RESUMEN -> Rutas.RESUMEN
     PantallaRecorrido.ALERTAS, PantallaRecorrido.DETALLE -> Rutas.ALERTAS
     PantallaRecorrido.AJUSTES -> Rutas.AJUSTES
 }

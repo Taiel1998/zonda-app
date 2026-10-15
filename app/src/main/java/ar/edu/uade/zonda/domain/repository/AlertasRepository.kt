@@ -47,9 +47,6 @@ interface AlertasRepository {
     /** Cuántas alertas hay guardadas en total, de todas las redes (Borrar datos locales). */
     fun observarCantidadTotal(): Flow<Int>
 
-    /** Alertas que empezaron desde [desde], para calcular el Resumen. */
-    suspend fun obtenerAlertasDesde(redId: String, desde: Instant): List<Alerta>
-
     /** Guarda la revisión en el teléfono y deja la alerta con ese estado. No toca el servidor. */
     suspend fun aplicarRevisionLocal(redId: String, alertaId: String, revision: Revision): Alerta
 

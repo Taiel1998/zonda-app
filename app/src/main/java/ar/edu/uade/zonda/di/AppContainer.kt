@@ -22,10 +22,10 @@ import ar.edu.uade.zonda.domain.repository.GeneradorDeIds
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.BorrarDatosLocales
-import ar.edu.uade.zonda.domain.usecase.CalcularResumen
 import ar.edu.uade.zonda.domain.usecase.CambiarSeveridades
 import ar.edu.uade.zonda.domain.usecase.DeshacerRevision
 import ar.edu.uade.zonda.domain.usecase.ObservarAlertas
+import ar.edu.uade.zonda.domain.usecase.ObservarResumen
 import ar.edu.uade.zonda.domain.usecase.ObtenerDetalleAlerta
 import ar.edu.uade.zonda.domain.usecase.ObtenerEstadoRed
 import ar.edu.uade.zonda.domain.usecase.ParearRed
@@ -101,7 +101,7 @@ class AppContainer(context: Context) {
     val deshacerRevision: DeshacerRevision by lazy { DeshacerRevision(alertas, accionesPendientes) }
     val resolverEnvioRevision: ResolverEnvioRevision by lazy { ResolverEnvioRevision(alertas, accionesPendientes) }
     val sincronizarAlertas: SincronizarAlertas by lazy { SincronizarAlertas(redes, alertas) }
-    val calcularResumen: CalcularResumen by lazy { CalcularResumen(redes, alertas) }
+    val observarResumen: ObservarResumen by lazy { ObservarResumen(redes, alertas) }
     val cambiarSeveridades: CambiarSeveridades by lazy { CambiarSeveridades(redes, accionesPendientes, generadorDeIds) }
     val parearRed: ParearRed by lazy { ParearRed(redes) }
     val quitarDispositivo: QuitarDispositivo by lazy { QuitarDispositivo(redes, alertas, accionesPendientes) }

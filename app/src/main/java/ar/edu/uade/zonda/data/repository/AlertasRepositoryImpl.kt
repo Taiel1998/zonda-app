@@ -78,9 +78,6 @@ class AlertasRepositoryImpl(
             )
         }
 
-    override suspend fun obtenerAlertasDesde(redId: String, desde: Instant): List<Alerta> =
-        dao.desde(redId, desde.toEpochMilli()).map { it.aDominio() }
-
     override suspend fun aplicarRevisionLocal(redId: String, alertaId: String, revision: Revision): Alerta {
         val actual = dao.obtener(alertaId)
         if (actual == null || actual.alerta.redId != redId) throw ErrorZonda.NoEncontrado()

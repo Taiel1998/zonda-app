@@ -31,6 +31,7 @@ Configuración: copiar `.env.ejemplo` a `.env` (no se commitea). Variables que l
 | `ZONDA_SEMILLA` | JSON con las alertas de muestra | `backend/alertas_semilla.json` |
 | `ZONDA_EMITIR_CADA` | Segundos entre alertas nuevas que emite el servidor durante la demo (0 apaga) | `0` |
 | `ZONDA_MULTIPLICAR` | Copias de la semilla, solo para probar la lista con 1.000 alertas | `1` |
+| `ZONDA_REVISAR_SEMILLA` | Con `1`, la semilla arranca con tres de cada cuatro alertas de más de dos horas ya revisadas, para la demo y las capturas del Resumen; vale al cargar la semilla en una base nueva | `0` |
 | `ZONDA_TAMANIO_PAGINA` | Alertas por página de `GET /alertas`; con un número chico se ve la barra de la primera descarga | `200` |
 | `ZONDA_TELEGRAM_BOT` | Usuario del bot, para el enlace de vinculación | `zonda_alertas_bot` |
 

@@ -614,4 +614,109 @@
     <string name="condiciones_ajustes_datos">Las direcciones IP son datos personales (Ley 25.326). Solo viajan por la conexión cifrada con el servidor de tu empresa.</string>
     <string name="condiciones_derechos_titulo">Tus derechos</string>
     <string name="condiciones_derechos">Podés borrar los datos del teléfono o quitar este dispositivo cuando quieras, desde Ajustes.</string>
+
+    <!-- Resumen (RF07; Figma 52-2629 a 107-5511). Las cifras se calculan en el teléfono. -->
+    <string name="resumen_titulo">Resumen</string>
+    <string name="resumen_abrir">Abrir el Resumen</string>
+    <string name="resumen_compartir">Compartir resumen</string>
+    <string name="resumen_7_dias">7 días</string>
+    <string name="resumen_30_dias">30 días</string>
+    <string name="resumen_quitar_filtro">Quitar el filtro %1$s</string>
+    <string name="resumen_del_al">del %1$s al %2$s</string>
+    <string name="resumen_sin_conexion">Sin conexión · resumen con los datos de las %1$s</string>
+    <plurals name="resumen_total_alertas">
+        <item quantity="one">alerta</item>
+        <item quantity="other">alertas</item>
+    </plurals>
+    <plurals name="resumen_total_revisadas">
+        <item quantity="one">revisada · %1$s</item>
+        <item quantity="other">revisadas · %1$s</item>
+    </plurals>
+    <string name="resumen_total_sin_revisar">sin revisar</string>
+    <string name="resumen_sin_dato">—</string>
+    <string name="resumen_hasta_primera_revision">hasta la primera revisión</string>
+    <string name="resumen_mediana">mediana del período</string>
+    <string name="resumen_sin_revisiones">sin revisiones todavía</string>
+    <string name="resumen_altas_primera_hora">altas revisadas en la primera hora</string>
+    <string name="resumen_x_de_y">%1$d de %2$d</string>
+    <string name="resumen_sin_altas">ninguna alta con más de 1 h</string>
+    <string name="resumen_alertas_por_dia">Alertas por día</string>
+    <string name="resumen_alertas_por_semana">Alertas por semana</string>
+    <plurals name="resumen_destacado_dia">
+        <item quantity="one">El %1$s concentra %2$d alerta: %3$d de %4$s.</item>
+        <item quantity="other">El %1$s concentra %2$d alertas: %3$d de %4$s.</item>
+    </plurals>
+    <plurals name="resumen_destacado_dia_servidor">
+        <item quantity="one">El %1$s concentra %2$d alerta: %3$d de %4$s sobre el mismo servidor.</item>
+        <item quantity="other">El %1$s concentra %2$d alertas: %3$d de %4$s sobre el mismo servidor.</item>
+    </plurals>
+    <plurals name="resumen_destacado_semana">
+        <item quantity="one">La semana del %1$s fue la de más actividad: %2$d alerta.</item>
+        <item quantity="other">La semana del %1$s fue la de más actividad: %2$d alertas.</item>
+    </plurals>
+    <plurals name="resumen_mostrando">
+        <item quantity="one">Mostrando %1$s: %2$d alerta. Tocá de nuevo para ver todas.</item>
+        <item quantity="other">Mostrando %1$s: %2$d alertas. Tocá de nuevo para ver todas.</item>
+    </plurals>
+    <string name="resumen_semana_del">Semana del %1$s</string>
+    <string name="resumen_chip_revisadas">Revisadas</string>
+    <string name="resumen_chip_sin_revisar">Sin revisar</string>
+    <string name="resumen_chip_altas">Altas</string>
+    <string name="resumen_por_tipo">Por tipo de ataque</string>
+    <string name="resumen_tipo_fuerza_bruta">Fuerza bruta (SSH, FTP)</string>
+    <string name="resumen_tipo_escaneo">Escaneo de puertos</string>
+    <string name="resumen_tipo_ddos">Denegación de servicio</string>
+    <string name="resumen_tipo_otros">Otros</string>
+    <string name="resumen_chip_fuerza_bruta">Fuerza bruta</string>
+    <string name="resumen_frase_fuerza_bruta">fuerza bruta</string>
+    <string name="resumen_frase_escaneo">escaneo de puertos</string>
+    <string name="resumen_frase_ddos">denegación de servicio</string>
+    <string name="resumen_frase_otros">otros tipos</string>
+    <string name="resumen_reales_y_falsos">Reales y falsos positivos (de las revisadas)</string>
+    <string name="resumen_reales">Reales</string>
+    <string name="resumen_falsos_positivos">Falsos positivos</string>
+    <string name="resumen_nota_falsos">Un falso positivo con motivo sirve para ajustar la detección.</string>
+    <string name="resumen_precision">Precisión de cada modelo (de las revisadas)</string>
+    <string name="resumen_cobertura">Cobertura de revisión</string>
+    <string name="resumen_cobertura_valor">%1$s · %2$d de %3$d</string>
+    <string name="resumen_metodo_umbrales">Umbrales estadísticos</string>
+    <string name="resumen_metodo_reglas">Reglas estáticas</string>
+    <string name="resumen_precision_formula">Precisión = alertas reales / alertas revisadas que marcó cada modelo.</string>
+    <string name="resumen_mejor_ia">El modelo de IA tiene la precisión más alta</string>
+    <string name="resumen_mejor_umbrales">Los umbrales tienen la precisión más alta</string>
+    <string name="resumen_mejor_reglas">Las reglas tienen la precisión más alta</string>
+    <plurals name="resumen_mejor_pocas_revisiones">
+        <item quantity="one">, pero con %1$d revisión la comparación todavía no es confiable.</item>
+        <item quantity="other">, pero con %1$d revisiones la comparación todavía no es confiable.</item>
+    </plurals>
+    <string name="resumen_recall">Recall y F1 se miden offline con dataset etiquetado (fuera de la app).</string>
+    <string name="resumen_pie">Calculado con las alertas guardadas en el teléfono. No incluye direcciones IP ni nombres de equipos.</string>
+    <string name="resumen_vacio_titulo_7">Sin alertas en los últimos 7 días</string>
+    <string name="resumen_vacio_titulo_30">Sin alertas en los últimos 30 días</string>
+    <string name="resumen_vacio_detalle_7">El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
+    <string name="resumen_vacio_detalle_30">El sensor siguió activo todo el mes. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
+    <!-- La imagen que se comparte (Figma 107-4862): solo cantidades, sin IP ni nombres de equipos (RNF02) -->
+    <string name="resumen_imagen_semanal">Resumen semanal</string>
+    <string name="resumen_imagen_mensual">Resumen mensual</string>
+    <string name="resumen_imagen_pie">Generado con Zonda · no incluye IPs ni nombres de equipos</string>
+    <plurals name="resumen_mostrando_imagen">
+        <item quantity="one">Mostrando %1$s: %2$d alerta.</item>
+        <item quantity="other">Mostrando %1$s: %2$d alertas.</item>
+    </plurals>
+    <string name="resumen_archivo">Resumen_%1$s_%2$s.png</string>
+    <string name="resumen_texto_compartido">Resumen Zonda · del %1$s al %2$s: %3$s, %4$s, %5$s sin revisar.</string>
+    <!-- La hoja de compartir (Figma 107-5511) y los avisos al volver (107-4941 a 107-5349) -->
+    <string name="resumen_hoja_titulo">Compartir resumen</string>
+    <string name="resumen_hoja_archivo">Imagen · %1$s · sin IPs ni nombres de equipos</string>
+    <string name="resumen_hoja_compartir_con">Compartir con</string>
+    <string name="resumen_destino_whatsapp">WhatsApp</string>
+    <string name="resumen_destino_telegram">Telegram</string>
+    <string name="resumen_destino_gmail">Gmail</string>
+    <string name="resumen_destino_drive">Drive</string>
+    <string name="resumen_destino_copiar">Copiar</string>
+    <string name="resumen_enviado_por">Resumen enviado por %1$s.</string>
+    <string name="resumen_enviado_gmail">Resumen adjuntado en un correo de Gmail.</string>
+    <string name="resumen_enviado_drive">Resumen guardado en Drive.</string>
+    <string name="resumen_copiado">Imagen copiada. Pegala donde quieras.</string>
+    <string name="resumen_no_se_pudo_compartir">No se pudo compartir el resumen. Probá de nuevo.</string>
 </resources>
