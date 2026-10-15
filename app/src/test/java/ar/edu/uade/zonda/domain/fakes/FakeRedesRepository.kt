@@ -4,6 +4,8 @@ import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoTelegram
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.RedPareada
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
@@ -54,6 +56,11 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
         redes.value = redes.value + red
     }
 
+    /** Reemplaza la red con el mismo id, por ejemplo con la hora de su primera sincronización. */
+    fun actualizar(red: Red) {
+        redes.value = redes.value.map { if (it.id == red.id) red else it }
+    }
+
     override fun observarRedes(): Flow<List<Red>> = redes
 
     override fun observarRedActiva(): Flow<Red?> = redes.map { lista -> lista.firstOrNull { it.activa } }
@@ -102,10 +109,46 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
         this.severidades.value = this.severidades.value + (redId to severidades)
     }
 
-    override suspend fun pedirVinculoTelegram(redId: String): VinculoTelegram = vinculoTelegram
+    // ---- Telegram ----
 
-    override suspend fun marcarTelegramVinculado(redId: String, vinculado: Boolean) {
-        redes.value = redes.value.map { if (it.id == redId) it.copy(telegramVinculado = vinculado) else it }
+    /** Lo que diría el servidor: la prueba lo pone en true como si la persona hubiera tocado Iniciar. */
+    var telegramEnElServidor = false
+    var botTelegram = "zonda_alertas_bot"
+    var errorTelegram: ErrorZonda? = null
+    val vinculosPedidos = mutableListOf<Pair<String, PreferenciasAvisos>>()
+    val avisosEnviados = mutableListOf<Pair<String, PreferenciasAvisos>>()
+    var consultasTelegram = 0
+    var pruebasEnviadas = 0
+    var desvinculos = 0
+
+    override suspend fun pedirVinculoTelegram(redId: String, avisos: PreferenciasAvisos): VinculoTelegram {
+        errorTelegram?.let { throw it }
+        vinculosPedidos += redId to avisos
+        return vinculoTelegram
+    }
+
+    override suspend fun consultarTelegram(redId: String): EstadoTelegram {
+        consultasTelegram++
+        errorTelegram?.let { throw it }
+        redes.value = redes.value.map { if (it.id == redId) it.copy(telegramVinculado = telegramEnElServidor, telegramBot = botTelegram) else it }
+        return EstadoTelegram(telegramEnElServidor, botTelegram, PreferenciasAvisos())
+    }
+
+    override suspend fun desvincularTelegram(redId: String) {
+        errorTelegram?.let { throw it }
+        desvinculos++
+        telegramEnElServidor = false
+        redes.value = redes.value.map { if (it.id == redId) it.copy(telegramVinculado = false) else it }
+    }
+
+    override suspend fun enviarAvisoDePrueba(redId: String) {
+        errorTelegram?.let { throw it }
+        pruebasEnviadas++
+    }
+
+    override suspend fun enviarAvisosTelegram(redId: String, avisos: PreferenciasAvisos) {
+        errorTelegram?.let { throw it }
+        avisosEnviados += redId to avisos
     }
 
     override fun observarCatalogo(redId: String): Flow<Catalogo> = catalogos.map { it[redId] ?: Catalogo.VACIO }

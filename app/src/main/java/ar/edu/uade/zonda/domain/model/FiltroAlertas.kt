@@ -64,11 +64,8 @@ data class FiltroAlertas(
     companion object {
         val TODAS = FiltroAlertas()
 
-        /** El filtro que aplica un contador de la pantalla Estado: solo las sin revisar de esa severidad (RF01, criterio 4). */
+        /** Solo las sin revisar de una severidad: lo que deja en la lista un contador de Estado (RF01, criterio 4). */
         fun sinRevisarDe(severidad: Severidad) = FiltroAlertas(estado = FiltroEstado.SIN_REVISAR, severidades = setOf(severidad))
-
-        /** "Ver todas" de Estado: la lista con las sin revisar. */
-        val SIN_REVISAR = FiltroAlertas(estado = FiltroEstado.SIN_REVISAR)
     }
 }
 

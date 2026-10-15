@@ -19,6 +19,9 @@ object Rutas {
     const val SEVERIDADES_INICIALES = "severidades_iniciales"
     const val CONEXION_INICIAL = "conexion_inicial"
 
+    /** Conectar Telegram después de la red conectada, con "Ahora no" (Figma 50-942 y 50-1003). */
+    const val TELEGRAM_INICIAL = "telegram_inicial"
+
     /** Conexión fuera del primer inicio: sin red pareada después de la introducción, agregar otra red o conectar de nuevo. */
     const val CONEXION = "conexion"
 
@@ -28,6 +31,9 @@ object Rutas {
     const val AVISOS_POR_SEVERIDAD = "avisos_por_severidad"
     const val INTRODUCCION = "introduccion"
     const val CONDICIONES_DE_USO = "condiciones_de_uso"
+
+    /** Telegram de la red activa: conectarlo (Figma 66-4205) o, si ya está, probarlo y desvincularlo (66-3484). */
+    const val TELEGRAM = "telegram"
 
     /** Severidad por ataque de la red activa, desde Ajustes o desde Avisos por severidad (RF06). */
     const val SEVERIDADES = "severidades"
@@ -69,4 +75,16 @@ fun NavHostController.irAPestania(ruta: String) {
         launchSingleTop = true
         restoreState = true
     }
+}
+
+/**
+ * La flecha de volver del detalle, que también se abre desde el aviso de Telegram (cambios 20 y 21).
+ * Con pantallas atrás vuelve a la anterior. Telegram abre el enlace sin pedir una tarea nueva, así que
+ * Zonda queda dentro de la tarea de Telegram con el detalle como única pantalla: ahí abre Zonda en su
+ * propia tarea, en la pantalla principal, y cierra esta copia. Eso es `navigateUp()`. Antes se usaba
+ * `popBackStack()`, que sacaba esa única pantalla de la pila: la flecha no hacía nada a la vista y el
+ * detalle quedaba congelado, sin mostrar los cambios (por ejemplo, el conflicto ya resuelto).
+ */
+fun NavHostController.volver() {
+    navigateUp()
 }

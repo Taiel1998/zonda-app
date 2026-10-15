@@ -40,6 +40,8 @@ data class Alerta(
     /** Versión que lleva el servidor; sirve para detectar que otra persona la revisó antes (409). */
     val version: Int,
     val actualizadaEn: Instant,
+    /** Cuándo salió el primer aviso de Telegram de esta alerta; null si no salió ninguno. */
+    val avisoTelegram: Instant? = null,
 ) {
     val duracion: Duration
         get() = Duration.between(inicio, fin)

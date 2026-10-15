@@ -24,6 +24,7 @@ import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.BorrarDatosLocales
 import ar.edu.uade.zonda.domain.usecase.CambiarSeveridades
 import ar.edu.uade.zonda.domain.usecase.DeshacerRevision
+import ar.edu.uade.zonda.domain.usecase.EnviarAvisosTelegram
 import ar.edu.uade.zonda.domain.usecase.ObservarAlertas
 import ar.edu.uade.zonda.domain.usecase.ObservarResumen
 import ar.edu.uade.zonda.domain.usecase.ObtenerDetalleAlerta
@@ -40,6 +41,7 @@ import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 
 /**
@@ -68,7 +70,9 @@ class AppContainer(context: Context) {
         ProveedorDeApiRetrofit(tokens = { redId -> almacenSeguro.leer(RedesRepositoryImpl.claveToken(redId)) }, clienteBase = clienteHttp)
     }
     val conectividad: Conectividad by lazy { ConectividadAndroid(appContext) }
-    val sincronizador: Sincronizador by lazy { SincronizadorHttp(baseDeDatos, apis) }
+    val sincronizador: Sincronizador by lazy {
+        SincronizadorHttp(baseDeDatos, apis, avisosDelTelefono = { preferencias.observarAvisos().first() })
+    }
 
     // Repositorios
     val redes: RedesRepository by lazy { RedesRepositoryImpl(baseDeDatos.redesDao(), almacenSeguro, apis) }
@@ -106,5 +110,6 @@ class AppContainer(context: Context) {
     val parearRed: ParearRed by lazy { ParearRed(redes) }
     val quitarDispositivo: QuitarDispositivo by lazy { QuitarDispositivo(redes, alertas, accionesPendientes) }
     val borrarDatosLocales: BorrarDatosLocales by lazy { BorrarDatosLocales(redes, alertas, accionesPendientes) }
-    val vincularTelegram: VincularTelegram by lazy { VincularTelegram(redes) }
+    val vincularTelegram: VincularTelegram by lazy { VincularTelegram(redes, preferencias) }
+    val enviarAvisosTelegram: EnviarAvisosTelegram by lazy { EnviarAvisosTelegram(redes) }
 }

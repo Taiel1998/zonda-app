@@ -95,6 +95,8 @@ class Alerta(BaseModel):
     historial: list[Revision]
     version: int
     actualizadaEn: str
+    # Cuándo salió el primer aviso de Telegram de esta alerta; null si no salió ninguno.
+    avisoTelegram: str | None = None
 
 
 class PaginaAlertas(BaseModel):
@@ -183,6 +185,32 @@ class VinculoTelegram(BaseModel):
     codigo: str
     enlaceBot: str
     vence: str
+
+
+# Cómo avisa Telegram una severidad. "vibracion" es un mensaje sin sonido: el bot no puede pedir
+# solo vibración, Telegram manda con sonido o en silencio.
+ModoAviso = Literal["sonido", "vibracion", "sin_aviso"]
+
+
+class AvisosTelegram(BaseModel):
+    """Cómo avisa Telegram cada severidad en un teléfono (Figma 51-1688). Por defecto, los del Figma."""
+
+    alta: ModoAviso = "sonido"
+    media: ModoAviso = "vibracion"
+    baja: ModoAviso = "sin_aviso"
+
+
+class VinculoEntrada(BaseModel):
+    # Los avisos que eligió la persona en la app: el bot los usa desde el primer aviso.
+    avisos: AvisosTelegram | None = None
+
+
+class EstadoTelegram(BaseModel):
+    vinculado: bool
+    # Usuario del bot, sin la arroba.
+    bot: str
+    vinculadoEn: str | None
+    avisos: AvisosTelegram
 
 
 class Catalogo(BaseModel):

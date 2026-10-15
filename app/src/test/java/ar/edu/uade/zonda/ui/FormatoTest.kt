@@ -67,4 +67,23 @@ class FormatoTest {
         assertEquals("1 h 20 min", Formato.duracionCorta(Duration.ofMinutes(80)))
         assertEquals("1 d 3 h", Formato.duracionCorta(Duration.ofHours(27)))
     }
+
+    @Test
+    fun `hace cuanto del semaforo, en minutos, horas o dias`() {
+        val ahora = instante.plus(Duration.ofMinutes(5))
+        assertEquals("5 min", Formato.haceCuanto(instante, ahora))
+        assertEquals("menos de 1 min", Formato.haceCuanto(instante, instante.plusSeconds(40)))
+        assertEquals("menos de 1 min", Formato.haceCuanto(ahora, instante))
+        assertEquals("59 min", Formato.haceCuanto(instante, instante.plus(Duration.ofMinutes(59))))
+        assertEquals("3 h", Formato.haceCuanto(instante, instante.plus(Duration.ofMinutes(3 * 60 + 40))))
+        assertEquals("1 día", Formato.haceCuanto(instante, instante.plus(Duration.ofHours(30))))
+        assertEquals("4 días", Formato.haceCuanto(instante, instante.plus(Duration.ofDays(4))))
+    }
+
+    @Test
+    fun `la hora de los datos lleva el dia cuando no es de hoy`() {
+        assertEquals("02:09", Formato.horaDeLosDatos(instante, instante.plus(Duration.ofHours(3)), buenosAires))
+        assertEquals("ayer 02:09", Formato.horaDeLosDatos(instante, instante.plus(Duration.ofDays(1)), buenosAires))
+        assertEquals("dom 27/09 02:09", Formato.horaDeLosDatos(instante, instante.plus(Duration.ofDays(3)), buenosAires))
+    }
 }

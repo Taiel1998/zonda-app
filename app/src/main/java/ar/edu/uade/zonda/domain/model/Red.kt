@@ -14,6 +14,7 @@ data class Red(
     val urlBase: String,
     val cursor: String?,
     val ultimaSincronizacion: Instant?,
+    /** Un chat de Telegram recibe los avisos de esta red en este teléfono (lo confirma el servidor). */
     val telegramVinculado: Boolean,
     val activa: Boolean,
     /** El servidor respondió 401: el token venció o fue revocado. La caché sigue; hay que parear de nuevo (RNF12). */
@@ -21,6 +22,8 @@ data class Red(
     /** Cuándo se emitió y cuándo vence el acceso de este teléfono (vienen en la respuesta del pareo; 90 días). */
     val accesoEmitido: Instant? = null,
     val accesoVence: Instant? = null,
+    /** Usuario del bot de Telegram de la red, sin la arroba; null hasta que el servidor lo diga. */
+    val telegramBot: String? = null,
 ) {
     /** Nunca se sincronizó: la pantalla Estado muestra "sin datos" y nunca un semáforo verde (RF01, criterio 3). */
     val sinDatos: Boolean
@@ -123,10 +126,21 @@ data class ProgresoDescarga(
     val total: Int?,
 )
 
-/** Respuesta del servidor al pedir el vínculo con Telegram: un código de un uso y el enlace al bot. */
+/**
+ * Respuesta del servidor al pedir el vínculo con Telegram: un código de un uso (10 minutos) y el
+ * enlace que abre el chat con el bot (`https://t.me/<bot>?start=<código>`).
+ */
 data class VinculoTelegram(
     val codigo: String,
     val enlaceBot: String,
+)
+
+/** Lo que dice el servidor de Telegram en este teléfono: si hay un chat vinculado, con qué bot y cómo avisa. */
+data class EstadoTelegram(
+    val vinculado: Boolean,
+    /** Usuario del bot, sin la arroba. */
+    val bot: String,
+    val avisos: PreferenciasAvisos,
 )
 
 /**

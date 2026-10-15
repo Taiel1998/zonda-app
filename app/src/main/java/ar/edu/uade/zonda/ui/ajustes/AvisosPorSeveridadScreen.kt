@@ -29,6 +29,7 @@ import ar.edu.uade.zonda.ui.components.BotonEnlace
 import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.components.SelectorDeAvisos
 import ar.edu.uade.zonda.ui.components.TarjetaSeccion
+import ar.edu.uade.zonda.ui.nombreDelBot
 
 /**
  * Avisos por severidad (Figma 51-1688): cómo avisa Telegram cada severidad, de dónde sale el sonido de
@@ -44,6 +45,7 @@ fun AvisosPorSeveridadScreen(
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     AvisosPorSeveridadContenido(
         avisos = estado.borradorAvisos ?: estado.avisos,
+        bot = nombreDelBot(estado.redActiva),
         alCambiar = viewModel::cambiarAvisoDelBorrador,
         alCambiarSeveridades = {
             viewModel.empezarAEditarSeveridades()
@@ -64,6 +66,8 @@ fun AvisosPorSeveridadScreen(
 fun AvisosPorSeveridadContenido(
     avisos: PreferenciasAvisos,
     alCambiar: (Severidad, ModoAviso) -> Unit,
+    /** "@zonda_alertas_bot": el chat donde se cambia el sonido de Telegram. */
+    bot: String = stringResource(R.string.telegram_bot),
     alCambiarSeveridades: () -> Unit,
     alGuardar: () -> Unit,
     alVolver: () -> Unit,
@@ -100,7 +104,7 @@ fun AvisosPorSeveridadContenido(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = stringResource(R.string.avisos_sonido_telegram, stringResource(R.string.telegram_bot)),
+                        text = stringResource(R.string.avisos_sonido_telegram, bot),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

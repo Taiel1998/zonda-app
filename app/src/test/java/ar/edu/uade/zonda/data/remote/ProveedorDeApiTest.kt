@@ -6,6 +6,7 @@ import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.test.runTest
+import okhttp3.ConnectionSpec
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -138,6 +139,21 @@ class ProveedorDeApiTest {
         val direccion = apagado.url("/").toString()
         apagado.shutdown()
         assertTrue(errorDe { proveedor().sinToken(direccion).salud() } is ErrorZonda.SinConexion)
+    }
+
+    @Test
+    fun `una direccion http que el cliente no deja usar es ServidorNoVerificado y no llega al servidor`() = runTest {
+        // En Android lo bloquea la configuración de red; acá, un cliente sin texto claro. OkHttp tira la
+        // misma excepción (UnknownServiceException) antes de conectarse.
+        val soloHttps = ProveedorDeApiRetrofit(
+            tokens = { "token-1" },
+            clienteBase = OkHttpClient.Builder().connectionSpecs(listOf(ConnectionSpec.MODERN_TLS)).build(),
+        )
+
+        val error = errorDe { soloHttps.para("red-1", servidor.url("/").toString()).salud() }
+
+        assertTrue(error is ErrorZonda.ServidorNoVerificado)
+        assertEquals(0, servidor.requestCount)
     }
 
     private suspend fun errorDe(operacion: OperacionHttp = OperacionHttp.GENERAL, bloque: suspend () -> Any?): Throwable? =

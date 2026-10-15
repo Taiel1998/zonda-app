@@ -46,7 +46,7 @@ class MigracionesTest {
         llevarAVersion1()
 
         val migrada = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO)
-            .addMigrations(ZondaDatabase.MIGRACION_1_2, ZondaDatabase.MIGRACION_2_3)
+            .addMigrations(*MIGRACIONES)
             .allowMainThreadQueries()
             .build()
         val red = migrada.redesDao().obtener("red-1")?.aDominio()
@@ -81,7 +81,7 @@ class MigracionesTest {
         llevarAVersion2()
 
         val migrada = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO)
-            .addMigrations(ZondaDatabase.MIGRACION_1_2, ZondaDatabase.MIGRACION_2_3)
+            .addMigrations(*MIGRACIONES)
             .allowMainThreadQueries()
             .build()
         val revisada = AlertasRepositoryImpl(migrada.alertasDao(), reloj = { Fixtures.AHORA }).observarAlerta("red-1", "a-1").first()!!
@@ -94,11 +94,50 @@ class MigracionesTest {
         migrada.close()
     }
 
+    @Test
+    fun `la migracion 3 a 4 suma la hora del aviso de Telegram y el bot de la red`() = runTest {
+        val nueva = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO).allowMainThreadQueries().build()
+        nueva.redesDao().insertar(Fixtures.red("red-1").aEntidad(creadaEn = Fixtures.AHORA))
+        AlertasRepositoryImpl(nueva.alertasDao(), reloj = { Fixtures.AHORA }).guardarDelServidor(listOf(Fixtures.alerta("a-1")))
+        nueva.close()
+        llevarAVersion3()
+
+        val migrada = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO)
+            .addMigrations(*MIGRACIONES)
+            .allowMainThreadQueries()
+            .build()
+        val alerta = AlertasRepositoryImpl(migrada.alertasDao(), reloj = { Fixtures.AHORA }).observarAlerta("red-1", "a-1").first()!!
+        assertNull(alerta.avisoTelegram)
+        assertNull(migrada.redesDao().obtener("red-1")?.aDominio()?.telegramBot)
+
+        migrada.redesDao().actualizarTelegram("red-1", vinculado = true, bot = "zonda_alertas_bot")
+        val red = migrada.redesDao().obtener("red-1")?.aDominio()
+        assertEquals("zonda_alertas_bot", red?.telegramBot)
+        assertEquals(true, red?.telegramVinculado)
+        migrada.close()
+    }
+
+    /** Deja el archivo como lo dejaba la versión 3: sin lo que suma Telegram (fase 10). */
+    private fun llevarAVersion3() {
+        val db = SQLiteDatabase.openDatabase(contexto.getDatabasePath(ARCHIVO).path, null, SQLiteDatabase.OPEN_READWRITE)
+        db.beginTransaction()
+        try {
+            quitarColumnas(db, "alertas", listOf("avisoTelegramEn"))
+            quitarColumnas(db, "redes", listOf("telegramBot"))
+            db.version = 3
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+    }
+
     /**
      * Deja el archivo como lo dejaba la versión 2: sin el protocolo ni las horas de revisión, y con los
      * motivos que tenía la app antes del Figma.
      */
     private fun llevarAVersion2() {
+        llevarAVersion3()
         val db = SQLiteDatabase.openDatabase(contexto.getDatabasePath(ARCHIVO).path, null, SQLiteDatabase.OPEN_READWRITE)
         db.beginTransaction()
         try {
@@ -132,7 +171,8 @@ class MigracionesTest {
         }.filterNot { it in quitar }
         val sinColumnas = quitar.fold(creacion) { sql, columna -> sql.replace(Regex(",\\s*`$columna`[^,)]*"), "") }
         val lista = columnas.joinToString { "`$it`" }
-        db.execSQL(sinColumnas.replace("`$tabla`", "`${tabla}_anterior`"))
+        // Una tabla ya rehecha queda con el nombre entre comillas dobles ("alertas"); la de Room, entre acentos.
+        db.execSQL(sinColumnas.replaceFirst(Regex("CREATE TABLE [`\"]?$tabla[`\"]?"), "CREATE TABLE `${tabla}_anterior`"))
         db.execSQL("INSERT INTO ${tabla}_anterior ($lista) SELECT $lista FROM $tabla")
         db.execSQL("DROP TABLE $tabla")
         db.execSQL("ALTER TABLE ${tabla}_anterior RENAME TO $tabla")
@@ -154,7 +194,7 @@ class MigracionesTest {
 
         db.beginTransaction()
         try {
-            db.execSQL(creacionVersion1.replace("`redes`", "`redes_v1`"))
+            db.execSQL(creacionVersion1.replaceFirst(Regex("CREATE TABLE [`\"]?redes[`\"]?"), "CREATE TABLE `redes_v1`"))
             db.execSQL("INSERT INTO redes_v1 ($lista) SELECT $lista FROM redes")
             db.execSQL("DROP TABLE redes")
             db.execSQL("ALTER TABLE redes_v1 RENAME TO redes")
@@ -168,6 +208,7 @@ class MigracionesTest {
 
     private companion object {
         const val ARCHIVO = "migracion.db"
+        val MIGRACIONES = arrayOf(ZondaDatabase.MIGRACION_1_2, ZondaDatabase.MIGRACION_2_3, ZondaDatabase.MIGRACION_3_4)
         val COLUMNAS_VERSION_2 = listOf("accesoVencido", "accesoEmitidoEn", "accesoVenceEn")
     }
 }

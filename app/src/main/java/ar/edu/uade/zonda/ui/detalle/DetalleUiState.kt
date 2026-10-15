@@ -2,6 +2,7 @@ package ar.edu.uade.zonda.ui.detalle
 
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.AvisoRecibido
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
@@ -29,6 +30,8 @@ sealed interface DetalleUiState {
         val recienRevisada: Boolean = false,
         /** El nombre con el que quedó registrado este teléfono: firma sus revisiones que todavía no salieron. */
         val nombreDelTelefono: String = "",
+        /** La red de la alerta: el texto que se comparte dice de qué red viene, como el aviso. */
+        val nombreDeLaRed: String = "",
     ) : DetalleUiState
 
     /**
@@ -38,6 +41,8 @@ sealed interface DetalleUiState {
     data class NoDisponible(
         val sinConexion: Boolean,
         val error: ErrorZonda?,
+        /** Lo que trajo el enlace del aviso (severidad, servicio y hora), si se abrió desde Telegram (Figma 3-139). */
+        val aviso: AvisoRecibido? = null,
     ) : DetalleUiState
 }
 

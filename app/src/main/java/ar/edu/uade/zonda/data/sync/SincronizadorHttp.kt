@@ -18,6 +18,7 @@ import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.TipoAccion
@@ -39,8 +40,9 @@ import kotlinx.coroutines.sync.withLock
  * 2. Baja las alertas nuevas o modificadas desde el cursor, página por página, guardando el cursor
  *    después de cada una. Un 410 (el servidor se reinstaló) dispara una sincronización completa que
  *    conserva lo guardado y lo pendiente.
- * 3. Actualiza el catálogo y las severidades de la red, purga las alertas de más de 30 días (RNF03)
- *    y registra la hora de la sincronización.
+ * 3. Actualiza el catálogo, las severidades y el estado de Telegram de la red (y le manda los avisos
+ *    del teléfono si el servidor tiene otros), purga las alertas de más de 30 días (RNF03) y registra
+ *    la hora de la sincronización.
  *
  * Mientras baja desde cero (la primera vez, o después de borrar los datos locales) publica cuántas
  * van en [progresoDescarga], para la tarjeta "Descargando alertas…" de Estado (Figma 50-616).
@@ -50,6 +52,8 @@ class SincronizadorHttp(
     private val apis: ProveedorDeApi,
     private val reloj: () -> Instant = Instant::now,
     private val diasDeCache: Long = DIAS_DE_CACHE,
+    /** Cómo avisa Telegram cada severidad en este teléfono (las preferencias de DataStore). */
+    private val avisosDelTelefono: suspend () -> PreferenciasAvisos = { PreferenciasAvisos() },
 ) : Sincronizador {
 
     private val alertasDao get() = base.alertasDao()
@@ -84,6 +88,7 @@ class SincronizadorHttp(
         val envio = enviarCola(redId, api)
         val descarga = descargar(redId, red.cursor, api)
         actualizarCatalogoYSeveridades(redId, api)
+        actualizarTelegram(redId, api)
         alertasDao.purgarAnterioresA(redId, reloj().minus(Duration.ofDays(diasDeCache)).toEpochMilli())
 
         val hora = reloj()
@@ -274,6 +279,28 @@ class SincronizadorHttp(
                 // Otra persona pudo cambiar las severidades desde su teléfono: rige lo que tiene el servidor.
                 val severidades = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.severidades() }
                 redesDao.guardarSeveridades(redId, convertir { severidades.aSeveridadPorTipo() }.aEntidades(redId))
+            }
+        } catch (e: ErrorZonda.NoAutorizado) {
+            throw e
+        } catch (e: ErrorZonda) {
+            // Se reintenta en la sincronización siguiente.
+        }
+    }
+
+    // ---- 4. Telegram ----
+
+    /**
+     * Si el chat sigue vinculado (la persona pudo bloquear el bot) y con qué bot. Si el servidor tiene
+     * otros avisos que el teléfono (se cambiaron sin conexión), le manda los del teléfono. Es un dato
+     * secundario, como el catálogo: si falla, la sincronización vale igual.
+     */
+    private suspend fun actualizarTelegram(redId: String, api: ZondaApi) {
+        try {
+            val estado = conErroresTraducidos(OperacionHttp.TELEGRAM) { api.telegram() }.let { convertir { it.aDominio() } }
+            redesDao.actualizarTelegram(redId, estado.vinculado, estado.bot)
+            val avisos = avisosDelTelefono()
+            if (estado.avisos != avisos) {
+                conErroresTraducidos(OperacionHttp.TELEGRAM) { api.guardarAvisos(avisos.aDto()) }
             }
         } catch (e: ErrorZonda.NoAutorizado) {
             throw e

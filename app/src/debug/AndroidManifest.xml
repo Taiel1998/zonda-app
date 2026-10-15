@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Solo en el build de debug: configuración de red que permite texto claro hacia el emulador
-     (10.0.2.2), donde corre la API local sin HTTPS, y un receptor para correr la sincronización
-     en segundo plano desde la terminal. En release no existen y Android exige HTTPS. -->
+<!-- Solo en el build de debug: un receptor para correr la sincronización en segundo plano desde la
+     terminal. La configuración de red no se declara acá: el manifiesto principal ya apunta a
+     res/xml/network_security_config.xml y, en debug, ese archivo es el de esta carpeta, que permite
+     texto claro hacia la API local. En release no existen ni el receptor ni esa excepción. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <application android:networkSecurityConfig="@xml/network_security_config">
+    <application>
 
         <!-- Para probar la notificación sin esperar los 15 minutos (ver SincronizarAhoraReceiver). -->
         <receiver

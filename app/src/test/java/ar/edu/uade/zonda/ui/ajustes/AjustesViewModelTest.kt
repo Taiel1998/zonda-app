@@ -16,6 +16,7 @@ import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
 import ar.edu.uade.zonda.domain.usecase.BorrarDatosLocales
 import ar.edu.uade.zonda.domain.usecase.CambiarSeveridades
+import ar.edu.uade.zonda.domain.usecase.EnviarAvisosTelegram
 import ar.edu.uade.zonda.domain.usecase.QuitarDispositivo
 import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import ar.edu.uade.zonda.ui.ReglaDispatcherPrincipal
@@ -52,6 +53,7 @@ class AjustesViewModelTest {
             cambiarSeveridades = CambiarSeveridades(redes, acciones, GeneradorDeIdsFijo(), reloj = { Fixtures.AHORA }),
             quitarDispositivo = QuitarDispositivo(redes, alertas, acciones),
             borrarDatosLocales = BorrarDatosLocales(redes, alertas, acciones),
+            enviarAvisosTelegram = EnviarAvisosTelegram(redes),
             alcanceDeEnvio = backgroundScope,
             nombreDelTelefono = "Google Pixel 7",
         )
@@ -109,9 +111,13 @@ class AjustesViewModelTest {
         assertEquals(ModoAviso.VIBRACION, preferencias.avisos.value.media) // todavía no se guardó
 
         viewModel.guardarAvisos()
+        runCurrent()
         assertEquals(ModoAviso.SIN_AVISO, preferencias.avisos.value.media)
         assertEquals(ModoAviso.SIN_AVISO, viewModel.estado.value.avisos.media)
         assertNull(viewModel.estado.value.borradorAvisos)
+        // Le llegan al bot de cada red, para que avise como eligió la persona.
+        assertEquals(listOf("red-1", "red-2"), redes.avisosEnviados.map { it.first })
+        assertEquals(ModoAviso.SIN_AVISO, redes.avisosEnviados.first().second.media)
 
         viewModel.empezarAEditarAvisos()
         viewModel.cambiarAvisoDelBorrador(Severidad.ALTA, ModoAviso.SIN_AVISO)
@@ -148,15 +154,12 @@ class AjustesViewModelTest {
     }
 
     @Test
-    fun `el interruptor de notificaciones se guarda y Conectar Telegram avisa que llega despues`() = runTest {
+    fun `el interruptor de notificaciones se guarda`() = runTest {
         val viewModel = viewModel()
 
         viewModel.cambiarNotificaciones(false)
         assertFalse(preferencias.notificaciones.value)
         assertFalse(viewModel.estado.value.notificacionesActivas)
-
-        viewModel.conectarTelegram()
-        assertEquals(AvisoAjustes.TelegramPronto, viewModel.estado.value.aviso)
     }
 
     @Test

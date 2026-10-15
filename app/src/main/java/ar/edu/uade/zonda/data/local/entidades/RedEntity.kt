@@ -23,6 +23,8 @@ data class RedEntity(
     @ColumnInfo(defaultValue = "0") val accesoVencido: Boolean = false,
     val accesoEmitidoEn: Long? = null,
     val accesoVenceEn: Long? = null,
+    // Versión 4 (ZondaDatabase.MIGRACION_3_4): el usuario del bot de Telegram de la red, sin la arroba.
+    val telegramBot: String? = null,
 )
 
 /** Severidad elegida por la red para cada tipo de ataque. Si no hay filas, rige la recomendada. */

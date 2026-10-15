@@ -16,6 +16,7 @@ import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
 import java.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -38,6 +39,9 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
     var resultadoSincronizacion = ResultadoSincronizacion(0, 0, 0, 0, 0, Instant.EPOCH)
     var errorAlSincronizar: ErrorZonda? = null
     val sincronizaciones = mutableListOf<String>()
+
+    /** Si no es null, la sincronización espera hasta que la prueba lo complete (para ver qué pasa mientras corre). */
+    var esperaAlSincronizar: CompletableDeferred<Unit>? = null
 
     /** La primera descarga en curso, para la tarjeta de Estado. */
     val progresoDescarga = MutableStateFlow<ProgresoDescarga?>(null)
@@ -111,6 +115,7 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
 
     override suspend fun sincronizar(redId: String): ResultadoSincronizacion {
         sincronizaciones += redId
+        esperaAlSincronizar?.await()
         errorAlSincronizar?.let { throw it }
         return resultadoSincronizacion
     }

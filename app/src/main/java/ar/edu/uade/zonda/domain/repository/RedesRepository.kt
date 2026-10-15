@@ -3,6 +3,8 @@ package ar.edu.uade.zonda.domain.repository
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
+import ar.edu.uade.zonda.domain.model.EstadoTelegram
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.RedPareada
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
@@ -47,10 +49,23 @@ interface RedesRepository {
     /** Guarda las severidades en el teléfono. El envío al servidor va por la cola de acciones. */
     suspend fun guardarSeveridadesLocal(redId: String, severidades: SeveridadPorTipo)
 
-    /** Pide al servidor el código de un uso para vincular el chat de Telegram (`POST /telegram/vinculo`). */
-    suspend fun pedirVinculoTelegram(redId: String): VinculoTelegram
+    /**
+     * Pide al servidor el código de un uso para vincular el chat de Telegram (`POST /telegram/vinculo`),
+     * con los [avisos] de este teléfono para que el bot los use desde el primer aviso.
+     */
+    suspend fun pedirVinculoTelegram(redId: String, avisos: PreferenciasAvisos): VinculoTelegram
 
-    suspend fun marcarTelegramVinculado(redId: String, vinculado: Boolean)
+    /** Pregunta al servidor si hay un chat vinculado (`GET /telegram`) y deja la red al día. */
+    suspend fun consultarTelegram(redId: String): EstadoTelegram
+
+    /** El chat deja de recibir los avisos de la red (`DELETE /telegram/vinculo`). */
+    suspend fun desvincularTelegram(redId: String)
+
+    /** El bot manda un aviso de prueba al chat vinculado (`POST /telegram/prueba`). */
+    suspend fun enviarAvisoDePrueba(redId: String)
+
+    /** Cómo avisa Telegram cada severidad en este teléfono, para el bot de la red (`PUT /telegram/avisos`). */
+    suspend fun enviarAvisosTelegram(redId: String, avisos: PreferenciasAvisos)
 
     /** Catálogo de servicios y nombres de equipos de la red (`GET /catalogo`), el último guardado. */
     fun observarCatalogo(redId: String): Flow<Catalogo>

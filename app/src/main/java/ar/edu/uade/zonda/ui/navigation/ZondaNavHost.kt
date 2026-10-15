@@ -46,10 +46,10 @@ import ar.edu.uade.zonda.ui.ajustes.DetallesTecnicosScreen
 import ar.edu.uade.zonda.ui.ajustes.RedesScreen
 import ar.edu.uade.zonda.ui.ajustes.ajustesViewModel
 import ar.edu.uade.zonda.ui.alertas.AlertasScreen
+import ar.edu.uade.zonda.ui.alertas.alertasViewModel
 import ar.edu.uade.zonda.ui.conexion.ConexionScreen
 import ar.edu.uade.zonda.ui.detalle.RutaDetalle
 import ar.edu.uade.zonda.ui.detalle.detalleAlerta
-import ar.edu.uade.zonda.ui.estado.DescargaInicialViewModel
 import ar.edu.uade.zonda.ui.estado.EstadoScreen
 import ar.edu.uade.zonda.ui.inicio.ArranqueViewModel
 import ar.edu.uade.zonda.ui.inicio.DestinoInicial
@@ -64,6 +64,7 @@ import ar.edu.uade.zonda.ui.recorrido.RecorridoViewModel
 import ar.edu.uade.zonda.ui.recorrido.RegistroRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.resumen.ResumenScreen
+import ar.edu.uade.zonda.ui.telegram.TelegramScreen
 import ar.edu.uade.zonda.ui.theme.etiquetaBarra
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 
@@ -73,7 +74,8 @@ import ar.edu.uade.zonda.ui.viewModelDeZonda
  * - Entrada por el ícono: sin red pareada, el primer inicio (o Conexión si la introducción ya se hizo);
  *   con red, Estado.
  * - Entradas externas: el enlace del aviso de Telegram abre el detalle de esa alerta; la notificación
- *   local abre la pestaña Alertas.
+ *   local abre la pestaña Alertas. Telegram abre Zonda dentro de su propia tarea, con el detalle como
+ *   única pantalla; la flecha del detalle abre entonces Zonda en su tarea, en Estado ([volver]).
  * - Una barra inferior con Estado, Alertas y Ajustes, y una pila de pantallas que se cierran con Volver
  *   (el Resumen se abre desde Estado). La barra solo se ve en los tres destinos principales.
  * - El recorrido de once pasos se muestra sobre las pestañas la primera vez (RF05).
@@ -184,9 +186,16 @@ fun ZondaNavHost(
                             )
                         }
                         composable(Rutas.ESTADO) {
-                            val descarga = viewModelDeZonda { DescargaInicialViewModel(it.redes, it.alertas) }
-                            val progreso by descarga.progreso.collectAsStateWithLifecycle()
-                            EstadoScreen(progreso = progreso, alAbrirResumen = { navController.navigate(Rutas.RESUMEN) })
+                            EstadoScreen(
+                                alAbrirResumen = { navController.navigate(Rutas.RESUMEN) },
+                                alAbrirDetalle = { alertaId -> navController.navigate(RutaDetalle.crear(alertaId)) },
+                                alVerTodas = {
+                                    // La lista completa, como el Figma (de 1-3 a 2-3), aunque Alertas tuviera un filtro puesto.
+                                    navController.irAPestania(Rutas.ALERTAS)
+                                    navController.currentBackStackEntry?.savedStateHandle?.set(VER_TODAS, true)
+                                },
+                                alConectar = { navController.navigate(Rutas.CONEXION) },
+                            )
                         }
                         composable(Rutas.RESUMEN) {
                             ResumenScreen(alVolver = { navController.popBackStack() })
@@ -212,10 +221,19 @@ fun ZondaNavHost(
                                     filtroDelEnlace(entrada.arguments)
                                 }
                             }
+                            val viewModel = alertasViewModel()
+                            val verTodas by entrada.savedStateHandle.getStateFlow(VER_TODAS, false).collectAsStateWithLifecycle()
+                            LaunchedEffect(verTodas) {
+                                if (verTodas) {
+                                    viewModel.quitarFiltros()
+                                    entrada.savedStateHandle[VER_TODAS] = false
+                                }
+                            }
                             AlertasScreen(
                                 alAbrirDetalle = { alertaId -> navController.navigate(RutaDetalle.crear(alertaId)) },
                                 alConectarDeNuevo = { navController.navigate(Rutas.CONEXION) },
                                 filtroPedido = filtroPedido,
+                                viewModel = viewModel,
                             )
                         }
                         composable(Rutas.AJUSTES) {
@@ -224,6 +242,7 @@ fun ZondaNavHost(
                                 alAbrirDetallesTecnicos = { navController.navigate(Rutas.DETALLES_TECNICOS) },
                                 alAbrirAvisos = { navController.navigate(Rutas.AVISOS_POR_SEVERIDAD) },
                                 alAbrirSeveridades = { navController.navigate(Rutas.SEVERIDADES) },
+                                alAbrirTelegram = { navController.navigate(Rutas.TELEGRAM) },
                                 alVerIntroduccion = { navController.navigate(Rutas.INTRODUCCION) },
                                 alVerCondiciones = { navController.navigate(Rutas.CONDICIONES_DE_USO) },
                                 alAgregarRed = { navController.navigate(Rutas.CONEXION) },
@@ -241,6 +260,9 @@ fun ZondaNavHost(
                         }
                         composable(Rutas.DETALLES_TECNICOS) {
                             DetallesTecnicosScreen(alVolver = { navController.popBackStack() })
+                        }
+                        composable(Rutas.TELEGRAM) {
+                            TelegramScreen(alVolver = { navController.popBackStack() })
                         }
                         composable(Rutas.AVISOS_POR_SEVERIDAD) { entrada ->
                             AvisosPorSeveridadScreen(
@@ -280,7 +302,8 @@ fun ZondaNavHost(
                         composable(Rutas.CONDICIONES_DE_USO) {
                             CondicionesScreen(alVolver = { navController.popBackStack() })
                         }
-                        detalleAlerta(alVolver = { navController.popBackStack() }, alPedirRed = arranque::activarRed)
+                        // El detalle puede ser la única pantalla (abierto desde Telegram): la flecha usa volver().
+                        detalleAlerta(alVolver = { navController.volver() }, alPedirRed = arranque::activarRed)
                     }
                 }
             }
@@ -317,6 +340,9 @@ private fun viewModelDeAjustes(navController: NavHostController, entrada: NavBac
 }
 
 private const val ENLACE_APLICADO = "enlace_aplicado"
+
+/** "Ver todas" de Estado: Alertas quita los filtros al llegar. */
+private const val VER_TODAS = "ver_todas"
 
 /** El filtro de un enlace interno (`estado=sin_revisar&severidad=alta`), o null si no trae ninguno. */
 private fun filtroDelEnlace(argumentos: Bundle?): FiltroAlertas? {

@@ -15,13 +15,14 @@ import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.ui.conexion.ConexionScreen
 import ar.edu.uade.zonda.ui.navigation.Rutas
 import ar.edu.uade.zonda.ui.navigation.irAPrincipal
+import ar.edu.uade.zonda.ui.telegram.TelegramInicialScreen
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import kotlinx.coroutines.launch
 
 /**
  * El primer inicio como grafo anidado (RF05; informe, 11.5): bienvenida (las condiciones se abren en
- * una hoja), tutorial, avisos, severidades y pareo. Todas las pantallas comparten un
- * [PrimerInicioViewModel], que vive mientras el grafo esté en la pila. Telegram se agrega en la fase 10.
+ * una hoja), tutorial, avisos, severidades, pareo y Telegram, que se puede posponer con "Ahora no".
+ * Todas las pantallas comparten un [PrimerInicioViewModel], que vive mientras el grafo esté en la pila.
  */
 fun NavGraphBuilder.primerInicio(navController: NavHostController) {
     navigation(startDestination = Rutas.BIENVENIDA, route = Rutas.PRIMER_INICIO) {
@@ -72,12 +73,16 @@ fun NavGraphBuilder.primerInicio(navController: NavHostController) {
                 alTerminar = { red ->
                     alcance.launch {
                         viewModel.alParear(red)
-                        navController.irAPrincipal()
+                        navController.navigate(Rutas.TELEGRAM_INICIAL)
                     }
                 },
                 alVolver = null,
                 alVerDetallesTecnicos = { navController.navigate(Rutas.DETALLES_TECNICOS) },
             )
+        }
+        composable(Rutas.TELEGRAM_INICIAL) {
+            // Con Telegram conectado o con "Ahora no", Estado queda como única pantalla de la pila.
+            TelegramInicialScreen(alTerminar = { navController.irAPrincipal() })
         }
     }
 }

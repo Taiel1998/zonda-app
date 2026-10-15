@@ -1,7 +1,7 @@
 """Las rutas del contrato (informe, sección 13.3). Cada una dice qué recibe, qué devuelve y qué error da."""
 
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
@@ -21,11 +21,13 @@ from .modelos import (
     MOTIVOS_POR_RESULTADO,
     TIPOS_SEVERIDAD,
     Alerta,
+    AvisosTelegram,
     Catalogo,
     Conflicto,
     Contadores,
     Estado,
     EstadoRevision,
+    EstadoTelegram,
     PaginaAlertas,
     PareoEntrada,
     PareoSalida,
@@ -34,24 +36,20 @@ from .modelos import (
     Salud,
     Severidad,
     Veredictos,
+    VinculoEntrada,
     VinculoTelegram,
 )
-from .semilla import SEVERIDAD_RECOMENDADA
+from .revisiones import aplicar_revision
+from .semilla import severidad_de
+from .telegram import BotTelegram, ErrorTelegram
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 router = APIRouter()
 
 
 def _base(request: Request) -> Base:
     return request.app.state.base
-
-
-def severidad_de(con: sqlite3.Connection, tipo_ataque: str | None) -> str:
-    """La severidad sale del tipo, según la tabla de la red (RF06). El tipo ordena, no filtra."""
-    clave = tipo_ataque or CLAVE_SIN_TIPO
-    fila = con.execute("SELECT severidad FROM severidades WHERE tipo_ataque = ?", (clave,)).fetchone()
-    return fila["severidad"] if fila else SEVERIDAD_RECOMENDADA[clave]
 
 
 def nombre_equipo(con: sqlite3.Connection, ip: str) -> str | None:
@@ -114,6 +112,7 @@ def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
         historial=historial_de(con, fila["id"]),
         version=fila["version"],
         actualizadaEn=fila["actualizada_en"],
+        avisoTelegram=fila["aviso_telegram_en"],
     )
 
 
@@ -237,24 +236,8 @@ def revisar_alerta(
                     alerta=alerta_dto(con, fila),
                 )
                 raise HTTPException(status_code=409, detail=conflicto.model_dump())
-        momento = ahora()
-        nueva_version = fila["version"] + 1
-        con.execute(
-            "INSERT INTO revisiones (alerta_id, accion_id, resultado, motivo, comentario, autor, fecha, revisada_en, dispositivo_id, version_resultante) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (alerta_id, entrada.accionId, entrada.resultado, entrada.motivo, entrada.comentario.strip(), dispositivo["nombre"], iso(momento), revisada_en(entrada.revisadaEn, momento), dispositivo["id"], nueva_version),
-        )
-        con.execute(
-            "UPDATE alertas SET estado_revision = ?, version = ?, actualizada_en = ?, secuencia = ? WHERE id = ?",
-            (entrada.resultado, nueva_version, iso(momento), Base.siguiente_secuencia(con), alerta_id),
-        )
+        aplicar_revision(con, fila, entrada, dispositivo)
         return alerta_dto(con, con.execute("SELECT * FROM alertas WHERE id = ?", (alerta_id,)).fetchone())
-
-
-def revisada_en(valor: str | None, recibida: datetime) -> str:
-    """La hora de revisión del teléfono, nunca posterior a la llegada: un reloj adelantado no la corre al futuro."""
-    if valor is None:
-        return iso(recibida)
-    return iso(min(datetime.fromisoformat(valor), recibida).astimezone(timezone.utc))
 
 
 @router.get("/severidades")
@@ -297,9 +280,52 @@ def parear(entrada: PareoEntrada, request: Request) -> PareoSalida:
     )
 
 
+def _bot(request: Request) -> BotTelegram | None:
+    """El bot de la red, o None si el servidor no tiene TELEGRAM_BOT_TOKEN."""
+    return getattr(request.app.state, "bot", None)
+
+
+def _bot_andando(request: Request) -> BotTelegram:
+    bot = _bot(request)
+    if bot is None:
+        raise HTTPException(status_code=503, detail="Este servidor no tiene el bot de Telegram configurado")
+    return bot
+
+
+def _avisos_de(dispositivo: sqlite3.Row) -> AvisosTelegram:
+    return AvisosTelegram(alta=dispositivo["aviso_alta"], media=dispositivo["aviso_media"], baja=dispositivo["aviso_baja"])
+
+
+def _guardar_avisos(con: sqlite3.Connection, dispositivo_id: str, avisos: AvisosTelegram) -> None:
+    con.execute(
+        "UPDATE dispositivos SET aviso_alta = ?, aviso_media = ?, aviso_baja = ? WHERE id = ?",
+        (avisos.alta, avisos.media, avisos.baja, dispositivo_id),
+    )
+
+
+@router.get("/telegram", response_model=EstadoTelegram)
+def estado_telegram(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> EstadoTelegram:
+    """Si este teléfono tiene un chat vinculado, con qué bot y cómo avisa cada severidad. La app lo
+    consulta al volver de Telegram y en cada sincronización."""
+    bot = _bot(request)
+    return EstadoTelegram(
+        vinculado=dispositivo["telegram_chat_id"] is not None,
+        bot=bot.usuario if bot is not None else request.app.state.config.bot_usuario,
+        vinculadoEn=dispositivo["telegram_vinculado_en"],
+        avisos=_avisos_de(dispositivo),
+    )
+
+
 @router.post("/telegram/vinculo", response_model=VinculoTelegram)
-def vincular_telegram(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> VinculoTelegram:
-    """Código de un uso para que el bot asocie el chat con este dispositivo (lo consume el bot en la fase 10)."""
+def vincular_telegram(
+    request: Request,
+    entrada: VinculoEntrada | None = None,
+    dispositivo: sqlite3.Row = Depends(dispositivo_actual),
+) -> VinculoTelegram:
+    """Código de un uso (10 minutos) y el enlace que abre el chat con el bot: al tocar Iniciar, el bot
+    recibe el código y asocia el chat con este teléfono (RF05). Guarda los avisos que eligió la persona.
+    503 si el servidor no tiene el bot."""
+    bot = _bot_andando(request)
     cfg = request.app.state.config
     codigo = nuevo_codigo()
     vence = ahora() + timedelta(minutes=cfg.minutos_codigo)
@@ -308,7 +334,54 @@ def vincular_telegram(request: Request, dispositivo: sqlite3.Row = Depends(dispo
             "INSERT INTO codigos_telegram (codigo, dispositivo_id, creado_en, vence_en) VALUES (?, ?, ?, ?)",
             (codigo, dispositivo["id"], iso(ahora()), iso(vence)),
         )
-    return VinculoTelegram(codigo=codigo, enlaceBot=f"https://t.me/{cfg.bot_usuario}?start={codigo}", vence=iso(vence))
+        if entrada is not None and entrada.avisos is not None:
+            _guardar_avisos(con, dispositivo["id"], entrada.avisos)
+    return VinculoTelegram(codigo=codigo, enlaceBot=bot.enlace_de_vinculo(codigo), vence=iso(vence))
+
+
+@router.delete("/telegram/vinculo", status_code=204)
+async def desvincular_telegram(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> Response:
+    """El chat deja de recibir los avisos de este teléfono ("Desvincular Telegram", Figma 66-3484)."""
+    chat_id = dispositivo["telegram_chat_id"]
+    with _base(request).transaccion() as con:
+        con.execute("UPDATE dispositivos SET telegram_chat_id = NULL, telegram_vinculado_en = NULL WHERE id = ?", (dispositivo["id"],))
+        sigue = chat_id is not None and con.execute(
+            "SELECT 1 FROM dispositivos WHERE telegram_chat_id = ? AND revocado_en IS NULL", (chat_id,)
+        ).fetchone()
+    bot = _bot(request)
+    if chat_id is not None and not sigue and bot is not None:
+        try:
+            await bot.despedir(chat_id)
+        except ErrorTelegram:
+            pass  # el desvínculo vale igual; solo falta la despedida
+    return Response(status_code=204)
+
+
+@router.post("/telegram/prueba", status_code=204)
+async def aviso_de_prueba(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> Response:
+    """Manda un aviso de prueba al chat de este teléfono ("Enviar un aviso de prueba", Figma 66-3484).
+    409 si no tiene Telegram vinculado, 503 si el servidor no tiene el bot, 502 si Telegram no respondió."""
+    bot = _bot_andando(request)
+    chat_id = dispositivo["telegram_chat_id"]
+    if chat_id is None:
+        raise HTTPException(status_code=409, detail="Este teléfono no tiene Telegram vinculado")
+    try:
+        await bot.enviar_prueba(chat_id)
+    except ErrorTelegram as error:
+        if error.chat_perdido:
+            bot.desvincular_chat(chat_id)
+            raise HTTPException(status_code=409, detail="Este teléfono no tiene Telegram vinculado") from None
+        raise HTTPException(status_code=502, detail="Telegram no respondió") from None
+    return Response(status_code=204)
+
+
+@router.put("/telegram/avisos", response_model=AvisosTelegram)
+def guardar_avisos_telegram(entrada: AvisosTelegram, request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> AvisosTelegram:
+    """Cómo avisa Telegram cada severidad en este teléfono (Figma 51-1688). Vale aunque todavía no haya
+    un chat vinculado."""
+    with _base(request).transaccion() as con:
+        _guardar_avisos(con, dispositivo["id"], entrada)
+    return entrada
 
 
 @router.delete("/dispositivos/actual", status_code=204)

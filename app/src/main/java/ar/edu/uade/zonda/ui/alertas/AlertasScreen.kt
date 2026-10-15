@@ -67,9 +67,7 @@ fun AlertasScreen(
     alAbrirDetalle: (alertaId: String) -> Unit,
     alConectarDeNuevo: () -> Unit,
     filtroPedido: FiltroAlertas? = null,
-    viewModel: AlertasViewModel = viewModelDeZonda {
-        AlertasViewModel(it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad)
-    },
+    viewModel: AlertasViewModel = alertasViewModel(),
 ) {
     // La notificación abre la lista ya filtrada en lo que avisó (Alta · Sin revisar).
     LaunchedEffect(filtroPedido) { filtroPedido?.let(viewModel::aplicarFiltro) }
@@ -83,6 +81,12 @@ fun AlertasScreen(
         alAvisoMostrado = viewModel::avisoMostrado,
         alConectarDeNuevo = alConectarDeNuevo,
     )
+}
+
+/** El ViewModel de Alertas de la entrada de la pila; la navegación lo usa para el "Ver todas" de Estado. */
+@Composable
+fun alertasViewModel(): AlertasViewModel = viewModelDeZonda {
+    AlertasViewModel(it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad)
 }
 
 /** La pantalla sin ViewModel: recibe el estado y devuelve las acciones. Así se prueba sin Android real. */

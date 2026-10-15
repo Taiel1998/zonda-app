@@ -5,6 +5,8 @@ del dataset público CICIDS2017 (ver alertas_semilla.json) y recibe las revision
 El contrato es el definitivo (informe, sección 13.3): después se conecta a la plataforma real
 sin tocar la app.
 
+Si TELEGRAM_BOT_TOKEN está en .env, el bot de Telegram corre en el mismo proceso (app/telegram.py).
+
 Arranque: uvicorn app.main:app --host 127.0.0.1 --port 8000
 """
 
@@ -18,6 +20,7 @@ from .db import Base
 from .emisor import emitir_periodicamente
 from .rutas import VERSION, router
 from .semilla import cargar_si_vacia
+from .telegram import BotTelegram, ClienteTelegram
 
 
 def crear_app(config: Config | None = None) -> FastAPI:
@@ -32,10 +35,19 @@ def crear_app(config: Config | None = None) -> FastAPI:
         app.state.base = base
         app.state.config = cfg
         app.state.alertas_cargadas = insertadas
-        tarea = asyncio.create_task(emitir_periodicamente(base, cfg.emitir_cada)) if cfg.emitir_cada > 0 else None
+        tareas: list[asyncio.Task] = []
+        bot = None
+        if cfg.telegram_token:
+            bot = BotTelegram(base, cfg, ClienteTelegram(cfg.telegram_token, cfg.telegram_api))
+            tareas += bot.arrancar()
+        app.state.bot = bot
+        if cfg.emitir_cada > 0:
+            tareas.append(asyncio.create_task(emitir_periodicamente(base, cfg.emitir_cada)))
         yield
-        if tarea is not None:
+        for tarea in tareas:
             tarea.cancel()
+        if bot is not None:
+            await bot.cliente.cerrar()
 
     app = FastAPI(
         title="API Zonda",
