@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.ui.detalle
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
@@ -49,7 +50,14 @@ object RutaDetalle {
     }
 }
 
-fun NavGraphBuilder.detalleAlerta(alVolver: () -> Unit, alPedirRed: (redId: String) -> Unit = {}) {
+fun NavGraphBuilder.detalleAlerta(
+    alVolver: () -> Unit,
+    alPedirRed: (redId: String) -> Unit = {},
+    /** La pantalla. Las pruebas de navegación ponen una simple, que no necesita la base de datos. */
+    pantalla: @Composable (alertaId: String, avisoRecibido: AvisoRecibido?, alVolver: () -> Unit) -> Unit = { alertaId, avisoRecibido, volver ->
+        DetalleScreen(alertaId = alertaId, avisoRecibido = avisoRecibido, alVolver = volver)
+    },
+) {
     composable(
         route = RutaDetalle.PATRON,
         // El id siempre; lo demás viene solo en los enlaces y, si falta, queda en null.
@@ -83,7 +91,7 @@ fun NavGraphBuilder.detalleAlerta(alVolver: () -> Unit, alPedirRed: (redId: Stri
                 alPedirRed(red)
             }
         }
-        DetalleScreen(alertaId = alertaId, avisoRecibido = avisoRecibido, alVolver = alVolver)
+        pantalla(alertaId, avisoRecibido, alVolver)
     }
 }
 
