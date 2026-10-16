@@ -7,6 +7,7 @@ import ar.edu.uade.zonda.domain.model.GrupoResumen
 import ar.edu.uade.zonda.domain.model.GrupoTipo
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.Proporcion
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.Tramo
 import ar.edu.uade.zonda.ui.Formato
@@ -108,27 +109,56 @@ fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources): String? {
 }
 
 /**
- * La nota de la precisión: la fórmula y qué método tiene la precisión más alta; con menos de
- * [ResumenActividad.REVISIONES_PARA_COMPARAR] revisiones de ese método, que la comparación todavía
- * no es confiable. En el Figma esta frase es fija; acá sale de las cifras.
+ * La barra de un modelo va clara si ese modelo tiene menos de [ResumenActividad.REVISIONES_PARA_COMPARAR]
+ * revisiones: su porcentaje todavía no se puede comparar con el de los otros (cambio 4). Las 30 se
+ * cuentan por modelo, así uno con muchas revisiones no presta las suyas a otro que tiene pocas.
  */
-fun notaDePrecision(resumen: ResumenActividad, recursos: Resources): String {
-    val formula = recursos.getString(R.string.resumen_precision_formula)
-    val metodo = resumen.metodoMasPreciso ?: return formula
-    val mejor = recursos.getString(
-        when (metodo) {
-            MetodoDeteccion.IA -> R.string.resumen_mejor_ia
-            MetodoDeteccion.UMBRALES -> R.string.resumen_mejor_umbrales
-            MetodoDeteccion.REGLAS -> R.string.resumen_mejor_reglas
+fun Proporcion.barraClara(): Boolean = total < ResumenActividad.REVISIONES_PARA_COMPARAR
+
+/**
+ * El ejemplo de "Precisión" en la hoja del ⓘ, con los números reales (cambio 15): "la IA tiene 27 de
+ * 33: marcó 33 alertas que ya revisaste y 27 eran ataques". Usa el primer modelo con al menos dos
+ * revisiones; si ninguno tiene, la hoja va sin ejemplo.
+ */
+fun ejemploDePrecision(resumen: ResumenActividad, recursos: Resources): String? {
+    val (metodo, precision) = MetodoDeteccion.entries
+        .map { it to resumen.precisionPorMetodo.getValue(it) }
+        .firstOrNull { (_, precision) -> precision.total >= 2 } ?: return null
+    val plural = when (metodo) {
+        MetodoDeteccion.IA -> R.plurals.precision_ejemplo_ia
+        MetodoDeteccion.UMBRALES -> R.plurals.precision_ejemplo_umbrales
+        MetodoDeteccion.REGLAS -> R.plurals.precision_ejemplo_reglas
+    }
+    return recursos.getQuantityString(plural, precision.parte, precision.parte, precision.total)
+}
+
+/**
+ * El recuadro azul de la hoja del ⓘ, que cambia con el filtro elegido (cambio 10): sin filtro, de qué
+ * días es la precisión; con un modelo elegido, que cada fila cuenta las que marcó ese modelo junto con
+ * el de la fila (por eso las otras filas bajan); con un día, una semana o un tipo, que cuenta solo esas.
+ */
+fun recuadroDePrecision(resumen: ResumenActividad, recursos: Resources): String = when (val grupo = resumen.grupo) {
+    null -> recursos.getString(
+        if (resumen.periodo == PeriodoResumen.SIETE_DIAS) R.string.precision_sin_filtro_7 else R.string.precision_sin_filtro_30,
+    )
+    is GrupoResumen.Metodo -> recursos.getString(
+        when (grupo.metodo) {
+            MetodoDeteccion.IA -> R.string.precision_filtro_ia
+            MetodoDeteccion.UMBRALES -> R.string.precision_filtro_umbrales
+            MetodoDeteccion.REGLAS -> R.string.precision_filtro_reglas
         },
     )
-    val revisiones = resumen.precisionPorMetodo.getValue(metodo).total
-    val final = if (revisiones < ResumenActividad.REVISIONES_PARA_COMPARAR) {
-        recursos.getQuantityString(R.plurals.resumen_mejor_pocas_revisiones, revisiones, revisiones)
-    } else {
-        "."
-    }
-    return "$formula $mejor$final"
+    // "Estás viendo el viernes 25/09", "Estás viendo la semana del 28/8": el día y la semana en minúscula.
+    is GrupoResumen.Barra -> recursos.getString(
+        if (grupo.tramo.unSoloDia) R.string.precision_filtro_dia else R.string.precision_filtro_semana,
+        grupo.etiquetaChip(recursos).replaceFirstChar { it.lowercase(LOCALE) },
+    )
+    is GrupoResumen.Tipo -> recursos.getString(R.string.precision_filtro_tipo, grupo.etiquetaFrase(recursos))
+    GrupoResumen.Revisadas -> recursos.getString(R.string.precision_filtro_revisadas)
+    GrupoResumen.SinRevisar -> recursos.getString(R.string.precision_filtro_sin_revisar)
+    GrupoResumen.Altas -> recursos.getString(R.string.precision_filtro_altas)
+    GrupoResumen.Reales -> recursos.getString(R.string.precision_filtro_reales)
+    GrupoResumen.FalsosPositivos -> recursos.getString(R.string.precision_filtro_falsos)
 }
 
 /**

@@ -760,15 +760,42 @@
     <string name="resumen_cobertura_valor">%1$s · %2$d de %3$d</string>
     <string name="resumen_metodo_umbrales">Umbrales estadísticos</string>
     <string name="resumen_metodo_reglas">Reglas estáticas</string>
-    <string name="resumen_precision_formula">Precisión = alertas reales / alertas revisadas que marcó cada modelo.</string>
-    <string name="resumen_mejor_ia">El modelo de IA tiene la precisión más alta</string>
-    <string name="resumen_mejor_umbrales">Los umbrales tienen la precisión más alta</string>
-    <string name="resumen_mejor_reglas">Las reglas tienen la precisión más alta</string>
-    <plurals name="resumen_mejor_pocas_revisiones">
-        <item quantity="one">, pero con %1$d revisión la comparación todavía no es confiable.</item>
-        <item quantity="other">, pero con %1$d revisiones la comparación todavía no es confiable.</item>
+    <!-- Cambios 4, 10 y 15 (1.0.3): sin la fórmula ni la frase del ganador; lo explica la hoja del ⓘ (Figma 443-2314). -->
+    <string name="precision_ayuda">Cómo se lee la precisión</string>
+    <string name="precision_titulo_precision">Precisión</string>
+    <string name="precision_texto_precision">De las alertas que marcó un modelo y ya revisaste, cuántas eran ataques reales.</string>
+    <plurals name="precision_ejemplo_ia">
+        <item quantity="one">Por ejemplo, la IA tiene %1$d de %2$d: marcó %2$d alertas que ya revisaste y %1$d era un ataque.</item>
+        <item quantity="other">Por ejemplo, la IA tiene %1$d de %2$d: marcó %2$d alertas que ya revisaste y %1$d eran ataques.</item>
     </plurals>
-    <string name="resumen_recall">Recall y F1 se miden offline con dataset etiquetado (fuera de la app).</string>
+    <plurals name="precision_ejemplo_umbrales">
+        <item quantity="one">Por ejemplo, los umbrales tienen %1$d de %2$d: marcaron %2$d alertas que ya revisaste y %1$d era un ataque.</item>
+        <item quantity="other">Por ejemplo, los umbrales tienen %1$d de %2$d: marcaron %2$d alertas que ya revisaste y %1$d eran ataques.</item>
+    </plurals>
+    <plurals name="precision_ejemplo_reglas">
+        <item quantity="one">Por ejemplo, las reglas tienen %1$d de %2$d: marcaron %2$d alertas que ya revisaste y %1$d era un ataque.</item>
+        <item quantity="other">Por ejemplo, las reglas tienen %1$d de %2$d: marcaron %2$d alertas que ya revisaste y %1$d eran ataques.</item>
+    </plurals>
+    <string name="precision_titulo_cobertura">Cobertura de revisión</string>
+    <string name="precision_texto_cobertura">Cuántas alertas del período ya revisaste.</string>
+    <string name="precision_titulo_modelos">Los tres modelos</string>
+    <string name="precision_texto_modelos">La IA compara el tráfico con lo normal de tu red. Los umbrales cuentan conexiones a un mismo servicio en 60 segundos. Las reglas miran si ese servicio está autorizado.</string>
+    <string name="precision_titulo_30">¿Por qué 30 revisiones?</string>
+    <string name="precision_texto_30">Con pocas, un par de casos mueven mucho el porcentaje. Las barras claras tienen menos de 30 revisiones: todavía no se pueden comparar.</string>
+    <string name="precision_sin_filtro_7">Sin filtro: la precisión cuenta todas las alertas revisadas de estos 7 días.</string>
+    <string name="precision_sin_filtro_30">Sin filtro: la precisión cuenta todas las alertas revisadas de estos 30 días.</string>
+    <string name="precision_filtro_ia">Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese modelo.</string>
+    <string name="precision_filtro_umbrales">Estás viendo los umbrales estadísticos: cada fila cuenta las alertas que marcaron los umbrales junto con ese modelo.</string>
+    <string name="precision_filtro_reglas">Estás viendo las reglas estáticas: cada fila cuenta las alertas que marcaron las reglas junto con ese modelo.</string>
+    <string name="precision_filtro_dia">Estás viendo el %1$s: la precisión cuenta solo las alertas revisadas de ese día.</string>
+    <string name="precision_filtro_semana">Estás viendo la %1$s: la precisión cuenta solo las alertas revisadas de esa semana.</string>
+    <string name="precision_filtro_tipo">Estás viendo %1$s: la precisión cuenta solo las alertas revisadas de ese tipo.</string>
+    <string name="precision_filtro_revisadas">Estás viendo las revisadas: la precisión cuenta las mismas alertas que sin filtro.</string>
+    <string name="precision_filtro_sin_revisar">Estás viendo las sin revisar: todavía no tienen revisión, así que no hay precisión para calcular.</string>
+    <string name="precision_filtro_altas">Estás viendo las altas: la precisión cuenta solo las alertas altas revisadas.</string>
+    <string name="precision_filtro_reales">Estás viendo los ataques reales: todas son reales, así que cada modelo da 100 %.</string>
+    <string name="precision_filtro_falsos">Estás viendo los falsos positivos: ninguna es real, así que cada modelo da 0 %.</string>
+    <string name="precision_pie">Se calcula con las alertas guardadas en el teléfono, de los últimos 30 días.</string>
     <string name="resumen_pie">Calculado con las alertas guardadas en el teléfono. No incluye direcciones IP ni nombres de equipos.</string>
     <string name="resumen_vacio_titulo_7">Sin alertas en los últimos 7 días</string>
     <string name="resumen_vacio_titulo_30">Sin alertas en los últimos 30 días</string>

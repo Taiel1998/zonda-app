@@ -198,29 +198,13 @@ class ResumenActividadTest {
     }
 
     @Test
-    fun `el metodo mas preciso es el de mayor precision y, si empatan, el de mas revisiones`() {
-        // Umbrales y reglas tienen 100 %; las reglas, con dos revisiones, ganan el empate.
-        val lista = listOf(
-            alertaDel(12, "r-1", revision = Fixtures.revision(), metodos = setOf(MetodoDeteccion.REGLAS, MetodoDeteccion.IA)),
-            alertaDel(12, "r-2", revision = Fixtures.revision(), metodos = setOf(MetodoDeteccion.REGLAS)),
-            alertaDel(12, "u-1", revision = Fixtures.revision(), metodos = setOf(MetodoDeteccion.UMBRALES)),
-            alertaDel(12, "ia-1", revision = Fixtures.revision(ResultadoRevision.FALSO_POSITIVO, Motivo.BACKUP), metodos = setOf(MetodoDeteccion.IA)),
-        )
-
-        val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc)
-
-        assertEquals(MetodoDeteccion.REGLAS, resumen.metodoMasPreciso)
-    }
-
-    @Test
-    fun `sin alertas revisadas no hay mediana, precision ni metodo mas preciso`() {
+    fun `sin alertas revisadas no hay mediana ni precision`() {
         val resumen = ResumenActividad.calcular(listOf(Fixtures.alerta("a-1")), PeriodoResumen.TREINTA_DIAS, ahora, utc)
 
         assertNull(resumen.tiempoMedianoHastaRevision)
         assertEquals(Proporcion(0, 1), resumen.cobertura)
         assertEquals(Proporcion(0, 0), resumen.precisionPorMetodo.getValue(MetodoDeteccion.IA))
         assertNull(resumen.precisionPorMetodo.getValue(MetodoDeteccion.IA).valor)
-        assertNull(resumen.metodoMasPreciso)
     }
 
     @Test

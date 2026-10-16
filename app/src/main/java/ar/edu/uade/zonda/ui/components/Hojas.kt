@@ -161,18 +161,32 @@ fun HojaCondiciones(alCerrar: () -> Unit) {
         BloqueDeCondiciones(R.string.condiciones_sale_titulo, R.string.condiciones_sale)
         BloqueDeCondiciones(R.string.condiciones_tiempo_titulo, R.string.condiciones_tiempo)
         BloqueDeCondiciones(R.string.condiciones_datos_titulo, R.string.condiciones_datos)
-        Row(modifier = Modifier.padding(vertical = 8.dp)) {
-            BotonPrincipal(texto = stringResource(R.string.accion_entendido), alTocar = alCerrar)
-        }
+        EntendidoDeHoja(alCerrar)
     }
 }
 
-/** Título SemiBold 14 y texto Regular 13 gris, con 4 entre los dos. */
 @Composable
 private fun BloqueDeCondiciones(@StringRes titulo: Int, @StringRes texto: Int) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = stringResource(titulo), style = MaterialTheme.typography.labelLarge)
-        Text(text = stringResource(texto), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    BloqueDeAyuda(stringResource(titulo), stringResource(texto))
+}
+
+/**
+ * Un bloque de una hoja de ayuda (Figma 50-830, 443-2314 y 443-2683): título SemiBold 14 y texto
+ * Regular 13 gris, con 4 entre los dos.
+ */
+@Composable
+fun BloqueDeAyuda(titulo: String, texto: String, modifier: Modifier = Modifier) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier) {
+        Text(text = titulo, style = MaterialTheme.typography.labelLarge)
+        Text(text = texto, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** "Entendido" al final de una hoja de ayuda, con 8 arriba y abajo (Figma 50-899). */
+@Composable
+fun EntendidoDeHoja(alCerrar: () -> Unit) {
+    Row(modifier = Modifier.padding(vertical = 8.dp)) {
+        BotonPrincipal(texto = stringResource(R.string.accion_entendido), alTocar = alCerrar)
     }
 }
 

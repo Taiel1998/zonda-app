@@ -163,16 +163,12 @@ data class ResumenActividad(
     val destacado: Destacado?,
 ) {
 
-    /** El método con la precisión más alta; si empatan, el que tiene más revisiones. Null si ninguno tiene revisiones. */
-    val metodoMasPreciso: MetodoDeteccion?
-        get() = precisionPorMetodo.entries
-            .filter { it.value.total > 0 }
-            .maxWithOrNull(compareBy<Map.Entry<MetodoDeteccion, Proporcion>>({ it.value.valor }, { it.value.total }))
-            ?.key
-
     companion object {
 
-        /** Con menos revisiones que esto, la comparación entre métodos todavía no es confiable. */
+        /**
+         * Con menos revisiones que esto, la precisión de un modelo todavía no se puede comparar con la de
+         * los otros: su barra va clara (cambio 4). Se cuenta por modelo.
+         */
         const val REVISIONES_PARA_COMPARAR = 30
 
         /**

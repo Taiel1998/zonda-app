@@ -1,12 +1,16 @@
 package ar.edu.uade.zonda.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
@@ -21,6 +25,8 @@ import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
@@ -37,6 +43,23 @@ import ar.edu.uade.zonda.ui.theme.Tonos
 // acepta un toque hasta 48 dp alrededor de lo que se puede tocar (decisión 19).
 
 private val FormaBoton = RoundedCornerShape(20.dp)
+
+/**
+ * El ⓘ que abre una hoja de ayuda (cambios 14 y 15; Figma 443-2314): el círculo con la i de 20, en el
+ * verde de la app. Ocupa lo que se ve y el toque cercano completa los 48 dp, como los botones.
+ */
+@Composable
+fun BotonAyuda(descripcion: String, alTocar: () -> Unit, modifier: Modifier = Modifier) {
+    Icon(
+        imageVector = Icons.Outlined.Info,
+        contentDescription = descripcion,
+        tint = MaterialTheme.colorScheme.primary,
+        modifier = modifier
+            .size(20.dp)
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClick = alTocar),
+    )
+}
 
 /** El botón ocupa en el diseño lo que se ve; el toque cercano completa los 48 dp. */
 @Composable

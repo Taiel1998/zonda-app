@@ -193,6 +193,7 @@ fun ResumenContenido(
         alcance.launch { snackbar.showSnackbar(texto) }
     }
     val hayResumen = estado.resumen != null
+    var ayuda by rememberSaveable { mutableStateOf<AyudaResumen?>(null) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -248,8 +249,25 @@ fun ResumenContenido(
                     detalle = stringResource(R.string.vacio_sin_red_detalle),
                 )
                 is ContenidoResumen.Vacio -> CuerpoVacio(estado, contenido.resumen, alElegirPeriodo, alQuitarFiltro, zona)
-                is ContenidoResumen.Datos -> CuerpoDelResumen(estado, contenido.resumen, alElegirPeriodo, alTocarCifra, alQuitarFiltro, zona)
+                is ContenidoResumen.Datos -> CuerpoDelResumen(
+                    estado = estado,
+                    resumen = contenido.resumen,
+                    alElegirPeriodo = alElegirPeriodo,
+                    alTocarCifra = alTocarCifra,
+                    alQuitarFiltro = alQuitarFiltro,
+                    alPedirAyuda = { ayuda = it },
+                    zona = zona,
+                )
             }
+        }
+    }
+
+    // Las hojas del ⓘ (cambios 14 y 15) explican lo que se ve, con el filtro elegido.
+    val resumenActual = estado.resumen
+    if (resumenActual != null) {
+        when (ayuda) {
+            AyudaResumen.PRECISION -> HojaPrecision(resumen = resumenActual, alCerrar = { ayuda = null })
+            null -> Unit
         }
     }
 }
@@ -262,6 +280,7 @@ private fun CuerpoDelResumen(
     alElegirPeriodo: (PeriodoResumen) -> Unit,
     alTocarCifra: (GrupoResumen?) -> Unit,
     alQuitarFiltro: () -> Unit,
+    alPedirAyuda: (AyudaResumen) -> Unit,
     zona: ZoneId,
 ) {
     val recursos = LocalContext.current.resources
@@ -279,7 +298,7 @@ private fun CuerpoDelResumen(
         TarjetaGrafico(resumen, alTocarCifra, frase = fraseDelGrafico(resumen, recursos))
         TarjetaTipos(resumen, alTocarCifra)
         TarjetaRealesYFalsos(resumen, alTocarCifra)
-        TarjetaPrecision(resumen, alTocarCifra)
+        TarjetaPrecision(resumen, alTocarCifra, alPedirAyuda = { alPedirAyuda(AyudaResumen.PRECISION) })
         PieDelResumen()
     }
 }
@@ -532,14 +551,17 @@ private fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocarCifra: (Grupo
 }
 
 /**
- * La cobertura de revisión y la precisión de cada modelo, con sus notas (Figma 52-2629 y 100-9302).
- * Recall y F1 necesitan un conjunto etiquetado y se miden fuera de la app.
+ * La cobertura de revisión y la precisión de cada modelo (Figma 52-2629 y 100-9302), sin notas abajo
+ * (cambios 4, 10 y 15): no nombra un ganador, porque la precisión dice cuánto acierta un modelo cuando
+ * avisa y no cuál es el mejor. Cómo se lee lo explica la hoja del ⓘ.
  */
 @Composable
-private fun TarjetaPrecision(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit) {
-    val recursos = LocalContext.current.resources
+private fun TarjetaPrecision(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit, alPedirAyuda: () -> Unit) {
     val sinDato = stringResource(R.string.resumen_sin_dato)
-    TarjetaResumen(titulo = stringResource(R.string.resumen_precision)) {
+    TarjetaResumen(
+        titulo = stringResource(R.string.resumen_precision),
+        ayuda = AyudaDeTarjeta(stringResource(R.string.precision_ayuda), alPedirAyuda),
+    ) {
         CajaCobertura(
             rotulo = stringResource(R.string.resumen_cobertura),
             valor = stringResource(
@@ -563,13 +585,10 @@ private fun TarjetaPrecision(resumen: ResumenActividad, alTocarCifra: (GrupoResu
                     fraccion = precision.valor?.toFloat() ?: 0f,
                     elegida = resumen.grupo == grupo,
                     alTocar = { alTocarCifra(grupo) },
+                    clara = precision.barraClara(),
                 )
             }
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(text = notaDePrecision(resumen, recursos), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(text = stringResource(R.string.resumen_recall), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

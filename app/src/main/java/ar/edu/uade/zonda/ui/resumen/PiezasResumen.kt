@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ar.edu.uade.zonda.ui.components.BotonAyuda
 import ar.edu.uade.zonda.ui.theme.CremaBarra
 import ar.edu.uade.zonda.ui.theme.GrisCalido
 import ar.edu.uade.zonda.ui.theme.Tonos
@@ -55,6 +56,9 @@ import ar.edu.uade.zonda.ui.theme.rotulo
 
 /** Verde claro de las barras del gráfico; la de hoy va en el verde base. */
 val VerdeBarra = Color(0xFF59B89A)
+
+/** La barra de precisión de un modelo con menos de 30 revisiones (cambio 4; Figma 72-5240). */
+val VerdeBarraClara = Color(0xFF9FE1CB)
 
 private val FormaTarjeta = RoundedCornerShape(12.dp)
 private val BordeElegido = 2.dp
@@ -127,15 +131,20 @@ fun TarjetaMetrica(
     }
 }
 
+/** El ⓘ de una tarjeta: qué dice para TalkBack y qué abre. */
+data class AyudaDeTarjeta(val descripcion: String, val alTocar: () -> Unit)
+
 /**
  * Las tarjetas blancas del Resumen (Figma 52-2629): borde gris de 1, esquinas de 12, 12 de margen más
- * el borde, el título SemiBold 13 gris y 12 hasta el contenido (10 en el gráfico).
+ * el borde, el título SemiBold 13 gris y 12 hasta el contenido (10 en el gráfico). Con [ayuda], el ⓘ va
+ * a la derecha del título y abre su hoja (cambios 14 y 15); en la imagen que se comparte no va.
  */
 @Composable
 fun TarjetaResumen(
     titulo: String,
     modifier: Modifier = Modifier,
     espacioTitulo: Dp = 12.dp,
+    ayuda: AyudaDeTarjeta? = null,
     contenido: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
@@ -145,7 +154,18 @@ fun TarjetaResumen(
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(13.dp)) {
-            Text(text = titulo, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                if (ayuda != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    BotonAyuda(descripcion = ayuda.descripcion, alTocar = ayuda.alTocar)
+                }
+            }
             Spacer(modifier = Modifier.height(espacioTitulo))
             contenido()
         }
@@ -280,7 +300,8 @@ fun FilaConBarra(
 /**
  * Una fila de la precisión (Figma 52-2629): el modelo Regular 14 en 152, la pista de 8 con la
  * precisión, el porcentaje SemiBold 13 en 46 y "27 de 33" Regular 12 gris en 54, los dos a la
- * derecha. Sin revisiones de ese modelo, una raya.
+ * derecha. Sin revisiones de ese modelo, una raya. Con menos de 30 revisiones la barra va [clara]
+ * (cambio 4): ese porcentaje todavía no se puede comparar.
  */
 @Composable
 fun FilaPrecision(
@@ -291,6 +312,7 @@ fun FilaPrecision(
     elegida: Boolean,
     alTocar: () -> Unit,
     modifier: Modifier = Modifier,
+    clara: Boolean = false,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -301,7 +323,7 @@ fun FilaPrecision(
     ) {
         Text(text = rotulo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, modifier = Modifier.width(152.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        PistaConBarra(fraccion = fraccion, color = VerdeZonda, alto = 8.dp, modifier = Modifier.weight(1f))
+        PistaConBarra(fraccion = fraccion, color = if (clara) VerdeBarraClara else VerdeZonda, alto = 8.dp, modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = porcentaje,
