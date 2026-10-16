@@ -84,6 +84,10 @@ fun NavHostController.irAPestania(ruta: String) {
  * propia tarea, en la pantalla principal, y cierra esta copia. Eso es `navigateUp()`. Antes se usaba
  * `popBackStack()`, que sacaba esa única pantalla de la pila: la flecha no hacía nada a la vista y el
  * detalle quedaba congelado, sin mostrar los cambios (por ejemplo, el conflicto ya resuelto).
+ *
+ * Desde la 1.0.3 el enlace entra por la pantalla puente (PuenteDelAvisoActivity, cambio 23), que
+ * siempre abre Zonda en su propia tarea con Estado debajo del detalle, así que ese caso ya no se da.
+ * La flecha sigue con `navigateUp()`: con pantallas atrás hace lo mismo que `popBackStack()`.
  */
 fun NavHostController.volver() {
     navigateUp()
