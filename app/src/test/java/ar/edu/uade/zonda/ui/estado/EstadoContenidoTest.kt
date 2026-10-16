@@ -323,4 +323,41 @@ class EstadoContenidoTest {
         assertTrue(valor != null)
         return valor!!
     }
+
+    @Test
+    fun `una revision que no se aplico se avisa arriba del semaforo y Ver abre esa alerta`() {
+        val tocados = mutableListOf<String>()
+        dibujar(
+            EstadoUiState(contenido = datos(), datosDe = ahora, revisionesNoAplicadas = listOf("a-7")),
+            AccionesEstado(alAbrirDetalle = { tocados += "detalle $it" }, alVerNoAplicadas = { tocados += "alertas" }),
+        )
+
+        compose.onNodeWithText("Una revisión tuya no se aplicó").assertIsDisplayed()
+        compose.onNodeWithText("Otra persona revisó esa alerta antes que vos.").assertIsDisplayed()
+        compose.onNodeWithText("Ver").performClick()
+
+        assertEquals(listOf("detalle a-7"), tocados)
+    }
+
+    @Test
+    fun `con varias revisiones que no se aplicaron Ver abre Alertas con esas`() {
+        val tocados = mutableListOf<String>()
+        dibujar(
+            EstadoUiState(contenido = datos(), datosDe = ahora, revisionesNoAplicadas = listOf("a-7", "a-8")),
+            AccionesEstado(alAbrirDetalle = { tocados += "detalle $it" }, alVerNoAplicadas = { tocados += "alertas" }),
+        )
+
+        compose.onNodeWithText("2 revisiones tuyas no se aplicaron").assertIsDisplayed()
+        compose.onNodeWithText("Alguien más revisó esas alertas antes que vos.").assertIsDisplayed()
+        compose.onNodeWithText("Ver").performClick()
+
+        assertEquals(listOf("alertas"), tocados)
+    }
+
+    @Test
+    fun `sin revisiones en conflicto no hay aviso`() {
+        dibujar(EstadoUiState(contenido = datos(), datosDe = ahora))
+
+        compose.onNodeWithText("Ver").assertDoesNotExist()
+    }
 }

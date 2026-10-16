@@ -211,6 +211,10 @@ class SincronizadorHttpTest : PruebaConBase() {
 
         assertEquals(1, resultado.accionesEnviadas)
         assertEquals(0, resultado.accionesConError)
+        // Para la notificación en segundo plano (cambio 7): una sola vez, en la sincronización del 409.
+        assertEquals(listOf("a-1"), resultado.conflictosNuevos)
+        assertEquals(listOf("a-1"), alertas.observarAlertas("red-1", FiltroAlertas(soloNoAplicadas = true)).first().map { it.id })
+        assertEquals(emptyList<String>(), alertas.sincronizar("red-1").conflictosNuevos)
         val pendiente = acciones.observar("red-1").first().single()
         assertEquals(enConflicto.id, pendiente.id)
         assertEquals(EstadoEnvio.CONFLICTO, pendiente.estado)

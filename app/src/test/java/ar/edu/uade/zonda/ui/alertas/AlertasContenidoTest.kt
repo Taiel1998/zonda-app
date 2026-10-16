@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -282,5 +283,21 @@ class AlertasContenidoTest {
         assertEquals(16f, (ancho - chips.right) / densidad, 0.5f)
         val tarjeta = registro.posicionDe(ObjetivoRecorrido.PRIMERA_TARJETA)!!
         assertTrue("la primera tarjeta va debajo de los chips", tarjeta.top > chips.bottom)
+    }
+
+    @Test
+    fun `con las revisiones no aplicadas muestra su chip y la cruz lo saca`() {
+        var cambiado: FiltroAlertas? = null
+        dibujar(
+            AlertasUiState(
+                contenido = lista(Fixtures.alerta("a-7", envio = EstadoEnvio.CONFLICTO)),
+                filtro = FiltroAlertas(soloNoAplicadas = true),
+            ),
+            alCambiarFiltro = { cambiado = it },
+        )
+
+        compose.onNodeWithContentDescription("Quitar el filtro Revisiones no aplicadas").assertIsDisplayed().performClick()
+
+        assertEquals(FiltroAlertas(), cambiado)
     }
 }

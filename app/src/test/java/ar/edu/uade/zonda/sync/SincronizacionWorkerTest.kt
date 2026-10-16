@@ -192,4 +192,30 @@ class SincronizacionWorkerTest {
             avisos.map(::textoDe).toSet(),
         )
     }
+
+    @Test
+    fun `avisa una vez, en el canal de revisiones, las revisiones que no se aplicaron`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1")))
+        alertas.resultadoSincronizacion = resultado(nuevas = 0, altasNuevas = 0).copy(conflictosNuevos = listOf("a-3"))
+
+        worker().doWork()
+
+        val aviso = notificaciones.single()
+        assertEquals(Notificador.CANAL_REVISIONES, aviso.channelId)
+        assertEquals("Zonda · Oficina", aviso.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals("Una revisión tuya no se aplicó. Otra persona revisó esa alerta antes. Tocá para elegir cuál queda.", textoDe(aviso))
+        assertEquals(EnlacesInternos.detalle("red-1", "a-3"), destinoDe(aviso))
+    }
+
+    @Test
+    fun `con varias revisiones que no se aplicaron la notificacion abre Alertas con esas`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1")))
+        alertas.resultadoSincronizacion = resultado(nuevas = 0, altasNuevas = 0).copy(conflictosNuevos = listOf("a-3", "a-5"))
+
+        worker().doWork()
+
+        val aviso = notificaciones.single()
+        assertEquals("2 revisiones tuyas no se aplicaron. Alguien más revisó esas alertas antes. Tocá para elegir cuáles quedan.", textoDe(aviso))
+        assertEquals(EnlacesInternos.noAplicadas("red-1"), destinoDe(aviso))
+    }
 }
