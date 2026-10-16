@@ -119,10 +119,10 @@ class ResumenContenidoTest {
         compose.onNodeWithText("Por tipo de ataque").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Precisión de cada modelo (de las revisadas)").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("50 % · 2 de 4").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(
-            "Precisión = alertas reales / alertas revisadas que marcó cada modelo. " +
-                "Los umbrales tienen la precisión más alta, pero con 1 revisión la comparación todavía no es confiable.",
-        ).performScrollTo().assertIsDisplayed()
+        // Sin la fórmula, la frase del ganador ni la nota del recall (cambios 4, 10 y 15).
+        compose.onAllNodesWithText("Precisión =", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("precisión más alta", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("Recall", substring = true).assertCountEquals(0)
         compose.onNodeWithText("Calculado con las alertas guardadas en el teléfono. No incluye direcciones IP ni nombres de equipos.")
             .performScrollTo()
             .assertIsDisplayed()
@@ -248,5 +248,22 @@ class ResumenContenidoTest {
         compose.onNodeWithText("Copiar").performClick()
 
         assertEquals(listOf(DestinoCompartir.COPIAR), elegidos)
+    }
+
+    @Test
+    fun `el i de la precision abre su hoja con un ejemplo de las cifras y lo que cuenta sin filtro`() {
+        dibujar(estado(resumen()))
+
+        compose.onNodeWithContentDescription("Cómo se lee la precisión").performScrollTo().performClick()
+
+        compose.onNodeWithText("Cómo se lee la precisión").assertIsDisplayed()
+        compose.onNodeWithText(
+            "De las alertas que marcó un modelo y ya revisaste, cuántas eran ataques reales. " +
+                "Por ejemplo, la IA tiene 1 de 2: marcó 2 alertas que ya revisaste y 1 era un ataque.",
+        ).assertExists()
+        compose.onNodeWithText("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 7 días.").assertExists()
+        compose.onNodeWithText("Se calcula con las alertas guardadas en el teléfono, de los últimos 30 días.").assertExists()
+        compose.onNodeWithText("Entendido").performScrollTo().performClick()
+        compose.onAllNodesWithText("Cómo se lee la precisión").assertCountEquals(0)
     }
 }
