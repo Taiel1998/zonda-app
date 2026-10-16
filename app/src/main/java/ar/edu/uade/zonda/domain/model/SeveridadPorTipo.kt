@@ -20,7 +20,8 @@ data class SeveridadPorTipo(val valores: Map<TipoAtaque, Severidad>) {
                 TipoAtaque.SIN_TIPIFICAR to Severidad.ALTA,
                 TipoAtaque.ESCANEO to Severidad.MEDIA,
                 TipoAtaque.DDOS to Severidad.MEDIA,
-                TipoAtaque.SOLO_REGLAS_O_UMBRALES to Severidad.MEDIA,
+                TipoAtaque.SERVICIO_NO_AUTORIZADO to Severidad.MEDIA,
+                TipoAtaque.VOLUMEN_INUSUAL to Severidad.MEDIA,
                 TipoAtaque.PROBABLE_FALSA_ALARMA to Severidad.BAJA,
             ),
         )

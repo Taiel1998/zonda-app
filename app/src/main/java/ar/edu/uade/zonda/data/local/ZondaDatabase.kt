@@ -35,7 +35,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         RevisionEntity::class,
         AccionPendienteEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class ZondaDatabase : RoomDatabase() {
@@ -90,6 +90,37 @@ abstract class ZondaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Versión 5 (1.0.3, cambio 9): "solo reglas o umbrales" se separa en servicio no autorizado (las
+         * reglas) y volumen inusual (los umbrales). Cada alerta guardada pasa al tipo de su detector (con
+         * los dos, al de las reglas: el Resumen la cuenta igual en los dos) y la severidad que la red había
+         * elegido pasa a los dos tipos nuevos, también en un cambio de severidades pendiente de envío. Los
+         * nombres van fijos, como en la migración de los motivos.
+         */
+        val MIGRACION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "UPDATE alertas SET tipoAtaque = CASE WHEN veredictoUmbrales = 1 AND veredictoReglas = 0 " +
+                        "THEN 'VOLUMEN_INUSUAL' ELSE 'SERVICIO_NO_AUTORIZADO' END WHERE tipoAtaque = 'SOLO_REGLAS_O_UMBRALES'",
+                )
+                for (tipo in listOf("SERVICIO_NO_AUTORIZADO", "VOLUMEN_INUSUAL")) {
+                    db.execSQL(
+                        "INSERT OR IGNORE INTO severidades (redId, tipoAtaque, severidad) " +
+                            "SELECT redId, ?, severidad FROM severidades WHERE tipoAtaque = 'SOLO_REGLAS_O_UMBRALES'",
+                        arrayOf(tipo),
+                    )
+                }
+                db.execSQL("DELETE FROM severidades WHERE tipoAtaque = 'SOLO_REGLAS_O_UMBRALES'")
+                // Un cambio de severidades que no llegó a enviarse las guarda como texto ("SOLO_REGLAS_O_UMBRALES=MEDIA").
+                for (severidad in listOf("ALTA", "MEDIA", "BAJA")) {
+                    db.execSQL(
+                        "UPDATE acciones_pendientes SET severidades = REPLACE(severidades, ?, ?) WHERE severidades IS NOT NULL",
+                        arrayOf("SOLO_REGLAS_O_UMBRALES=$severidad", "SERVICIO_NO_AUTORIZADO=$severidad;VOLUMEN_INUSUAL=$severidad"),
+                    )
+                }
+            }
+        }
+
         /** Los nombres anteriores y los del Figma, fijos acá: una migración no cambia aunque cambie el enum. */
         private val MOTIVOS_ANTERIORES = mapOf(
             "EQUIPO_AISLADO" to "BLOQUEADO_MANUALMENTE",
@@ -105,7 +136,7 @@ abstract class ZondaDatabase : RoomDatabase() {
             System.loadLibrary("sqlcipher")
             return Room.databaseBuilder(context, ZondaDatabase::class.java, NOMBRE_ARCHIVO)
                 .openHelperFactory(SupportOpenHelperFactory(clave))
-                .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4)
+                .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4, MIGRACION_4_5)
                 .build()
         }
     }

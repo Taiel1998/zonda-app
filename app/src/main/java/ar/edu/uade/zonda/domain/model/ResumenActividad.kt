@@ -74,9 +74,12 @@ sealed interface GrupoResumen {
         override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = alerta.dia(zona) in tramo
     }
 
-    /** Una fila de "Por tipo de ataque": las alertas de ese tipo (cambio 14: ya no hay "Otros"). */
+    /**
+     * Una fila de "Por tipo de ataque": las alertas de ese tipo (cambio 14: ya no hay "Otros"). Una que
+     * vieron las reglas y los umbrales está en las dos filas (cambio 9).
+     */
     data class Tipo(val tipo: TipoAtaque) : GrupoResumen {
-        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = alerta.tipoAtaque == tipo
+        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = tipo in alerta.tiposDeAtaque
     }
 
     data object Reales : GrupoResumen {
@@ -214,7 +217,7 @@ data class ResumenActividad(
                 reales = revisadas.count { it.estadoRevision == EstadoRevision.ATAQUE_REAL },
                 falsosPositivos = revisadas.count { it.estadoRevision == EstadoRevision.FALSO_POSITIVO },
                 barras = barras,
-                porTipo = TipoAtaque.EN_PANTALLA.associateWith { tipo -> lista.count { it.tipoAtaque == tipo } },
+                porTipo = TipoAtaque.EN_PANTALLA.associateWith { tipo -> lista.count { tipo in it.tiposDeAtaque } },
                 tiempoMedianoHastaRevision = mediana,
                 altasRevisadasEnUnaHora = Proporcion(altasEnUnaHora, altasConsideradas),
                 cobertura = Proporcion(revisadas.size, lista.size),
@@ -234,7 +237,8 @@ data class ResumenActividad(
                 ?: return null
             val (tipo, delTipo) = lista
                 .filter { it.dia(zona) in barra.tramo }
-                .groupBy { it.tipoAtaque }
+                .flatMap { alerta -> alerta.tiposDeAtaque.map { it to alerta } }
+                .groupBy({ it.first }, { it.second })
                 .entries
                 .maxWith(compareBy<Map.Entry<TipoAtaque, List<Alerta>>>({ it.value.size }, { -TipoAtaque.EN_PANTALLA.indexOf(it.key) }))
             return Destacado(

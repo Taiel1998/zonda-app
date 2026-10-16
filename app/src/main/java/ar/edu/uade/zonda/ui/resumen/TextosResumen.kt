@@ -37,7 +37,8 @@ fun TipoAtaque.enFrase(): Int = when (this) {
     TipoAtaque.ESCANEO -> R.plurals.resumen_cuantas_escaneo
     TipoAtaque.DDOS -> R.plurals.resumen_cuantas_ddos
     TipoAtaque.PROBABLE_FALSA_ALARMA -> R.plurals.resumen_cuantas_probable_falsa_alarma
-    TipoAtaque.SOLO_REGLAS_O_UMBRALES -> R.plurals.resumen_cuantas_solo_reglas_o_umbrales
+    TipoAtaque.SERVICIO_NO_AUTORIZADO -> R.plurals.resumen_cuantas_servicio_no_autorizado
+    TipoAtaque.VOLUMEN_INUSUAL -> R.plurals.resumen_cuantas_volumen_inusual
 }
 
 /** Cada método en la tarjeta de precisión y en su chip: "Modelo de IA", "Umbrales estadísticos", "Reglas estáticas". */

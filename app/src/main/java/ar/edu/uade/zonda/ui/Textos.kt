@@ -138,7 +138,16 @@ fun TipoAtaque.etiqueta(): Int = when (this) {
     TipoAtaque.DDOS -> R.string.tipo_ddos
     TipoAtaque.SIN_TIPIFICAR -> R.string.tipo_sin_tipificar
     TipoAtaque.PROBABLE_FALSA_ALARMA -> R.string.tipo_probable_falsa_alarma
-    TipoAtaque.SOLO_REGLAS_O_UMBRALES -> R.string.tipo_solo_reglas_o_umbrales
+    TipoAtaque.SERVICIO_NO_AUTORIZADO -> R.string.tipo_servicio_no_autorizado
+    TipoAtaque.VOLUMEN_INUSUAL -> R.string.tipo_volumen_inusual
+}
+
+/** Qué detector marca lo que la IA no vio, en la pantalla de severidades (cambio 9); null para los tipos de la IA. */
+@StringRes
+fun TipoAtaque.detector(): Int? = when (this) {
+    TipoAtaque.SERVICIO_NO_AUTORIZADO -> R.string.tipo_detector_servicio_no_autorizado
+    TipoAtaque.VOLUMEN_INUSUAL -> R.string.tipo_detector_volumen_inusual
+    else -> null
 }
 
 /** El nombre corto de cada tipo: el chip del filtro del Resumen y la hoja "Qué es cada tipo" (cambios 8 y 14). */
@@ -149,7 +158,8 @@ fun TipoAtaque.nombreCorto(): Int = when (this) {
     TipoAtaque.ESCANEO -> R.string.tipo_corto_escaneo
     TipoAtaque.DDOS -> R.string.tipo_corto_ddos
     TipoAtaque.PROBABLE_FALSA_ALARMA -> R.string.tipo_corto_probable_falsa_alarma
-    TipoAtaque.SOLO_REGLAS_O_UMBRALES -> R.string.tipo_corto_solo_reglas_o_umbrales
+    TipoAtaque.SERVICIO_NO_AUTORIZADO -> R.string.tipo_corto_servicio_no_autorizado
+    TipoAtaque.VOLUMEN_INUSUAL -> R.string.tipo_corto_volumen_inusual
 }
 
 /** Qué es cada tipo, en una oración (hoja "Qué es cada tipo", Figma 443-2683). */
@@ -160,7 +170,8 @@ fun TipoAtaque.descripcion(): Int = when (this) {
     TipoAtaque.ESCANEO -> R.string.tipo_descripcion_escaneo
     TipoAtaque.DDOS -> R.string.tipo_descripcion_ddos
     TipoAtaque.PROBABLE_FALSA_ALARMA -> R.string.tipo_descripcion_probable_falsa_alarma
-    TipoAtaque.SOLO_REGLAS_O_UMBRALES -> R.string.tipo_descripcion_solo_reglas_o_umbrales
+    TipoAtaque.SERVICIO_NO_AUTORIZADO -> R.string.tipo_descripcion_servicio_no_autorizado
+    TipoAtaque.VOLUMEN_INUSUAL -> R.string.tipo_descripcion_volumen_inusual
 }
 
 @StringRes

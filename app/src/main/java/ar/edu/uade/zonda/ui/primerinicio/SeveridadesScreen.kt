@@ -33,13 +33,15 @@ import ar.edu.uade.zonda.ui.components.HojaTipos
 import ar.edu.uade.zonda.ui.components.Opcion
 import ar.edu.uade.zonda.ui.components.Panel
 import ar.edu.uade.zonda.ui.components.TituloDeBloque
+import ar.edu.uade.zonda.ui.detector
 import ar.edu.uade.zonda.ui.etiqueta
 
 /**
  * Severidad de cada tipo de ataque (RF05 y RF06; Figma 66-3212 y 104-2). Viene con los valores
  * recomendados y vale para todos los teléfonos de la red. Va en los dos bloques del cambio 8, lo que
- * detectó la IA y lo que no, con una tarjeta por tipo y sus tres opciones; el ⓘ del primer bloque abre
- * "Qué es cada tipo" con lo elegido en pantalla. La usan el primer inicio y Ajustes.
+ * detectó la IA y lo que no (servicio no autorizado y volumen inusual, cambio 9), con una tarjeta por
+ * tipo y sus tres opciones; el ⓘ del primer bloque abre "Qué es cada tipo" con lo elegido en pantalla.
+ * La usan el primer inicio y Ajustes.
  */
 @Composable
 fun SeveridadesScreen(
@@ -91,11 +93,19 @@ fun SeveridadesScreen(
     }
 }
 
-/** Un tipo con sus tres opciones (Figma 66-3212): el nombre Medium 15 y las opciones a 8 entre sí. */
+/**
+ * Un tipo con sus tres opciones (Figma 66-3212): el nombre Medium 15 y las opciones a 8 entre sí. Lo que
+ * la IA no detectó dice abajo del nombre qué detector lo marca, Regular 13 gris a 2 (cambio 9).
+ */
 @Composable
 private fun TarjetaDeSeveridad(tipo: TipoAtaque, elegida: Severidad, alElegir: (Severidad) -> Unit) {
     Panel {
-        Text(text = stringResource(tipo.etiqueta()), style = MaterialTheme.typography.titleSmall)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(text = stringResource(tipo.etiqueta()), style = MaterialTheme.typography.titleSmall)
+            tipo.detector()?.let { detector ->
+                Text(text = stringResource(detector), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Severidad.entries.forEach { severidad ->
                 Opcion(
