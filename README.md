@@ -4,7 +4,7 @@ App Android de alertas de anomalías de red para PyMEs. Es el cliente móvil de 
 
 Trabajo Práctico Obligatorio de Desarrollo de Aplicaciones I (UADE, 2.º cuatrimestre 2026). Integrantes: Melinda Sellés, Rodrigo Nicolás Larrart y Taiel Vinograd.
 
-**Estado (15/10/2026):** versión 1.0.2, con los siete requisitos funcionales implementados, probados en emuladores con Android 8 y Android 16 y ensayados en un teléfono real con Telegram y HTTPS. Antes de la entrega faltan el ensayo con el hotspot, la prueba con usuarios externos (semana del 26/10) y reemplazar las alertas de ejemplo por la exportación real de la plataforma.
+**Estado (16/10/2026):** versión 1.0.3, con los siete requisitos funcionales implementados, probados en emuladores con Android 8 y Android 16 y ensayados en un teléfono real con Telegram y HTTPS. Antes de la entrega faltan el ensayo con el hotspot, la prueba con usuarios externos (semana del 26/10) y reemplazar las alertas de ejemplo por la exportación real de la plataforma.
 
 ## Capturas
 
@@ -202,21 +202,22 @@ Están en [docs/decisiones.md](docs/decisiones.md), cada una con su porqué y la
 1. Kotlin y Jetpack Compose en lugar de React Native, que proponía la Etapa 1.
 2. Contenedor manual de dependencias en lugar de Hilt.
 3. Una alerta es un episodio (flujos agrupados por origen y destino), no un flujo de red.
-4. Cada alerta trae un tipo de ataque que define la severidad; ninguna alerta se oculta.
+4. Cada alerta trae un tipo de ataque que define la severidad; ninguna alerta se oculta. Lo que la IA no detectó tiene un tipo por detector (decisión 32).
 5. Sin fijación de certificado: alcanza con la verificación de Android y las autoridades del sistema.
 6. Las alertas de muestra salen de CICIDS2017; sus fechas se corren para la demo.
 7. Revisión con Deshacer antes de enviar, cola de acciones con identificador propio y conflicto resuelto por la persona (decisión 15).
 8. HTTPS en todas las versiones de Android, también en la 8, y la demo con un solo comando (decisión 26).
 9. El release se firma con una clave propia que vive fuera del repositorio (decisión 28).
+10. El enlace del aviso entra por una pantalla puente, así el mismo aviso abre el detalle cada vez que se toca (decisión 31).
 
 ## Cómo se probó
 
-- **Pruebas automáticas:** 362 en la app (una se saltea porque necesita la API real) y 58 en el backend. Cubren los casos de uso, los ViewModels, Room con sus migraciones, el cliente HTTP con un servidor de mentira, las pantallas con Compose sobre Robolectric y todas las rutas de la API, incluido el bot con un Telegram falso.
+- **Pruebas automáticas:** 413 en la app (una se saltea porque necesita la API real) y 60 en el backend. Cubren los casos de uso, los ViewModels, Room con sus migraciones, el cliente HTTP con un servidor de mentira, las pantallas con Compose sobre Robolectric y todas las rutas de la API, incluido el bot con un Telegram falso.
 - **Integración continua:** GitHub Actions compila la app (debug y release sin firmar) y corre las pruebas de la app y del backend en cada pull request.
 - **Emuladores:** cada fase se probó en un emulador con Android 16 contra la API local. La versión 1.0.0 firmada se probó en Android 16 y en Android 8.0 contra la API publicada con HTTPS: pareo (TLS 1.3 y TLS 1.2), enlace del aviso verificado, revisión, sin conexión, Resumen y red tranquila.
 - **HTTPS:** `probar_tls.ps1` contra la API publicada, con las siete pruebas en PASA; por la IP en lugar del nombre, la app no manda nada.
 - **Rendimiento:** Estado con 500 alertas en la prueba con Room, y la app con 1.008 alertas en el emulador.
-- **Teléfono real:** el 14/10 se ensayó el guion de la demo en un Android 11 con Telegram y HTTPS, en el Wi-Fi de una casa. La flecha de volver de un detalle abierto desde el aviso de Telegram no andaba y dejaba la pantalla congelada: la 1.0.1 lo corrige (decisión 29), probado en el emulador abriendo el enlace desde otra app, como lo hace Telegram. El 15/10 se probó la 1.0.1 en ese teléfono, que usa la navegación de tres botones de Android: el aviso con "Deshacer" del detalle quedaba debajo de la barra de navegación. La 1.0.2 lo corrige (decisión 30), probado en el emulador con tres botones.
+- **Teléfono real:** el 14/10 se ensayó el guion de la demo en un Android 11 con Telegram y HTTPS, en el Wi-Fi de una casa. La flecha de volver de un detalle abierto desde el aviso de Telegram no andaba y dejaba la pantalla congelada: la 1.0.1 lo corrige (decisión 29), probado en el emulador abriendo el enlace desde otra app, como lo hace Telegram. El 15/10 se probó la 1.0.1 en ese teléfono, que usa la navegación de tres botones de Android: el aviso con "Deshacer" del detalle quedaba debajo de la barra de navegación. La 1.0.2 lo corrige (decisión 30), probado en el emulador con tres botones. La 1.0.3 resuelve lo demás que salió del ensayo: el mismo aviso abre el detalle cada vez que se toca (decisión 31), Zonda no repite lo que ya avisó Telegram, Estado avisa las revisiones que no se aplicaron, la precisión no nombra un ganador y lo que la IA no detectó tiene un tipo por detector (decisión 32).
 - **Falta:** el ensayo con el hotspot y la prueba con usuarios externos.
 
 ## Limitaciones conocidas
@@ -226,7 +227,7 @@ Están en [docs/decisiones.md](docs/decisiones.md), cada una con su porqué y la
 - **Riesgo de la red.** Algunos routers bloquean los nombres públicos que apuntan a una IP privada; por eso la demo usa el hotspot de un teléfono. Fuera de la oficina, la API se alcanza solo por la VPN de la empresa.
 - **El aviso depende de Telegram.** Sin internet no llega; la notificación propia de la app aparece cuando sincroniza, cada 15 minutos o más (Android puede demorarla). Si el navegador interno de Telegram abre la página en lugar de la app, la página ofrece "Abrir en Zonda".
 - **Sin fijación de certificado** (decisión 5): se confía en las autoridades del sistema.
-- **Un solo canal de notificación** en el teléfono, y el sonido de Telegram se configura desde el chat del bot.
+- **Las notificaciones de Zonda son para lo urgente:** las altas que no avisó Telegram, el recordatorio de las altas sin revisar y las revisiones que no se aplicaron, en dos canales. El sonido de Telegram se configura desde el chat del bot.
 - **Recall y F1** no se calculan en la app: necesitan datos etiquetados y se miden fuera de ella.
 - **Solo Android.** No hay versión para iOS.
 - **APK sin achicar:** el release no usa R8 y pesa unos 49 MB (decisión 28).
