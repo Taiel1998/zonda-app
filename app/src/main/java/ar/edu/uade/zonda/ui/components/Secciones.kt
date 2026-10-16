@@ -1,25 +1,31 @@
 package ar.edu.uade.zonda.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -142,25 +148,36 @@ fun FilaConInterruptor(
 }
 
 /**
- * El interruptor del Figma: 52 por 32, círculo blanco de 24 en los dos estados, verde prendido y
- * gris sin borde apagado. Con [thumbContent] Material deja el círculo de 24 también apagado.
+ * El interruptor del Figma (Switch/on y Switch/off): 52 por 32, círculo blanco de 24 a 4 del borde en
+ * los dos estados, verde prendido y gris sin borde apagado. Se dibuja acá porque el Switch de Material
+ * achica el círculo a 16 cuando está apagado (con `thumbContent` vacío tampoco lo agranda en esta
+ * versión). Con [alCambiar] se puede tocar y mide 48 de alto para el dedo; sin él, lo toca la fila.
  */
 @Composable
 fun Interruptor(activo: Boolean, modifier: Modifier = Modifier, alCambiar: ((Boolean) -> Unit)? = null) {
-    Switch(
-        checked = activo,
-        onCheckedChange = alCambiar,
-        thumbContent = {},
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-            checkedTrackColor = MaterialTheme.colorScheme.primary,
-            checkedBorderColor = Color.Transparent,
-            uncheckedThumbColor = MaterialTheme.colorScheme.surface,
-            uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant,
-            uncheckedBorderColor = Color.Transparent,
-        ),
-        modifier = modifier,
-    )
+    val colores = MaterialTheme.colorScheme
+    val circulo by animateDpAsState(if (activo) 24.dp else 4.dp, label = "circulo")
+    val fondo by animateColorAsState(if (activo) colores.primary else colores.outlineVariant, label = "fondo")
+    val toque = if (alCambiar != null) {
+        Modifier
+            .minimumInteractiveComponentSize()
+            .toggleable(value = activo, onValueChange = alCambiar, role = Role.Switch)
+    } else {
+        Modifier
+    }
+    Box(
+        modifier = modifier
+            .then(toque)
+            .size(width = 52.dp, height = 32.dp)
+            .background(fondo, CircleShape),
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = circulo, y = 4.dp)
+                .size(24.dp)
+                .background(if (activo) colores.onPrimary else colores.surface, CircleShape),
+        )
+    }
 }
 
 /** Tarjeta ámbar con una advertencia y su salida ("Telegram sin conectar", "Notificaciones desactivadas"). */
