@@ -42,7 +42,7 @@ from .revisiones import aplicar_revision
 from .semilla import SQL_SEVERIDAD, severidad_de
 from .telegram import BotTelegram, ErrorTelegram
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 router = APIRouter()
 
