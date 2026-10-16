@@ -273,7 +273,7 @@ class BotTelegram:
         con = self.base.conexion()
         filas = con.execute(
             """
-            SELECT a.id, a.inicio, a.servicio, a.tipo_ataque, d.telegram_chat_id AS chat_id,
+            SELECT a.id, a.inicio, a.servicio, a.tipo_ataque, a.veredicto_reglas, a.veredicto_umbrales, d.telegram_chat_id AS chat_id,
                    d.aviso_alta, d.aviso_media, d.aviso_baja
             FROM alertas a
             JOIN dispositivos d
@@ -292,7 +292,7 @@ class BotTelegram:
             if (fila["id"], fila["chat_id"]) in vistos:
                 continue
             vistos.add((fila["id"], fila["chat_id"]))
-            severidad = severidad_de(con, fila["tipo_ataque"])
+            severidad = severidad_de(con, fila)
             deteccion = datetime.fromisoformat(fila["inicio"])
             pendientes.append(
                 Pendiente(

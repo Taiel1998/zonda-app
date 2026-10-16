@@ -14,23 +14,63 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .auth import iso
-from .modelos import CLAVE_SIN_TIPO, TIPOS_SEVERIDAD
+from .modelos import CLAVE_REGLAS, CLAVE_SIN_TIPO_ANTERIOR, CLAVE_UMBRALES, TIPOS_SEVERIDAD
 
 SEVERIDAD_RECOMENDADA = {
     "fuerza_bruta": "alta",
     "sin_tipificar": "alta",
     "escaneo": "media",
     "ddos": "media",
-    CLAVE_SIN_TIPO: "media",
+    CLAVE_REGLAS: "media",
+    CLAVE_UMBRALES: "media",
     "probable_falsa_alarma": "baja",
 }
 
+ORDEN_SEVERIDAD = {"baja": 0, "media": 1, "alta": 2}
 
-def severidad_de(con: sqlite3.Connection, tipo_ataque: str | None) -> str:
-    """La severidad sale del tipo, según la tabla de la red (RF06). El tipo ordena, no filtra."""
-    clave = tipo_ataque or CLAVE_SIN_TIPO
-    fila = con.execute("SELECT severidad FROM severidades WHERE tipo_ataque = ?", (clave,)).fetchone()
-    return fila["severidad"] if fila else SEVERIDAD_RECOMENDADA[clave]
+# La severidad de cada alerta en SQL, igual que severidad_de, para filtrar sin dejar páginas con huecos.
+# Las claves del tipo vacío salen de los veredictos; sin ninguno marcado van las dos, como en claves_de.
+SQL_SEVERIDAD = f"""(CASE WHEN alertas.tipo_ataque IS NOT NULL
+    THEN (SELECT s.severidad FROM severidades s WHERE s.tipo_ataque = alertas.tipo_ataque)
+    ELSE (SELECT s.severidad FROM severidades s
+          WHERE s.tipo_ataque IN (
+              CASE WHEN alertas.veredicto_reglas = 1 OR alertas.veredicto_umbrales = 0 THEN '{CLAVE_REGLAS}' END,
+              CASE WHEN alertas.veredicto_umbrales = 1 OR alertas.veredicto_reglas = 0 THEN '{CLAVE_UMBRALES}' END)
+          ORDER BY CASE s.severidad WHEN 'alta' THEN 2 WHEN 'media' THEN 1 ELSE 0 END DESC LIMIT 1)
+END)"""
+
+
+def claves_de(tipo_ataque: str | None, reglas: bool, umbrales: bool) -> list[str]:
+    """Las filas de la tabla de severidades que le tocan a una alerta. Si la vio la IA, la de su tipo
+    (decisión 4); si no, la de cada detector que la marcó (cambio 9). Una sin ningún veredicto no
+    debería existir: si aparece, le tocan las dos."""
+    if tipo_ataque:
+        return [tipo_ataque]
+    claves = ([CLAVE_REGLAS] if reglas else []) + ([CLAVE_UMBRALES] if umbrales else [])
+    return claves or [CLAVE_REGLAS, CLAVE_UMBRALES]
+
+
+def severidad_de(con: sqlite3.Connection, alerta: sqlite3.Row) -> str:
+    """La severidad sale del tipo, según la tabla de la red (RF06). El tipo ordena, no filtra. Si la
+    vieron las reglas y los umbrales sin la IA, le toca la más alta de las dos filas (cambio 9)."""
+    severidades = []
+    for clave in claves_de(alerta["tipo_ataque"], bool(alerta["veredicto_reglas"]), bool(alerta["veredicto_umbrales"])):
+        fila = con.execute("SELECT severidad FROM severidades WHERE tipo_ataque = ?", (clave,)).fetchone()
+        severidades.append(fila["severidad"] if fila else SEVERIDAD_RECOMENDADA[clave])
+    return max(severidades, key=ORDEN_SEVERIDAD.__getitem__)
+
+
+def poner_al_dia_severidades(con: sqlite3.Connection) -> None:
+    """La tabla de severidades con todas las claves de esta versión. En una base anterior a la 1.0.3,
+    la severidad de `solo_reglas_o_umbrales` pasa a las dos claves nuevas (cambio 9); las claves que
+    falten van con la recomendada."""
+    anterior = con.execute("SELECT severidad FROM severidades WHERE tipo_ataque = ?", (CLAVE_SIN_TIPO_ANTERIOR,)).fetchone()
+    if anterior is not None:
+        for clave in (CLAVE_REGLAS, CLAVE_UMBRALES):
+            con.execute("INSERT OR IGNORE INTO severidades (tipo_ataque, severidad) VALUES (?, ?)", (clave, anterior["severidad"]))
+        con.execute("DELETE FROM severidades WHERE tipo_ataque = ?", (CLAVE_SIN_TIPO_ANTERIOR,))
+    for tipo in TIPOS_SEVERIDAD:
+        con.execute("INSERT OR IGNORE INTO severidades (tipo_ataque, severidad) VALUES (?, ?)", (tipo, SEVERIDAD_RECOMENDADA[tipo]))
 
 
 def _fecha(texto: str) -> datetime:
@@ -52,8 +92,7 @@ def cargar_si_vacia(
     if con.execute("SELECT COUNT(*) FROM alertas").fetchone()[0] > 0:
         return 0
     con.execute("INSERT OR IGNORE INTO meta (clave, valor) VALUES ('instancia', ?)", (uuid.uuid4().hex[:8],))
-    for tipo in TIPOS_SEVERIDAD:
-        con.execute("INSERT OR IGNORE INTO severidades (tipo_ataque, severidad) VALUES (?, ?)", (tipo, SEVERIDAD_RECOMENDADA[tipo]))
+    poner_al_dia_severidades(con)
     if not ruta_semilla.exists():
         return 0
 
