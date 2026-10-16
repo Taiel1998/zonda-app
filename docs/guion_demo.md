@@ -21,7 +21,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 ## 3. Media hora antes
 
 1. La notebook se conecta al hotspot del teléfono, y no al revés: con el hotspot de Windows prendido, el nombre apuntaría a otra IP.
-2. Cerrar los emuladores de Android que haya abiertos en la notebook: la demo es con el teléfono.
+2. Cerrar los emuladores de Android que haya abiertos en la notebook. En el ensayo quedó uno prendido con una versión vieja de Zonda: intentó sincronizar, el servidor lo rechazó (401) y la ventana de `demo.cmd` se llenó de esos pedidos.
 3. Borrar `backend\zonda.db`: la API vuelve a cargar la semilla con las fechas de hoy y sin teléfonos pareados.
 4. En `backend`, `.\demo.cmd`. Tiene que terminar con "Listo: https://…/salud responde con HTTPS." y "El nombre apunta a esta notebook".
 5. En otra terminal, también en `backend`: `powershell -ExecutionPolicy Bypass -File scripts\probar_tls.ps1`. Tienen que salir las siete en PASA.
