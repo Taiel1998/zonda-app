@@ -102,6 +102,7 @@ class SincronizadorHttp(
             accionesConError = envio.conError,
             hora = hora,
             idsAltasNuevas = descarga.idsAltasNuevas,
+            idsAltasNuevasConAvisoTelegram = descarga.idsConAvisoTelegram,
         )
     }
 
@@ -197,6 +198,7 @@ class SincronizadorHttp(
         val modificadas: Int,
         val altasNuevas: Int,
         val idsAltasNuevas: List<String>,
+        val idsConAvisoTelegram: Set<String>,
     )
 
     private suspend fun descargar(redId: String, cursorInicial: String?, api: ZondaApi): ResultadoDescarga =
@@ -214,6 +216,7 @@ class SincronizadorHttp(
         var modificadas = 0
         var altasNuevas = 0
         val idsAltasNuevas = mutableListOf<String>()
+        val idsConAvisoTelegram = mutableSetOf<String>()
         var paginas = 0
         // Desde cero se baja todo lo de los últimos 30 días: la pantalla Estado muestra cuántas van.
         val desdeCero = cursorInicial == null
@@ -237,6 +240,7 @@ class SincronizadorHttp(
                         if (alerta.severidad == Severidad.ALTA) {
                             altasNuevas++
                             idsAltasNuevas += alerta.id
+                            if (alerta.avisoTelegram != null) idsConAvisoTelegram += alerta.id
                         }
                     }
                 }
@@ -249,7 +253,7 @@ class SincronizadorHttp(
             paginas++
             if (!pagina.hayMas || paginas >= MAXIMO_PAGINAS) break
         }
-        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, idsAltasNuevas)
+        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, idsAltasNuevas, idsConAvisoTelegram)
     }
 
     /** SQLite admite hasta 999 parámetros por consulta. */

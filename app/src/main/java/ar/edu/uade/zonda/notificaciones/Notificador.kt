@@ -11,16 +11,20 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import ar.edu.uade.zonda.MainActivity
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.AvisosDeZonda
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.Severidad
-import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
+import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.navigation.EnlacesInternos
 import ar.edu.uade.zonda.ui.theme.VerdeZonda
+import java.time.ZoneId
 
 /**
  * La notificación local cuando la sincronización en segundo plano trae alertas altas nuevas
- * (informe, sección 6: el aviso inmediato llega por Telegram y la app suma el suyo).
+ * (informe, sección 6: el aviso inmediato llega por Telegram y la app suma el suyo), sin repetir las
+ * que Telegram ya avisó en este teléfono, y el recordatorio de las altas sin revisar (cambio 13).
  *
  * Hay un solo canal, con el sonido del sistema: con sonido, en silencio o sin aviso son modos de
  * Telegram, y un canal por severidad quedó como mejora posterior. El texto dice la severidad con
@@ -40,13 +44,34 @@ class Notificador(private val contexto: Context) {
         NotificationManagerCompat.from(contexto).createNotificationChannel(canal)
     }
 
-    /** Una notificación por red con las altas nuevas de esta sincronización; sin altas nuevas, nada. */
-    fun avisarAltasNuevas(red: Red, resultado: ResultadoSincronizacion) {
-        val cantidad = resultado.altasNuevas
+    /**
+     * Una notificación por red con las altas nuevas que Zonda tiene que avisar: las que Telegram no
+     * avisó en este teléfono ([AvisosDeZonda.altasParaNotificar], cambio 13). Sin ninguna, nada.
+     */
+    fun avisarAltasNuevas(red: Red, ids: List<String>) {
+        val cantidad = ids.size
         if (cantidad == 0) return
+        val texto = contexto.resources.getQuantityString(R.plurals.notificacion_altas, cantidad, cantidad)
+        publicarAltas(red, etiqueta = null, ids = ids, texto = texto)
+    }
+
+    /**
+     * El recordatorio de las altas que siguen sin revisar a los 15 minutos de llegar (cambio 13):
+     * "Recordatorio: 1 alerta alta sin revisar desde las 14:00", con la hora de la más vieja. Va aparte
+     * de la de alertas nuevas, así una no tapa a la otra, y abre lo mismo.
+     */
+    fun recordarAltas(red: Red, altas: List<Alerta>, zona: ZoneId = ZoneId.systemDefault()) {
+        if (altas.isEmpty()) return
+        val desde = Formato.hora(altas.minOf { it.creadaEn }, zona)
+        val texto = contexto.resources.getQuantityString(R.plurals.notificacion_recordatorio, altas.size, altas.size, desde)
+        publicarAltas(red, ETIQUETA_RECORDATORIO, altas.map { it.id }, texto)
+    }
+
+    /** Abre el detalle si es una sola alta, o Alertas de esa red filtrada en "Alta · Sin revisar". */
+    private fun publicarAltas(red: Red, etiqueta: String?, ids: List<String>, texto: String) {
         val gestor = NotificationManagerCompat.from(contexto)
         if (!gestor.areNotificationsEnabled()) return
-        val unica = resultado.idsAltasNuevas.singleOrNull()?.takeIf { cantidad == 1 }
+        val unica = ids.singleOrNull()
         val destino = if (unica != null) {
             EnlacesInternos.detalle(red.id, unica)
         } else {
@@ -56,13 +81,13 @@ class Notificador(private val contexto: Context) {
             .setSmallIcon(R.drawable.ic_notificacion)
             .setColor(VerdeZonda.toArgb())
             .setContentTitle(contexto.getString(R.string.notificacion_titulo, red.nombre))
-            .setContentText(contexto.resources.getQuantityString(R.plurals.notificacion_altas, cantidad, cantidad))
+            .setContentText(texto)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setGroup(GRUPO)
             .setContentIntent(abrir(destino))
             .setAutoCancel(true)
             .build()
-        if (publicar(gestor, etiqueta = null, id = idDe(red), notificacion = notificacion)) {
+        if (publicar(gestor, etiqueta, id = idDe(red), notificacion = notificacion)) {
             publicar(gestor, ETIQUETA_RESUMEN, ID_RESUMEN, resumen())
         }
     }
@@ -112,5 +137,8 @@ class Notificador(private val contexto: Context) {
         // El resumen lleva etiqueta para no chocar con los ids que salen de cada red.
         private const val ETIQUETA_RESUMEN = "resumen"
         private const val ID_RESUMEN = 0
+
+        /** El recordatorio usa el id de la red con su etiqueta: no reemplaza a la de alertas nuevas. */
+        const val ETIQUETA_RECORDATORIO = "recordatorio"
     }
 }

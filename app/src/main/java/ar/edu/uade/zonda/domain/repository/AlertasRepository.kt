@@ -20,6 +20,8 @@ data class ResultadoSincronizacion(
     val hora: Instant,
     /** Ids de las altas nuevas: con una sola, la notificación abre su detalle. */
     val idsAltasNuevas: List<String> = emptyList(),
+    /** De esas altas, las que ya tenían aviso de Telegram al bajarlas: Zonda no las repite (cambio 13). */
+    val idsAltasNuevasConAvisoTelegram: Set<String> = emptySet(),
 )
 
 /**

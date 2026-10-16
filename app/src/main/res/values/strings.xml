@@ -24,6 +24,11 @@
         <item quantity="one">%d alerta nueva de severidad alta</item>
         <item quantity="other">%d alertas nuevas de severidad alta</item>
     </plurals>
+    <!-- Cambio 13 (1.0.3): una sola vez, a los 15 minutos de llegar, aunque Telegram ya la haya avisado. -->
+    <plurals name="notificacion_recordatorio">
+        <item quantity="one">Recordatorio: %1$d alerta alta sin revisar desde las %2$s</item>
+        <item quantity="other">Recordatorio: %1$d alertas altas sin revisar desde las %2$s</item>
+    </plurals>
 
     <!-- Ajustes (RF05 y RF06) -->
     <string name="ajustes_sin_redes">No hay ninguna red conectada.</string>
