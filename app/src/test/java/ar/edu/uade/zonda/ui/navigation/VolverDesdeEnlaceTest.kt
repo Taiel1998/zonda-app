@@ -35,6 +35,9 @@ import org.robolectric.annotation.Config
  * tarea nueva, así que Zonda queda dentro de la tarea de Telegram con el detalle como única pantalla.
  * El grafo usa la ruta y los enlaces reales del detalle, con pantallas simples en lugar de las de
  * verdad (que necesitan la base cifrada), y la flecha usa [volver], como en ZondaNavHost.
+ *
+ * Desde la 1.0.3 el enlace entra por la pantalla puente, que abre Zonda en su propia tarea y no deja
+ * llegar a este caso (PuenteDelAvisoTest). Estas pruebas quedan para la flecha en sí.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
