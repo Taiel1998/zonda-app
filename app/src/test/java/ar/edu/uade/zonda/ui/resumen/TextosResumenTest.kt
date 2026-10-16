@@ -4,7 +4,6 @@ import android.content.res.Resources
 import androidx.test.core.app.ApplicationProvider
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.GrupoResumen
-import ar.edu.uade.zonda.domain.model.GrupoTipo
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
@@ -58,6 +57,29 @@ class TextosResumenTest {
         val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc)
 
         assertEquals("El viernes concentra 3 alertas: 2 de fuerza bruta.", fraseDelGrafico(resumen, recursos))
+    }
+
+    @Test
+    fun `sin Otros, la frase y el chip nombran cada tipo`() {
+        // Cambio 14: el tipo que más se repite puede ser uno sin nombre de ataque.
+        val falsas = listOf(
+            alertaDel("2026-09-25", "f-1", tipo = TipoAtaque.PROBABLE_FALSA_ALARMA, destinoIp = "192.168.10.3"),
+            alertaDel("2026-09-25", "f-2", tipo = TipoAtaque.PROBABLE_FALSA_ALARMA),
+            alertaDel("2026-09-25", "f-3"),
+        )
+        val sinTipo = listOf(alertaDel("2026-09-25", "t-1", tipo = TipoAtaque.SIN_TIPIFICAR))
+
+        assertEquals(
+            "El viernes concentra 3 alertas: 2 probables falsas alarmas.",
+            fraseDelGrafico(ResumenActividad.calcular(falsas, PeriodoResumen.SIETE_DIAS, domingo, utc), recursos),
+        )
+        assertEquals(
+            "El viernes concentra 1 alerta: 1 sin tipo identificado.",
+            fraseDelGrafico(ResumenActividad.calcular(sinTipo, PeriodoResumen.SIETE_DIAS, domingo, utc), recursos),
+        )
+        assertEquals("Fuerza bruta", GrupoResumen.Tipo(TipoAtaque.FUERZA_BRUTA).etiquetaChip(recursos))
+        assertEquals("Sin tipo identificado", GrupoResumen.Tipo(TipoAtaque.SIN_TIPIFICAR).etiquetaChip(recursos))
+        assertEquals("solo reglas o umbrales", GrupoResumen.Tipo(TipoAtaque.SOLO_REGLAS_O_UMBRALES).etiquetaFrase(recursos))
     }
 
     @Test
@@ -139,7 +161,7 @@ class TextosResumenTest {
         )
         assertEquals(
             "Estás viendo fuerza bruta: la precisión cuenta solo las alertas revisadas de ese tipo.",
-            recuadro(GrupoResumen.Tipo(GrupoTipo.FUERZA_BRUTA)),
+            recuadro(GrupoResumen.Tipo(TipoAtaque.FUERZA_BRUTA)),
         )
         assertEquals(
             "Estás viendo los falsos positivos: ninguna es real, así que cada modelo da 0 %.",

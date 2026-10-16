@@ -208,16 +208,18 @@ class ResumenActividadTest {
     }
 
     @Test
-    fun `los tipos van en cuatro grupos y Otros junta el resto`() {
+    fun `cada tipo de ataque tiene su fila, en el orden de la pantalla de severidades y aunque este en cero`() {
         val resumen = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc)
 
-        assertEquals(listOf(GrupoTipo.FUERZA_BRUTA, GrupoTipo.ESCANEO, GrupoTipo.DDOS, GrupoTipo.OTROS), resumen.porTipo.keys.toList())
-        assertEquals(1, resumen.porTipo.getValue(GrupoTipo.FUERZA_BRUTA))
-        assertEquals(1, resumen.porTipo.getValue(GrupoTipo.ESCANEO))
-        assertEquals(1, resumen.porTipo.getValue(GrupoTipo.DDOS))
-        // Solo reglas o umbrales y probable falsa alarma.
-        assertEquals(2, resumen.porTipo.getValue(GrupoTipo.OTROS))
-        assertEquals(GrupoTipo.OTROS, GrupoTipo.de(TipoAtaque.SIN_TIPIFICAR))
+        // Cambio 14: sin "Otros"; primero lo que detectó la IA y después lo que no.
+        assertEquals(
+            listOf(
+                TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR, TipoAtaque.ESCANEO, TipoAtaque.DDOS,
+                TipoAtaque.PROBABLE_FALSA_ALARMA, TipoAtaque.SOLO_REGLAS_O_UMBRALES,
+            ),
+            resumen.porTipo.keys.toList(),
+        )
+        assertEquals(listOf(1, 0, 1, 1, 1, 1), resumen.porTipo.values.toList())
     }
 
     @Test
@@ -234,7 +236,9 @@ class ResumenActividadTest {
         assertEquals(2, sinRevisar.total)
         assertEquals(0, sinRevisar.revisadas)
         assertNull(sinRevisar.tiempoMedianoHastaRevision)
-        assertEquals(2, sinRevisar.porTipo.getValue(GrupoTipo.OTROS))
+        assertEquals(1, sinRevisar.porTipo.getValue(TipoAtaque.SOLO_REGLAS_O_UMBRALES))
+        assertEquals(1, sinRevisar.porTipo.getValue(TipoAtaque.PROBABLE_FALSA_ALARMA))
+        assertEquals(0, sinRevisar.porTipo.getValue(TipoAtaque.FUERZA_BRUTA))
     }
 
     @Test
@@ -244,8 +248,9 @@ class ResumenActividadTest {
         assertEquals(2, total(GrupoResumen.Altas))
         assertEquals(2, total(GrupoResumen.Reales))
         assertEquals(1, total(GrupoResumen.FalsosPositivos))
-        assertEquals(2, total(GrupoResumen.Tipo(GrupoTipo.OTROS)))
-        assertEquals(1, total(GrupoResumen.Tipo(GrupoTipo.DDOS)))
+        assertEquals(1, total(GrupoResumen.Tipo(TipoAtaque.SOLO_REGLAS_O_UMBRALES)))
+        assertEquals(1, total(GrupoResumen.Tipo(TipoAtaque.DDOS)))
+        assertEquals(0, total(GrupoResumen.Tipo(TipoAtaque.SIN_TIPIFICAR)))
         assertEquals(2, total(GrupoResumen.Metodo(MetodoDeteccion.REGLAS)))
         assertEquals(3, total(GrupoResumen.Metodo(MetodoDeteccion.IA)))
     }
@@ -273,7 +278,7 @@ class ResumenActividadTest {
 
         assertEquals(Tramo(dia(9), dia(9)), destacado.barra.tramo)
         assertEquals(4, destacado.barra.cantidad)
-        assertEquals(GrupoTipo.FUERZA_BRUTA, destacado.tipo)
+        assertEquals(TipoAtaque.FUERZA_BRUTA, destacado.tipo)
         assertEquals(3, destacado.delTipo)
         // Las tres fueron al mismo equipo: "sobre el mismo servidor".
         assertTrue(destacado.mismoDestino)
