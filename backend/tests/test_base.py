@@ -24,6 +24,25 @@ def test_una_base_anterior_suma_el_protocolo_la_hora_de_revision_y_pasa_los_moti
     assert con.execute("SELECT motivo FROM revisiones").fetchone()[0] == "bloqueado_manualmente"
 
 
+def test_una_base_anterior_reparte_la_severidad_de_solo_reglas_o_umbrales_en_las_dos_claves_nuevas(tmp_path):
+    ruta = tmp_path / "anterior.db"
+    con = sqlite3.connect(ruta)
+    con.executescript(ESQUEMA)
+    con.execute("INSERT INTO severidades (tipo_ataque, severidad) VALUES ('solo_reglas_o_umbrales', 'alta'), ('escaneo', 'baja')")
+    con.commit()
+    con.close()
+
+    base = Base(ruta)
+    base.iniciar()
+
+    severidades = {fila[0]: fila[1] for fila in base.conexion().execute("SELECT tipo_ataque, severidad FROM severidades")}
+    # Cambio 9: lo que la red había elegido para las dos pasa a cada una.
+    assert (severidades["servicio_no_autorizado"], severidades["volumen_inusual"]) == ("alta", "alta")
+    assert "solo_reglas_o_umbrales" not in severidades
+    # Lo ya elegido no cambia y lo que falta va con la recomendada.
+    assert (severidades["escaneo"], severidades["fuerza_bruta"]) == ("baja", "alta")
+
+
 def test_una_base_anterior_suma_lo_que_guarda_el_bot_de_telegram(tmp_path):
     ruta = tmp_path / "anterior.db"
     con = sqlite3.connect(ruta)

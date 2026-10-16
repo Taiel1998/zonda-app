@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
+from app.db import Base
 from tests.conftest import cabecera, parear, todas_las_alertas
+from tests.test_alertas import todas_las_alertas_con
 
 
 def primera_alta(cliente, auth):
@@ -97,7 +99,7 @@ def test_severidades_recomendadas_y_cambio_para_toda_la_red(cliente, auth):
     actuales = cliente.get("/severidades", headers=auth).json()
     assert actuales == {
         "ddos": "media", "escaneo": "media", "fuerza_bruta": "alta", "probable_falsa_alarma": "baja",
-        "sin_tipificar": "alta", "solo_reglas_o_umbrales": "media",
+        "servicio_no_autorizado": "media", "sin_tipificar": "alta", "volumen_inusual": "media",
     }
     cursor_previo = None
     while True:
@@ -115,6 +117,33 @@ def test_severidades_recomendadas_y_cambio_para_toda_la_red(cliente, auth):
     # Todas las alertas vuelven a salir, porque cambió la severidad que muestran.
     assert cliente.get("/alertas", params={"desde": cursor_previo}, headers=auth).json()["hayMas"] is True
     assert cliente.put("/severidades", json={"otro_tipo": "alta"}, headers=auth).status_code == 422
+
+
+def test_sin_la_ia_la_severidad_sale_del_detector_y_con_los_dos_toca_la_mas_alta(cliente, auth):
+    # Cambio 9: lo que vieron las reglas es "servicio no autorizado" y lo de los umbrales, "volumen inusual".
+    assert cliente.put("/severidades", json={"servicio_no_autorizado": "baja", "volumen_inusual": "alta"}, headers=auth).status_code == 200
+    sin_tipo = [a for a in todas_las_alertas(cliente, auth) if a["tipoAtaque"] is None]
+    assert {a["severidad"] for a in sin_tipo if a["veredictos"]["reglas"]} == {"baja"}
+    assert {a["severidad"] for a in sin_tipo if a["veredictos"]["umbrales"]} == {"alta"}
+
+    # Una de SSH que vieron solo las reglas pasa a verla también los umbrales: le toca la más alta de las dos.
+    base = cliente.app.state.base
+    with base.transaccion() as con:
+        con.execute("UPDATE alertas SET veredicto_umbrales = 1, secuencia = ? WHERE id = 'a-2f05004d12cb'", (Base.siguiente_secuencia(con),))
+    assert cliente.get("/alertas/a-2f05004d12cb", headers=auth).json()["severidad"] == "alta"
+
+    # El filtro de la lista y los contadores de Estado la cuentan igual que el detalle.
+    altas = [a["id"] for a in todas_las_alertas_con(cliente, auth, severidad="alta")]
+    assert "a-2f05004d12cb" in altas
+    assert all(a["severidad"] == "alta" for a in todas_las_alertas_con(cliente, auth, severidad="alta"))
+    esperado = {"alta": 0, "media": 0, "baja": 0}
+    for alerta in todas_las_alertas(cliente, auth):
+        if alerta["estadoRevision"] == "sin_revisar":
+            esperado[alerta["severidad"]] += 1
+    assert cliente.get("/estado", headers=auth).json()["sinRevisar"] == esperado
+
+    # La clave anterior ya no se acepta: una app vieja tiene que actualizarse junto con el servidor.
+    assert cliente.put("/severidades", json={"solo_reglas_o_umbrales": "alta"}, headers=auth).status_code == 422
 
 
 def test_el_comentario_es_obligatorio(cliente, auth):
