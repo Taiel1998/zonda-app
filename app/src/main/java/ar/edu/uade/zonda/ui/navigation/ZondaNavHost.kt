@@ -292,7 +292,7 @@ fun ZondaNavHost(
                                 severidades = estado.borradorSeveridades ?: estado.severidades,
                                 alCambiar = viewModel::cambiarSeveridadDelBorrador,
                                 textoBoton = stringResource(R.string.ajustes_guardar_severidades),
-                                titulo = stringResource(R.string.ajustes_severidades),
+                                titulo = stringResource(R.string.ajustes_severidad_por_tipo),
                                 intro = stringResource(R.string.ajustes_severidades_intro),
                                 alGuardar = {
                                     viewModel.guardarSeveridades()
@@ -344,7 +344,7 @@ private fun rutaDe(destino: DestinoInicial): String = when (destino) {
 }
 
 /**
- * Redes, Avisos por severidad y Severidad por ataque usan el ViewModel de Ajustes, que es desde donde
+ * Redes, Avisos por severidad y Severidad por tipo de ataque usan el ViewModel de Ajustes, que es desde donde
  * se llega: así comparten los borradores y los avisos.
  */
 @Composable

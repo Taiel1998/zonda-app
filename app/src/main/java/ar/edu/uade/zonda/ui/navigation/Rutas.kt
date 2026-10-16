@@ -35,7 +35,7 @@ object Rutas {
     /** Telegram de la red activa: conectarlo (Figma 66-4205) o, si ya está, probarlo y desvincularlo (66-3484). */
     const val TELEGRAM = "telegram"
 
-    /** Severidad por ataque de la red activa, desde Ajustes o desde Avisos por severidad (RF06). */
+    /** Severidad por tipo de ataque de la red activa, desde Ajustes o desde Avisos por severidad (RF06). */
     const val SEVERIDADES = "severidades"
 
     /** El Resumen de 7 o 30 días (RF07), desde el ícono de barras de Estado. */

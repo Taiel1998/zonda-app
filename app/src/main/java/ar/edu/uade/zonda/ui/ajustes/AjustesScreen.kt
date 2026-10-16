@@ -109,7 +109,10 @@ fun AjustesScreen(
     )
 }
 
-/** El ViewModel de Ajustes. Redes, Avisos por severidad y Severidad por ataque pasan el de Ajustes como [dueño]. */
+/**
+ * El ViewModel de Ajustes. Redes, Avisos por severidad y Severidad por tipo de ataque pasan el de
+ * Ajustes como [dueño].
+ */
 @Composable
 fun ajustesViewModel(dueño: ViewModelStoreOwner? = null): AjustesViewModel = viewModelDeZonda(dueño) { contenedor ->
     AjustesViewModel(

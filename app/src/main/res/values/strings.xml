@@ -40,8 +40,8 @@
     <string name="ajustes_sin_redes">No hay ninguna red conectada.</string>
     <string name="ajustes_agregar_red">Agregar red</string>
     <string name="ajustes_telegram">Telegram</string>
-    <string name="ajustes_severidades">Severidad por ataque</string>
-    <string name="ajustes_severidades_intro">Elegí la severidad de cada tipo de ataque. La severidad define qué alertas te interrumpen y cuáles esperan en la lista.</string>
+    <!-- Cambio 8 (1.0.3): el título como la fila de Ajustes y la frase corta del Figma 66-3212. -->
+    <string name="ajustes_severidades_intro">Elegí qué tan urgente es cada caso.</string>
     <string name="ajustes_guardar_severidades">Guardar</string>
     <string name="ajustes_severidades_guardadas">Severidades guardadas. Se envían a la red.</string>
     <string name="ajustes_detalles_tecnicos">Detalles técnicos</string>
