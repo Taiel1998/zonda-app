@@ -112,7 +112,8 @@ class EstadoViewModelTest {
 
         assertEquals(alta.inicio, EstadoViewModel.ultimaDeteccion(Semaforo.ROJO, listOf(alta, media, baja)))
         assertEquals(media.inicio, EstadoViewModel.ultimaDeteccion(Semaforo.AMARILLO, listOf(media, baja)))
-        assertNull(EstadoViewModel.ultimaDeteccion(Semaforo.VERDE, listOf(baja)))
+        assertEquals(baja.inicio, EstadoViewModel.ultimaDeteccion(Semaforo.VERDE, listOf(baja)))
+        assertNull(EstadoViewModel.ultimaDeteccion(Semaforo.VERDE, emptyList()))
         assertNull(EstadoViewModel.ultimaDeteccion(Semaforo.SIN_DATOS, listOf(alta)))
     }
 
@@ -159,14 +160,15 @@ class EstadoViewModelTest {
     }
 
     @Test
-    fun `solo con bajas sin revisar la red esta tranquila y no hay ultima deteccion`() = runTest {
+    fun `solo con bajas sin revisar el semaforo es verde y cuenta la ultima baja`() = runTest {
         redes.agregar(Fixtures.red("red-1"))
-        alertas.agregar(Fixtures.alerta("baja", severidad = Severidad.BAJA))
+        val baja = Fixtures.alerta("baja", severidad = Severidad.BAJA)
+        alertas.agregar(baja)
 
         viewModel().estado.test {
             val datos = esperar { it.contenido is ContenidoEstado.Datos }.datos
             assertEquals(Semaforo.VERDE, datos.semaforo)
-            assertNull(datos.ultimaDeteccion)
+            assertEquals(baja.inicio, datos.ultimaDeteccion)
             assertEquals(listOf("baja"), datos.alertas.map { it.id })
             cancelAndIgnoreRemainingEvents()
         }
