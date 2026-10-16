@@ -50,6 +50,7 @@ import ar.edu.uade.zonda.ui.components.IndicadorEnvio
 import ar.edu.uade.zonda.ui.components.IndicadorEstadoRevision
 import ar.edu.uade.zonda.ui.components.IndicadorSeveridad
 import ar.edu.uade.zonda.ui.components.LogoZonda
+import ar.edu.uade.zonda.ui.components.MarcaSemaforo
 import ar.edu.uade.zonda.ui.components.Panel
 import ar.edu.uade.zonda.ui.components.Semaforo
 import ar.edu.uade.zonda.ui.theme.Tonos
@@ -184,6 +185,7 @@ private fun IlustracionSemaforo() {
             etiqueta = stringResource(R.string.tutorial_semaforo_etiqueta),
             titulo = stringResource(R.string.tutorial_semaforo_titulo),
             detalle = stringResource(R.string.tutorial_semaforo_detalle),
+            marca = MarcaSemaforo.Numero(3),
         )
         FilaContadores(altas = 3, medias = 1, bajas = 0)
     }

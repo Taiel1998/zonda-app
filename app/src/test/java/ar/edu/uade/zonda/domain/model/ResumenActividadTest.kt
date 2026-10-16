@@ -61,7 +61,7 @@ class ResumenActividadTest {
                 metodos = setOf(MetodoDeteccion.REGLAS),
             ),
             // Dos sin revisar.
-            Fixtures.alerta("a-4", severidad = Severidad.MEDIA, tipoAtaque = TipoAtaque.SOLO_REGLAS_O_UMBRALES, creadaEn = hace3h, metodos = setOf(MetodoDeteccion.REGLAS)),
+            Fixtures.alerta("a-4", severidad = Severidad.MEDIA, tipoAtaque = TipoAtaque.SERVICIO_NO_AUTORIZADO, creadaEn = hace3h, metodos = setOf(MetodoDeteccion.REGLAS)),
             Fixtures.alerta("a-5", severidad = Severidad.BAJA, tipoAtaque = TipoAtaque.PROBABLE_FALSA_ALARMA, creadaEn = hace3h),
             // Fuera del período de 7 días: no cuenta.
             Fixtures.alerta("vieja", severidad = Severidad.ALTA, creadaEn = ahora.minus(Duration.ofDays(10))),
@@ -198,42 +198,53 @@ class ResumenActividadTest {
     }
 
     @Test
-    fun `el metodo mas preciso es el de mayor precision y, si empatan, el de mas revisiones`() {
-        // Umbrales y reglas tienen 100 %; las reglas, con dos revisiones, ganan el empate.
-        val lista = listOf(
-            alertaDel(12, "r-1", revision = Fixtures.revision(), metodos = setOf(MetodoDeteccion.REGLAS, MetodoDeteccion.IA)),
-            alertaDel(12, "r-2", revision = Fixtures.revision(), metodos = setOf(MetodoDeteccion.REGLAS)),
-            alertaDel(12, "u-1", revision = Fixtures.revision(), metodos = setOf(MetodoDeteccion.UMBRALES)),
-            alertaDel(12, "ia-1", revision = Fixtures.revision(ResultadoRevision.FALSO_POSITIVO, Motivo.BACKUP), metodos = setOf(MetodoDeteccion.IA)),
-        )
-
-        val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc)
-
-        assertEquals(MetodoDeteccion.REGLAS, resumen.metodoMasPreciso)
-    }
-
-    @Test
-    fun `sin alertas revisadas no hay mediana, precision ni metodo mas preciso`() {
+    fun `sin alertas revisadas no hay mediana ni precision`() {
         val resumen = ResumenActividad.calcular(listOf(Fixtures.alerta("a-1")), PeriodoResumen.TREINTA_DIAS, ahora, utc)
 
         assertNull(resumen.tiempoMedianoHastaRevision)
         assertEquals(Proporcion(0, 1), resumen.cobertura)
         assertEquals(Proporcion(0, 0), resumen.precisionPorMetodo.getValue(MetodoDeteccion.IA))
         assertNull(resumen.precisionPorMetodo.getValue(MetodoDeteccion.IA).valor)
-        assertNull(resumen.metodoMasPreciso)
     }
 
     @Test
-    fun `los tipos van en cuatro grupos y Otros junta el resto`() {
+    fun `cada tipo de ataque tiene su fila, en el orden de la pantalla de severidades y aunque este en cero`() {
         val resumen = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc)
 
-        assertEquals(listOf(GrupoTipo.FUERZA_BRUTA, GrupoTipo.ESCANEO, GrupoTipo.DDOS, GrupoTipo.OTROS), resumen.porTipo.keys.toList())
-        assertEquals(1, resumen.porTipo.getValue(GrupoTipo.FUERZA_BRUTA))
-        assertEquals(1, resumen.porTipo.getValue(GrupoTipo.ESCANEO))
-        assertEquals(1, resumen.porTipo.getValue(GrupoTipo.DDOS))
-        // Solo reglas o umbrales y probable falsa alarma.
-        assertEquals(2, resumen.porTipo.getValue(GrupoTipo.OTROS))
-        assertEquals(GrupoTipo.OTROS, GrupoTipo.de(TipoAtaque.SIN_TIPIFICAR))
+        // Cambio 14: sin "Otros"; primero lo que detectó la IA y después lo que no.
+        assertEquals(
+            listOf(
+                TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR, TipoAtaque.ESCANEO, TipoAtaque.DDOS,
+                TipoAtaque.PROBABLE_FALSA_ALARMA, TipoAtaque.SERVICIO_NO_AUTORIZADO, TipoAtaque.VOLUMEN_INUSUAL,
+            ),
+            resumen.porTipo.keys.toList(),
+        )
+        assertEquals(listOf(1, 0, 1, 1, 1, 1, 0), resumen.porTipo.values.toList())
+    }
+
+    @Test
+    fun `una alerta que vieron las reglas y los umbrales sin la IA cuenta en las dos filas`() {
+        // Cambio 9: cada fila dice lo que vio ese detector, así que las filas pueden sumar más que el total.
+        val lista = listOf(
+            alertaDel(12, "reglas", tipo = TipoAtaque.SERVICIO_NO_AUTORIZADO, metodos = setOf(MetodoDeteccion.REGLAS)),
+            alertaDel(12, "umbrales", tipo = TipoAtaque.VOLUMEN_INUSUAL, metodos = setOf(MetodoDeteccion.UMBRALES)),
+            alertaDel(
+                12, "las-dos", tipo = TipoAtaque.SERVICIO_NO_AUTORIZADO,
+                metodos = setOf(MetodoDeteccion.REGLAS, MetodoDeteccion.UMBRALES),
+            ),
+        )
+
+        val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc)
+
+        assertEquals(3, resumen.total)
+        assertEquals(2, resumen.porTipo.getValue(TipoAtaque.SERVICIO_NO_AUTORIZADO))
+        assertEquals(2, resumen.porTipo.getValue(TipoAtaque.VOLUMEN_INUSUAL))
+        // Tocar cualquiera de las dos filas la muestra.
+        val umbrales = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc, GrupoResumen.Tipo(TipoAtaque.VOLUMEN_INUSUAL))
+        assertEquals(2, umbrales.total)
+        // El destacado también: los dos tipos empatan y va el primero en pantalla.
+        assertEquals(TipoAtaque.SERVICIO_NO_AUTORIZADO, resumen.destacado?.tipo)
+        assertEquals(2, resumen.destacado?.delTipo)
     }
 
     @Test
@@ -250,7 +261,9 @@ class ResumenActividadTest {
         assertEquals(2, sinRevisar.total)
         assertEquals(0, sinRevisar.revisadas)
         assertNull(sinRevisar.tiempoMedianoHastaRevision)
-        assertEquals(2, sinRevisar.porTipo.getValue(GrupoTipo.OTROS))
+        assertEquals(1, sinRevisar.porTipo.getValue(TipoAtaque.SERVICIO_NO_AUTORIZADO))
+        assertEquals(1, sinRevisar.porTipo.getValue(TipoAtaque.PROBABLE_FALSA_ALARMA))
+        assertEquals(0, sinRevisar.porTipo.getValue(TipoAtaque.FUERZA_BRUTA))
     }
 
     @Test
@@ -260,8 +273,10 @@ class ResumenActividadTest {
         assertEquals(2, total(GrupoResumen.Altas))
         assertEquals(2, total(GrupoResumen.Reales))
         assertEquals(1, total(GrupoResumen.FalsosPositivos))
-        assertEquals(2, total(GrupoResumen.Tipo(GrupoTipo.OTROS)))
-        assertEquals(1, total(GrupoResumen.Tipo(GrupoTipo.DDOS)))
+        assertEquals(1, total(GrupoResumen.Tipo(TipoAtaque.SERVICIO_NO_AUTORIZADO)))
+        assertEquals(0, total(GrupoResumen.Tipo(TipoAtaque.VOLUMEN_INUSUAL)))
+        assertEquals(1, total(GrupoResumen.Tipo(TipoAtaque.DDOS)))
+        assertEquals(0, total(GrupoResumen.Tipo(TipoAtaque.SIN_TIPIFICAR)))
         assertEquals(2, total(GrupoResumen.Metodo(MetodoDeteccion.REGLAS)))
         assertEquals(3, total(GrupoResumen.Metodo(MetodoDeteccion.IA)))
     }
@@ -289,7 +304,7 @@ class ResumenActividadTest {
 
         assertEquals(Tramo(dia(9), dia(9)), destacado.barra.tramo)
         assertEquals(4, destacado.barra.cantidad)
-        assertEquals(GrupoTipo.FUERZA_BRUTA, destacado.tipo)
+        assertEquals(TipoAtaque.FUERZA_BRUTA, destacado.tipo)
         assertEquals(3, destacado.delTipo)
         // Las tres fueron al mismo equipo: "sobre el mismo servidor".
         assertTrue(destacado.mismoDestino)

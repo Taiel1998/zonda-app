@@ -37,18 +37,19 @@ import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.abrirAjustesDeLaApp
+import ar.edu.uade.zonda.ui.components.AvisosDeTelegram
 import ar.edu.uade.zonda.ui.components.BarraSuperior
 import ar.edu.uade.zonda.ui.components.BotonContorno
 import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.components.BotonTonal
+import ar.edu.uade.zonda.ui.components.ConsejoSonidoDeTelegram
 import ar.edu.uade.zonda.ui.components.Panel
-import ar.edu.uade.zonda.ui.components.SelectorDeAvisos
 import ar.edu.uade.zonda.ui.components.TituloSeccion
 import ar.edu.uade.zonda.ui.tienePermiso
 
 /**
  * Preferencias de avisos del primer inicio (RF05; Figma 35-392): cómo avisa cada severidad por
- * Telegram y el permiso de notificaciones. Sin flecha de volver, como en el Figma: se avanza con
+ * Telegram (cambio 6) y el permiso de notificaciones. Sin flecha de volver, como en el Figma: se avanza con
  * "Continuar". Sin el permiso la app sigue funcionando y explica cómo activarlo (RNF06).
  */
 @Composable
@@ -73,12 +74,14 @@ fun AvisosScreen(
             )
             Panel {
                 TituloSeccion(stringResource(R.string.avisos_titulo))
+                // Todavía no hay red pareada: el bot es el de siempre.
                 Text(
-                    text = stringResource(R.string.avisos_texto),
+                    text = stringResource(R.string.avisos_texto, stringResource(R.string.telegram_bot)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                SelectorDeAvisos(avisos = avisos, alCambiar = alCambiar)
+                AvisosDeTelegram(avisos = avisos, alCambiar = alCambiar)
+                ConsejoSonidoDeTelegram()
             }
             PanelNotificaciones()
             BotonPrincipal(texto = stringResource(R.string.avisos_continuar), alTocar = alContinuar)

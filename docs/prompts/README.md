@@ -36,3 +36,4 @@ Un archivo por sesión de trabajo o por fase, con la fecha, qué se pidió, qué
 | 14/10/2026 | `2026-10-14-fase12-cierre.md` | Fase 12: APK firmado, guion de la demo, README y este registro, y después `zonda emitir` y `zonda tranquila` para la demo |
 | 15/10/2026 | `2026-10-15-version-1.0.1.md` | Versión 1.0.1: la flecha del detalle abierto desde Telegram |
 | 15/10/2026 | `2026-10-15-version-1.0.2.md` | Versión 1.0.2: el aviso del detalle arriba de la barra de tres botones |
+| 15 y 16/10/2026 | `2026-10-16-version-1.0.3.md` | Versión 1.0.3: lo que salió del ensayo en el teléfono |

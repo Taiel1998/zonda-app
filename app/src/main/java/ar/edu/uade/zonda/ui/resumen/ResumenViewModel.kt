@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.GrupoResumen
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.ObservarResumen
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -46,6 +49,11 @@ class ResumenViewModel(
             }
         }
 
+    /** La red activa con la severidad que eligió para cada tipo (cambio 14). */
+    private val redYSeveridades: Flow<Pair<Red?, SeveridadPorTipo>> = redes.observarRedActiva().flatMapLatest { red ->
+        if (red == null) flowOf(null to SeveridadPorTipo.RECOMENDADA) else redes.observarSeveridades(red.id).map { red to it }
+    }
+
     /**
      * Hasta la primera lectura de la base el contenido es [ContenidoResumen.Cargando]. Al volver a la
      * pantalla (por ejemplo, de la app con la que se compartió) queda lo último que se mostró hasta que
@@ -54,10 +62,10 @@ class ResumenViewModel(
     val estado: StateFlow<ResumenUiState> = combine(
         consulta,
         contenido,
-        redes.observarRedActiva(),
+        redYSeveridades,
         conectividad.conectado,
         aviso,
-    ) { consulta, contenido, red, conectado, aviso ->
+    ) { consulta, contenido, (red, severidades), conectado, aviso ->
         ResumenUiState(
             contenido = contenido,
             periodo = consulta.periodo,
@@ -66,6 +74,7 @@ class ResumenViewModel(
             datosDe = red?.ultimaSincronizacion,
             sinConexion = !conectado,
             aviso = aviso,
+            severidades = severidades,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ResumenUiState())
 

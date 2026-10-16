@@ -24,13 +24,24 @@
         <item quantity="one">%d alerta nueva de severidad alta</item>
         <item quantity="other">%d alertas nuevas de severidad alta</item>
     </plurals>
+    <!-- Cambio 7 (1.0.3): solo si el conflicto aparece al sincronizar en segundo plano, una vez por revisión. -->
+    <string name="notificacion_no_aplicada">Una revisión tuya no se aplicó. Otra persona revisó esa alerta antes. Tocá para elegir cuál queda.</string>
+    <plurals name="notificacion_no_aplicadas">
+        <item quantity="one">%d revisión tuya no se aplicó. Otra persona revisó esa alerta antes. Tocá para elegir cuál queda.</item>
+        <item quantity="other">%d revisiones tuyas no se aplicaron. Alguien más revisó esas alertas antes. Tocá para elegir cuáles quedan.</item>
+    </plurals>
+    <!-- Cambio 13 (1.0.3): una sola vez, a los 15 minutos de llegar, aunque Telegram ya la haya avisado. -->
+    <plurals name="notificacion_recordatorio">
+        <item quantity="one">Recordatorio: %1$d alerta alta sin revisar desde las %2$s</item>
+        <item quantity="other">Recordatorio: %1$d alertas altas sin revisar desde las %2$s</item>
+    </plurals>
 
     <!-- Ajustes (RF05 y RF06) -->
     <string name="ajustes_sin_redes">No hay ninguna red conectada.</string>
     <string name="ajustes_agregar_red">Agregar red</string>
     <string name="ajustes_telegram">Telegram</string>
-    <string name="ajustes_severidades">Severidad por ataque</string>
-    <string name="ajustes_severidades_intro">Elegí la severidad de cada tipo de ataque. La severidad define qué alertas te interrumpen y cuáles esperan en la lista.</string>
+    <!-- Cambio 8 (1.0.3): el título como la fila de Ajustes y la frase corta del Figma 66-3212. -->
+    <string name="ajustes_severidades_intro">Elegí qué tan urgente es cada caso.</string>
     <string name="ajustes_guardar_severidades">Guardar</string>
     <string name="ajustes_severidades_guardadas">Severidades guardadas. Se envían a la red.</string>
     <string name="ajustes_detalles_tecnicos">Detalles técnicos</string>
@@ -136,6 +147,7 @@
     <string name="filtro_periodo_30d_titulo">Últimos 30 días</string>
     <string name="filtro_periodo_30d_detalle">Todo lo que hay guardado en el teléfono</string>
     <string name="filtro_mas">Más filtros</string>
+    <string name="filtro_no_aplicadas">Revisiones no aplicadas</string>
     <string name="filtro_mas_con_cantidad">Más filtros (%1$d)</string>
     <string name="filtro_mas_titulo">Más filtros</string>
     <string name="filtro_servicio">Servicio</string>
@@ -294,9 +306,35 @@
     <string name="tipo_ddos">Denegación de servicio (DDoS)</string>
     <string name="tipo_sin_tipificar">Tráfico anómalo sin tipo identificado</string>
     <string name="tipo_probable_falsa_alarma">Probable falsa alarma</string>
-    <string name="tipo_solo_reglas_o_umbrales">Detectado solo por reglas o umbrales</string>
+    <!-- Cambio 9 (1.0.3): lo que la IA no detectó, en dos tipos (Figma 66-3212). -->
+    <string name="tipo_servicio_no_autorizado">Servicio no autorizado</string>
+    <string name="tipo_volumen_inusual">Volumen inusual de conexiones</string>
+    <string name="tipo_detector_servicio_no_autorizado">Lo detectan las reglas</string>
+    <string name="tipo_detector_volumen_inusual">Lo detectan los umbrales</string>
+    <!-- Cambios 8 y 14 (1.0.3): el nombre corto de cada tipo (el chip del Resumen y la hoja "Qué es cada tipo") y qué es. -->
+    <string name="tipo_corto_fuerza_bruta">Fuerza bruta</string>
+    <string name="tipo_corto_sin_tipificar">Sin tipo identificado</string>
+    <string name="tipo_corto_escaneo">Escaneo de puertos</string>
+    <string name="tipo_corto_ddos">Denegación de servicio</string>
+    <string name="tipo_corto_probable_falsa_alarma">Probable falsa alarma</string>
+    <string name="tipo_corto_servicio_no_autorizado">Servicio no autorizado</string>
+    <string name="tipo_corto_volumen_inusual">Volumen inusual</string>
+    <string name="tipo_descripcion_fuerza_bruta">Muchos intentos de contraseña contra un servicio.</string>
+    <string name="tipo_descripcion_sin_tipificar">No se parece a ningún ataque conocido. Puede ser uno nuevo.</string>
+    <string name="tipo_descripcion_escaneo">Prueba puertos para ver qué servicios hay. Suele ser el paso previo a un ataque.</string>
+    <string name="tipo_descripcion_ddos">Muchísimo tráfico para saturar un servicio.</string>
+    <string name="tipo_descripcion_probable_falsa_alarma">Raro para la IA, pero parecido a tráfico normal, como un backup.</string>
+    <string name="tipo_descripcion_servicio_no_autorizado">Las reglas vieron una conexión a un servicio que no está en la lista de permitidos.</string>
+    <string name="tipo_descripcion_volumen_inusual">Los umbrales vieron demasiadas conexiones a un mismo servicio en un minuto.</string>
+    <string name="tipos_titulo">Qué es cada tipo</string>
+    <string name="tipos_bloque_ia">Lo que detectó la IA</string>
+    <string name="tipos_bloque_ia_frase">La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.</string>
+    <string name="tipos_bloque_sin_ia">Lo que la IA no detectó</string>
+    <string name="tipos_bloque_sin_ia_frase">Lo marcaron los otros dos detectores de Zonda.</string>
+    <string name="tipos_pie">El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque.</string>
+    <string name="tipos_punto">Severidad %1$s</string>
     <string name="modo_sonido">Con sonido</string>
-    <string name="modo_vibracion">Vibración</string>
+    <string name="modo_silencio">En silencio</string>
     <string name="modo_sin_aviso">Sin aviso</string>
     <string name="abrir_ajustes">Abrir ajustes</string>
 
@@ -333,7 +371,7 @@
     <!-- Ilustraciones del tutorial: datos de ejemplo del Figma -->
     <string name="tutorial_semaforo_etiqueta">Atención</string>
     <string name="tutorial_semaforo_titulo">3 alertas altas sin revisar</string>
-    <string name="tutorial_semaforo_detalle">Última detección hace 5 min · actualizado 02:14</string>
+    <string name="tutorial_semaforo_detalle">Última alta sin revisar: hace 5 min · actualizado 02:14</string>
     <string name="tutorial_aviso_paso">1. Llega el aviso por Telegram</string>
     <string name="tutorial_aviso_origen">Telegram · Zonda alertas · ahora</string>
     <!-- El aviso de ejemplo es el texto que manda el bot (backend/app/telegram.py): sin nombres de equipos (RNF02). -->
@@ -347,7 +385,13 @@
     <string name="inicio_antes_de_empezar">Antes de empezar</string>
     <string name="avisos_intro">Elegí cómo querés que Zonda te avise. Podés cambiar todo esto después desde Ajustes.</string>
     <string name="avisos_titulo">Avisos por Telegram</string>
-    <string name="avisos_texto">Elegí cómo te avisa cada severidad. El mensaje siempre dice la severidad con palabras, además del color.</string>
+    <!-- Cambio 6 (1.0.3): una fila por severidad con interruptor y la hoja para elegir cómo avisa. -->
+    <string name="avisos_texto">Llegan al instante al chat de %1$s.</string>
+    <string name="avisos_consejo">Para que una alta te despierte, ponele un sonido propio y fuerte al chat del bot: en Telegram, el chat → Notificaciones → Sonido.</string>
+    <string name="avisos_cambiar_modo">Elegir cómo avisa</string>
+    <string name="avisos_hoja_alta">¿Cómo te avisamos las altas?</string>
+    <string name="avisos_hoja_media">¿Cómo te avisamos las medias?</string>
+    <string name="avisos_hoja_baja">¿Cómo te avisamos las bajas?</string>
     <string name="avisos_continuar">Continuar</string>
     <string name="notificaciones_titulo">Notificaciones en el teléfono</string>
     <string name="notificaciones_texto">Zonda muestra una notificación cuando la sincronización trae una alerta alta. Android te va a pedir confirmar el permiso.</string>
@@ -476,6 +520,12 @@
 
     <!-- Semáforo, contadores y descarga inicial (Figma 1-3, 1-178, 1-222 y 50-616) -->
     <string name="semaforo_atencion">Atención</string>
+    <!-- Cambio 11 (1.0.3): verde con bajas pendientes. "Tranquila" queda para cuando no falta revisar nada. -->
+    <string name="semaforo_sin_urgencias">Sin urgencias</string>
+    <plurals name="semaforo_bajas_sin_revisar">
+        <item quantity="one">%d alerta baja sin revisar</item>
+        <item quantity="other">%d alertas bajas sin revisar</item>
+    </plurals>
     <string name="semaforo_tranquila">Tranquila</string>
     <string name="semaforo_sin_datos">Sin datos</string>
     <plurals name="semaforo_altas_sin_revisar">
@@ -487,10 +537,13 @@
         <item quantity="other">%d alertas medias sin revisar</item>
     </plurals>
     <string name="semaforo_tranquila_titulo">La red está tranquila</string>
-    <string name="semaforo_tranquila_detalle">Ninguna alerta alta ni media sin revisar · actualizado %1$s</string>
+    <string name="semaforo_tranquila_detalle">Ninguna alerta sin revisar · actualizado %1$s</string>
     <string name="semaforo_sin_datos_titulo">Sin datos todavía</string>
     <string name="semaforo_sin_datos_detalle">Todavía no hay una sincronización con el servidor de tu empresa</string>
-    <string name="semaforo_ultima_deteccion">Última detección hace %1$s · actualizado %2$s</string>
+    <!-- Cambio 11: la línea de abajo habla de lo mismo que el título (antes "Última detección"). -->
+    <string name="semaforo_ultima_alta">Última alta sin revisar: hace %1$s · actualizado %2$s</string>
+    <string name="semaforo_ultima_media">Última media sin revisar: hace %1$s · actualizado %2$s</string>
+    <string name="semaforo_ultima_baja">Última baja sin revisar: hace %1$s · actualizado %2$s</string>
     <string name="semaforo_ultimo_conocido">Último estado conocido · puede haber alertas nuevas</string>
     <string name="leyenda_rojo">Rojo: hay alertas altas sin revisar</string>
     <string name="leyenda_amarillo">Amarillo: solo quedan medias sin revisar</string>
@@ -518,6 +571,14 @@
     <string name="estado_ver_todas">Ver todas →</string>
     <string name="estado_ver_todas_descripcion">Ver todas las alertas</string>
     <string name="estado_nota_vacia">No queda ninguna alerta sin revisar. Las nuevas aparecen acá apenas se sincronizan.</string>
+    <!-- Cambio 7 (1.0.3): una revisión de este teléfono que no se aplicó porque otra persona revisó antes. -->
+    <plurals name="estado_no_aplicadas_titulo">
+        <item quantity="one">Una revisión tuya no se aplicó</item>
+        <item quantity="other">%d revisiones tuyas no se aplicaron</item>
+    </plurals>
+    <string name="estado_no_aplicada_texto">Otra persona revisó esa alerta antes que vos.</string>
+    <string name="estado_no_aplicadas_texto">Alguien más revisó esas alertas antes que vos.</string>
+    <string name="estado_no_aplicadas_ver">Ver</string>
     <string name="estado_nota_sin_altas">No hay alertas altas sin revisar. Si llega una, el semáforo se pone en rojo.</string>
     <string name="estado_nota_sin_medias">No hay alertas medias sin revisar. Si llega una y no hay altas, el semáforo se pone en amarillo.</string>
     <string name="estado_nota_sin_bajas">No hay alertas bajas sin revisar. Las bajas no cambian el semáforo: esperan en la lista hasta que las revises.</string>
@@ -538,6 +599,8 @@
     <!-- Notificación local de altas nuevas: un solo canal (informe, sección 6) -->
     <string name="canal_alertas">Alertas altas</string>
     <string name="canal_alertas_descripcion">Avisa cuando la sincronización trae alertas altas nuevas.</string>
+    <string name="canal_revisiones">Revisiones</string>
+    <string name="canal_revisiones_descripcion">Avisa si una revisión tuya no se aplicó porque otra persona revisó esa alerta antes.</string>
     <string name="telegram_bot">@zonda_alertas_bot</string>
     <string name="accion_guardar">Guardar</string>
     <string name="aviso_ok">OK</string>
@@ -556,7 +619,7 @@
     <string name="ajustes_conectar_telegram">Conectar Telegram</string>
     <string name="ajustes_avisos_por_severidad">Avisos por severidad</string>
     <string name="aviso_frase_sonido">con sonido</string>
-    <string name="aviso_frase_vibracion">con vibración</string>
+    <string name="aviso_frase_silencio">en silencio</string>
     <string name="aviso_frase_sin_aviso">sin aviso</string>
     <string name="aviso_resumen_ajustes">%1$s. Se cambia desde Ajustes.</string>
     <string name="ajustes_severidad_por_tipo">Severidad por tipo de ataque</string>
@@ -619,7 +682,6 @@
 
     <!-- Avisos por severidad (Figma 51-1688) -->
     <string name="avisos_sonido_titulo">Sonido de los avisos</string>
-    <string name="avisos_sonido_telegram">El sonido de Telegram lo define Telegram: abrí el chat de %1$s → Notificaciones → Sonido.</string>
     <string name="avisos_sonido_zonda">Las notificaciones de Zonda usan el sonido del sistema. \"Notificaciones del sistema\" abre esa configuración.</string>
     <string name="avisos_cambiar_severidad">Cambiar la severidad de cada tipo de ataque</string>
 
@@ -686,12 +748,41 @@
     <string name="resumen_alertas_por_dia">Alertas por día</string>
     <string name="resumen_alertas_por_semana">Alertas por semana</string>
     <plurals name="resumen_destacado_dia">
-        <item quantity="one">El %1$s concentra %2$d alerta: %3$d de %4$s.</item>
-        <item quantity="other">El %1$s concentra %2$d alertas: %3$d de %4$s.</item>
+        <item quantity="one">El %1$s concentra %2$d alerta: %3$s.</item>
+        <item quantity="other">El %1$s concentra %2$d alertas: %3$s.</item>
     </plurals>
     <plurals name="resumen_destacado_dia_servidor">
-        <item quantity="one">El %1$s concentra %2$d alerta: %3$d de %4$s sobre el mismo servidor.</item>
-        <item quantity="other">El %1$s concentra %2$d alertas: %3$d de %4$s sobre el mismo servidor.</item>
+        <item quantity="one">El %1$s concentra %2$d alerta: %3$s sobre el mismo servidor.</item>
+        <item quantity="other">El %1$s concentra %2$d alertas: %3$s sobre el mismo servidor.</item>
+    </plurals>
+    <!-- Cambio 14 (1.0.3): cuántas del tipo que más se repite, dentro de la frase del gráfico ("11 de fuerza bruta"). -->
+    <plurals name="resumen_cuantas_fuerza_bruta">
+        <item quantity="one">%d de fuerza bruta</item>
+        <item quantity="other">%d de fuerza bruta</item>
+    </plurals>
+    <plurals name="resumen_cuantas_sin_tipificar">
+        <item quantity="one">%d sin tipo identificado</item>
+        <item quantity="other">%d sin tipo identificado</item>
+    </plurals>
+    <plurals name="resumen_cuantas_escaneo">
+        <item quantity="one">%d de escaneo de puertos</item>
+        <item quantity="other">%d de escaneo de puertos</item>
+    </plurals>
+    <plurals name="resumen_cuantas_ddos">
+        <item quantity="one">%d de denegación de servicio</item>
+        <item quantity="other">%d de denegación de servicio</item>
+    </plurals>
+    <plurals name="resumen_cuantas_probable_falsa_alarma">
+        <item quantity="one">%d probable falsa alarma</item>
+        <item quantity="other">%d probables falsas alarmas</item>
+    </plurals>
+    <plurals name="resumen_cuantas_servicio_no_autorizado">
+        <item quantity="one">%d de servicio no autorizado</item>
+        <item quantity="other">%d de servicio no autorizado</item>
+    </plurals>
+    <plurals name="resumen_cuantas_volumen_inusual">
+        <item quantity="one">%d de volumen inusual</item>
+        <item quantity="other">%d de volumen inusual</item>
     </plurals>
     <plurals name="resumen_destacado_semana">
         <item quantity="one">La semana del %1$s fue la de más actividad: %2$d alerta.</item>
@@ -707,14 +798,6 @@
     <string name="resumen_chip_altas">Altas</string>
     <string name="resumen_por_tipo">Por tipo de ataque</string>
     <string name="resumen_tipo_fuerza_bruta">Fuerza bruta (SSH, FTP)</string>
-    <string name="resumen_tipo_escaneo">Escaneo de puertos</string>
-    <string name="resumen_tipo_ddos">Denegación de servicio</string>
-    <string name="resumen_tipo_otros">Otros</string>
-    <string name="resumen_chip_fuerza_bruta">Fuerza bruta</string>
-    <string name="resumen_frase_fuerza_bruta">fuerza bruta</string>
-    <string name="resumen_frase_escaneo">escaneo de puertos</string>
-    <string name="resumen_frase_ddos">denegación de servicio</string>
-    <string name="resumen_frase_otros">otros tipos</string>
     <string name="resumen_reales_y_falsos">Reales y falsos positivos (de las revisadas)</string>
     <string name="resumen_reales">Reales</string>
     <string name="resumen_falsos_positivos">Falsos positivos</string>
@@ -724,16 +807,42 @@
     <string name="resumen_cobertura_valor">%1$s · %2$d de %3$d</string>
     <string name="resumen_metodo_umbrales">Umbrales estadísticos</string>
     <string name="resumen_metodo_reglas">Reglas estáticas</string>
-    <string name="resumen_precision_formula">Precisión = alertas reales / alertas revisadas que marcó cada modelo.</string>
-    <string name="resumen_mejor_ia">El modelo de IA tiene la precisión más alta</string>
-    <string name="resumen_mejor_umbrales">Los umbrales tienen la precisión más alta</string>
-    <string name="resumen_mejor_reglas">Las reglas tienen la precisión más alta</string>
-    <plurals name="resumen_mejor_pocas_revisiones">
-        <item quantity="one">, pero con %1$d revisión la comparación todavía no es confiable.</item>
-        <item quantity="other">, pero con %1$d revisiones la comparación todavía no es confiable.</item>
+    <!-- Cambios 4, 10 y 15 (1.0.3): sin la fórmula ni la frase del ganador; lo explica la hoja del ⓘ (Figma 443-2314). -->
+    <string name="precision_ayuda">Cómo se lee la precisión</string>
+    <string name="precision_titulo_precision">Precisión</string>
+    <string name="precision_texto_precision">De las alertas que marcó un modelo y ya revisaste, cuántas eran ataques reales.</string>
+    <plurals name="precision_ejemplo_ia">
+        <item quantity="one">Por ejemplo, la IA tiene %1$d de %2$d: marcó %2$d alertas que ya revisaste y %1$d era un ataque.</item>
+        <item quantity="other">Por ejemplo, la IA tiene %1$d de %2$d: marcó %2$d alertas que ya revisaste y %1$d eran ataques.</item>
     </plurals>
-    <string name="resumen_recall">Recall y F1 se miden offline con dataset etiquetado (fuera de la app).</string>
-    <string name="resumen_pie">Calculado con las alertas guardadas en el teléfono. No incluye direcciones IP ni nombres de equipos.</string>
+    <plurals name="precision_ejemplo_umbrales">
+        <item quantity="one">Por ejemplo, los umbrales tienen %1$d de %2$d: marcaron %2$d alertas que ya revisaste y %1$d era un ataque.</item>
+        <item quantity="other">Por ejemplo, los umbrales tienen %1$d de %2$d: marcaron %2$d alertas que ya revisaste y %1$d eran ataques.</item>
+    </plurals>
+    <plurals name="precision_ejemplo_reglas">
+        <item quantity="one">Por ejemplo, las reglas tienen %1$d de %2$d: marcaron %2$d alertas que ya revisaste y %1$d era un ataque.</item>
+        <item quantity="other">Por ejemplo, las reglas tienen %1$d de %2$d: marcaron %2$d alertas que ya revisaste y %1$d eran ataques.</item>
+    </plurals>
+    <string name="precision_titulo_cobertura">Cobertura de revisión</string>
+    <string name="precision_texto_cobertura">Cuántas alertas del período ya revisaste.</string>
+    <string name="precision_titulo_modelos">Los tres modelos</string>
+    <string name="precision_texto_modelos">La IA compara el tráfico con lo normal de tu red. Los umbrales cuentan conexiones a un mismo servicio en 60 segundos. Las reglas miran si ese servicio está autorizado.</string>
+    <string name="precision_titulo_30">¿Por qué 30 revisiones?</string>
+    <string name="precision_texto_30">Con pocas, un par de casos mueven mucho el porcentaje. Las barras claras tienen menos de 30 revisiones: todavía no se pueden comparar.</string>
+    <string name="precision_sin_filtro_7">Sin filtro: la precisión cuenta todas las alertas revisadas de estos 7 días.</string>
+    <string name="precision_sin_filtro_30">Sin filtro: la precisión cuenta todas las alertas revisadas de estos 30 días.</string>
+    <string name="precision_filtro_ia">Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese modelo.</string>
+    <string name="precision_filtro_umbrales">Estás viendo los umbrales estadísticos: cada fila cuenta las alertas que marcaron los umbrales junto con ese modelo.</string>
+    <string name="precision_filtro_reglas">Estás viendo las reglas estáticas: cada fila cuenta las alertas que marcaron las reglas junto con ese modelo.</string>
+    <string name="precision_filtro_dia">Estás viendo el %1$s: la precisión cuenta solo las alertas revisadas de ese día.</string>
+    <string name="precision_filtro_semana">Estás viendo la %1$s: la precisión cuenta solo las alertas revisadas de esa semana.</string>
+    <string name="precision_filtro_tipo">Estás viendo %1$s: la precisión cuenta solo las alertas revisadas de ese tipo.</string>
+    <string name="precision_filtro_revisadas">Estás viendo las revisadas: la precisión cuenta las mismas alertas que sin filtro.</string>
+    <string name="precision_filtro_sin_revisar">Estás viendo las sin revisar: todavía no tienen revisión, así que no hay precisión para calcular.</string>
+    <string name="precision_filtro_altas">Estás viendo las altas: la precisión cuenta solo las alertas altas revisadas.</string>
+    <string name="precision_filtro_reales">Estás viendo los ataques reales: todas son reales, así que cada modelo da 100 %.</string>
+    <string name="precision_filtro_falsos">Estás viendo los falsos positivos: ninguna es real, así que cada modelo da 0 %.</string>
+    <string name="precision_pie">Se calcula con las alertas guardadas en el teléfono, de los últimos 30 días.</string>
     <string name="resumen_vacio_titulo_7">Sin alertas en los últimos 7 días</string>
     <string name="resumen_vacio_titulo_30">Sin alertas en los últimos 30 días</string>
     <string name="resumen_vacio_detalle_7">El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
@@ -780,7 +889,7 @@
     <string name="telegram_llegan">Los avisos de %1$s llegan al chat de %2$s en %3$s.</string>
     <string name="telegram_como_avisa">Cómo avisa</string>
     <string name="telegram_con_sonido">Con sonido</string>
-    <string name="telegram_con_vibracion">Con vibración</string>
+    <string name="telegram_en_silencio">En silencio</string>
     <string name="telegram_sin_aviso">Sin aviso</string>
     <string name="telegram_enviar_prueba">Enviar un aviso de prueba</string>
     <string name="telegram_desvincular">Desvincular Telegram</string>

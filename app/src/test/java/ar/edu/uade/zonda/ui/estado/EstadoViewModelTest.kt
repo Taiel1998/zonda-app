@@ -3,11 +3,13 @@ package ar.edu.uade.zonda.ui.estado
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import ar.edu.uade.zonda.domain.Fixtures
+import ar.edu.uade.zonda.domain.fakes.FakeAccionesPendientesRepository
 import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeConectividad
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Semaforo
@@ -37,6 +39,7 @@ class EstadoViewModelTest {
     private val redes = FakeRedesRepository()
     private val alertas = FakeAlertasRepository()
     private val conectividad = FakeConectividad()
+    private val acciones = FakeAccionesPendientesRepository()
 
     private fun viewModel() = EstadoViewModel(
         obtenerEstadoRed = ObtenerEstadoRed(redes, alertas),
@@ -45,6 +48,7 @@ class EstadoViewModelTest {
         redes = redes,
         alertas = alertas,
         conectividad = conectividad,
+        acciones = acciones,
     )
 
     private suspend fun ReceiveTurbine<EstadoUiState>.esperar(condicion: (EstadoUiState) -> Boolean): EstadoUiState {
@@ -108,7 +112,8 @@ class EstadoViewModelTest {
 
         assertEquals(alta.inicio, EstadoViewModel.ultimaDeteccion(Semaforo.ROJO, listOf(alta, media, baja)))
         assertEquals(media.inicio, EstadoViewModel.ultimaDeteccion(Semaforo.AMARILLO, listOf(media, baja)))
-        assertNull(EstadoViewModel.ultimaDeteccion(Semaforo.VERDE, listOf(baja)))
+        assertEquals(baja.inicio, EstadoViewModel.ultimaDeteccion(Semaforo.VERDE, listOf(baja)))
+        assertNull(EstadoViewModel.ultimaDeteccion(Semaforo.VERDE, emptyList()))
         assertNull(EstadoViewModel.ultimaDeteccion(Semaforo.SIN_DATOS, listOf(alta)))
     }
 
@@ -155,14 +160,15 @@ class EstadoViewModelTest {
     }
 
     @Test
-    fun `solo con bajas sin revisar la red esta tranquila y no hay ultima deteccion`() = runTest {
+    fun `solo con bajas sin revisar el semaforo es verde y cuenta la ultima baja`() = runTest {
         redes.agregar(Fixtures.red("red-1"))
-        alertas.agregar(Fixtures.alerta("baja", severidad = Severidad.BAJA))
+        val baja = Fixtures.alerta("baja", severidad = Severidad.BAJA)
+        alertas.agregar(baja)
 
         viewModel().estado.test {
             val datos = esperar { it.contenido is ContenidoEstado.Datos }.datos
             assertEquals(Semaforo.VERDE, datos.semaforo)
-            assertNull(datos.ultimaDeteccion)
+            assertEquals(baja.inicio, datos.ultimaDeteccion)
             assertEquals(listOf("baja"), datos.alertas.map { it.id })
             cancelAndIgnoreRemainingEvents()
         }
@@ -329,6 +335,22 @@ class EstadoViewModelTest {
             val estado = esperar { it.contenido is ContenidoEstado.Datos }
             assertTrue(estado.accesoVencido)
             assertEquals(Semaforo.ROJO, estado.datos.semaforo)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `una revision de este telefono en conflicto aparece en Estado hasta que se elige cual queda`() = runTest {
+        conRedYAlertas()
+        acciones.encolar(Fixtures.accion(id = "accion-1", alertaId = "alta-vieja", estado = EstadoEnvio.CONFLICTO))
+        acciones.encolar(Fixtures.accion(id = "accion-2", alertaId = "media", estado = EstadoEnvio.PENDIENTE))
+
+        viewModel().estado.test {
+            assertEquals(listOf("alta-vieja"), esperar { it.revisionesNoAplicadas.isNotEmpty() }.revisionesNoAplicadas)
+
+            // "Aplicar la mía" la vuelve a encolar como pendiente: el aviso se va.
+            acciones.encolar(Fixtures.accion(id = "accion-1", alertaId = "alta-vieja", estado = EstadoEnvio.PENDIENTE))
+            assertEquals(emptyList<String>(), esperar { it.revisionesNoAplicadas.isEmpty() }.revisionesNoAplicadas)
             cancelAndIgnoreRemainingEvents()
         }
     }

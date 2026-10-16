@@ -150,8 +150,10 @@ class Base:
     @staticmethod
     def _actualizar(con: sqlite3.Connection) -> None:
         """Pone al día una base creada con una versión anterior: el protocolo, la hora de revisión en el
-        teléfono, los motivos nuevos y lo que guarda el bot de Telegram."""
+        teléfono, los motivos nuevos, lo que guarda el bot de Telegram y las severidades del tipo vacío
+        (cambio 9)."""
         from .modelos import MOTIVOS_ANTERIORES
+        from .semilla import poner_al_dia_severidades
 
         columnas = {fila[1] for fila in con.execute("PRAGMA table_info(alertas)")}
         if "protocolo" not in columnas:
@@ -168,6 +170,7 @@ class Base:
             con.execute("ALTER TABLE dispositivos ADD COLUMN aviso_baja TEXT NOT NULL DEFAULT 'sin_aviso'")
         for viejo, nuevo in MOTIVOS_ANTERIORES.items():
             con.execute("UPDATE revisiones SET motivo = ? WHERE motivo = ?", (nuevo, viejo))
+        poner_al_dia_severidades(con)
 
     @contextmanager
     def transaccion(self):

@@ -14,7 +14,7 @@ data class RedConEstado(
 )
 
 /**
- * Estado de Ajustes y de sus pantallas (Redes, Avisos por severidad y Severidad por ataque), que
+ * Estado de Ajustes y de sus pantallas (Redes, Avisos por severidad y Severidad por tipo de ataque), que
  * comparten el mismo ViewModel (RF05 y RF06; Figma 4-66 y siguientes).
  */
 data class AjustesUiState(
@@ -26,7 +26,7 @@ data class AjustesUiState(
     val borradorAvisos: PreferenciasAvisos? = null,
     /** La severidad por tipo de la red activa, la que rige. */
     val severidades: SeveridadPorTipo = SeveridadPorTipo.RECOMENDADA,
-    /** La que se está editando en Severidad por ataque; null si no se está editando. */
+    /** La que se está editando en Severidad por tipo de ataque; null si no se está editando. */
     val borradorSeveridades: SeveridadPorTipo? = null,
     /** El interruptor "Notificaciones del sistema". */
     val notificacionesActivas: Boolean = true,

@@ -32,7 +32,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel de Ajustes y de sus pantallas Redes, Avisos por severidad y Severidad por ataque, que lo
+ * ViewModel de Ajustes y de sus pantallas Redes, Avisos por severidad y Severidad por tipo de ataque, que lo
  * comparten (RF05 y RF06). Redes y red activa, avisos de Telegram, severidad de cada tipo (vale para
  * toda la red y viaja al servidor), el interruptor de notificaciones, sincronizar, borrar datos
  * locales y quitar este dispositivo.

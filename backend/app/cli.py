@@ -94,8 +94,8 @@ def comando_emitir(base: Base, tipo: str | None, servicio: str | None) -> int:
         print(f"No hay ninguna alerta de tipo {tipo}{f' por {servicio}' if servicio else ''} para copiar.")
         return 1
     con = base.conexion()
-    fila = con.execute("SELECT servicio, tipo_ataque FROM alertas WHERE id = ?", (nueva,)).fetchone()
-    print(f"Alerta nueva {nueva}: {tipo} por {fila['servicio'].upper()}, severidad {severidad_de(con, fila['tipo_ataque'])}.")
+    fila = con.execute("SELECT * FROM alertas WHERE id = ?", (nueva,)).fetchone()
+    print(f"Alerta nueva {nueva}: {tipo} por {fila['servicio'].upper()}, severidad {severidad_de(con, fila)}.")
     print("Si hay un teléfono con Telegram vinculado, el aviso sale en unos 5 segundos; la app la trae al sincronizar.")
     return 0
 
@@ -121,7 +121,7 @@ def comando_tranquila(base: Base, cfg: Config, nombre: str) -> int:
     nombre = nombre.strip() or NOMBRE_OTRO_TELEFONO
     with base.transaccion() as con:
         sin_revisar = con.execute("SELECT * FROM alertas WHERE estado_revision = 'sin_revisar' ORDER BY secuencia").fetchall()
-        severidades = {fila["id"]: severidad_de(con, fila["tipo_ataque"]) for fila in sin_revisar}
+        severidades = {fila["id"]: severidad_de(con, fila) for fila in sin_revisar}
         pendientes = [fila for fila in sin_revisar if severidades[fila["id"]] in ("alta", "media")]
         if not pendientes:
             print("No hay altas ni medias sin revisar: la red ya está tranquila.")

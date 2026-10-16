@@ -102,6 +102,8 @@ class SincronizadorHttp(
             accionesConError = envio.conError,
             hora = hora,
             idsAltasNuevas = descarga.idsAltasNuevas,
+            idsAltasNuevasConAvisoTelegram = descarga.idsConAvisoTelegram,
+            conflictosNuevos = envio.conflictos,
         )
     }
 
@@ -114,11 +116,12 @@ class SincronizadorHttp(
 
     // ---- 1. Cola de acciones ----
 
-    private data class ResultadoEnvio(val enviadas: Int, val conError: Int)
+    private data class ResultadoEnvio(val enviadas: Int, val conError: Int, val conflictos: List<String>)
 
     private suspend fun enviarCola(redId: String, api: ZondaApi): ResultadoEnvio {
         var enviadas = 0
         var conError = 0
+        val conflictos = mutableListOf<String>()
         for (fila in accionesDao.listarParaEnviar(redId)) {
             val accion = fila.aDominio()
             accionesDao.actualizarEnvio(accion.id, EstadoEnvio.ENVIANDO.name, accion.intentos, accion.ultimoError)
@@ -136,6 +139,7 @@ class SincronizadorHttp(
                     fecha = ajena.fecha.toEpochMilli(),
                     revisadaEn = ajena.revisadaEn?.toEpochMilli(),
                 )
+                accion.alertaId?.let(conflictos::add)
             } catch (e: ErrorZonda.SinConexion) {
                 devolverAPendiente(accion)
                 throw e
@@ -151,7 +155,7 @@ class SincronizadorHttp(
                 conError++
             }
         }
-        return ResultadoEnvio(enviadas, conError)
+        return ResultadoEnvio(enviadas, conError, conflictos)
     }
 
     private suspend fun enviarUna(redId: String, accion: AccionPendiente, api: ZondaApi) {
@@ -197,6 +201,7 @@ class SincronizadorHttp(
         val modificadas: Int,
         val altasNuevas: Int,
         val idsAltasNuevas: List<String>,
+        val idsConAvisoTelegram: Set<String>,
     )
 
     private suspend fun descargar(redId: String, cursorInicial: String?, api: ZondaApi): ResultadoDescarga =
@@ -214,6 +219,7 @@ class SincronizadorHttp(
         var modificadas = 0
         var altasNuevas = 0
         val idsAltasNuevas = mutableListOf<String>()
+        val idsConAvisoTelegram = mutableSetOf<String>()
         var paginas = 0
         // Desde cero se baja todo lo de los últimos 30 días: la pantalla Estado muestra cuántas van.
         val desdeCero = cursorInicial == null
@@ -237,6 +243,7 @@ class SincronizadorHttp(
                         if (alerta.severidad == Severidad.ALTA) {
                             altasNuevas++
                             idsAltasNuevas += alerta.id
+                            if (alerta.avisoTelegram != null) idsConAvisoTelegram += alerta.id
                         }
                     }
                 }
@@ -249,7 +256,7 @@ class SincronizadorHttp(
             paginas++
             if (!pagina.hayMas || paginas >= MAXIMO_PAGINAS) break
         }
-        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, idsAltasNuevas)
+        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, idsAltasNuevas, idsConAvisoTelegram)
     }
 
     /** SQLite admite hasta 999 parámetros por consulta. */

@@ -66,7 +66,7 @@ object Formato {
         instante.atZone(zona).toLocalDate() == ahora.atZone(zona).toLocalDate().minusDays(1)
 
     /**
-     * `5 min`, `3 h`, `2 días`: cuánto pasó desde [desde] hasta [ahora], para "Última detección hace
+     * `5 min`, `3 h`, `2 días`: cuánto pasó desde [desde] hasta [ahora], para "Última alta sin revisar: hace
      * 5 min" en el semáforo. Menos de un minuto es `menos de 1 min`.
      */
     fun haceCuanto(desde: Instant, ahora: Instant): String {

@@ -74,8 +74,10 @@ import ar.edu.uade.zonda.ui.viewModelDeZonda
  * - Entrada por el ícono: sin red pareada, el primer inicio (o Conexión si la introducción ya se hizo);
  *   con red, Estado.
  * - Entradas externas: el enlace del aviso de Telegram abre el detalle de esa alerta; la notificación
- *   local abre la pestaña Alertas. Telegram abre Zonda dentro de su propia tarea, con el detalle como
- *   única pantalla; la flecha del detalle abre entonces Zonda en su tarea, en Estado ([volver]).
+ *   local abre la pestaña Alertas o el detalle. El enlace entra por PuenteDelAvisoActivity, que abre
+ *   Zonda en su propia tarea con Estado debajo del detalle, también si se toca dos veces el mismo
+ *   aviso (cambio 23). Si el detalle quedara como única pantalla, la flecha abre Zonda en su tarea,
+ *   en Estado ([volver]).
  * - Una barra inferior con Estado, Alertas y Ajustes, y una pila de pantallas que se cierran con Volver
  *   (el Resumen se abre desde Estado). La barra solo se ve en los tres destinos principales.
  * - El recorrido de once pasos se muestra sobre las pestañas la primera vez (RF05).
@@ -194,6 +196,11 @@ fun ZondaNavHost(
                                     navController.irAPestania(Rutas.ALERTAS)
                                     navController.currentBackStackEntry?.savedStateHandle?.set(VER_TODAS, true)
                                 },
+                                alVerNoAplicadas = {
+                                    // "Ver" del aviso con varias revisiones no aplicadas: Alertas con esas (cambio 7).
+                                    navController.irAPestania(Rutas.ALERTAS)
+                                    navController.currentBackStackEntry?.savedStateHandle?.set(VER_NO_APLICADAS, true)
+                                },
                                 alConectar = { navController.navigate(Rutas.CONEXION) },
                             )
                         }
@@ -202,7 +209,7 @@ fun ZondaNavHost(
                         }
                         composable(
                             route = Rutas.ALERTAS,
-                            arguments = listOf(EnlacesInternos.ARG_RED, EnlacesInternos.ARG_ESTADO, EnlacesInternos.ARG_SEVERIDAD).map { nombre ->
+                            arguments = listOf(EnlacesInternos.ARG_RED, EnlacesInternos.ARG_ESTADO, EnlacesInternos.ARG_SEVERIDAD, EnlacesInternos.ARG_ENVIO).map { nombre ->
                                 navArgument(nombre) {
                                     type = NavType.StringType
                                     nullable = true
@@ -227,6 +234,13 @@ fun ZondaNavHost(
                                 if (verTodas) {
                                     viewModel.quitarFiltros()
                                     entrada.savedStateHandle[VER_TODAS] = false
+                                }
+                            }
+                            val verNoAplicadas by entrada.savedStateHandle.getStateFlow(VER_NO_APLICADAS, false).collectAsStateWithLifecycle()
+                            LaunchedEffect(verNoAplicadas) {
+                                if (verNoAplicadas) {
+                                    viewModel.aplicarFiltro(FiltroAlertas(soloNoAplicadas = true))
+                                    entrada.savedStateHandle[VER_NO_APLICADAS] = false
                                 }
                             }
                             AlertasScreen(
@@ -278,7 +292,7 @@ fun ZondaNavHost(
                                 severidades = estado.borradorSeveridades ?: estado.severidades,
                                 alCambiar = viewModel::cambiarSeveridadDelBorrador,
                                 textoBoton = stringResource(R.string.ajustes_guardar_severidades),
-                                titulo = stringResource(R.string.ajustes_severidades),
+                                titulo = stringResource(R.string.ajustes_severidad_por_tipo),
                                 intro = stringResource(R.string.ajustes_severidades_intro),
                                 alGuardar = {
                                     viewModel.guardarSeveridades()
@@ -330,7 +344,7 @@ private fun rutaDe(destino: DestinoInicial): String = when (destino) {
 }
 
 /**
- * Redes, Avisos por severidad y Severidad por ataque usan el ViewModel de Ajustes, que es desde donde
+ * Redes, Avisos por severidad y Severidad por tipo de ataque usan el ViewModel de Ajustes, que es desde donde
  * se llega: así comparten los borradores y los avisos.
  */
 @Composable
@@ -344,10 +358,17 @@ private const val ENLACE_APLICADO = "enlace_aplicado"
 /** "Ver todas" de Estado: Alertas quita los filtros al llegar. */
 private const val VER_TODAS = "ver_todas"
 
-/** El filtro de un enlace interno (`estado=sin_revisar&severidad=alta`), o null si no trae ninguno. */
+/** "Ver" del aviso de Estado con varias revisiones no aplicadas: Alertas muestra solo esas (cambio 7). */
+private const val VER_NO_APLICADAS = "ver_no_aplicadas"
+
+/**
+ * El filtro de un enlace interno (`estado=sin_revisar&severidad=alta`, o `envio=conflicto` para las
+ * revisiones que no se aplicaron), o null si no trae ninguno.
+ */
 private fun filtroDelEnlace(argumentos: Bundle?): FiltroAlertas? {
     val estado = argumentos?.getString(EnlacesInternos.ARG_ESTADO)?.let { valor -> FiltroEstado.entries.firstOrNull { it.name.equals(valor, ignoreCase = true) } }
     val severidad = argumentos?.getString(EnlacesInternos.ARG_SEVERIDAD)?.let { valor -> Severidad.entries.firstOrNull { it.name.equals(valor, ignoreCase = true) } }
-    if (estado == null && severidad == null) return null
-    return FiltroAlertas(estado = estado ?: FiltroEstado.TODAS, severidades = setOfNotNull(severidad))
+    val noAplicadas = argumentos?.getString(EnlacesInternos.ARG_ENVIO) == EnlacesInternos.ENVIO_CONFLICTO
+    if (estado == null && severidad == null && !noAplicadas) return null
+    return FiltroAlertas(estado = estado ?: FiltroEstado.TODAS, severidades = setOfNotNull(severidad), soloNoAplicadas = noAplicadas)
 }

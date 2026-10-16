@@ -59,6 +59,8 @@
                 android:resource="@xml/archivos_compartidos" />
         </provider>
 
+        <!-- El enlace del aviso de Telegram no llega acá directo: entra por PuenteDelAvisoActivity, que
+             se lo pasa a esta con una tarea limpia. La notificación propia sí abre esta Activity directo. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -69,6 +71,18 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <!-- Pantalla puente de los enlaces del aviso (cambio 23, decisión 31): sin ventana, se cierra
+             apenas le pasa el enlace a MainActivity. Sin afinidad de tarea, fuera de recientes y sin
+             historial, Android la crea de cero en cada toque, aunque sea el mismo aviso que abrió Zonda. -->
+        <activity
+            android:name=".PuenteDelAvisoActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
 
             <!-- Enlace del aviso de Telegram (App Link): https://taiel1998.github.io/a/{id}.
                  Android lo verifica contra /.well-known/assetlinks.json de ese dominio. -->

@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,10 +52,11 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.GrupoResumen
-import ar.edu.uade.zonda.domain.model.GrupoTipo
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
+import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.AvisoInferior
 import ar.edu.uade.zonda.ui.components.BannerSinConexion
@@ -63,6 +65,8 @@ import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.components.ChipOpcion
 import ar.edu.uade.zonda.ui.components.EsqueletoLista
 import ar.edu.uade.zonda.ui.components.EstadoVacio
+import ar.edu.uade.zonda.ui.components.HojaTipos
+import ar.edu.uade.zonda.ui.components.TituloDeBloque
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.theme.CremaBarra
@@ -193,6 +197,7 @@ fun ResumenContenido(
         alcance.launch { snackbar.showSnackbar(texto) }
     }
     val hayResumen = estado.resumen != null
+    var ayuda by rememberSaveable { mutableStateOf<AyudaResumen?>(null) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -248,8 +253,26 @@ fun ResumenContenido(
                     detalle = stringResource(R.string.vacio_sin_red_detalle),
                 )
                 is ContenidoResumen.Vacio -> CuerpoVacio(estado, contenido.resumen, alElegirPeriodo, alQuitarFiltro, zona)
-                is ContenidoResumen.Datos -> CuerpoDelResumen(estado, contenido.resumen, alElegirPeriodo, alTocarCifra, alQuitarFiltro, zona)
+                is ContenidoResumen.Datos -> CuerpoDelResumen(
+                    estado = estado,
+                    resumen = contenido.resumen,
+                    alElegirPeriodo = alElegirPeriodo,
+                    alTocarCifra = alTocarCifra,
+                    alQuitarFiltro = alQuitarFiltro,
+                    alPedirAyuda = { ayuda = it },
+                    zona = zona,
+                )
             }
+        }
+    }
+
+    // Las hojas del ⓘ (cambios 14 y 15) explican lo que se ve, con el filtro elegido.
+    val resumenActual = estado.resumen
+    if (resumenActual != null) {
+        when (ayuda) {
+            AyudaResumen.PRECISION -> HojaPrecision(resumen = resumenActual, alCerrar = { ayuda = null })
+            AyudaResumen.TIPOS -> HojaTipos(severidades = estado.severidades, alCerrar = { ayuda = null })
+            null -> Unit
         }
     }
 }
@@ -262,6 +285,7 @@ private fun CuerpoDelResumen(
     alElegirPeriodo: (PeriodoResumen) -> Unit,
     alTocarCifra: (GrupoResumen?) -> Unit,
     alQuitarFiltro: () -> Unit,
+    alPedirAyuda: (AyudaResumen) -> Unit,
     zona: ZoneId,
 ) {
     val recursos = LocalContext.current.resources
@@ -277,14 +301,13 @@ private fun CuerpoDelResumen(
         FilaDeTotales(resumen, alTocarCifra, modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.CIFRAS_RESUMEN))
         FilaDeMetricas(resumen, alTocarCifra)
         TarjetaGrafico(resumen, alTocarCifra, frase = fraseDelGrafico(resumen, recursos))
-        TarjetaTipos(resumen, alTocarCifra)
+        TarjetaTipos(resumen, estado.severidades, alTocarCifra, alPedirAyuda = { alPedirAyuda(AyudaResumen.TIPOS) })
         TarjetaRealesYFalsos(resumen, alTocarCifra)
-        TarjetaPrecision(resumen, alTocarCifra)
-        PieDelResumen()
+        TarjetaPrecision(resumen, alTocarCifra, alPedirAyuda = { alPedirAyuda(AyudaResumen.PRECISION) })
     }
 }
 
-/** Sin alertas en el período (Figma 52-2976): el círculo verde con el tilde y el pie. */
+/** Sin alertas en el período (Figma 52-2976): el círculo verde con el tilde. */
 @Composable
 private fun CuerpoVacio(
     estado: ResumenUiState,
@@ -312,7 +335,6 @@ private fun CuerpoVacio(
             colorIcono = Tonos.Baja.texto,
             modifier = Modifier.padding(top = 16.dp),
         )
-        PieDelResumen()
     }
 }
 
@@ -482,22 +504,44 @@ fun TarjetaGrafico(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> U
     }
 }
 
-/** Por tipo de ataque: los cuatro grupos, aunque estén en cero (Figma 52-2629 y 100-8498). */
+/**
+ * Por tipo de ataque (cambio 14; Figma 52-2629 y 100-8498): los dos bloques de la pantalla de
+ * severidades, con sus nombres y su orden fijo, y cada tipo con el punto de la severidad que eligió la
+ * red. Un tipo en cero queda en gris; un bloque entero en cero se oculta con su título, salvo que los
+ * dos lo estén (con un filtro sin alertas). El ⓘ abre "Qué es cada tipo".
+ */
 @Composable
-private fun TarjetaTipos(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit) {
+private fun TarjetaTipos(
+    resumen: ResumenActividad,
+    severidades: SeveridadPorTipo,
+    alTocarCifra: (GrupoResumen?) -> Unit,
+    alPedirAyuda: () -> Unit,
+) {
     val maximo = resumen.porTipo.values.maxOrNull() ?: 0
-    TarjetaResumen(titulo = stringResource(R.string.resumen_por_tipo)) {
+    val bloques = listOf(
+        R.string.tipos_bloque_ia to TipoAtaque.DETECTADOS_POR_LA_IA,
+        R.string.tipos_bloque_sin_ia to TipoAtaque.NO_DETECTADOS_POR_LA_IA,
+    ).filter { (_, tipos) -> maximo == 0 || tipos.any { (resumen.porTipo[it] ?: 0) > 0 } }
+    TarjetaResumen(
+        titulo = stringResource(R.string.resumen_por_tipo),
+        espacioTitulo = 10.dp,
+        ayuda = AyudaDeTarjeta(stringResource(R.string.tipos_titulo), alPedirAyuda),
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            GrupoTipo.entries.forEach { tipo ->
-                val grupo = GrupoResumen.Tipo(tipo)
-                FilaConBarra(
-                    rotulo = stringResource(tipo.enFila()),
-                    valor = resumen.porTipo[tipo] ?: 0,
-                    maximo = maximo,
-                    color = VerdeZonda,
-                    elegida = resumen.grupo == grupo,
-                    alTocar = { alTocarCifra(grupo) },
-                )
+            bloques.forEachIndexed { indice, (titulo, tipos) ->
+                if (indice > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                TituloDeBloque(stringResource(titulo))
+                tipos.forEach { tipo ->
+                    val grupo = GrupoResumen.Tipo(tipo)
+                    FilaTipo(
+                        rotulo = stringResource(tipo.enFila()),
+                        severidad = severidades.severidadDe(tipo),
+                        valor = resumen.porTipo[tipo] ?: 0,
+                        maximo = maximo,
+                        elegida = resumen.grupo == grupo,
+                        alTocar = { alTocarCifra(grupo) },
+                    )
+                }
             }
         }
     }
@@ -532,14 +576,17 @@ private fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocarCifra: (Grupo
 }
 
 /**
- * La cobertura de revisión y la precisión de cada modelo, con sus notas (Figma 52-2629 y 100-9302).
- * Recall y F1 necesitan un conjunto etiquetado y se miden fuera de la app.
+ * La cobertura de revisión y la precisión de cada modelo (Figma 52-2629 y 100-9302), sin notas abajo
+ * (cambios 4, 10 y 15): no nombra un ganador, porque la precisión dice cuánto acierta un modelo cuando
+ * avisa y no cuál es el mejor. Cómo se lee lo explica la hoja del ⓘ.
  */
 @Composable
-private fun TarjetaPrecision(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit) {
-    val recursos = LocalContext.current.resources
+private fun TarjetaPrecision(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit, alPedirAyuda: () -> Unit) {
     val sinDato = stringResource(R.string.resumen_sin_dato)
-    TarjetaResumen(titulo = stringResource(R.string.resumen_precision)) {
+    TarjetaResumen(
+        titulo = stringResource(R.string.resumen_precision),
+        ayuda = AyudaDeTarjeta(stringResource(R.string.precision_ayuda), alPedirAyuda),
+    ) {
         CajaCobertura(
             rotulo = stringResource(R.string.resumen_cobertura),
             valor = stringResource(
@@ -563,22 +610,9 @@ private fun TarjetaPrecision(resumen: ResumenActividad, alTocarCifra: (GrupoResu
                     fraccion = precision.valor?.toFloat() ?: 0f,
                     elegida = resumen.grupo == grupo,
                     alTocar = { alTocarCifra(grupo) },
+                    clara = precision.barraClara(),
                 )
             }
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(text = notaDePrecision(resumen, recursos), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(text = stringResource(R.string.resumen_recall), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-}
-
-/** "Calculado con las alertas guardadas en el teléfono. No incluye direcciones IP ni nombres de equipos." */
-@Composable
-private fun PieDelResumen() {
-    Text(
-        text = stringResource(R.string.resumen_pie),
-        style = estiloRotuloChicoResumen,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }

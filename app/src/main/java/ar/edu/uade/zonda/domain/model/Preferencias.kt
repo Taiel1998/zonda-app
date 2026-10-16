@@ -1,10 +1,11 @@
 package ar.edu.uade.zonda.domain.model
 
 /**
- * Cómo avisa Telegram una alerta nueva de cada severidad (RF05; Figma 51-1688). Con vibración es un
- * mensaje sin sonido: un bot de Telegram no puede pedir solo vibración.
+ * Cómo avisa Telegram una alerta nueva de cada severidad (RF05; Figma 51-1688). Un bot de Telegram
+ * solo puede mandar el mensaje con sonido o en silencio (cambio 6): la vibración y el volumen los
+ * decide el teléfono. [SILENCIO] antes se llamaba "con vibración" y la API lo sigue llamando así.
  */
-enum class ModoAviso { SONIDO, VIBRACION, SIN_AVISO }
+enum class ModoAviso { SONIDO, SILENCIO, SIN_AVISO }
 
 /**
  * Preferencias de avisos de este teléfono. Por defecto solo la severidad alta interrumpe con sonido.
@@ -12,7 +13,7 @@ enum class ModoAviso { SONIDO, VIBRACION, SIN_AVISO }
  */
 data class PreferenciasAvisos(
     val alta: ModoAviso = ModoAviso.SONIDO,
-    val media: ModoAviso = ModoAviso.VIBRACION,
+    val media: ModoAviso = ModoAviso.SILENCIO,
     val baja: ModoAviso = ModoAviso.SIN_AVISO,
 ) {
     fun para(severidad: Severidad): ModoAviso = when (severidad) {

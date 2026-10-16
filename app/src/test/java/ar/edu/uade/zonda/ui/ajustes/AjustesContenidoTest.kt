@@ -60,7 +60,7 @@ class AjustesContenidoTest {
         compose.onNodeWithText("Oficina").assertIsDisplayed()
         compose.onNodeWithText("zonda-equipo.duckdns.org · 1 red pareada").assertIsDisplayed()
         compose.onNodeWithText("Telegram sin conectar").assertIsDisplayed()
-        compose.onNodeWithText("Alta con sonido · Media con vibración · Baja sin aviso").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Alta con sonido · Media en silencio · Baja sin aviso").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Permitidas · avisan cuando la sincronización trae alertas altas nuevas").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Hoy 12:00 · 213 alertas en el teléfono").performScrollTo().assertIsDisplayed()
 

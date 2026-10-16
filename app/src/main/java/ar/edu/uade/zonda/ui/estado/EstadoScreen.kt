@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.ui.estado
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +80,7 @@ import ar.edu.uade.zonda.ui.components.BarraEstado
 import ar.edu.uade.zonda.ui.components.EstadoVacio
 import ar.edu.uade.zonda.ui.components.FilaContadores
 import ar.edu.uade.zonda.ui.components.LeyendaSemaforo
+import ar.edu.uade.zonda.ui.components.MarcaSemaforo
 import ar.edu.uade.zonda.ui.components.Semaforo
 import ar.edu.uade.zonda.ui.components.TarjetaAlerta
 import ar.edu.uade.zonda.ui.components.TarjetaDescarga
@@ -105,8 +107,9 @@ fun EstadoScreen(
     alAbrirDetalle: (alertaId: String) -> Unit,
     alVerTodas: () -> Unit,
     alConectar: () -> Unit,
+    alVerNoAplicadas: () -> Unit = {},
     viewModel: EstadoViewModel = viewModelDeZonda {
-        EstadoViewModel(it.obtenerEstadoRed, it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad)
+        EstadoViewModel(it.obtenerEstadoRed, it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad, it.accionesPendientes)
     },
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
@@ -121,6 +124,7 @@ fun EstadoScreen(
             alVerTodas = alVerTodas,
             alConectar = alConectar,
             alAvisoMostrado = viewModel::avisoMostrado,
+            alVerNoAplicadas = alVerNoAplicadas,
         ),
         ahora = ahora,
     )
@@ -137,6 +141,8 @@ data class AccionesEstado(
     /** Configurar conexión (sin red) o conectar de nuevo (acceso vencido): la pantalla Conexión. */
     val alConectar: () -> Unit = {},
     val alAvisoMostrado: () -> Unit = {},
+    /** "Ver" del aviso con varias revisiones no aplicadas: Alertas con esas (cambio 7). Con una, se abre su detalle. */
+    val alVerNoAplicadas: () -> Unit = {},
 )
 
 /**
@@ -278,6 +284,15 @@ private fun LazyListScope.datosDeLaRed(
     zona: ZoneId,
 ) {
     val elegida = estado.severidadElegida
+    val noAplicadas = estado.revisionesNoAplicadas
+    if (noAplicadas.isNotEmpty()) {
+        item {
+            AvisoRevisionesNoAplicadas(
+                cantidad = noAplicadas.size,
+                alVer = { noAplicadas.singleOrNull()?.let(acciones.alAbrirDetalle) ?: acciones.alVerNoAplicadas() },
+            )
+        }
+    }
     item { SemaforoDeLaRed(datos, estado, ahora, zona) }
     item {
         Text(
@@ -321,20 +336,20 @@ private fun LazyListScope.datosDeLaRed(
 }
 
 /**
- * El semáforo con los textos del Figma: "3 alertas altas sin revisar" y "Última detección hace 5 min ·
- * actualizado 02:14" (1-3); tranquila (1-178); sin conexión, "Último estado conocido" (1-87). Queda
- * marcado para el paso 1 del recorrido.
+ * El semáforo con los textos del Figma (cambio 11): "3 alertas altas sin revisar" y "Última alta sin
+ * revisar: hace 5 min · actualizado 02:14" con el 3 en el círculo (1-3); verde con bajas pendientes,
+ * "Sin urgencias" con cuántas bajas faltan (1-178); verde sin nada pendiente, "Tranquila" con la tilde
+ * (443-24); sin conexión, "Último estado conocido" (1-87). Queda marcado para el paso 1 del recorrido.
  */
 @Composable
 private fun SemaforoDeLaRed(datos: ContenidoEstado.Datos, estado: EstadoUiState, ahora: Instant, zona: ZoneId) {
     val actualizado = estado.datosDe?.let { Formato.horaDeLosDatos(it, ahora, zona) }.orEmpty()
     val ultimoConocido = stringResource(R.string.semaforo_ultimo_conocido)
-    val marca = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.SEMAFORO)
+    val recorrido = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.SEMAFORO)
     when (datos.semaforo) {
         Semaforo.ROJO, Semaforo.AMARILLO -> {
             val rojo = datos.semaforo == Semaforo.ROJO
             val cantidad = if (rojo) datos.sinRevisar.altas else datos.sinRevisar.medias
-            val ultimaDeteccion = datos.ultimaDeteccion
             Semaforo(
                 tono = if (rojo) Tonos.Alta else Tonos.Media,
                 etiqueta = stringResource(R.string.semaforo_atencion),
@@ -343,22 +358,76 @@ private fun SemaforoDeLaRed(datos: ContenidoEstado.Datos, estado: EstadoUiState,
                     cantidad,
                     cantidad,
                 ),
-                detalle = when {
-                    estado.sinConexion -> ultimoConocido
-                    ultimaDeteccion != null -> stringResource(R.string.semaforo_ultima_deteccion, Formato.haceCuanto(ultimaDeteccion, ahora), actualizado)
-                    else -> stringResource(R.string.semaforo_actualizado, actualizado)
-                },
-                modifier = marca,
+                detalle = detalleDelSemaforo(datos, estado, ahora, actualizado, if (rojo) R.string.semaforo_ultima_alta else R.string.semaforo_ultima_media),
+                marca = MarcaSemaforo.Numero(cantidad),
+                modifier = recorrido,
             )
         }
-        Semaforo.VERDE -> Semaforo(
-            tono = Tonos.Baja,
-            etiqueta = stringResource(R.string.semaforo_tranquila),
-            titulo = stringResource(R.string.semaforo_tranquila_titulo),
-            detalle = if (estado.sinConexion) ultimoConocido else stringResource(R.string.semaforo_tranquila_detalle, actualizado),
-            modifier = marca,
-        )
+        Semaforo.VERDE -> {
+            val bajas = datos.sinRevisar.bajas
+            if (bajas > 0) {
+                Semaforo(
+                    tono = Tonos.Baja,
+                    etiqueta = stringResource(R.string.semaforo_sin_urgencias),
+                    titulo = pluralStringResource(R.plurals.semaforo_bajas_sin_revisar, bajas, bajas),
+                    detalle = detalleDelSemaforo(datos, estado, ahora, actualizado, R.string.semaforo_ultima_baja),
+                    marca = MarcaSemaforo.Numero(bajas),
+                    modifier = recorrido,
+                )
+            } else {
+                Semaforo(
+                    tono = Tonos.Baja,
+                    etiqueta = stringResource(R.string.semaforo_tranquila),
+                    titulo = stringResource(R.string.semaforo_tranquila_titulo),
+                    detalle = if (estado.sinConexion) ultimoConocido else stringResource(R.string.semaforo_tranquila_detalle, actualizado),
+                    marca = MarcaSemaforo.Tilde,
+                    modifier = recorrido,
+                )
+            }
+        }
         Semaforo.SIN_DATOS -> SemaforoSinDatos()
+    }
+}
+
+/** La línea de abajo: cuándo llegó la última sin revisar del nivel que pinta el color ([ultima] es su texto). */
+@Composable
+private fun detalleDelSemaforo(datos: ContenidoEstado.Datos, estado: EstadoUiState, ahora: Instant, actualizado: String, @StringRes ultima: Int): String {
+    val ultimaDeteccion = datos.ultimaDeteccion
+    return when {
+        estado.sinConexion -> stringResource(R.string.semaforo_ultimo_conocido)
+        ultimaDeteccion != null -> stringResource(ultima, Formato.haceCuanto(ultimaDeteccion, ahora), actualizado)
+        else -> stringResource(R.string.semaforo_actualizado, actualizado)
+    }
+}
+
+/**
+ * El aviso azul de las revisiones que no se aplicaron (cambio 7; Figma 443-113 y 443-189): otra persona
+ * revisó esas alertas antes que la revisión de este teléfono llegara al servidor. Título SemiBold 14 y
+ * texto Regular 13 en el azul de información, "Ver" a la derecha; todo el aviso se toca.
+ */
+@Composable
+private fun AvisoRevisionesNoAplicadas(cantidad: Int, alVer: () -> Unit) {
+    Surface(
+        onClick = alVer,
+        color = Tonos.Info.fondo,
+        contentColor = Tonos.Info.texto,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+                Text(text = pluralStringResource(R.plurals.estado_no_aplicadas_titulo, cantidad, cantidad), style = MaterialTheme.typography.labelLarge)
+                Text(
+                    text = stringResource(if (cantidad == 1) R.string.estado_no_aplicada_texto else R.string.estado_no_aplicadas_texto),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Text(text = stringResource(R.string.estado_no_aplicadas_ver), style = MaterialTheme.typography.labelLarge)
+        }
     }
 }
 
@@ -543,7 +612,7 @@ private class EnElMedioDeLaPantalla(private val barraDeEstado: Int) : PopupPosit
         IntOffset((windowSize.width - popupContentSize.width) / 2, barraDeEstado + (windowSize.height - popupContentSize.height) / 2)
 }
 
-/** La hora de ahora, que avanza cada 30 segundos: así "Última detección hace 5 min" no se queda quieta. */
+/** La hora de ahora, que avanza cada 30 segundos: así "Última alta sin revisar: hace 5 min" no se queda quieta. */
 @Composable
 private fun relojDeLaPantalla(): State<Instant> = produceState(initialValue = Instant.now()) {
     while (true) {

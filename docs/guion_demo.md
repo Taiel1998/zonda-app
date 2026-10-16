@@ -2,12 +2,12 @@
 
 La demo dura unos 12 minutos y sigue el orden que pide la consigna (sección 7.5): problema, escenario, acción del usuario, respuesta de la aplicación y valor generado. Se hace con un teléfono Android real y la API corriendo en la notebook del equipo, publicada con HTTPS. Cada paso dice qué se muestra, qué se dice y cuánto tiempo lleva. Los textos entre comillas son los que aparecen en la pantalla.
 
-Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado y la API publicada con `demo.cmd`. En el emulador Telegram no tiene sesión, así que el aviso se probó con un Telegram simulado; en el teléfono real se usa el de verdad.
+Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado y la API publicada con `demo.cmd`. En el emulador Telegram no tiene sesión, así que el aviso se probó con un Telegram simulado; en el teléfono real se usa el de verdad. El 14 y el 15/10 lo ensayamos en un teléfono real (un moto g(9) plus, en el Wi-Fi de casa): los ajustes de ese ensayo y los cambios de la versión 1.0.3 ya están en este guion.
 
 ## 1. Qué hace falta
 
 - La notebook con el repositorio, `backend\.env` completo (`ZONDA_DOMINIO`, `DUCKDNS_TOKEN` y `TELEGRAM_BOT_TOKEN`) y `backend\caddy\caddy.exe`.
-- Un teléfono con Android 8.0 o más nuevo, con el APK de release instalado (`zonda-1.0.2.apk`, firmado con la clave del equipo), Telegram con la sesión iniciada, datos móviles y el hotspot.
+- Un teléfono con Android 8.0 o más nuevo, con el APK de release instalado (`zonda-1.0.3.apk`, firmado con la clave del equipo), Telegram con la sesión iniciada, datos móviles y el hotspot.
 - Un cable USB de datos y la depuración USB activada, para mostrar la pantalla del teléfono en el proyector con Android Studio (ventana Running Devices).
 - Nada fuera del repositorio: la alerta alta del paso 7 la larga `.\zonda.cmd emitir` y la red tranquila del paso 11 la deja `.\zonda.cmd tranquila`, que hace de otra persona que revisa desde su teléfono. Los dos son comandos del backend.
 
@@ -21,12 +21,13 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 ## 3. Media hora antes
 
 1. La notebook se conecta al hotspot del teléfono, y no al revés: con el hotspot de Windows prendido, el nombre apuntaría a otra IP.
-2. Borrar `backend\zonda.db`: la API vuelve a cargar la semilla con las fechas de hoy y sin teléfonos pareados.
-3. En `backend`, `.\demo.cmd`. Tiene que terminar con "Listo: https://…/salud responde con HTTPS." y "El nombre apunta a esta notebook".
-4. En otra terminal, también en `backend`: `powershell -ExecutionPolicy Bypass -File scripts\probar_tls.ps1`. Tienen que salir las siete en PASA.
-5. En el teléfono, Ajustes de Android → Apps → Zonda → Almacenamiento → Borrar datos, para mostrar el primer inicio desde cero.
-6. En el teléfono: no molestar apagado, volumen alto, las notificaciones de Telegram activas y batería cargada.
-7. En el proyector, tres ventanas a mano: la de `demo.cmd`, la terminal en `backend` y el espejo del teléfono.
+2. Cerrar los emuladores de Android que haya abiertos en la notebook. En el ensayo quedó uno prendido con una versión vieja de Zonda: intentó sincronizar, el servidor lo rechazó (401) y la ventana de `demo.cmd` se llenó de esos pedidos.
+3. Borrar `backend\zonda.db`: la API vuelve a cargar la semilla con las fechas de hoy y sin teléfonos pareados.
+4. En `backend`, `.\demo.cmd`. Tiene que terminar con "Listo: https://…/salud responde con HTTPS." y "El nombre apunta a esta notebook".
+5. En otra terminal, también en `backend`: `powershell -ExecutionPolicy Bypass -File scripts\probar_tls.ps1`. Tienen que salir las siete en PASA.
+6. En el teléfono, Ajustes de Android → Apps → Zonda → Almacenamiento → Borrar datos, para mostrar el primer inicio desde cero.
+7. En el teléfono: no molestar apagado, el timbre con sonido (no en vibrar) y el volumen alto, las notificaciones de Telegram activas y batería cargada. En el ensayo el teléfono estaba en vibrar y la alta llegó sin sonar.
+8. En el proyector, tres ventanas a mano: la de `demo.cmd`, la terminal en `backend` y el espejo del teléfono.
 
 ## 4. La demo, paso a paso
 
@@ -52,12 +53,12 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 
 1. "Bienvenido a Zonda": tildar "Leí y acepto las condiciones de uso y privacidad" y tocar "Empezar".
 2. El tutorial de tres pasos ("Mirá el estado de la red de un vistazo", "Los avisos llegan a tu teléfono", "Sin señal, seguís trabajando"), con "Siguiente" y al final "Configurar mis avisos".
-3. "Antes de empezar": cómo avisa cada severidad por Telegram (alta con sonido, media con vibración, baja sin aviso) y "Permitir notificaciones". Desde Android 13, Android pregunta y se acepta; en las versiones anteriores ya están permitidas. "Continuar".
-4. La severidad de cada tipo de ataque, con los valores recomendados ya elegidos: "Guardar y conectar con la red".
+3. "Antes de empezar": los avisos por Telegram, una fila por severidad con su interruptor (alta "Con sonido", media "En silencio" y baja "Sin aviso", con el interruptor apagado). Tocar una fila abre "¿Cómo te avisamos las altas?" con "Con sonido" y "En silencio". Abajo, "Permitir notificaciones": desde Android 13, Android pregunta y se acepta; en las versiones anteriores ya están permitidas. "Continuar".
+4. La severidad de cada tipo de ataque, con los valores recomendados ya elegidos, en dos bloques: "Lo que detectó la IA" (fuerza bruta, sin tipo identificado, escaneo, denegación de servicio y probable falsa alarma) y "Lo que la IA no detectó" (servicio no autorizado, que lo detectan las reglas, y volumen inusual de conexiones, que lo detectan los umbrales). El ⓘ abre "Qué es cada tipo". "Guardar y conectar con la red".
 5. "Conectar con la red": tocar "Escanear código QR". En la terminal de la notebook, `.\zonda.cmd pair`: muestra el código, la dirección y el QR, y lo guarda en `pareo_<código>.png`. Abrir ese PNG en pantalla completa y escanearlo con el teléfono.
 6. "Conexión segura" y "28 alertas de los últimos 30 días listas para descargar" (la cantidad depende de la semilla). Tocar "Detalles técnicos": "HTTPS · TLS 1.3" (TLS 1.2 en Android 8 y 9), "Let's Encrypt" y el vencimiento del acceso. Volver y "Continuar".
 
-**Dice.** "El código es de un solo uso y vence a los 10 minutos. Antes de mandarlo, la app verifica el servidor: si la dirección no es HTTPS o el certificado no es válido para ese nombre, no manda nada. El servidor le da a este teléfono un token propio, que vence a los 90 días, se puede revocar y queda cifrado con el Keystore de Android."
+**Dice.** "El código es de un solo uso y vence a los 10 minutos. Antes de mandarlo, la app verifica el servidor: si la dirección no es HTTPS o el certificado no es válido para ese nombre, no manda nada. El servidor le da a este teléfono un token propio, que vence a los 90 días, se puede revocar y queda cifrado con el Keystore de Android. La IA es uno de los tres detectores: lo que ella marca, otro modelo le pone el tipo de ataque. Lo que no vio pero marcaron las reglas o los umbrales va aparte, cada uno con su severidad."
 
 ### Paso 5. Telegram (45 segundos)
 
@@ -70,7 +71,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 **Muestra.**
 
 1. El recorrido de once pasos arranca solo. Los pasos 1 a 3 con calma: el semáforo ("El estado de la red, de un vistazo"), los contadores ("Cuántas faltan revisar") y sincronizar. El resto con "Siguiente" hasta "Listo" (termina en Ajustes) y volver a Estado.
-2. El semáforo en rojo con "ATENCIÓN" y las altas sin revisar. Tocar el contador de Alta: la lista muestra solo las altas. Tocarlo de nuevo: vuelven todas.
+2. El semáforo en rojo con la cantidad de altas sin revisar adentro del círculo, "ATENCIÓN" y abajo "Última alta sin revisar: hace …". Tocar el contador de Alta: la lista muestra solo las altas. Tocarlo de nuevo: vuelven todas.
 
 **Dice.** "Todo lo que se ve sale de la base local, una base Room cifrada con SQLCipher: por eso aparece al instante, también sin conexión. Rojo si hay altas sin revisar, amarillo si solo quedan medias, verde si no queda ninguna de las dos. Las bajas no cambian el color: esperan en la lista."
 
@@ -86,7 +87,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 
 ### Paso 8. Revisar (1 minuto)
 
-**Muestra.** "Revisar", "Ataque real", el motivo "Contraseña cambiada" (la app propone un comentario que se puede cambiar) y "Confirmar revisión". Abajo aparece "Revisión guardada y enviada al servidor." con "Deshacer". Volver a Estado con la flecha de arriba: el contador de Alta bajó. (Para repetirlo, en el ensayo o si algo sale mal, largar otra alerta con `.\zonda.cmd emitir` y tocar su aviso: el botón de un aviso que ya se abrió puede traer Zonda como estaba, en Estado, sin abrir el detalle.)
+**Muestra.** "Revisar", "Ataque real", el motivo "Contraseña cambiada" (la app propone un comentario que se puede cambiar) y "Confirmar revisión". Abajo aparece "Revisión guardada y enviada al servidor." con "Deshacer". Volver a Estado con la flecha de arriba: el contador de Alta bajó. (Para repetirlo, en el ensayo o si algo sale mal, se puede volver a tocar el mismo aviso: desde la 1.0.3 abre otra vez el detalle, decisión 31.)
 
 **Dice.** "Dos pasos para no marcar una alerta sin querer, con el motivo y el comentario obligatorios. Durante 5 segundos se puede deshacer. La revisión queda en el historial con el teléfono que la hizo y la hora. Si otra persona la revisó antes, la app muestra las dos y pregunta con cuál quedarse."
 
@@ -94,28 +95,28 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 
 **Muestra.**
 
-1. Apagar los datos móviles del teléfono desde el panel rápido. **No el modo avión:** apaga el hotspot y la notebook se queda sin red.
+1. Cortar la red del teléfono desde el panel rápido: si el teléfono de la demo es el que comparte internet con la notebook, apagar los datos móviles; si no, apagar su Wi-Fi. **No el modo avión:** apaga el hotspot y la notebook se queda sin red.
 2. Estado muestra "Sin conexión · mostrando datos de las …" y "Último estado conocido · puede haber alertas nuevas".
-3. Abrir otra alerta y revisarla. Aparece "Revisión guardada. Se enviará cuando haya conexión.", el detalle dice "Sin conexión · tu revisión se enviará al reconectar" y la revisión, "pendiente de envío".
-4. Prender los datos móviles: la app sincroniza sola y la revisión pasa a "enviada".
+3. Abrir la alta que queda sin revisar (la de la semilla) y revisarla. Aparece "Revisión guardada. Se enviará cuando haya conexión.", el detalle dice "Sin conexión · tu revisión se enviará al reconectar" y la revisión, "pendiente de envío".
+4. Prender de nuevo los datos o el Wi-Fi: la app sincroniza sola, la revisión pasa a "enviada" y, sin altas, el semáforo pasa a amarillo.
 
 **Dice.** "La revisión quedó en una cola dentro de la base del teléfono, con un identificador propio. Cuando vuelve la red se manda sola, y si por un corte se manda dos veces, el servidor la reconoce y no la aplica dos veces. Lo mismo hace la sincronización en segundo plano cada 15 minutos, con WorkManager."
 
 ### Paso 10. El Resumen (1 minuto)
 
-**Muestra.** El ícono de barras arriba en Estado. "7 días" y "30 días". Tocar un tipo de ataque: todas las cifras se recalculan sobre ese grupo, y otro toque vuelve a todo. "Compartir resumen" abre la hoja con las apps instaladas (WhatsApp, Telegram, Gmail, Drive) y "Copiar".
+**Muestra.** El ícono de barras arriba en Estado. "7 días" y "30 días". "Por tipo de ataque" en los dos bloques de las severidades, cada tipo con el punto del color de su severidad: tocar un tipo y todas las cifras se recalculan sobre ese grupo; otro toque vuelve a todo. En "Precisión de cada modelo", las barras claras son los modelos con menos de 30 revisiones; el ⓘ abre "Cómo se lee la precisión". "Compartir resumen" abre la hoja con las apps instaladas (WhatsApp, Telegram, Gmail, Drive) y "Copiar".
 
-**Dice.** "Esto es para el dueño de la empresa, que no abre Zonda: cuántas alertas hubo, cuántas se revisaron y las dos métricas que propusimos en el informe, la mediana hasta la primera revisión y el porcentaje de altas revisadas en la primera hora. Se calcula en el teléfono con lo guardado, así que también anda sin conexión. La imagen que se comparte no tiene IP ni nombres de equipos."
+**Dice.** "Esto es para el dueño de la empresa, que no abre Zonda: cuántas alertas hubo, cuántas se revisaron y las dos métricas que propusimos en el informe, la mediana hasta la primera revisión y el porcentaje de altas revisadas en la primera hora. La precisión dice cuánto acierta cada modelo cuando avisa, no cuál es el mejor; con menos de 30 revisiones la barra va clara porque todavía no se puede comparar. Se calcula en el teléfono con lo guardado, así que también anda sin conexión. La imagen que se comparte no tiene IP ni nombres de equipos."
 
 ### Paso 11. La red tranquila (45 segundos)
 
-**Muestra.** En la terminal, en `backend`: `.\zonda.cmd tranquila`. Responde "Teléfono de Laura (…) revisó como falso positivo …" con cuántas altas y medias. En el teléfono, el ícono de sincronizar: aparece el aviso "Sincronizado" con la fecha y la hora, y el semáforo pasa a verde con "La red está tranquila". Si sobra tiempo, en Alertas con el estado de revisión en "Falsos positivos", abrir una de esas: en la revisión, "Quién" dice "Teléfono de Laura".
+**Muestra.** Antes de empezar, si quedó elegido un contador de Estado (de un paso anterior), tocarlo para sacar el filtro: si no, la lista muestra solo esa severidad y no las bajas que esperan. En la terminal, en `backend`: `.\zonda.cmd tranquila`. Responde "Teléfono de Laura (…) revisó como falso positivo …" con cuántas altas y medias. En el teléfono, el ícono de sincronizar: aparece el aviso "Sincronizado" con la fecha y la hora, y el semáforo pasa a verde con "SIN URGENCIAS" y las bajas que quedan ("4 alertas bajas sin revisar"; la cantidad depende de la semilla). Si sobra tiempo, en Alertas con el estado de revisión en "Falsos positivos", abrir una de esas: en la revisión, "Quién" dice "Teléfono de Laura".
 
-**Dice.** "Hicimos de Laura, otra persona del equipo, que revisó las altas y medias desde su teléfono. Al sincronizar, este teléfono se entera y el semáforo pasa a verde."
+**Dice.** "Laura, otra persona del equipo, revisó las altas y las medias desde su teléfono. Al sincronizar, el semáforo pasa a verde: ya no queda nada urgente. Las bajas esperan en la lista para cuando haya tiempo."
 
 ### Paso 12. El valor generado (45 segundos)
 
-**Dice.** "Martín se enteró en segundos, decidió con el contexto de los tres detectores y aunque no tenía señal la revisión llegó sola. Cada decisión quedó registrada con su motivo, y el dueño tiene los números para saber si la inversión en seguridad sirve. Todo con herramientas gratuitas y una computadora que la empresa ya tiene. La app tiene más de 350 pruebas automáticas, el backend más de 50, y el CI las corre en cada pull request."
+**Dice.** "Martín se enteró en segundos, decidió con el contexto de los tres detectores y aunque no tenía señal la revisión llegó sola. Cada decisión quedó registrada con su motivo, y el dueño tiene los números para saber si la inversión en seguridad sirve. Todo con herramientas gratuitas y una computadora que la empresa ya tiene. La app tiene más de 400 pruebas automáticas, el backend 60, y el CI las corre en cada pull request."
 
 ## 5. Versión corta (5 minutos)
 
@@ -131,7 +132,8 @@ Si hay menos tiempo: paso 1, en el paso 4 "Ya conozco Zonda: omitir la introducc
 | La app dice "No se pudo verificar el servidor" | Se escribió la IP en lugar del nombre, o el certificado no está: revisar la ventana de `demo.cmd` |
 | El aviso de Telegram no llega | Abrir la alerta desde la lista de Estado: es el mismo detalle. Contar que el aviso depende de internet y que la app igual la trae al sincronizar |
 | El botón del aviso abre la página en el navegador de Telegram | La página tiene "Abrir en Zonda", que abre la alerta en la app |
-| El botón del aviso trae Zonda en Estado, sin abrir el detalle | Pasa con un aviso que ya se abrió antes. Largar otra alerta con `.\zonda.cmd emitir` y tocar su aviso, o abrir la alerta desde la lista de Estado |
+| El botón del aviso trae Zonda en Estado, sin abrir el detalle | Desde la 1.0.3 no debería pasar (decisión 31). Si pasa, abrir la alerta desde la lista de Estado |
+| Estado avisa "Una revisión tuya no se aplicó" | Otra persona revisó esa alerta antes. "Ver" abre la alerta (si son varias, Alertas con "Revisiones no aplicadas") y el detalle muestra las dos revisiones para elegir con cuál quedarse |
 | La API se cerró | `.\demo.cmd` de nuevo; mientras tanto la app sigue mostrando lo guardado |
 | No anda el espejo del teléfono | Mostrar el teléfono a la cámara o pasarlo |
 
@@ -143,7 +145,8 @@ La consigna dice que en la defensa pueden preguntar a cada integrante por el có
 |---|---|---|
 | Capas y flujo de datos | `ui` → `domain` → `data`; el diagrama está en el README | 14 |
 | Estado de una pantalla | `ui/estado/EstadoViewModel.kt` y `EstadoUiState.kt`: un `StateFlow` por pantalla | 14 y 27 |
-| Navegación y enlace del aviso | `ui/navigation/ZondaNavHost.kt`, `Rutas.kt` y `ui/detalle/DetalleNavegacion.kt` | 9 y 16 |
+| Navegación y enlace del aviso | `ui/navigation/ZondaNavHost.kt`, `Rutas.kt`, `ui/detalle/DetalleNavegacion.kt` y `PuenteDelAvisoActivity.kt` | 9, 16, 29 y 31 |
+| Tipos de ataque y severidad | `domain/model/TipoAtaque.kt` y `SeveridadPorTipo.kt` en la app; `severidad_de` en `backend/app/semilla.py` | 4 y 32 |
 | Persistencia | `data/local/ZondaDatabase.kt` (Room) y los DAO, con SQLCipher y la clave guardada con el Keystore (`data/seguridad`) | 8 |
 | Red | `data/remote/ZondaApi.kt` (Retrofit), `InterceptorDeToken.kt`, `ErroresHttp.kt` y `res/xml/network_security_config.xml` | 12 y 26 |
 | Sincronización | `data/sync/SincronizadorHttp.kt` (cola, cursor, catálogo y purga), `sync/SincronizacionWorker.kt` y `sync/ConectividadAndroid.kt` | 13 y 17 |
@@ -154,6 +157,11 @@ La consigna dice que en la defensa pueden preguntar a cada integrante por el có
 | Firma del APK | `app/build.gradle.kts` | 28 |
 | Pruebas | `app/src/test` (JUnit 4, Turbine, Robolectric y MockWebServer) y `backend/tests` (pytest) | 6 |
 | Organización del trabajo | Una rama y un pull request por fase, con las seis preguntas de la consigna; el uso de IA está en `docs/prompts` | |
+
+Dos preguntas que salieron en el ensayo:
+
+- **¿Por qué la hora del aviso es anterior a cuando llegó?** El aviso dice cuándo empezó el episodio (el inicio de la alerta). Una alerta se arma cuando el episodio termina, después de 5 minutos sin flujos nuevos (decisión 3), así que el aviso siempre llega después de esa hora.
+- **¿Cómo se lee la precisión con un filtro puesto?** Cada fila cuenta solo las alertas del filtro. Con un modelo elegido, las otras filas cuentan lo que marcó ese modelo junto con el de la fila, por eso bajan. El recuadro azul de la hoja del ⓘ lo explica para el filtro elegido.
 
 ## 8. Al terminar
 

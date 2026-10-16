@@ -10,6 +10,7 @@ import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroServicio
@@ -51,7 +52,11 @@ class AlertasRepositoryImpl(
             serviciosConChip = (filtro.servicio as? FiltroServicio.Otros)?.conChip.orEmpty().toList().ifEmpty { listOf(NINGUNO) },
             destinoIp = filtro.destinoIp,
             metodo = filtro.metodo?.name,
-        ).map { filas -> filas.map(AlertaConDetalles::aDominio) }
+        ).map { filas ->
+            val alertas = filas.map(AlertaConDetalles::aDominio)
+            // El envío sale de la acción pendiente de cada alerta, que ya viene en la fila (cambio 7).
+            if (filtro.soloNoAplicadas) alertas.filter { it.envio == EstadoEnvio.CONFLICTO } else alertas
+        }
 
     override fun observarOpcionesDeFiltro(redId: String): Flow<OpcionesDeFiltro> =
         combine(dao.observarServicios(redId), dao.observarDestinos(redId)) { servicios, destinos ->

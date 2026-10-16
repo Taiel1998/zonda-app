@@ -1,9 +1,13 @@
 package ar.edu.uade.zonda.domain.repository
 
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
-/** Preferencias de este teléfono (no de la red): avisos y qué partes del primer inicio ya se hicieron. */
+/**
+ * Preferencias de este teléfono (no de la red): avisos, qué partes del primer inicio ya se hicieron y
+ * hasta dónde llegaron los recordatorios de altas.
+ */
 interface PreferenciasRepository {
 
     fun observarAvisos(): Flow<PreferenciasAvisos>
@@ -24,6 +28,11 @@ interface PreferenciasRepository {
     fun observarRecorridoHecho(): Flow<Boolean>
 
     suspend fun marcarRecorridoHecho()
+
+    /** Hasta qué hora de llegada ya se recordaron las altas sin revisar de una red (cambio 13); null si nunca. */
+    suspend fun recordatoriosHasta(redId: String): Instant?
+
+    suspend fun guardarRecordatoriosHasta(redId: String, hasta: Instant)
 }
 
 /** Si el teléfono tiene conexión. Decide si una acción se envía en el momento o se encola. */

@@ -15,6 +15,7 @@ object DtoFixtures {
         creadaEn: String = "2026-10-11T14:25:10+00:00",
         servicio: String = "ssh",
         destinoIp: String = "192.168.10.50",
+        avisoTelegram: String? = null,
     ) = AlertaDto(
         id = id,
         creadaEn = creadaEn,
@@ -49,5 +50,6 @@ object DtoFixtures {
         historial = historial,
         version = version,
         actualizadaEn = creadaEn,
+        avisoTelegram = avisoTelegram,
     )
 }

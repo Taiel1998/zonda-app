@@ -84,7 +84,7 @@ class EstadoContenidoTest {
 
         compose.onNodeWithText("ATENCIÓN").assertIsDisplayed()
         compose.onNodeWithText("2 alertas altas sin revisar").assertIsDisplayed()
-        compose.onNodeWithText("Última detección hace 5 min · actualizado 12:00").assertIsDisplayed()
+        compose.onNodeWithText("Última alta sin revisar: hace 5 min · actualizado 12:00").assertIsDisplayed()
         compose.onNodeWithText("Alertas sin revisar, por severidad. Tocá una para filtrar la lista.").assertIsDisplayed()
         compose.onNodeWithContentDescription("2 sin revisar de severidad Alta").assertIsNotSelected()
         compose.onNodeWithContentDescription("1 sin revisar de severidad Media").assertIsDisplayed()
@@ -177,21 +177,22 @@ class EstadoContenidoTest {
     }
 
     @Test
-    fun `con la red tranquila muestra la leyenda de los tres colores y no Ver todas`() {
+    fun `con bajas pendientes el verde dice sin urgencias, cuantas faltan y cuando llego la ultima`() {
         dibujar(
             EstadoUiState(
                 contenido = datos(
                     semaforo = Semaforo.VERDE,
-                    sinRevisar = ContadoresSinRevisar(altas = 0, medias = 0, bajas = 1),
+                    sinRevisar = ContadoresSinRevisar(altas = 0, medias = 0, bajas = 4),
                     alertas = listOf(Fixtures.alerta("b-1", severidad = Severidad.BAJA)),
                 ),
                 datosDe = ahora,
             ),
         )
 
-        compose.onNodeWithText("TRANQUILA").assertIsDisplayed()
-        compose.onNodeWithText("La red está tranquila").assertIsDisplayed()
-        compose.onNodeWithText("Ninguna alerta alta ni media sin revisar · actualizado 12:00").assertIsDisplayed()
+        compose.onNodeWithText("SIN URGENCIAS").assertIsDisplayed()
+        compose.onNodeWithText("4 alertas bajas sin revisar").assertIsDisplayed()
+        compose.onNodeWithText("Última baja sin revisar: hace 5 min · actualizado 12:00").assertIsDisplayed()
+        compose.onAllNodesWithText("TRANQUILA").assertCountEquals(0)
         compose.onNodeWithText("Rojo: hay alertas altas sin revisar").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Amarillo: solo quedan medias sin revisar").assertIsDisplayed()
         compose.onNodeWithText("Verde: no queda ninguna alta ni media; las bajas esperan en la lista").assertIsDisplayed()
@@ -216,8 +217,24 @@ class EstadoContenidoTest {
             ),
         )
 
-        compose.onNodeWithText("Ninguna alerta alta ni media sin revisar · actualizado ayer 12:00").assertIsDisplayed()
+        compose.onNodeWithText("Ninguna alerta sin revisar · actualizado ayer 12:00").assertIsDisplayed()
         compose.onNodeWithText("No queda ninguna alerta sin revisar. Las nuevas aparecen acá apenas se sincronizan.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `sin nada pendiente la red esta tranquila, con la leyenda y sin Ver todas`() {
+        dibujar(
+            EstadoUiState(
+                contenido = datos(semaforo = Semaforo.VERDE, sinRevisar = ContadoresSinRevisar.CERO, alertas = emptyList()),
+                datosDe = ahora,
+            ),
+        )
+
+        compose.onNodeWithText("TRANQUILA").assertIsDisplayed()
+        compose.onNodeWithText("La red está tranquila").assertIsDisplayed()
+        compose.onNodeWithText("Ninguna alerta sin revisar · actualizado 12:00").assertIsDisplayed()
+        compose.onNodeWithText("Verde: no queda ninguna alta ni media; las bajas esperan en la lista").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Ver todas →").assertCountEquals(0)
     }
 
     @Test
@@ -322,5 +339,42 @@ class EstadoContenidoTest {
     private fun <T : Any> presente(valor: T?): T {
         assertTrue(valor != null)
         return valor!!
+    }
+
+    @Test
+    fun `una revision que no se aplico se avisa arriba del semaforo y Ver abre esa alerta`() {
+        val tocados = mutableListOf<String>()
+        dibujar(
+            EstadoUiState(contenido = datos(), datosDe = ahora, revisionesNoAplicadas = listOf("a-7")),
+            AccionesEstado(alAbrirDetalle = { tocados += "detalle $it" }, alVerNoAplicadas = { tocados += "alertas" }),
+        )
+
+        compose.onNodeWithText("Una revisión tuya no se aplicó").assertIsDisplayed()
+        compose.onNodeWithText("Otra persona revisó esa alerta antes que vos.").assertIsDisplayed()
+        compose.onNodeWithText("Ver").performClick()
+
+        assertEquals(listOf("detalle a-7"), tocados)
+    }
+
+    @Test
+    fun `con varias revisiones que no se aplicaron Ver abre Alertas con esas`() {
+        val tocados = mutableListOf<String>()
+        dibujar(
+            EstadoUiState(contenido = datos(), datosDe = ahora, revisionesNoAplicadas = listOf("a-7", "a-8")),
+            AccionesEstado(alAbrirDetalle = { tocados += "detalle $it" }, alVerNoAplicadas = { tocados += "alertas" }),
+        )
+
+        compose.onNodeWithText("2 revisiones tuyas no se aplicaron").assertIsDisplayed()
+        compose.onNodeWithText("Alguien más revisó esas alertas antes que vos.").assertIsDisplayed()
+        compose.onNodeWithText("Ver").performClick()
+
+        assertEquals(listOf("alertas"), tocados)
+    }
+
+    @Test
+    fun `sin revisiones en conflicto no hay aviso`() {
+        dibujar(EstadoUiState(contenido = datos(), datosDe = ahora))
+
+        compose.onNodeWithText("Ver").assertDoesNotExist()
     }
 }

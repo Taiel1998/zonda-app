@@ -5,20 +5,24 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /** DataStore de preferencias del teléfono, uno solo para toda la app. */
 val Context.preferenciasZonda: DataStore<Preferences> by preferencesDataStore(name = "zonda_preferencias")
 
 /**
- * Preferencias que son de este teléfono y no de la red: avisos por severidad y si el primer inicio
- * y el recorrido ya se hicieron. DataStore reemplaza a SharedPreferences con lectura reactiva (Flow).
+ * Preferencias que son de este teléfono y no de la red: avisos por severidad, si el primer inicio
+ * y el recorrido ya se hicieron y hasta dónde se recordaron las altas de cada red. DataStore reemplaza
+ * a SharedPreferences con lectura reactiva (Flow).
  */
 class PreferenciasRepositoryImpl(
     private val dataStore: DataStore<Preferences>,
@@ -59,9 +63,22 @@ class PreferenciasRepositoryImpl(
         dataStore.edit { it[RECORRIDO_HECHO] = true }
     }
 
-    private fun modoONull(nombre: String): ModoAviso? = ModoAviso.entries.firstOrNull { it.name == nombre }
+    override suspend fun recordatoriosHasta(redId: String): Instant? =
+        dataStore.data.first()[recordatoriosDe(redId)]?.let(Instant::ofEpochMilli)
+
+    override suspend fun guardarRecordatoriosHasta(redId: String, hasta: Instant) {
+        dataStore.edit { it[recordatoriosDe(redId)] = hasta.toEpochMilli() }
+    }
+
+    /** Una clave por red: "recordatorios_hasta_<id de la red>". */
+    private fun recordatoriosDe(redId: String) = longPreferencesKey("recordatorios_hasta_$redId")
+
+    /** Hasta la 1.0.2 el mensaje sin sonido se guardaba como "VIBRACION" (cambio 6): se lee como [ModoAviso.SILENCIO]. */
+    private fun modoONull(nombre: String): ModoAviso? =
+        if (nombre == NOMBRE_ANTERIOR_SILENCIO) ModoAviso.SILENCIO else ModoAviso.entries.firstOrNull { it.name == nombre }
 
     private companion object {
+        const val NOMBRE_ANTERIOR_SILENCIO = "VIBRACION"
         val AVISO_ALTA = stringPreferencesKey("aviso_alta")
         val AVISO_MEDIA = stringPreferencesKey("aviso_media")
         val AVISO_BAJA = stringPreferencesKey("aviso_baja")

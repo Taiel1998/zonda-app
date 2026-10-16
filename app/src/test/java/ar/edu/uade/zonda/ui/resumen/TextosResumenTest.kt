@@ -5,7 +5,10 @@ import androidx.test.core.app.ApplicationProvider
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.GrupoResumen
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
+import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.Proporcion
+import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.TipoAtaque
@@ -15,6 +18,9 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -51,6 +57,29 @@ class TextosResumenTest {
         val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc)
 
         assertEquals("El viernes concentra 3 alertas: 2 de fuerza bruta.", fraseDelGrafico(resumen, recursos))
+    }
+
+    @Test
+    fun `sin Otros, la frase y el chip nombran cada tipo`() {
+        // Cambio 14: el tipo que más se repite puede ser uno sin nombre de ataque.
+        val falsas = listOf(
+            alertaDel("2026-09-25", "f-1", tipo = TipoAtaque.PROBABLE_FALSA_ALARMA, destinoIp = "192.168.10.3"),
+            alertaDel("2026-09-25", "f-2", tipo = TipoAtaque.PROBABLE_FALSA_ALARMA),
+            alertaDel("2026-09-25", "f-3"),
+        )
+        val sinTipo = listOf(alertaDel("2026-09-25", "t-1", tipo = TipoAtaque.SIN_TIPIFICAR))
+
+        assertEquals(
+            "El viernes concentra 3 alertas: 2 probables falsas alarmas.",
+            fraseDelGrafico(ResumenActividad.calcular(falsas, PeriodoResumen.SIETE_DIAS, domingo, utc), recursos),
+        )
+        assertEquals(
+            "El viernes concentra 1 alerta: 1 sin tipo identificado.",
+            fraseDelGrafico(ResumenActividad.calcular(sinTipo, PeriodoResumen.SIETE_DIAS, domingo, utc), recursos),
+        )
+        assertEquals("Fuerza bruta", GrupoResumen.Tipo(TipoAtaque.FUERZA_BRUTA).etiquetaChip(recursos))
+        assertEquals("Sin tipo identificado", GrupoResumen.Tipo(TipoAtaque.SIN_TIPIFICAR).etiquetaChip(recursos))
+        assertEquals("volumen inusual", GrupoResumen.Tipo(TipoAtaque.VOLUMEN_INUSUAL).etiquetaFrase(recursos))
     }
 
     @Test
@@ -94,14 +123,49 @@ class TextosResumenTest {
     }
 
     @Test
-    fun `con 30 revisiones o mas la comparacion entre modelos ya no tiene advertencia`() {
-        val revisadas = (1..30).map { i -> alertaDel("2026-09-25", "r-$i", revision = Fixtures.revision(fecha = domingo)) }
+    fun `la barra de un modelo va clara hasta que ese modelo tiene 30 revisiones`() {
+        assertTrue(Proporcion(11, 12).barraClara())
+        assertTrue(Proporcion(29, 29).barraClara())
+        assertFalse(Proporcion(24, 30).barraClara())
+    }
 
-        val resumen = ResumenActividad.calcular(revisadas, PeriodoResumen.SIETE_DIAS, domingo, utc)
+    @Test
+    fun `el ejemplo de la hoja usa las cifras del primer modelo con dos revisiones o mas`() {
+        val real = Fixtures.revision(fecha = domingo)
+        val falso = Fixtures.revision(ResultadoRevision.FALSO_POSITIVO, Motivo.BACKUP, fecha = domingo)
+        val lista = listOf(alertaDel("2026-09-25", "r-1", revision = real), alertaDel("2026-09-25", "r-2", revision = falso), alertaDel("2026-09-25", "r-3", revision = falso))
 
+        val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc)
+
+        assertEquals("Por ejemplo, la IA tiene 1 de 3: marcó 3 alertas que ya revisaste y 1 era un ataque.", ejemploDePrecision(resumen, recursos))
+        val sinRevisiones = ResumenActividad.calcular(listOf(alertaDel("2026-09-25", "s-1")), PeriodoResumen.SIETE_DIAS, domingo, utc)
+        assertNull(ejemploDePrecision(sinRevisiones, recursos))
+    }
+
+    @Test
+    fun `el recuadro de la hoja cambia con el filtro elegido`() {
+        val lista = listOf(alertaDel("2026-09-25", "v-1", revision = Fixtures.revision(fecha = domingo)))
+        fun recuadro(grupo: GrupoResumen?, periodo: PeriodoResumen = PeriodoResumen.SIETE_DIAS) =
+            recuadroDePrecision(ResumenActividad.calcular(lista, periodo, domingo, utc, grupo), recursos)
+        val viernes = LocalDate.parse("2026-09-25")
+
+        assertEquals("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 7 días.", recuadro(null))
+        assertEquals("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 30 días.", recuadro(null, PeriodoResumen.TREINTA_DIAS))
         assertEquals(
-            "Precisión = alertas reales / alertas revisadas que marcó cada modelo. El modelo de IA tiene la precisión más alta.",
-            notaDePrecision(resumen, recursos),
+            "Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese modelo.",
+            recuadro(GrupoResumen.Metodo(MetodoDeteccion.IA)),
+        )
+        assertEquals(
+            "Estás viendo el viernes 25/09: la precisión cuenta solo las alertas revisadas de ese día.",
+            recuadro(GrupoResumen.Barra(Tramo(viernes, viernes))),
+        )
+        assertEquals(
+            "Estás viendo fuerza bruta: la precisión cuenta solo las alertas revisadas de ese tipo.",
+            recuadro(GrupoResumen.Tipo(TipoAtaque.FUERZA_BRUTA)),
+        )
+        assertEquals(
+            "Estás viendo los falsos positivos: ninguna es real, así que cada modelo da 0 %.",
+            recuadro(GrupoResumen.FalsosPositivos),
         )
     }
 }

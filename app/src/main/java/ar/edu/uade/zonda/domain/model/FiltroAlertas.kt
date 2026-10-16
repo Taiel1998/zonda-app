@@ -53,6 +53,11 @@ data class FiltroAlertas(
     val servicio: FiltroServicio? = null,
     val destinoIp: String? = null,
     val metodo: MetodoDeteccion? = null,
+    /**
+     * Solo las alertas con una revisión de este teléfono que no se aplicó porque otra persona la revisó
+     * antes (el envío quedó en conflicto). Lo pone "Ver" del aviso de Estado con varias (cambio 7).
+     */
+    val soloNoAplicadas: Boolean = false,
 ) {
     val activo: Boolean
         get() = this != TODAS

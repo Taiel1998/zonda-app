@@ -2,6 +2,7 @@ package ar.edu.uade.zonda.domain.fakes
 
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -38,5 +39,13 @@ class FakePreferenciasRepository(
 
     override suspend fun marcarRecorridoHecho() {
         recorrido.value = true
+    }
+
+    val recordatorios = mutableMapOf<String, Instant>()
+
+    override suspend fun recordatoriosHasta(redId: String): Instant? = recordatorios[redId]
+
+    override suspend fun guardarRecordatoriosHasta(redId: String, hasta: Instant) {
+        recordatorios[redId] = hasta
     }
 }

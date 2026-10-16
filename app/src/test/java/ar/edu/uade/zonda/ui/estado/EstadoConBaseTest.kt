@@ -4,6 +4,7 @@ import ar.edu.uade.zonda.data.FakeAlmacenSeguro
 import ar.edu.uade.zonda.data.PruebaConBase
 import ar.edu.uade.zonda.data.remote.ApiFalsa
 import ar.edu.uade.zonda.data.remote.ProveedorDeApiFalso
+import ar.edu.uade.zonda.data.repository.AccionesPendientesRepositoryImpl
 import ar.edu.uade.zonda.data.repository.AlertasRepositoryImpl
 import ar.edu.uade.zonda.data.repository.RedesRepositoryImpl
 import ar.edu.uade.zonda.domain.Fixtures
@@ -61,6 +62,7 @@ class EstadoConBaseTest : PruebaConBase() {
             redes = redes,
             alertas = alertas,
             conectividad = FakeConectividad(conectadoAlInicio = false),
+            acciones = AccionesPendientesRepositoryImpl(base.accionesPendientesDao()),
         )
 
         val inicio = System.nanoTime()

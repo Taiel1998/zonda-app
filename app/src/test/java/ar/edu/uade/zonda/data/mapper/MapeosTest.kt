@@ -62,7 +62,10 @@ class MapeosTest {
 
         val texto = SeveridadesCodec.codificar(severidades)
 
-        assertEquals("DDOS=BAJA;ESCANEO=MEDIA;FUERZA_BRUTA=ALTA;PROBABLE_FALSA_ALARMA=BAJA;SIN_TIPIFICAR=ALTA;SOLO_REGLAS_O_UMBRALES=MEDIA", texto)
+        assertEquals(
+            "DDOS=BAJA;ESCANEO=MEDIA;FUERZA_BRUTA=ALTA;PROBABLE_FALSA_ALARMA=BAJA;SERVICIO_NO_AUTORIZADO=MEDIA;SIN_TIPIFICAR=ALTA;VOLUMEN_INUSUAL=MEDIA",
+            texto,
+        )
         assertEquals(severidades, SeveridadesCodec.decodificar(texto))
     }
 

@@ -14,10 +14,14 @@ import ar.edu.uade.zonda.domain.fakes.FakePreferenciasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoRevision
+import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
 import ar.edu.uade.zonda.notificaciones.Notificador
+import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.navigation.EnlacesInternos
+import java.time.Duration
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -33,7 +37,7 @@ import org.robolectric.annotation.Config
 class SincronizacionWorkerTest {
 
     private val contexto: Context = ApplicationProvider.getApplicationContext()
-    private val redes = FakeRedesRepository(
+    private var redes = FakeRedesRepository(
         listOf(Fixtures.red("red-1"), Fixtures.red("red-2", activa = false), Fixtures.red("red-3", activa = false, accesoVencido = true)),
     )
     private val alertas = FakeAlertasRepository()
@@ -43,7 +47,7 @@ class SincronizacionWorkerTest {
     private fun worker(): SincronizacionWorker {
         val fabrica = object : WorkerFactory() {
             override fun createWorker(appContext: Context, workerClassName: String, workerParameters: WorkerParameters) =
-                SincronizacionWorker(appContext, workerParameters, redes, alertas, preferencias, notificador)
+                SincronizacionWorker(appContext, workerParameters, redes, alertas, preferencias, notificador, reloj = { Fixtures.AHORA })
         }
         return TestListenableWorkerBuilder.from(contexto, SincronizacionWorker::class.java).setWorkerFactory(fabrica).build()
     }
@@ -57,10 +61,17 @@ class SincronizacionWorkerTest {
 
     private fun destinoDe(notificacion: Notification): String? = shadowOf(notificacion.contentIntent).savedIntent.data?.toString()
 
-    private fun resultado(nuevas: Int, altasNuevas: Int, idsAltasNuevas: List<String> = emptyList()) = ResultadoSincronizacion(
+    private fun resultado(
+        nuevas: Int,
+        altasNuevas: Int,
+        idsAltasNuevas: List<String> = emptyList(),
+        conAvisoTelegram: Set<String> = emptySet(),
+    ) = ResultadoSincronizacion(
         nuevas = nuevas, modificadas = 0, altasNuevas = altasNuevas, accionesEnviadas = 0, accionesConError = 0,
-        hora = Fixtures.AHORA, idsAltasNuevas = idsAltasNuevas,
+        hora = Fixtures.AHORA, idsAltasNuevas = idsAltasNuevas, idsAltasNuevasConAvisoTelegram = conAvisoTelegram,
     )
+
+    private fun textoDe(notificacion: Notification): String? = notificacion.extras.getString(Notification.EXTRA_TEXT)
 
     @Test
     fun `sincroniza todas las redes menos las de acceso vencido y notifica las altas nuevas de cada una`() = runTest {
@@ -123,5 +134,88 @@ class SincronizacionWorkerTest {
         alertas.errorAlSincronizar = ErrorZonda.NoAutorizado()
         assertEquals(ListenableWorker.Result.success(), worker().doWork())
         assertTrue(notificaciones.isEmpty())
+    }
+
+    @Test
+    fun `con Telegram vinculado no repite las altas que Telegram ya aviso en este telefono`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1").copy(telegramVinculado = true)))
+        alertas.resultadoSincronizacion = resultado(nuevas = 2, altasNuevas = 2, idsAltasNuevas = listOf("a-1", "a-2"), conAvisoTelegram = setOf("a-1"))
+
+        worker().doWork()
+
+        assertEquals(1, avisos.size)
+        assertEquals("1 alerta nueva de severidad alta", textoDe(avisos.single()))
+        assertEquals(EnlacesInternos.detalle("red-1", "a-2"), destinoDe(avisos.single()))
+    }
+
+    @Test
+    fun `si Telegram ya aviso todas, Zonda no notifica, y con las altas en Sin aviso en Telegram avisa todas`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1").copy(telegramVinculado = true)))
+        alertas.resultadoSincronizacion = resultado(nuevas = 2, altasNuevas = 2, idsAltasNuevas = listOf("a-1", "a-2"), conAvisoTelegram = setOf("a-1", "a-2"))
+        worker().doWork()
+        assertTrue(notificaciones.isEmpty())
+
+        preferencias.avisos.value = PreferenciasAvisos(alta = ModoAviso.SIN_AVISO)
+        worker().doWork()
+        assertEquals("2 alertas nuevas de severidad alta", textoDe(avisos.single()))
+    }
+
+    @Test
+    fun `recuerda una sola vez las altas que siguen sin revisar a los 15 minutos`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1")))
+        val llegada = Fixtures.AHORA.minus(Duration.ofMinutes(20))
+        alertas.agregar(Fixtures.alerta("a-9", creadaEn = llegada), Fixtures.alerta("a-10", creadaEn = Fixtures.AHORA.minus(Duration.ofMinutes(5))))
+
+        worker().doWork()
+
+        val recordatorio = avisos.single()
+        assertEquals("Recordatorio: 1 alerta alta sin revisar desde las ${Formato.hora(llegada)}", textoDe(recordatorio))
+        assertEquals(EnlacesInternos.detalle("red-1", "a-9"), destinoDe(recordatorio))
+        assertEquals(llegada, preferencias.recordatorios["red-1"])
+
+        // La siguiente vuelta no la recuerda de nuevo; la de hace 5 minutos todavía espera.
+        contexto.getSystemService(NotificationManager::class.java).cancelAll()
+        worker().doWork()
+        assertTrue(notificaciones.isEmpty())
+    }
+
+    @Test
+    fun `el recordatorio no tapa la notificacion de alertas nuevas`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1")))
+        alertas.agregar(Fixtures.alerta("a-9", creadaEn = Fixtures.AHORA.minus(Duration.ofMinutes(30))))
+        alertas.resultadoSincronizacion = resultado(nuevas = 1, altasNuevas = 1, idsAltasNuevas = listOf("a-12"))
+
+        worker().doWork()
+
+        assertEquals(
+            setOf("1 alerta nueva de severidad alta", "Recordatorio: 1 alerta alta sin revisar desde las ${Formato.hora(Fixtures.AHORA.minus(Duration.ofMinutes(30)))}"),
+            avisos.map(::textoDe).toSet(),
+        )
+    }
+
+    @Test
+    fun `avisa una vez, en el canal de revisiones, las revisiones que no se aplicaron`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1")))
+        alertas.resultadoSincronizacion = resultado(nuevas = 0, altasNuevas = 0).copy(conflictosNuevos = listOf("a-3"))
+
+        worker().doWork()
+
+        val aviso = notificaciones.single()
+        assertEquals(Notificador.CANAL_REVISIONES, aviso.channelId)
+        assertEquals("Zonda · Oficina", aviso.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals("Una revisión tuya no se aplicó. Otra persona revisó esa alerta antes. Tocá para elegir cuál queda.", textoDe(aviso))
+        assertEquals(EnlacesInternos.detalle("red-1", "a-3"), destinoDe(aviso))
+    }
+
+    @Test
+    fun `con varias revisiones que no se aplicaron la notificacion abre Alertas con esas`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1")))
+        alertas.resultadoSincronizacion = resultado(nuevas = 0, altasNuevas = 0).copy(conflictosNuevos = listOf("a-3", "a-5"))
+
+        worker().doWork()
+
+        val aviso = notificaciones.single()
+        assertEquals("2 revisiones tuyas no se aplicaron. Alguien más revisó esas alertas antes. Tocá para elegir cuáles quedan.", textoDe(aviso))
+        assertEquals(EnlacesInternos.noAplicadas("red-1"), destinoDe(aviso))
     }
 }

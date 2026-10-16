@@ -30,10 +30,13 @@ def test_zonda_emitir_sin_argumentos_crea_ya_una_alta_de_fuerza_bruta_por_ssh(cl
 
 
 def test_zonda_emitir_copia_una_alerta_del_tipo_y_el_servicio_pedidos(cliente, auth, zonda, capsys):
-    # Las que detectaron solo las reglas o los umbrales no tienen tipo: se piden con su clave de severidades.
-    assert zonda(["emitir", "solo_reglas_o_umbrales", "SSH"]) == 0
-    sin_tipo = cliente.get(f"/alertas/{id_emitido(capsys.readouterr().out)}", headers=auth).json()
-    assert (sin_tipo["tipoAtaque"], sin_tipo["servicio"], sin_tipo["severidad"]) == (None, "ssh", "media")
+    # Las que la IA no vio no tienen tipo: se piden por el detector que las marcó, con su clave de severidades (cambio 9).
+    assert zonda(["emitir", "servicio_no_autorizado", "SSH"]) == 0
+    reglas = cliente.get(f"/alertas/{id_emitido(capsys.readouterr().out)}", headers=auth).json()
+    assert (reglas["tipoAtaque"], reglas["servicio"], reglas["severidad"], reglas["veredictos"]["reglas"]) == (None, "ssh", "media", True)
+    assert zonda(["emitir", "volumen_inusual"]) == 0
+    umbrales = cliente.get(f"/alertas/{id_emitido(capsys.readouterr().out)}", headers=auth).json()
+    assert (umbrales["tipoAtaque"], umbrales["veredictos"]["umbrales"], umbrales["veredictos"]["reglas"]) == (None, True, False)
 
     # Sin servicio vale cualquiera de ese tipo.
     assert zonda(["emitir", "escaneo"]) == 0

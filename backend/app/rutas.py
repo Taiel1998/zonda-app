@@ -17,7 +17,6 @@ from .auth import (
 )
 from .db import Base
 from .modelos import (
-    CLAVE_SIN_TIPO,
     MOTIVOS_POR_RESULTADO,
     TIPOS_SEVERIDAD,
     Alerta,
@@ -40,10 +39,10 @@ from .modelos import (
     VinculoTelegram,
 )
 from .revisiones import aplicar_revision
-from .semilla import severidad_de
+from .semilla import SQL_SEVERIDAD, severidad_de
 from .telegram import BotTelegram, ErrorTelegram
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 router = APIRouter()
 
@@ -95,7 +94,7 @@ def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
         puertosDistintos=fila["puertos_distintos"],
         tipoAtaque=fila["tipo_ataque"],
         confianzaTipo=fila["confianza_tipo"],
-        severidad=severidad_de(con, fila["tipo_ataque"]),
+        severidad=severidad_de(con, fila),
         veredictos=Veredictos(
             ia=bool(fila["veredicto_ia"]),
             errorReconstruccion=fila["error_reconstruccion"],
@@ -138,8 +137,11 @@ def estado(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actu
     base = _base(request)
     con = base.conexion()
     contadores = {"alta": 0, "media": 0, "baja": 0}
-    for fila in con.execute("SELECT tipo_ataque, COUNT(*) AS n FROM alertas WHERE estado_revision = 'sin_revisar' GROUP BY tipo_ataque"):
-        contadores[severidad_de(con, fila["tipo_ataque"])] += fila["n"]
+    for fila in con.execute(
+        "SELECT tipo_ataque, veredicto_reglas, veredicto_umbrales, COUNT(*) AS n FROM alertas "
+        "WHERE estado_revision = 'sin_revisar' GROUP BY tipo_ataque, veredicto_reglas, veredicto_umbrales"
+    ):
+        contadores[severidad_de(con, fila)] += fila["n"]
     return Estado(sinRevisar=Contadores(**contadores), ultimoFlujoProcesado=base.leer_meta("ultimo_flujo"), horaServidor=iso(ahora()))
 
 
@@ -180,8 +182,8 @@ def listar_alertas(
         sql += f" AND veredicto_{metodo} = 1"
     if severidad:
         # La severidad sale del tipo según la tabla de la red; se filtra en SQL para que cada página venga completa.
-        sql += " AND COALESCE(tipo_ataque, ?) IN (SELECT tipo_ataque FROM severidades WHERE severidad = ?)"
-        parametros.extend([CLAVE_SIN_TIPO, severidad])
+        sql += f" AND {SQL_SEVERIDAD} = ?"
+        parametros.append(severidad)
     cfg = request.app.state.config
     total = None
     if not desde:

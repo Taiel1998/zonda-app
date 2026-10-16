@@ -1,15 +1,18 @@
 package ar.edu.uade.zonda.ui.resumen
 
 import android.content.res.Resources
+import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.GrupoResumen
-import ar.edu.uade.zonda.domain.model.GrupoTipo
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.Proporcion
 import ar.edu.uade.zonda.domain.model.ResumenActividad
+import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.model.Tramo
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.nombreCorto
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
@@ -19,31 +22,23 @@ import java.util.Locale
 
 private val LOCALE: Locale = Locale.forLanguageTag("es-AR")
 
-/** El grupo en su fila: "Fuerza bruta (SSH, FTP)". */
+/**
+ * El tipo en su fila de "Por tipo de ataque" (cambio 14; Figma 52-2629): "Fuerza bruta (SSH, FTP)" y
+ * los demás con su nombre corto, el mismo del chip del filtro (Figma 100-8498).
+ */
 @StringRes
-fun GrupoTipo.enFila(): Int = when (this) {
-    GrupoTipo.FUERZA_BRUTA -> R.string.resumen_tipo_fuerza_bruta
-    GrupoTipo.ESCANEO -> R.string.resumen_tipo_escaneo
-    GrupoTipo.DDOS -> R.string.resumen_tipo_ddos
-    GrupoTipo.OTROS -> R.string.resumen_tipo_otros
-}
+fun TipoAtaque.enFila(): Int = if (this == TipoAtaque.FUERZA_BRUTA) R.string.resumen_tipo_fuerza_bruta else nombreCorto()
 
-/** El grupo en el chip del filtro: "Fuerza bruta" (Figma 100-8498). */
-@StringRes
-fun GrupoTipo.enChip(): Int = when (this) {
-    GrupoTipo.FUERZA_BRUTA -> R.string.resumen_chip_fuerza_bruta
-    GrupoTipo.ESCANEO -> R.string.resumen_tipo_escaneo
-    GrupoTipo.DDOS -> R.string.resumen_tipo_ddos
-    GrupoTipo.OTROS -> R.string.resumen_tipo_otros
-}
-
-/** El grupo dentro de la frase del gráfico: "11 de fuerza bruta". */
-@StringRes
-fun GrupoTipo.enFrase(): Int = when (this) {
-    GrupoTipo.FUERZA_BRUTA -> R.string.resumen_frase_fuerza_bruta
-    GrupoTipo.ESCANEO -> R.string.resumen_frase_escaneo
-    GrupoTipo.DDOS -> R.string.resumen_frase_ddos
-    GrupoTipo.OTROS -> R.string.resumen_frase_otros
+/** Cuántas de ese tipo, dentro de la frase del gráfico: "11 de fuerza bruta", "3 probables falsas alarmas". */
+@PluralsRes
+fun TipoAtaque.enFrase(): Int = when (this) {
+    TipoAtaque.FUERZA_BRUTA -> R.plurals.resumen_cuantas_fuerza_bruta
+    TipoAtaque.SIN_TIPIFICAR -> R.plurals.resumen_cuantas_sin_tipificar
+    TipoAtaque.ESCANEO -> R.plurals.resumen_cuantas_escaneo
+    TipoAtaque.DDOS -> R.plurals.resumen_cuantas_ddos
+    TipoAtaque.PROBABLE_FALSA_ALARMA -> R.plurals.resumen_cuantas_probable_falsa_alarma
+    TipoAtaque.SERVICIO_NO_AUTORIZADO -> R.plurals.resumen_cuantas_servicio_no_autorizado
+    TipoAtaque.VOLUMEN_INUSUAL -> R.plurals.resumen_cuantas_volumen_inusual
 }
 
 /** Cada método en la tarjeta de precisión y en su chip: "Modelo de IA", "Umbrales estadísticos", "Reglas estáticas". */
@@ -61,7 +56,7 @@ fun GrupoResumen.etiquetaChip(recursos: Resources): String = when (this) {
     GrupoResumen.Altas -> recursos.getString(R.string.resumen_chip_altas)
     GrupoResumen.Reales -> recursos.getString(R.string.resumen_reales)
     GrupoResumen.FalsosPositivos -> recursos.getString(R.string.resumen_falsos_positivos)
-    is GrupoResumen.Tipo -> recursos.getString(grupo.enChip())
+    is GrupoResumen.Tipo -> recursos.getString(tipo.nombreCorto())
     is GrupoResumen.Metodo -> recursos.getString(metodo.enPrecision())
     is GrupoResumen.Barra -> tramo.etiquetaChip(recursos)
 }
@@ -95,8 +90,7 @@ fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources): String? {
             barra.cantidad,
             Formato.diaDeLaSemana(barra.tramo.desde),
             barra.cantidad,
-            destacado.delTipo,
-            recursos.getString(destacado.tipo.enFrase()),
+            recursos.getQuantityString(destacado.tipo.enFrase(), destacado.delTipo, destacado.delTipo),
         )
         PeriodoResumen.TREINTA_DIAS -> recursos.getQuantityString(
             R.plurals.resumen_destacado_semana,
@@ -108,27 +102,56 @@ fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources): String? {
 }
 
 /**
- * La nota de la precisión: la fórmula y qué método tiene la precisión más alta; con menos de
- * [ResumenActividad.REVISIONES_PARA_COMPARAR] revisiones de ese método, que la comparación todavía
- * no es confiable. En el Figma esta frase es fija; acá sale de las cifras.
+ * La barra de un modelo va clara si ese modelo tiene menos de [ResumenActividad.REVISIONES_PARA_COMPARAR]
+ * revisiones: su porcentaje todavía no se puede comparar con el de los otros (cambio 4). Las 30 se
+ * cuentan por modelo, así uno con muchas revisiones no presta las suyas a otro que tiene pocas.
  */
-fun notaDePrecision(resumen: ResumenActividad, recursos: Resources): String {
-    val formula = recursos.getString(R.string.resumen_precision_formula)
-    val metodo = resumen.metodoMasPreciso ?: return formula
-    val mejor = recursos.getString(
-        when (metodo) {
-            MetodoDeteccion.IA -> R.string.resumen_mejor_ia
-            MetodoDeteccion.UMBRALES -> R.string.resumen_mejor_umbrales
-            MetodoDeteccion.REGLAS -> R.string.resumen_mejor_reglas
+fun Proporcion.barraClara(): Boolean = total < ResumenActividad.REVISIONES_PARA_COMPARAR
+
+/**
+ * El ejemplo de "Precisión" en la hoja del ⓘ, con los números reales (cambio 15): "la IA tiene 27 de
+ * 33: marcó 33 alertas que ya revisaste y 27 eran ataques". Usa el primer modelo con al menos dos
+ * revisiones; si ninguno tiene, la hoja va sin ejemplo.
+ */
+fun ejemploDePrecision(resumen: ResumenActividad, recursos: Resources): String? {
+    val (metodo, precision) = MetodoDeteccion.entries
+        .map { it to resumen.precisionPorMetodo.getValue(it) }
+        .firstOrNull { (_, precision) -> precision.total >= 2 } ?: return null
+    val plural = when (metodo) {
+        MetodoDeteccion.IA -> R.plurals.precision_ejemplo_ia
+        MetodoDeteccion.UMBRALES -> R.plurals.precision_ejemplo_umbrales
+        MetodoDeteccion.REGLAS -> R.plurals.precision_ejemplo_reglas
+    }
+    return recursos.getQuantityString(plural, precision.parte, precision.parte, precision.total)
+}
+
+/**
+ * El recuadro azul de la hoja del ⓘ, que cambia con el filtro elegido (cambio 10): sin filtro, de qué
+ * días es la precisión; con un modelo elegido, que cada fila cuenta las que marcó ese modelo junto con
+ * el de la fila (por eso las otras filas bajan); con un día, una semana o un tipo, que cuenta solo esas.
+ */
+fun recuadroDePrecision(resumen: ResumenActividad, recursos: Resources): String = when (val grupo = resumen.grupo) {
+    null -> recursos.getString(
+        if (resumen.periodo == PeriodoResumen.SIETE_DIAS) R.string.precision_sin_filtro_7 else R.string.precision_sin_filtro_30,
+    )
+    is GrupoResumen.Metodo -> recursos.getString(
+        when (grupo.metodo) {
+            MetodoDeteccion.IA -> R.string.precision_filtro_ia
+            MetodoDeteccion.UMBRALES -> R.string.precision_filtro_umbrales
+            MetodoDeteccion.REGLAS -> R.string.precision_filtro_reglas
         },
     )
-    val revisiones = resumen.precisionPorMetodo.getValue(metodo).total
-    val final = if (revisiones < ResumenActividad.REVISIONES_PARA_COMPARAR) {
-        recursos.getQuantityString(R.plurals.resumen_mejor_pocas_revisiones, revisiones, revisiones)
-    } else {
-        "."
-    }
-    return "$formula $mejor$final"
+    // "Estás viendo el viernes 25/09", "Estás viendo la semana del 28/8": el día y la semana en minúscula.
+    is GrupoResumen.Barra -> recursos.getString(
+        if (grupo.tramo.unSoloDia) R.string.precision_filtro_dia else R.string.precision_filtro_semana,
+        grupo.etiquetaChip(recursos).replaceFirstChar { it.lowercase(LOCALE) },
+    )
+    is GrupoResumen.Tipo -> recursos.getString(R.string.precision_filtro_tipo, grupo.etiquetaFrase(recursos))
+    GrupoResumen.Revisadas -> recursos.getString(R.string.precision_filtro_revisadas)
+    GrupoResumen.SinRevisar -> recursos.getString(R.string.precision_filtro_sin_revisar)
+    GrupoResumen.Altas -> recursos.getString(R.string.precision_filtro_altas)
+    GrupoResumen.Reales -> recursos.getString(R.string.precision_filtro_reales)
+    GrupoResumen.FalsosPositivos -> recursos.getString(R.string.precision_filtro_falsos)
 }
 
 /**

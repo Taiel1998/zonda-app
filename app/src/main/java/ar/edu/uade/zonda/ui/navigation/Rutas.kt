@@ -35,7 +35,7 @@ object Rutas {
     /** Telegram de la red activa: conectarlo (Figma 66-4205) o, si ya está, probarlo y desvincularlo (66-3484). */
     const val TELEGRAM = "telegram"
 
-    /** Severidad por ataque de la red activa, desde Ajustes o desde Avisos por severidad (RF06). */
+    /** Severidad por tipo de ataque de la red activa, desde Ajustes o desde Avisos por severidad (RF06). */
     const val SEVERIDADES = "severidades"
 
     /** El Resumen de 7 o 30 días (RF07), desde el ícono de barras de Estado. */
@@ -51,12 +51,19 @@ object EnlacesInternos {
     const val ARG_RED = "red"
     const val ARG_ESTADO = "estado"
     const val ARG_SEVERIDAD = "severidad"
+
+    /** `envio=conflicto`: solo las revisiones de este teléfono que no se aplicaron (cambio 7). */
+    const val ARG_ENVIO = "envio"
+    const val ENVIO_CONFLICTO = "conflicto"
     const val ALERTAS = "zonda://alertas"
-    const val PATRON_ALERTAS = "zonda://alertas?red={red}&estado={estado}&severidad={severidad}"
+    const val PATRON_ALERTAS = "zonda://alertas?red={red}&estado={estado}&severidad={severidad}&envio={envio}"
     const val PATRON_DETALLE = "zonda://alerta/{alertaId}?red={red}"
 
     fun alertas(redId: String, estado: EstadoRevision, severidad: Severidad): String =
         "$ALERTAS?$ARG_RED=$redId&$ARG_ESTADO=${estado.name.lowercase()}&$ARG_SEVERIDAD=${severidad.name.lowercase()}"
+
+    /** Alertas de esa red con las revisiones de este teléfono que no se aplicaron. */
+    fun noAplicadas(redId: String): String = "$ALERTAS?$ARG_RED=$redId&$ARG_ENVIO=$ENVIO_CONFLICTO"
 
     fun detalle(redId: String, alertaId: String): String = "zonda://alerta/$alertaId?$ARG_RED=$redId"
 }
@@ -84,6 +91,10 @@ fun NavHostController.irAPestania(ruta: String) {
  * propia tarea, en la pantalla principal, y cierra esta copia. Eso es `navigateUp()`. Antes se usaba
  * `popBackStack()`, que sacaba esa única pantalla de la pila: la flecha no hacía nada a la vista y el
  * detalle quedaba congelado, sin mostrar los cambios (por ejemplo, el conflicto ya resuelto).
+ *
+ * Desde la 1.0.3 el enlace entra por la pantalla puente (PuenteDelAvisoActivity, cambio 23), que
+ * siempre abre Zonda en su propia tarea con Estado debajo del detalle, así que ese caso ya no se da.
+ * La flecha sigue con `navigateUp()`: con pantallas atrás hace lo mismo que `popBackStack()`.
  */
 fun NavHostController.volver() {
     navigateUp()

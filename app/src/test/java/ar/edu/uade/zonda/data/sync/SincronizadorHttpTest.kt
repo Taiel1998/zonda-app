@@ -211,6 +211,10 @@ class SincronizadorHttpTest : PruebaConBase() {
 
         assertEquals(1, resultado.accionesEnviadas)
         assertEquals(0, resultado.accionesConError)
+        // Para la notificación en segundo plano (cambio 7): una sola vez, en la sincronización del 409.
+        assertEquals(listOf("a-1"), resultado.conflictosNuevos)
+        assertEquals(listOf("a-1"), alertas.observarAlertas("red-1", FiltroAlertas(soloNoAplicadas = true)).first().map { it.id })
+        assertEquals(emptyList<String>(), alertas.sincronizar("red-1").conflictosNuevos)
         val pendiente = acciones.observar("red-1").first().single()
         assertEquals(enConflicto.id, pendiente.id)
         assertEquals(EstadoEnvio.CONFLICTO, pendiente.estado)
@@ -433,6 +437,19 @@ class SincronizadorHttpTest : PruebaConBase() {
         assertEquals(5, resultado.nuevas)
         assertEquals(2, resultado.altasNuevas)
         assertEquals(listOf("a-1", "a-4"), resultado.idsAltasNuevas)
+    }
+
+    @Test
+    fun `marca las altas nuevas que ya tenian aviso de Telegram, para que Zonda no las repita`() = runTest {
+        conRed()
+        api.publicar(DtoFixtures.alerta("a-1", avisoTelegram = "2026-10-11T14:25:15+00:00"))
+        api.publicar(DtoFixtures.alerta("a-2"))
+        api.publicar(DtoFixtures.alerta("a-3", severidad = "media", tipoAtaque = "escaneo", avisoTelegram = "2026-10-11T14:25:15+00:00"))
+
+        val resultado = alertas.sincronizar("red-1")
+
+        assertEquals(listOf("a-1", "a-2"), resultado.idsAltasNuevas)
+        assertEquals(setOf("a-1"), resultado.idsAltasNuevasConAvisoTelegram)
     }
 
     @Test

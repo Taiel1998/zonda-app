@@ -49,6 +49,18 @@ data class Alerta(
     val metodos: Set<MetodoDeteccion>
         get() = veredictos.metodosQueDetectaron
 
+    /**
+     * Los tipos en los que cuenta la alerta: el suyo y, si la IA no la vio pero la marcaron las reglas y
+     * los umbrales, los dos de lo que la IA no detectó. Así la cuenta el Resumen, y el servidor le da la
+     * severidad más alta de las dos (cambio 9).
+     */
+    val tiposDeAtaque: Set<TipoAtaque>
+        get() = if (tipoAtaque in TipoAtaque.NO_DETECTADOS_POR_LA_IA && veredictos.reglas.anomalo && veredictos.umbrales.anomalo) {
+            TipoAtaque.NO_DETECTADOS_POR_LA_IA.toSet()
+        } else {
+            setOf(tipoAtaque)
+        }
+
     val sinRevisar: Boolean
         get() = estadoRevision == EstadoRevision.SIN_REVISAR
 

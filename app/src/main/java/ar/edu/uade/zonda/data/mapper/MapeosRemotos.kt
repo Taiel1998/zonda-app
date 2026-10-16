@@ -60,7 +60,7 @@ fun AlertaDto.aDominio(redId: String): Alerta {
         puerto = puerto,
         puertoReferencia = puertoReferencia,
         puertosDistintos = puertosDistintos,
-        tipoAtaque = tipoAtaque?.let { TipoAtaque.valueOf(it.uppercase()) } ?: TipoAtaque.SOLO_REGLAS_O_UMBRALES,
+        tipoAtaque = tipoAtaque?.let { TipoAtaque.valueOf(it.uppercase()) } ?: TipoAtaque.sinLaIa(veredictos.reglas, veredictos.umbrales),
         confianzaTipo = confianzaTipo,
         severidad = Severidad.valueOf(severidad.uppercase()),
         veredictos = Veredictos(
@@ -103,28 +103,61 @@ fun AccionPendiente.aRevisionEntrada(forzar: Boolean = false): RevisionEntradaDt
     )
 }
 
-/** `{ "fuerza_bruta": "alta", ... }`, con `solo_reglas_o_umbrales` para el tipo vacío. */
+/**
+ * `{ "fuerza_bruta": "alta", ... }`. El tipo vacío va en dos claves, `servicio_no_autorizado` (las
+ * reglas) y `volumen_inusual` (los umbrales), desde la 1.0.3 (cambio 9).
+ */
 fun SeveridadPorTipo.aDto(): Map<String, String> =
     valores.entries.associate { (tipo, severidad) -> tipo.name.lowercase() to severidad.name.lowercase() }
 
+/** La clave única que tenía el tipo vacío en un servidor anterior a la 1.0.3. */
+private const val CLAVE_SIN_TIPO_ANTERIOR = "solo_reglas_o_umbrales"
+
+/**
+ * Lo que manda `GET /severidades`. Un servidor anterior a la 1.0.3 todavía manda
+ * `solo_reglas_o_umbrales`, que vale para los dos tipos que la reemplazan (si también vienen esos, ganan
+ * ellos). Una clave que la app no conoce se ignora, así un servidor más nuevo no la rompe.
+ */
 fun Map<String, String>.aSeveridadPorTipo(): SeveridadPorTipo =
-    SeveridadPorTipo(entries.associate { (tipo, severidad) -> TipoAtaque.valueOf(tipo.uppercase()) to Severidad.valueOf(severidad.uppercase()) })
+    SeveridadPorTipo(
+        entries
+            .sortedBy { it.key != CLAVE_SIN_TIPO_ANTERIOR }
+            .flatMap { (clave, severidad) ->
+                val tipos = if (clave == CLAVE_SIN_TIPO_ANTERIOR) {
+                    TipoAtaque.NO_DETECTADOS_POR_LA_IA
+                } else {
+                    listOfNotNull(TipoAtaque.entries.find { it.name == clave.uppercase() })
+                }
+                tipos.map { it to Severidad.valueOf(severidad.uppercase()) }
+            }
+            .toMap(),
+    )
 
 fun CatalogoDto.aDominio(): Catalogo = Catalogo(equipos = equipos, servicios = servicios)
 
 fun VinculoTelegramDto.aDominio(): VinculoTelegram = VinculoTelegram(codigo = codigo, enlaceBot = enlaceBot)
 
-/** `sonido`, `vibracion` y `sin_aviso` ↔ SONIDO, VIBRACION y SIN_AVISO. */
+/**
+ * `sonido`, `vibracion` y `sin_aviso` ↔ SONIDO, SILENCIO y SIN_AVISO. La API sigue llamando
+ * `vibracion` al mensaje sin sonido; la app lo muestra como "En silencio" (cambio 6).
+ */
 fun PreferenciasAvisos.aDto(): AvisosDto = AvisosDto(
-    alta = alta.name.lowercase(),
-    media = media.name.lowercase(),
-    baja = baja.name.lowercase(),
+    alta = alta.enLaApi(),
+    media = media.enLaApi(),
+    baja = baja.enLaApi(),
 )
 
 fun AvisosDto.aDominio(): PreferenciasAvisos = PreferenciasAvisos(
-    alta = ModoAviso.valueOf(alta.uppercase()),
-    media = ModoAviso.valueOf(media.uppercase()),
-    baja = ModoAviso.valueOf(baja.uppercase()),
+    alta = modoDeLaApi(alta),
+    media = modoDeLaApi(media),
+    baja = modoDeLaApi(baja),
 )
+
+private const val SILENCIO_EN_LA_API = "vibracion"
+
+private fun ModoAviso.enLaApi(): String = if (this == ModoAviso.SILENCIO) SILENCIO_EN_LA_API else name.lowercase()
+
+private fun modoDeLaApi(valor: String): ModoAviso =
+    if (valor.equals(SILENCIO_EN_LA_API, ignoreCase = true)) ModoAviso.SILENCIO else ModoAviso.valueOf(valor.uppercase())
 
 fun EstadoTelegramDto.aDominio(): EstadoTelegram = EstadoTelegram(vinculado = vinculado, bot = bot, avisos = avisos.aDominio())

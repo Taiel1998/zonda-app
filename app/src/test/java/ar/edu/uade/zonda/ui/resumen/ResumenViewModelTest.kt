@@ -7,8 +7,9 @@ import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeConectividad
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.domain.model.GrupoResumen
-import ar.edu.uade.zonda.domain.model.GrupoTipo
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.Tramo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.usecase.ObservarResumen
@@ -71,6 +72,20 @@ class ResumenViewModelTest {
     }
 
     @Test
+    fun `trae la severidad que eligio la red para cada tipo`() = runTest {
+        conRedYAlertas()
+        redes.guardarSeveridadesLocal("red-1", SeveridadPorTipo.RECOMENDADA.con(TipoAtaque.ESCANEO, Severidad.ALTA))
+
+        viewModel().estado.test {
+            val estado = esperar { it.datos != null }
+            // El punto de color de "Por tipo de ataque" (cambio 14).
+            assertEquals(Severidad.ALTA, estado.severidades.severidadDe(TipoAtaque.ESCANEO))
+            assertEquals(Severidad.ALTA, estado.severidades.severidadDe(TipoAtaque.FUERZA_BRUTA))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `30 dias suma las alertas de hace mas de una semana`() = runTest {
         conRedYAlertas()
         val viewModel = viewModel()
@@ -92,12 +107,12 @@ class ResumenViewModelTest {
         viewModel.estado.test {
             esperar { it.datos != null }
 
-            viewModel.tocarCifra(GrupoResumen.Tipo(GrupoTipo.ESCANEO))
-            val filtrado = esperar { it.datos?.resumen?.grupo == GrupoResumen.Tipo(GrupoTipo.ESCANEO) }
-            assertEquals(GrupoResumen.Tipo(GrupoTipo.ESCANEO), filtrado.grupo)
+            viewModel.tocarCifra(GrupoResumen.Tipo(TipoAtaque.ESCANEO))
+            val filtrado = esperar { it.datos?.resumen?.grupo == GrupoResumen.Tipo(TipoAtaque.ESCANEO) }
+            assertEquals(GrupoResumen.Tipo(TipoAtaque.ESCANEO), filtrado.grupo)
             assertEquals(1, filtrado.datos!!.resumen.total)
 
-            viewModel.tocarCifra(GrupoResumen.Tipo(GrupoTipo.ESCANEO))
+            viewModel.tocarCifra(GrupoResumen.Tipo(TipoAtaque.ESCANEO))
             val todas = esperar { it.grupo == null && it.datos?.resumen?.grupo == null }
             assertEquals(2, todas.datos!!.resumen.total)
             cancelAndIgnoreRemainingEvents()

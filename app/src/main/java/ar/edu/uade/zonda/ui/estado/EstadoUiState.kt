@@ -68,4 +68,9 @@ data class EstadoUiState(
     /** Hay una sincronización pedida por la persona en curso: el ícono gira hasta que termina. */
     val sincronizando: Boolean = false,
     val aviso: AvisoEstado? = null,
+    /**
+     * Alertas con una revisión de este teléfono que no se aplicó porque otra persona la revisó antes: el
+     * aviso azul arriba del semáforo (cambio 7; Figma 443-113 y 443-189). Vacía, no hay aviso.
+     */
+    val revisionesNoAplicadas: List<String> = emptyList(),
 )

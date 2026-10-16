@@ -1,7 +1,9 @@
 """Esquemas de entrada y salida de la API (pydantic). Son el contrato con la app.
 
 Convenciones: campos en camelCase; enums en minúsculas con guion bajo; fechas en ISO 8601 con zona
-(UTC). `tipoAtaque` es null cuando la alerta la detectaron solo las reglas o los umbrales.
+(UTC). `tipoAtaque` es null cuando la alerta la detectaron solo las reglas o los umbrales; su severidad
+sale de `servicio_no_autorizado` (las reglas), de `volumen_inusual` (los umbrales) o, si la vieron los
+dos, de la más alta de las dos (cambio 9).
 """
 
 from datetime import datetime
@@ -41,9 +43,13 @@ MOTIVOS_ANTERIORES: dict[str, str] = {
     "servicio_nuevo": "equipo_nuevo",
 }
 
-# Clave que representa el tipo vacío (null) en la tabla de severidades.
-CLAVE_SIN_TIPO = "solo_reglas_o_umbrales"
-TIPOS_SEVERIDAD = ["fuerza_bruta", "escaneo", "ddos", "probable_falsa_alarma", "sin_tipificar", CLAVE_SIN_TIPO]
+# Las claves de la tabla de severidades para el tipo vacío (null), una por detector (cambio 9): lo que
+# vieron las reglas (un servicio que no está permitido) y lo que vieron los umbrales (demasiadas conexiones).
+CLAVE_REGLAS = "servicio_no_autorizado"
+CLAVE_UMBRALES = "volumen_inusual"
+# La única clave que tuvo el tipo vacío hasta la 1.0.3; al iniciar, una base anterior la reparte en las dos.
+CLAVE_SIN_TIPO_ANTERIOR = "solo_reglas_o_umbrales"
+TIPOS_SEVERIDAD = ["fuerza_bruta", "escaneo", "ddos", "probable_falsa_alarma", "sin_tipificar", CLAVE_REGLAS, CLAVE_UMBRALES]
 
 
 class Veredictos(BaseModel):
