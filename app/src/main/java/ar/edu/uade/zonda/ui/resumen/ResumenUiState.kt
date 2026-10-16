@@ -3,6 +3,7 @@ package ar.edu.uade.zonda.ui.resumen
 import ar.edu.uade.zonda.domain.model.GrupoResumen
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
+import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import java.time.Instant
 
 /** Qué se muestra en el cuerpo del Resumen (Figma 52-2629, 100-7024 y 52-2976). */
@@ -48,4 +49,6 @@ data class ResumenUiState(
     val datosDe: Instant? = null,
     val sinConexion: Boolean = false,
     val aviso: AvisoResumen? = null,
+    /** La severidad que eligió la red para cada tipo: el punto de color de "Por tipo de ataque" (cambio 14). */
+    val severidades: SeveridadPorTipo = SeveridadPorTipo.RECOMENDADA,
 )

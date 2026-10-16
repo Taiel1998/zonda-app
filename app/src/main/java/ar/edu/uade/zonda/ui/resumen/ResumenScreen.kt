@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,10 +52,11 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.GrupoResumen
-import ar.edu.uade.zonda.domain.model.GrupoTipo
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
+import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.AvisoInferior
 import ar.edu.uade.zonda.ui.components.BannerSinConexion
@@ -63,6 +65,8 @@ import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.components.ChipOpcion
 import ar.edu.uade.zonda.ui.components.EsqueletoLista
 import ar.edu.uade.zonda.ui.components.EstadoVacio
+import ar.edu.uade.zonda.ui.components.HojaTipos
+import ar.edu.uade.zonda.ui.components.TituloDeBloque
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.theme.CremaBarra
@@ -267,6 +271,7 @@ fun ResumenContenido(
     if (resumenActual != null) {
         when (ayuda) {
             AyudaResumen.PRECISION -> HojaPrecision(resumen = resumenActual, alCerrar = { ayuda = null })
+            AyudaResumen.TIPOS -> HojaTipos(severidades = estado.severidades, alCerrar = { ayuda = null })
             null -> Unit
         }
     }
@@ -296,7 +301,7 @@ private fun CuerpoDelResumen(
         FilaDeTotales(resumen, alTocarCifra, modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.CIFRAS_RESUMEN))
         FilaDeMetricas(resumen, alTocarCifra)
         TarjetaGrafico(resumen, alTocarCifra, frase = fraseDelGrafico(resumen, recursos))
-        TarjetaTipos(resumen, alTocarCifra)
+        TarjetaTipos(resumen, estado.severidades, alTocarCifra, alPedirAyuda = { alPedirAyuda(AyudaResumen.TIPOS) })
         TarjetaRealesYFalsos(resumen, alTocarCifra)
         TarjetaPrecision(resumen, alTocarCifra, alPedirAyuda = { alPedirAyuda(AyudaResumen.PRECISION) })
         PieDelResumen()
@@ -501,22 +506,44 @@ fun TarjetaGrafico(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> U
     }
 }
 
-/** Por tipo de ataque: los cuatro grupos, aunque estén en cero (Figma 52-2629 y 100-8498). */
+/**
+ * Por tipo de ataque (cambio 14; Figma 52-2629 y 100-8498): los dos bloques de la pantalla de
+ * severidades, con sus nombres y su orden fijo, y cada tipo con el punto de la severidad que eligió la
+ * red. Un tipo en cero queda en gris; un bloque entero en cero se oculta con su título, salvo que los
+ * dos lo estén (con un filtro sin alertas). El ⓘ abre "Qué es cada tipo".
+ */
 @Composable
-private fun TarjetaTipos(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit) {
+private fun TarjetaTipos(
+    resumen: ResumenActividad,
+    severidades: SeveridadPorTipo,
+    alTocarCifra: (GrupoResumen?) -> Unit,
+    alPedirAyuda: () -> Unit,
+) {
     val maximo = resumen.porTipo.values.maxOrNull() ?: 0
-    TarjetaResumen(titulo = stringResource(R.string.resumen_por_tipo)) {
+    val bloques = listOf(
+        R.string.tipos_bloque_ia to TipoAtaque.DETECTADOS_POR_LA_IA,
+        R.string.tipos_bloque_sin_ia to TipoAtaque.NO_DETECTADOS_POR_LA_IA,
+    ).filter { (_, tipos) -> maximo == 0 || tipos.any { (resumen.porTipo[it] ?: 0) > 0 } }
+    TarjetaResumen(
+        titulo = stringResource(R.string.resumen_por_tipo),
+        espacioTitulo = 10.dp,
+        ayuda = AyudaDeTarjeta(stringResource(R.string.tipos_titulo), alPedirAyuda),
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            GrupoTipo.entries.forEach { tipo ->
-                val grupo = GrupoResumen.Tipo(tipo)
-                FilaConBarra(
-                    rotulo = stringResource(tipo.enFila()),
-                    valor = resumen.porTipo[tipo] ?: 0,
-                    maximo = maximo,
-                    color = VerdeZonda,
-                    elegida = resumen.grupo == grupo,
-                    alTocar = { alTocarCifra(grupo) },
-                )
+            bloques.forEachIndexed { indice, (titulo, tipos) ->
+                if (indice > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                TituloDeBloque(stringResource(titulo))
+                tipos.forEach { tipo ->
+                    val grupo = GrupoResumen.Tipo(tipo)
+                    FilaTipo(
+                        rotulo = stringResource(tipo.enFila()),
+                        severidad = severidades.severidadDe(tipo),
+                        valor = resumen.porTipo[tipo] ?: 0,
+                        maximo = maximo,
+                        elegida = resumen.grupo == grupo,
+                        alTocar = { alTocarCifra(grupo) },
+                    )
+                }
             }
         }
     }

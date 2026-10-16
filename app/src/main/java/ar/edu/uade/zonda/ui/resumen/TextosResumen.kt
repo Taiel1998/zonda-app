@@ -1,16 +1,18 @@
 package ar.edu.uade.zonda.ui.resumen
 
 import android.content.res.Resources
+import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.GrupoResumen
-import ar.edu.uade.zonda.domain.model.GrupoTipo
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.Proporcion
 import ar.edu.uade.zonda.domain.model.ResumenActividad
+import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.model.Tramo
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.nombreCorto
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
@@ -20,31 +22,22 @@ import java.util.Locale
 
 private val LOCALE: Locale = Locale.forLanguageTag("es-AR")
 
-/** El grupo en su fila: "Fuerza bruta (SSH, FTP)". */
+/**
+ * El tipo en su fila de "Por tipo de ataque" (cambio 14; Figma 52-2629): "Fuerza bruta (SSH, FTP)" y
+ * los demás con su nombre corto, el mismo del chip del filtro (Figma 100-8498).
+ */
 @StringRes
-fun GrupoTipo.enFila(): Int = when (this) {
-    GrupoTipo.FUERZA_BRUTA -> R.string.resumen_tipo_fuerza_bruta
-    GrupoTipo.ESCANEO -> R.string.resumen_tipo_escaneo
-    GrupoTipo.DDOS -> R.string.resumen_tipo_ddos
-    GrupoTipo.OTROS -> R.string.resumen_tipo_otros
-}
+fun TipoAtaque.enFila(): Int = if (this == TipoAtaque.FUERZA_BRUTA) R.string.resumen_tipo_fuerza_bruta else nombreCorto()
 
-/** El grupo en el chip del filtro: "Fuerza bruta" (Figma 100-8498). */
-@StringRes
-fun GrupoTipo.enChip(): Int = when (this) {
-    GrupoTipo.FUERZA_BRUTA -> R.string.resumen_chip_fuerza_bruta
-    GrupoTipo.ESCANEO -> R.string.resumen_tipo_escaneo
-    GrupoTipo.DDOS -> R.string.resumen_tipo_ddos
-    GrupoTipo.OTROS -> R.string.resumen_tipo_otros
-}
-
-/** El grupo dentro de la frase del gráfico: "11 de fuerza bruta". */
-@StringRes
-fun GrupoTipo.enFrase(): Int = when (this) {
-    GrupoTipo.FUERZA_BRUTA -> R.string.resumen_frase_fuerza_bruta
-    GrupoTipo.ESCANEO -> R.string.resumen_frase_escaneo
-    GrupoTipo.DDOS -> R.string.resumen_frase_ddos
-    GrupoTipo.OTROS -> R.string.resumen_frase_otros
+/** Cuántas de ese tipo, dentro de la frase del gráfico: "11 de fuerza bruta", "3 probables falsas alarmas". */
+@PluralsRes
+fun TipoAtaque.enFrase(): Int = when (this) {
+    TipoAtaque.FUERZA_BRUTA -> R.plurals.resumen_cuantas_fuerza_bruta
+    TipoAtaque.SIN_TIPIFICAR -> R.plurals.resumen_cuantas_sin_tipificar
+    TipoAtaque.ESCANEO -> R.plurals.resumen_cuantas_escaneo
+    TipoAtaque.DDOS -> R.plurals.resumen_cuantas_ddos
+    TipoAtaque.PROBABLE_FALSA_ALARMA -> R.plurals.resumen_cuantas_probable_falsa_alarma
+    TipoAtaque.SOLO_REGLAS_O_UMBRALES -> R.plurals.resumen_cuantas_solo_reglas_o_umbrales
 }
 
 /** Cada método en la tarjeta de precisión y en su chip: "Modelo de IA", "Umbrales estadísticos", "Reglas estáticas". */
@@ -62,7 +55,7 @@ fun GrupoResumen.etiquetaChip(recursos: Resources): String = when (this) {
     GrupoResumen.Altas -> recursos.getString(R.string.resumen_chip_altas)
     GrupoResumen.Reales -> recursos.getString(R.string.resumen_reales)
     GrupoResumen.FalsosPositivos -> recursos.getString(R.string.resumen_falsos_positivos)
-    is GrupoResumen.Tipo -> recursos.getString(grupo.enChip())
+    is GrupoResumen.Tipo -> recursos.getString(tipo.nombreCorto())
     is GrupoResumen.Metodo -> recursos.getString(metodo.enPrecision())
     is GrupoResumen.Barra -> tramo.etiquetaChip(recursos)
 }
@@ -96,8 +89,7 @@ fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources): String? {
             barra.cantidad,
             Formato.diaDeLaSemana(barra.tramo.desde),
             barra.cantidad,
-            destacado.delTipo,
-            recursos.getString(destacado.tipo.enFrase()),
+            recursos.getQuantityString(destacado.tipo.enFrase(), destacado.delTipo, destacado.delTipo),
         )
         PeriodoResumen.TREINTA_DIAS -> recursos.getQuantityString(
             R.plurals.resumen_destacado_semana,

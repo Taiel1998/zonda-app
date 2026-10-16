@@ -73,6 +73,10 @@ val Typography.nota: TextStyle
 val Typography.tituloHoja: TextStyle
     get() = titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
 
+/** SemiBold 11 con 0,5 entre letras: el título de cada bloque de tipos de ataque ("LO QUE DETECTÓ LA IA"). */
+val Typography.tituloBloque: TextStyle
+    get() = labelSmall.copy(letterSpacing = 0.5.sp)
+
 /** Medium 13: opciones para elegir (con sonido, alta, media...) y el resumen de una hoja. */
 val Typography.opcion: TextStyle
     get() = bodySmall.copy(fontWeight = FontWeight.Medium)

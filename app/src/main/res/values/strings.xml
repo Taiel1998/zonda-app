@@ -307,6 +307,26 @@
     <string name="tipo_sin_tipificar">Tráfico anómalo sin tipo identificado</string>
     <string name="tipo_probable_falsa_alarma">Probable falsa alarma</string>
     <string name="tipo_solo_reglas_o_umbrales">Detectado solo por reglas o umbrales</string>
+    <!-- Cambios 8 y 14 (1.0.3): el nombre corto de cada tipo (el chip del Resumen y la hoja "Qué es cada tipo") y qué es. -->
+    <string name="tipo_corto_fuerza_bruta">Fuerza bruta</string>
+    <string name="tipo_corto_sin_tipificar">Sin tipo identificado</string>
+    <string name="tipo_corto_escaneo">Escaneo de puertos</string>
+    <string name="tipo_corto_ddos">Denegación de servicio</string>
+    <string name="tipo_corto_probable_falsa_alarma">Probable falsa alarma</string>
+    <string name="tipo_corto_solo_reglas_o_umbrales">Solo reglas o umbrales</string>
+    <string name="tipo_descripcion_fuerza_bruta">Muchos intentos de contraseña contra un servicio.</string>
+    <string name="tipo_descripcion_sin_tipificar">No se parece a ningún ataque conocido. Puede ser uno nuevo.</string>
+    <string name="tipo_descripcion_escaneo">Prueba puertos para ver qué servicios hay. Suele ser el paso previo a un ataque.</string>
+    <string name="tipo_descripcion_ddos">Muchísimo tráfico para saturar un servicio.</string>
+    <string name="tipo_descripcion_probable_falsa_alarma">Raro para la IA, pero parecido a tráfico normal, como un backup.</string>
+    <string name="tipo_descripcion_solo_reglas_o_umbrales">Una conexión a un servicio que no está permitido, o demasiadas conexiones a un mismo servicio en un minuto.</string>
+    <string name="tipos_titulo">Qué es cada tipo</string>
+    <string name="tipos_bloque_ia">Lo que detectó la IA</string>
+    <string name="tipos_bloque_ia_frase">La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.</string>
+    <string name="tipos_bloque_sin_ia">Lo que la IA no detectó</string>
+    <string name="tipos_bloque_sin_ia_frase">Lo marcaron los otros dos detectores de Zonda.</string>
+    <string name="tipos_pie">El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque.</string>
+    <string name="tipos_punto">Severidad %1$s</string>
     <string name="modo_sonido">Con sonido</string>
     <string name="modo_silencio">En silencio</string>
     <string name="modo_sin_aviso">Sin aviso</string>
@@ -722,12 +742,37 @@
     <string name="resumen_alertas_por_dia">Alertas por día</string>
     <string name="resumen_alertas_por_semana">Alertas por semana</string>
     <plurals name="resumen_destacado_dia">
-        <item quantity="one">El %1$s concentra %2$d alerta: %3$d de %4$s.</item>
-        <item quantity="other">El %1$s concentra %2$d alertas: %3$d de %4$s.</item>
+        <item quantity="one">El %1$s concentra %2$d alerta: %3$s.</item>
+        <item quantity="other">El %1$s concentra %2$d alertas: %3$s.</item>
     </plurals>
     <plurals name="resumen_destacado_dia_servidor">
-        <item quantity="one">El %1$s concentra %2$d alerta: %3$d de %4$s sobre el mismo servidor.</item>
-        <item quantity="other">El %1$s concentra %2$d alertas: %3$d de %4$s sobre el mismo servidor.</item>
+        <item quantity="one">El %1$s concentra %2$d alerta: %3$s sobre el mismo servidor.</item>
+        <item quantity="other">El %1$s concentra %2$d alertas: %3$s sobre el mismo servidor.</item>
+    </plurals>
+    <!-- Cambio 14 (1.0.3): cuántas del tipo que más se repite, dentro de la frase del gráfico ("11 de fuerza bruta"). -->
+    <plurals name="resumen_cuantas_fuerza_bruta">
+        <item quantity="one">%d de fuerza bruta</item>
+        <item quantity="other">%d de fuerza bruta</item>
+    </plurals>
+    <plurals name="resumen_cuantas_sin_tipificar">
+        <item quantity="one">%d sin tipo identificado</item>
+        <item quantity="other">%d sin tipo identificado</item>
+    </plurals>
+    <plurals name="resumen_cuantas_escaneo">
+        <item quantity="one">%d de escaneo de puertos</item>
+        <item quantity="other">%d de escaneo de puertos</item>
+    </plurals>
+    <plurals name="resumen_cuantas_ddos">
+        <item quantity="one">%d de denegación de servicio</item>
+        <item quantity="other">%d de denegación de servicio</item>
+    </plurals>
+    <plurals name="resumen_cuantas_probable_falsa_alarma">
+        <item quantity="one">%d probable falsa alarma</item>
+        <item quantity="other">%d probables falsas alarmas</item>
+    </plurals>
+    <plurals name="resumen_cuantas_solo_reglas_o_umbrales">
+        <item quantity="one">%d detectada solo por reglas o umbrales</item>
+        <item quantity="other">%d detectadas solo por reglas o umbrales</item>
     </plurals>
     <plurals name="resumen_destacado_semana">
         <item quantity="one">La semana del %1$s fue la de más actividad: %2$d alerta.</item>
@@ -743,14 +788,6 @@
     <string name="resumen_chip_altas">Altas</string>
     <string name="resumen_por_tipo">Por tipo de ataque</string>
     <string name="resumen_tipo_fuerza_bruta">Fuerza bruta (SSH, FTP)</string>
-    <string name="resumen_tipo_escaneo">Escaneo de puertos</string>
-    <string name="resumen_tipo_ddos">Denegación de servicio</string>
-    <string name="resumen_tipo_otros">Otros</string>
-    <string name="resumen_chip_fuerza_bruta">Fuerza bruta</string>
-    <string name="resumen_frase_fuerza_bruta">fuerza bruta</string>
-    <string name="resumen_frase_escaneo">escaneo de puertos</string>
-    <string name="resumen_frase_ddos">denegación de servicio</string>
-    <string name="resumen_frase_otros">otros tipos</string>
     <string name="resumen_reales_y_falsos">Reales y falsos positivos (de las revisadas)</string>
     <string name="resumen_reales">Reales</string>
     <string name="resumen_falsos_positivos">Falsos positivos</string>

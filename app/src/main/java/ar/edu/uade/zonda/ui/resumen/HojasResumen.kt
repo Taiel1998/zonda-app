@@ -20,8 +20,8 @@ import ar.edu.uade.zonda.ui.components.HojaInferior
 import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.tituloHoja
 
-/** Qué hoja de ayuda del Resumen está abierta. */
-enum class AyudaResumen { PRECISION }
+/** Qué hoja de ayuda del Resumen está abierta: "Cómo se lee la precisión" o "Qué es cada tipo". */
+enum class AyudaResumen { PRECISION, TIPOS }
 
 /** "Cómo se lee la precisión" (cambio 15; Figma 443-2314 y 443-2505), con las cifras y el filtro de [resumen]. */
 @Composable

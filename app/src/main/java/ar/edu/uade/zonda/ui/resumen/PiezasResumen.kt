@@ -39,10 +39,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.components.BotonAyuda
+import ar.edu.uade.zonda.ui.components.PuntoDeSeveridad
 import ar.edu.uade.zonda.ui.theme.CremaBarra
 import ar.edu.uade.zonda.ui.theme.GrisCalido
 import ar.edu.uade.zonda.ui.theme.Tonos
@@ -261,9 +264,9 @@ fun GraficoDeBarras(
 private const val FRACCION_MAXIMA = 0.95f
 
 /**
- * Una fila de "Por tipo de ataque" o de "Reales y falsos positivos" (Figma 52-2629): el rótulo Regular
- * 13 en 152 de ancho, la pista gris de 10 con la barra proporcional a la mayor de la tarjeta y el
- * valor Regular 14 a la derecha en 30. En cero queda una marca de 2 al comienzo de la pista.
+ * Una fila de "Reales y falsos positivos" (Figma 52-2629): el rótulo Regular 13 en 150 de ancho, la
+ * pista gris de 10 con la barra proporcional a la mayor de la tarjeta y el valor Medium 13 a la derecha
+ * en 28. En cero queda una marca de 2 al comienzo de la pista.
  */
 @Composable
 fun FilaConBarra(
@@ -282,19 +285,66 @@ fun FilaConBarra(
             .marcoElegido(elegida)
             .selectable(selected = elegida, onClick = alTocar, role = Role.Button),
     ) {
-        Text(text = rotulo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, modifier = Modifier.width(152.dp))
+        Text(text = rotulo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, modifier = Modifier.width(150.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        PistaConBarra(fraccion = if (maximo == 0) 0f else valor.toFloat() / maximo * FRACCION_MAXIMA, color = color, alto = 10.dp, modifier = Modifier.weight(1f))
+        PistaConBarra(fraccion = fraccionDe(valor, maximo), color = color, alto = 10.dp, modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = valor.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-            modifier = Modifier.width(30.dp),
-        )
+        ValorDeFila(valor = valor, color = MaterialTheme.colorScheme.onSurface)
     }
+}
+
+/**
+ * Una fila de "Por tipo de ataque" (cambio 14; Figma 52-2629): el punto de la severidad elegida para
+ * el tipo y el tipo Regular 13, los dos en 168; la pista gris de 10 con la barra proporcional a la
+ * mayor de la tarjeta y el valor Medium 13 a la derecha en 28. En cero, el texto va gris y la pista
+ * queda vacía.
+ */
+@Composable
+fun FilaTipo(
+    rotulo: String,
+    severidad: Severidad,
+    valor: Int,
+    maximo: Int,
+    elegida: Boolean,
+    alTocar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val color = if (valor == 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .marcoElegido(elegida)
+            .selectable(selected = elegida, onClick = alTocar, role = Role.Button),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.width(168.dp),
+        ) {
+            PuntoDeSeveridad(severidad)
+            Text(text = rotulo, style = MaterialTheme.typography.bodySmall, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        PistaConBarra(fraccion = fraccionDe(valor, maximo), color = VerdeZonda, alto = 10.dp, modifier = Modifier.weight(1f), marcaEnCero = false)
+        Spacer(modifier = Modifier.width(8.dp))
+        ValorDeFila(valor = valor, color = color)
+    }
+}
+
+private fun fraccionDe(valor: Int, maximo: Int): Float = if (maximo == 0) 0f else valor.toFloat() / maximo * FRACCION_MAXIMA
+
+/** El número de una fila con barra: Medium 13 a la derecha, en 28 (Figma 52-2629). */
+@Composable
+private fun ValorDeFila(valor: Int, color: Color) {
+    Text(
+        text = valor.toString(),
+        style = MaterialTheme.typography.opcion,
+        color = color,
+        textAlign = TextAlign.End,
+        maxLines = 1,
+        modifier = Modifier.width(28.dp),
+    )
 }
 
 /**
@@ -364,9 +414,9 @@ fun CajaCobertura(valor: String, rotulo: String, elegida: Boolean, alTocar: () -
     }
 }
 
-/** La pista gris con la barra de color; con [fraccion] cero, una marca de 2 al comienzo. */
+/** La pista gris con la barra de color; con [fraccion] cero, una marca de 2 al comienzo si [marcaEnCero]. */
 @Composable
-private fun PistaConBarra(fraccion: Float, color: Color, alto: Dp, modifier: Modifier = Modifier) {
+private fun PistaConBarra(fraccion: Float, color: Color, alto: Dp, modifier: Modifier = Modifier, marcaEnCero: Boolean = true) {
     val forma = RoundedCornerShape(alto / 2)
     Box(
         modifier = modifier
@@ -381,7 +431,7 @@ private fun PistaConBarra(fraccion: Float, color: Color, alto: Dp, modifier: Mod
                     .fillMaxWidth(fraccion.coerceIn(0f, 1f))
                     .background(color, forma),
             )
-        } else {
+        } else if (marcaEnCero) {
             Box(modifier = Modifier.fillMaxHeight().width(2.dp).background(color))
         }
     }

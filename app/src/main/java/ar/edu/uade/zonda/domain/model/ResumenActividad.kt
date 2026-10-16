@@ -47,27 +47,6 @@ enum class PeriodoResumen(private val diasAtras: Long) {
 }
 
 /**
- * Los cuatro grupos de tipos de ataque del Resumen (Figma 52-2629): los tres tipos que tienen nombre y
- * "Otros", que junta las alertas sin tipificar, las probables falsas alarmas y las que detectaron solo
- * las reglas o los umbrales.
- */
-enum class GrupoTipo {
-    FUERZA_BRUTA,
-    ESCANEO,
-    DDOS,
-    OTROS;
-
-    companion object {
-        fun de(tipo: TipoAtaque): GrupoTipo = when (tipo) {
-            TipoAtaque.FUERZA_BRUTA -> FUERZA_BRUTA
-            TipoAtaque.ESCANEO -> ESCANEO
-            TipoAtaque.DDOS -> DDOS
-            TipoAtaque.SIN_TIPIFICAR, TipoAtaque.PROBABLE_FALSA_ALARMA, TipoAtaque.SOLO_REGLAS_O_UMBRALES -> OTROS
-        }
-    }
-}
-
-/**
  * La cifra que se tocó en el Resumen (RF07; Figma 100-7158 a 100-11534). Recalcular sobre ese grupo es
  * quedarse con las alertas que [incluye] y volver a calcular todo; por eso, con un día elegido, los
  * demás días quedan en cero, igual que en el Figma.
@@ -95,8 +74,9 @@ sealed interface GrupoResumen {
         override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = alerta.dia(zona) in tramo
     }
 
-    data class Tipo(val grupo: GrupoTipo) : GrupoResumen {
-        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = GrupoTipo.de(alerta.tipoAtaque) == grupo
+    /** Una fila de "Por tipo de ataque": las alertas de ese tipo (cambio 14: ya no hay "Otros"). */
+    data class Tipo(val tipo: TipoAtaque) : GrupoResumen {
+        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = alerta.tipoAtaque == tipo
     }
 
     data object Reales : GrupoResumen {
@@ -123,7 +103,7 @@ data class BarraActividad(val tramo: Tramo, val cantidad: Int)
  */
 data class Destacado(
     val barra: BarraActividad,
-    val tipo: GrupoTipo,
+    val tipo: TipoAtaque,
     val delTipo: Int,
     val mismoDestino: Boolean,
 )
@@ -147,8 +127,11 @@ data class ResumenActividad(
     val falsosPositivos: Int,
     /** Una barra por día (7 días) o por semana (30 días), con las que quedaron en cero. */
     val barras: List<BarraActividad>,
-    /** Los cuatro grupos de tipos, en el orden del Figma y aunque estén en cero. */
-    val porTipo: Map<GrupoTipo, Int>,
+    /**
+     * Cada tipo de ataque, en el orden de la pantalla de severidades y aunque esté en cero (cambio 14):
+     * un tipo en cero también dice algo ("esta semana no hubo DDoS").
+     */
+    val porTipo: Map<TipoAtaque, Int>,
     /** Métrica de éxito 1: tiempo mediano entre la creación de una alerta y su primera revisión. */
     val tiempoMedianoHastaRevision: Duration?,
     /**
@@ -231,7 +214,7 @@ data class ResumenActividad(
                 reales = revisadas.count { it.estadoRevision == EstadoRevision.ATAQUE_REAL },
                 falsosPositivos = revisadas.count { it.estadoRevision == EstadoRevision.FALSO_POSITIVO },
                 barras = barras,
-                porTipo = GrupoTipo.entries.associateWith { tipo -> lista.count { GrupoTipo.de(it.tipoAtaque) == tipo } },
+                porTipo = TipoAtaque.EN_PANTALLA.associateWith { tipo -> lista.count { it.tipoAtaque == tipo } },
                 tiempoMedianoHastaRevision = mediana,
                 altasRevisadasEnUnaHora = Proporcion(altasEnUnaHora, altasConsideradas),
                 cobertura = Proporcion(revisadas.size, lista.size),
@@ -242,7 +225,7 @@ data class ResumenActividad(
 
         /**
          * La barra con más alertas (si empatan, la más reciente), el tipo que más se repite en ella (si
-         * empatan, el primero del Figma) y si todas las de ese tipo, siendo dos o más, fueron al mismo equipo.
+         * empatan, el primero en pantalla) y si todas las de ese tipo, siendo dos o más, fueron al mismo equipo.
          */
         private fun destacado(lista: List<Alerta>, barras: List<BarraActividad>, zona: ZoneId): Destacado? {
             val barra = barras
@@ -251,9 +234,9 @@ data class ResumenActividad(
                 ?: return null
             val (tipo, delTipo) = lista
                 .filter { it.dia(zona) in barra.tramo }
-                .groupBy { GrupoTipo.de(it.tipoAtaque) }
+                .groupBy { it.tipoAtaque }
                 .entries
-                .maxWith(compareBy<Map.Entry<GrupoTipo, List<Alerta>>>({ it.value.size }, { -it.key.ordinal }))
+                .maxWith(compareBy<Map.Entry<TipoAtaque, List<Alerta>>>({ it.value.size }, { -TipoAtaque.EN_PANTALLA.indexOf(it.key) }))
             return Destacado(
                 barra = barra,
                 tipo = tipo,

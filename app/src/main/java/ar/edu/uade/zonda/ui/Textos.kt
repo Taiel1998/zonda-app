@@ -141,6 +141,28 @@ fun TipoAtaque.etiqueta(): Int = when (this) {
     TipoAtaque.SOLO_REGLAS_O_UMBRALES -> R.string.tipo_solo_reglas_o_umbrales
 }
 
+/** El nombre corto de cada tipo: el chip del filtro del Resumen y la hoja "Qué es cada tipo" (cambios 8 y 14). */
+@StringRes
+fun TipoAtaque.nombreCorto(): Int = when (this) {
+    TipoAtaque.FUERZA_BRUTA -> R.string.tipo_corto_fuerza_bruta
+    TipoAtaque.SIN_TIPIFICAR -> R.string.tipo_corto_sin_tipificar
+    TipoAtaque.ESCANEO -> R.string.tipo_corto_escaneo
+    TipoAtaque.DDOS -> R.string.tipo_corto_ddos
+    TipoAtaque.PROBABLE_FALSA_ALARMA -> R.string.tipo_corto_probable_falsa_alarma
+    TipoAtaque.SOLO_REGLAS_O_UMBRALES -> R.string.tipo_corto_solo_reglas_o_umbrales
+}
+
+/** Qué es cada tipo, en una oración (hoja "Qué es cada tipo", Figma 443-2683). */
+@StringRes
+fun TipoAtaque.descripcion(): Int = when (this) {
+    TipoAtaque.FUERZA_BRUTA -> R.string.tipo_descripcion_fuerza_bruta
+    TipoAtaque.SIN_TIPIFICAR -> R.string.tipo_descripcion_sin_tipificar
+    TipoAtaque.ESCANEO -> R.string.tipo_descripcion_escaneo
+    TipoAtaque.DDOS -> R.string.tipo_descripcion_ddos
+    TipoAtaque.PROBABLE_FALSA_ALARMA -> R.string.tipo_descripcion_probable_falsa_alarma
+    TipoAtaque.SOLO_REGLAS_O_UMBRALES -> R.string.tipo_descripcion_solo_reglas_o_umbrales
+}
+
 @StringRes
 fun ModoAviso.etiqueta(): Int = when (this) {
     ModoAviso.SONIDO -> R.string.modo_sonido
