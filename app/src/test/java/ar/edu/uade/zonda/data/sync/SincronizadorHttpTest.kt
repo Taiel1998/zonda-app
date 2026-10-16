@@ -436,6 +436,19 @@ class SincronizadorHttpTest : PruebaConBase() {
     }
 
     @Test
+    fun `marca las altas nuevas que ya tenian aviso de Telegram, para que Zonda no las repita`() = runTest {
+        conRed()
+        api.publicar(DtoFixtures.alerta("a-1", avisoTelegram = "2026-10-11T14:25:15+00:00"))
+        api.publicar(DtoFixtures.alerta("a-2"))
+        api.publicar(DtoFixtures.alerta("a-3", severidad = "media", tipoAtaque = "escaneo", avisoTelegram = "2026-10-11T14:25:15+00:00"))
+
+        val resultado = alertas.sincronizar("red-1")
+
+        assertEquals(listOf("a-1", "a-2"), resultado.idsAltasNuevas)
+        assertEquals(setOf("a-1"), resultado.idsAltasNuevasConAvisoTelegram)
+    }
+
+    @Test
     fun `un 401 deja la red con el acceso vencido y un pareo nuevo o una sincronizacion que anda lo limpian`() = runTest {
         conRed()
         publicarCinco()
