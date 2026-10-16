@@ -1,6 +1,7 @@
 package ar.edu.uade.zonda.data.mapper
 
 import ar.edu.uade.zonda.data.remote.AlertaDto
+import ar.edu.uade.zonda.data.remote.AvisosDto
 import ar.edu.uade.zonda.data.remote.DtoFixtures
 import ar.edu.uade.zonda.data.remote.ProveedorDeApiRetrofit
 import ar.edu.uade.zonda.data.remote.RevisionDto
@@ -9,8 +10,10 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
+import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
@@ -153,6 +156,14 @@ class MapeosRemotosTest {
         assertTrue(json, json.contains("\"revisadaEn\":\"2026-10-12T12:00:00Z\""))
         assertEquals(entrada, gson.fromJson(json, RevisionEntradaDto::class.java))
         assertNull(Fixtures.accion(alertaId = null, revision = null).aRevisionEntrada())
+    }
+
+    @Test
+    fun `el aviso en silencio viaja como vibracion, como lo sigue llamando la API`() {
+        val delServidor = AvisosDto(alta = "sonido", media = "vibracion", baja = "sin_aviso")
+
+        assertEquals(PreferenciasAvisos(ModoAviso.SONIDO, ModoAviso.SILENCIO, ModoAviso.SIN_AVISO), delServidor.aDominio())
+        assertEquals(delServidor, PreferenciasAvisos(ModoAviso.SONIDO, ModoAviso.SILENCIO, ModoAviso.SIN_AVISO).aDto())
     }
 
     companion object {

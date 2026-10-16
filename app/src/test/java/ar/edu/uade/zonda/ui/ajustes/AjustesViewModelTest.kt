@@ -108,7 +108,7 @@ class AjustesViewModelTest {
         assertEquals(PreferenciasAvisos(), viewModel.estado.value.borradorAvisos)
         viewModel.cambiarAvisoDelBorrador(Severidad.MEDIA, ModoAviso.SIN_AVISO)
         assertEquals(ModoAviso.SIN_AVISO, viewModel.estado.value.borradorAvisos?.media)
-        assertEquals(ModoAviso.VIBRACION, preferencias.avisos.value.media) // todavía no se guardó
+        assertEquals(ModoAviso.SILENCIO, preferencias.avisos.value.media) // todavía no se guardó
 
         viewModel.guardarAvisos()
         runCurrent()

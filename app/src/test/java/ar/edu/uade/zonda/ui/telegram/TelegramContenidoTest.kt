@@ -100,7 +100,7 @@ class TelegramContenidoTest {
         compose.onNodeWithText("Los avisos de Oficina central llegan al chat de @zonda_alertas_bot en Celular Martín.").assertIsDisplayed()
         compose.onNodeWithText("Cómo avisa").assertIsDisplayed()
         compose.onNodeWithText("Con sonido").assertIsDisplayed()
-        compose.onNodeWithText("Con vibración").assertIsDisplayed()
+        compose.onNodeWithText("En silencio").assertIsDisplayed()
         compose.onNodeWithText("Sin aviso").assertIsDisplayed()
         compose.onNodeWithText("Enviar un aviso de prueba").performClick()
         compose.onNodeWithText("Desvincular Telegram").performClick()

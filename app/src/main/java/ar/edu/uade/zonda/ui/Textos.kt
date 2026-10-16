@@ -144,26 +144,34 @@ fun TipoAtaque.etiqueta(): Int = when (this) {
 @StringRes
 fun ModoAviso.etiqueta(): Int = when (this) {
     ModoAviso.SONIDO -> R.string.modo_sonido
-    ModoAviso.VIBRACION -> R.string.modo_vibracion
+    ModoAviso.SILENCIO -> R.string.modo_silencio
     ModoAviso.SIN_AVISO -> R.string.modo_sin_aviso
 }
 
-/** "Con sonido", "Con vibración" o "Sin aviso", en "Cómo avisa" de Telegram (Figma 66-3484). */
+/** "Con sonido", "En silencio" o "Sin aviso", en "Cómo avisa" de Telegram (Figma 66-3484). */
 @StringRes
 fun ModoAviso.comoAvisa(): Int = when (this) {
     ModoAviso.SONIDO -> R.string.telegram_con_sonido
-    ModoAviso.VIBRACION -> R.string.telegram_con_vibracion
+    ModoAviso.SILENCIO -> R.string.telegram_en_silencio
     ModoAviso.SIN_AVISO -> R.string.telegram_sin_aviso
 }
 
-/** "Alta con sonido · Media con vibración · Baja sin aviso" (Ajustes y Telegram conectado). */
+/** "¿Cómo te avisamos las altas?": el título de la hoja que elige cómo avisa una severidad (cambio 6). */
+@StringRes
+fun Severidad.tituloHojaAvisos(): Int = when (this) {
+    Severidad.ALTA -> R.string.avisos_hoja_alta
+    Severidad.MEDIA -> R.string.avisos_hoja_media
+    Severidad.BAJA -> R.string.avisos_hoja_baja
+}
+
+/** "Alta con sonido · Media en silencio · Baja sin aviso" (Ajustes y Telegram conectado). */
 @Composable
 fun resumenDeAvisos(avisos: PreferenciasAvisos): String =
     Severidad.entries.map { severidad ->
         val modo = stringResource(
             when (avisos.para(severidad)) {
                 ModoAviso.SONIDO -> R.string.aviso_frase_sonido
-                ModoAviso.VIBRACION -> R.string.aviso_frase_vibracion
+                ModoAviso.SILENCIO -> R.string.aviso_frase_silencio
                 ModoAviso.SIN_AVISO -> R.string.aviso_frase_sin_aviso
             },
         )

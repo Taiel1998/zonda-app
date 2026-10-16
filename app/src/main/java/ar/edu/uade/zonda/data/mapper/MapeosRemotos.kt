@@ -114,17 +114,27 @@ fun CatalogoDto.aDominio(): Catalogo = Catalogo(equipos = equipos, servicios = s
 
 fun VinculoTelegramDto.aDominio(): VinculoTelegram = VinculoTelegram(codigo = codigo, enlaceBot = enlaceBot)
 
-/** `sonido`, `vibracion` y `sin_aviso` ↔ SONIDO, VIBRACION y SIN_AVISO. */
+/**
+ * `sonido`, `vibracion` y `sin_aviso` ↔ SONIDO, SILENCIO y SIN_AVISO. La API sigue llamando
+ * `vibracion` al mensaje sin sonido; la app lo muestra como "En silencio" (cambio 6).
+ */
 fun PreferenciasAvisos.aDto(): AvisosDto = AvisosDto(
-    alta = alta.name.lowercase(),
-    media = media.name.lowercase(),
-    baja = baja.name.lowercase(),
+    alta = alta.enLaApi(),
+    media = media.enLaApi(),
+    baja = baja.enLaApi(),
 )
 
 fun AvisosDto.aDominio(): PreferenciasAvisos = PreferenciasAvisos(
-    alta = ModoAviso.valueOf(alta.uppercase()),
-    media = ModoAviso.valueOf(media.uppercase()),
-    baja = ModoAviso.valueOf(baja.uppercase()),
+    alta = modoDeLaApi(alta),
+    media = modoDeLaApi(media),
+    baja = modoDeLaApi(baja),
 )
+
+private const val SILENCIO_EN_LA_API = "vibracion"
+
+private fun ModoAviso.enLaApi(): String = if (this == ModoAviso.SILENCIO) SILENCIO_EN_LA_API else name.lowercase()
+
+private fun modoDeLaApi(valor: String): ModoAviso =
+    if (valor.equals(SILENCIO_EN_LA_API, ignoreCase = true)) ModoAviso.SILENCIO else ModoAviso.valueOf(valor.uppercase())
 
 fun EstadoTelegramDto.aDominio(): EstadoTelegram = EstadoTelegram(vinculado = vinculado, bot = bot, avisos = avisos.aDominio())

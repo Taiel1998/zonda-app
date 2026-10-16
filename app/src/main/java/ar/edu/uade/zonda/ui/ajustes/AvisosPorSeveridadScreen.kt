@@ -24,17 +24,18 @@ import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.ui.components.AvisosDeTelegram
 import ar.edu.uade.zonda.ui.components.BarraSuperior
 import ar.edu.uade.zonda.ui.components.BotonEnlace
 import ar.edu.uade.zonda.ui.components.BotonPrincipal
-import ar.edu.uade.zonda.ui.components.SelectorDeAvisos
+import ar.edu.uade.zonda.ui.components.ConsejoSonidoDeTelegram
 import ar.edu.uade.zonda.ui.components.TarjetaSeccion
 import ar.edu.uade.zonda.ui.nombreDelBot
 
 /**
- * Avisos por severidad (Figma 51-1688): cómo avisa Telegram cada severidad, de dónde sale el sonido de
- * los avisos y el atajo a la severidad de cada tipo de ataque. Se edita en un borrador y se guarda con
- * "Guardar"; volver sin guardar lo descarta.
+ * Avisos por severidad (Figma 51-1688): cómo avisa Telegram cada severidad con el consejo del sonido
+ * propio (cambio 6), el sonido de las notificaciones de Zonda y el atajo a la severidad de cada tipo
+ * de ataque. Se edita en un borrador y se guarda con "Guardar"; volver sin guardar lo descarta.
  */
 @Composable
 fun AvisosPorSeveridadScreen(
@@ -66,7 +67,7 @@ fun AvisosPorSeveridadScreen(
 fun AvisosPorSeveridadContenido(
     avisos: PreferenciasAvisos,
     alCambiar: (Severidad, ModoAviso) -> Unit,
-    /** "@zonda_alertas_bot": el chat donde se cambia el sonido de Telegram. */
+    /** "@zonda_alertas_bot": el chat al que llegan los avisos. */
     bot: String = stringResource(R.string.telegram_bot),
     alCambiarSeveridades: () -> Unit,
     alGuardar: () -> Unit,
@@ -86,12 +87,14 @@ fun AvisosPorSeveridadContenido(
         ) {
             TarjetaSeccion(titulo = stringResource(R.string.avisos_titulo)) {
                 Text(
-                    text = stringResource(R.string.avisos_texto),
+                    text = stringResource(R.string.avisos_texto, bot),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                SelectorDeAvisos(avisos = avisos, alCambiar = alCambiar)
+                AvisosDeTelegram(avisos = avisos, alCambiar = alCambiar)
+                ConsejoSonidoDeTelegram()
             }
+            // Lo del sonido de Telegram pasó al consejo de arriba (cambio 6); queda el de las notificaciones de Zonda.
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 shape = RoundedCornerShape(12.dp),
@@ -101,11 +104,6 @@ fun AvisosPorSeveridadContenido(
                     Text(
                         text = stringResource(R.string.avisos_sonido_titulo),
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = stringResource(R.string.avisos_sonido_telegram, bot),
-                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(

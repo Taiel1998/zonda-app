@@ -59,9 +59,12 @@ class PreferenciasRepositoryImpl(
         dataStore.edit { it[RECORRIDO_HECHO] = true }
     }
 
-    private fun modoONull(nombre: String): ModoAviso? = ModoAviso.entries.firstOrNull { it.name == nombre }
+    /** Hasta la 1.0.2 el mensaje sin sonido se guardaba como "VIBRACION" (cambio 6): se lee como [ModoAviso.SILENCIO]. */
+    private fun modoONull(nombre: String): ModoAviso? =
+        if (nombre == NOMBRE_ANTERIOR_SILENCIO) ModoAviso.SILENCIO else ModoAviso.entries.firstOrNull { it.name == nombre }
 
     private companion object {
+        const val NOMBRE_ANTERIOR_SILENCIO = "VIBRACION"
         val AVISO_ALTA = stringPreferencesKey("aviso_alta")
         val AVISO_MEDIA = stringPreferencesKey("aviso_media")
         val AVISO_BAJA = stringPreferencesKey("aviso_baja")

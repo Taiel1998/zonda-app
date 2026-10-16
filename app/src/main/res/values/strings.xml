@@ -296,7 +296,7 @@
     <string name="tipo_probable_falsa_alarma">Probable falsa alarma</string>
     <string name="tipo_solo_reglas_o_umbrales">Detectado solo por reglas o umbrales</string>
     <string name="modo_sonido">Con sonido</string>
-    <string name="modo_vibracion">Vibración</string>
+    <string name="modo_silencio">En silencio</string>
     <string name="modo_sin_aviso">Sin aviso</string>
     <string name="abrir_ajustes">Abrir ajustes</string>
 
@@ -347,7 +347,13 @@
     <string name="inicio_antes_de_empezar">Antes de empezar</string>
     <string name="avisos_intro">Elegí cómo querés que Zonda te avise. Podés cambiar todo esto después desde Ajustes.</string>
     <string name="avisos_titulo">Avisos por Telegram</string>
-    <string name="avisos_texto">Elegí cómo te avisa cada severidad. El mensaje siempre dice la severidad con palabras, además del color.</string>
+    <!-- Cambio 6 (1.0.3): una fila por severidad con interruptor y la hoja para elegir cómo avisa. -->
+    <string name="avisos_texto">Llegan al instante al chat de %1$s.</string>
+    <string name="avisos_consejo">Para que una alta te despierte, ponele un sonido propio y fuerte al chat del bot: en Telegram, el chat → Notificaciones → Sonido.</string>
+    <string name="avisos_cambiar_modo">Elegir cómo avisa</string>
+    <string name="avisos_hoja_alta">¿Cómo te avisamos las altas?</string>
+    <string name="avisos_hoja_media">¿Cómo te avisamos las medias?</string>
+    <string name="avisos_hoja_baja">¿Cómo te avisamos las bajas?</string>
     <string name="avisos_continuar">Continuar</string>
     <string name="notificaciones_titulo">Notificaciones en el teléfono</string>
     <string name="notificaciones_texto">Zonda muestra una notificación cuando la sincronización trae una alerta alta. Android te va a pedir confirmar el permiso.</string>
@@ -556,7 +562,7 @@
     <string name="ajustes_conectar_telegram">Conectar Telegram</string>
     <string name="ajustes_avisos_por_severidad">Avisos por severidad</string>
     <string name="aviso_frase_sonido">con sonido</string>
-    <string name="aviso_frase_vibracion">con vibración</string>
+    <string name="aviso_frase_silencio">en silencio</string>
     <string name="aviso_frase_sin_aviso">sin aviso</string>
     <string name="aviso_resumen_ajustes">%1$s. Se cambia desde Ajustes.</string>
     <string name="ajustes_severidad_por_tipo">Severidad por tipo de ataque</string>
@@ -619,7 +625,6 @@
 
     <!-- Avisos por severidad (Figma 51-1688) -->
     <string name="avisos_sonido_titulo">Sonido de los avisos</string>
-    <string name="avisos_sonido_telegram">El sonido de Telegram lo define Telegram: abrí el chat de %1$s → Notificaciones → Sonido.</string>
     <string name="avisos_sonido_zonda">Las notificaciones de Zonda usan el sonido del sistema. \"Notificaciones del sistema\" abre esa configuración.</string>
     <string name="avisos_cambiar_severidad">Cambiar la severidad de cada tipo de ataque</string>
 
@@ -780,7 +785,7 @@
     <string name="telegram_llegan">Los avisos de %1$s llegan al chat de %2$s en %3$s.</string>
     <string name="telegram_como_avisa">Cómo avisa</string>
     <string name="telegram_con_sonido">Con sonido</string>
-    <string name="telegram_con_vibracion">Con vibración</string>
+    <string name="telegram_en_silencio">En silencio</string>
     <string name="telegram_sin_aviso">Sin aviso</string>
     <string name="telegram_enviar_prueba">Enviar un aviso de prueba</string>
     <string name="telegram_desvincular">Desvincular Telegram</string>

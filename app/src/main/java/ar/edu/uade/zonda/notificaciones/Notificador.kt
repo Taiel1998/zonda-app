@@ -22,7 +22,7 @@ import ar.edu.uade.zonda.ui.theme.VerdeZonda
  * La notificación local cuando la sincronización en segundo plano trae alertas altas nuevas
  * (informe, sección 6: el aviso inmediato llega por Telegram y la app suma el suyo).
  *
- * Hay un solo canal, con el sonido del sistema: con sonido, vibración o sin aviso son modos de
+ * Hay un solo canal, con el sonido del sistema: con sonido, en silencio o sin aviso son modos de
  * Telegram, y un canal por severidad quedó como mejora posterior. El texto dice la severidad con
  * palabras (RNF09) y no lleva IP ni nombres de equipos (RNF02).
  *

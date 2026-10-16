@@ -1,6 +1,8 @@
 package ar.edu.uade.zonda.data.preferencias
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import java.io.File
@@ -32,9 +34,21 @@ class PreferenciasRepositoryImplTest {
 
         assertEquals(PreferenciasAvisos(), repo.observarAvisos().first())
 
-        repo.guardarAvisos(PreferenciasAvisos(alta = ModoAviso.VIBRACION, media = ModoAviso.SIN_AVISO, baja = ModoAviso.SONIDO))
+        repo.guardarAvisos(PreferenciasAvisos(alta = ModoAviso.SILENCIO, media = ModoAviso.SIN_AVISO, baja = ModoAviso.SONIDO))
 
-        assertEquals(PreferenciasAvisos(ModoAviso.VIBRACION, ModoAviso.SIN_AVISO, ModoAviso.SONIDO), repo.observarAvisos().first())
+        assertEquals(PreferenciasAvisos(ModoAviso.SILENCIO, ModoAviso.SIN_AVISO, ModoAviso.SONIDO), repo.observarAvisos().first())
+        alcance.cancel()
+    }
+
+    @Test
+    fun `un aviso con vibracion guardado por la 1_0_2 se lee como en silencio`() = runTest {
+        val alcance = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        val almacen = PreferenceDataStoreFactory.create(scope = alcance) { File(carpeta.root, "anterior.preferences_pb") }
+        almacen.edit { it[stringPreferencesKey("aviso_media")] = "VIBRACION" }
+
+        val avisos = PreferenciasRepositoryImpl(almacen).observarAvisos().first()
+
+        assertEquals(ModoAviso.SILENCIO, avisos.media)
         alcance.cancel()
     }
 
