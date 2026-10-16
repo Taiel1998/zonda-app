@@ -105,8 +105,9 @@ fun EstadoScreen(
     alAbrirDetalle: (alertaId: String) -> Unit,
     alVerTodas: () -> Unit,
     alConectar: () -> Unit,
+    alVerNoAplicadas: () -> Unit = {},
     viewModel: EstadoViewModel = viewModelDeZonda {
-        EstadoViewModel(it.obtenerEstadoRed, it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad)
+        EstadoViewModel(it.obtenerEstadoRed, it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad, it.accionesPendientes)
     },
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
@@ -121,6 +122,7 @@ fun EstadoScreen(
             alVerTodas = alVerTodas,
             alConectar = alConectar,
             alAvisoMostrado = viewModel::avisoMostrado,
+            alVerNoAplicadas = alVerNoAplicadas,
         ),
         ahora = ahora,
     )
@@ -137,6 +139,8 @@ data class AccionesEstado(
     /** Configurar conexión (sin red) o conectar de nuevo (acceso vencido): la pantalla Conexión. */
     val alConectar: () -> Unit = {},
     val alAvisoMostrado: () -> Unit = {},
+    /** "Ver" del aviso con varias revisiones no aplicadas: Alertas con esas (cambio 7). Con una, se abre su detalle. */
+    val alVerNoAplicadas: () -> Unit = {},
 )
 
 /**
@@ -278,6 +282,15 @@ private fun LazyListScope.datosDeLaRed(
     zona: ZoneId,
 ) {
     val elegida = estado.severidadElegida
+    val noAplicadas = estado.revisionesNoAplicadas
+    if (noAplicadas.isNotEmpty()) {
+        item {
+            AvisoRevisionesNoAplicadas(
+                cantidad = noAplicadas.size,
+                alVer = { noAplicadas.singleOrNull()?.let(acciones.alAbrirDetalle) ?: acciones.alVerNoAplicadas() },
+            )
+        }
+    }
     item { SemaforoDeLaRed(datos, estado, ahora, zona) }
     item {
         Text(
@@ -359,6 +372,37 @@ private fun SemaforoDeLaRed(datos: ContenidoEstado.Datos, estado: EstadoUiState,
             modifier = marca,
         )
         Semaforo.SIN_DATOS -> SemaforoSinDatos()
+    }
+}
+
+/**
+ * El aviso azul de las revisiones que no se aplicaron (cambio 7; Figma 443-113 y 443-189): otra persona
+ * revisó esas alertas antes que la revisión de este teléfono llegara al servidor. Título SemiBold 14 y
+ * texto Regular 13 en el azul de información, "Ver" a la derecha; todo el aviso se toca.
+ */
+@Composable
+private fun AvisoRevisionesNoAplicadas(cantidad: Int, alVer: () -> Unit) {
+    Surface(
+        onClick = alVer,
+        color = Tonos.Info.fondo,
+        contentColor = Tonos.Info.texto,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+                Text(text = pluralStringResource(R.plurals.estado_no_aplicadas_titulo, cantidad, cantidad), style = MaterialTheme.typography.labelLarge)
+                Text(
+                    text = stringResource(if (cantidad == 1) R.string.estado_no_aplicada_texto else R.string.estado_no_aplicadas_texto),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Text(text = stringResource(R.string.estado_no_aplicadas_ver), style = MaterialTheme.typography.labelLarge)
+        }
     }
 }
 

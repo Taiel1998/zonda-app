@@ -24,6 +24,12 @@
         <item quantity="one">%d alerta nueva de severidad alta</item>
         <item quantity="other">%d alertas nuevas de severidad alta</item>
     </plurals>
+    <!-- Cambio 7 (1.0.3): solo si el conflicto aparece al sincronizar en segundo plano, una vez por revisión. -->
+    <string name="notificacion_no_aplicada">Una revisión tuya no se aplicó. Otra persona revisó esa alerta antes. Tocá para elegir cuál queda.</string>
+    <plurals name="notificacion_no_aplicadas">
+        <item quantity="one">%d revisión tuya no se aplicó. Otra persona revisó esa alerta antes. Tocá para elegir cuál queda.</item>
+        <item quantity="other">%d revisiones tuyas no se aplicaron. Alguien más revisó esas alertas antes. Tocá para elegir cuáles quedan.</item>
+    </plurals>
     <!-- Cambio 13 (1.0.3): una sola vez, a los 15 minutos de llegar, aunque Telegram ya la haya avisado. -->
     <plurals name="notificacion_recordatorio">
         <item quantity="one">Recordatorio: %1$d alerta alta sin revisar desde las %2$s</item>
@@ -141,6 +147,7 @@
     <string name="filtro_periodo_30d_titulo">Últimos 30 días</string>
     <string name="filtro_periodo_30d_detalle">Todo lo que hay guardado en el teléfono</string>
     <string name="filtro_mas">Más filtros</string>
+    <string name="filtro_no_aplicadas">Revisiones no aplicadas</string>
     <string name="filtro_mas_con_cantidad">Más filtros (%1$d)</string>
     <string name="filtro_mas_titulo">Más filtros</string>
     <string name="filtro_servicio">Servicio</string>
@@ -529,6 +536,14 @@
     <string name="estado_ver_todas">Ver todas →</string>
     <string name="estado_ver_todas_descripcion">Ver todas las alertas</string>
     <string name="estado_nota_vacia">No queda ninguna alerta sin revisar. Las nuevas aparecen acá apenas se sincronizan.</string>
+    <!-- Cambio 7 (1.0.3): una revisión de este teléfono que no se aplicó porque otra persona revisó antes. -->
+    <plurals name="estado_no_aplicadas_titulo">
+        <item quantity="one">Una revisión tuya no se aplicó</item>
+        <item quantity="other">%d revisiones tuyas no se aplicaron</item>
+    </plurals>
+    <string name="estado_no_aplicada_texto">Otra persona revisó esa alerta antes que vos.</string>
+    <string name="estado_no_aplicadas_texto">Alguien más revisó esas alertas antes que vos.</string>
+    <string name="estado_no_aplicadas_ver">Ver</string>
     <string name="estado_nota_sin_altas">No hay alertas altas sin revisar. Si llega una, el semáforo se pone en rojo.</string>
     <string name="estado_nota_sin_medias">No hay alertas medias sin revisar. Si llega una y no hay altas, el semáforo se pone en amarillo.</string>
     <string name="estado_nota_sin_bajas">No hay alertas bajas sin revisar. Las bajas no cambian el semáforo: esperan en la lista hasta que las revises.</string>
@@ -549,6 +564,8 @@
     <!-- Notificación local de altas nuevas: un solo canal (informe, sección 6) -->
     <string name="canal_alertas">Alertas altas</string>
     <string name="canal_alertas_descripcion">Avisa cuando la sincronización trae alertas altas nuevas.</string>
+    <string name="canal_revisiones">Revisiones</string>
+    <string name="canal_revisiones_descripcion">Avisa si una revisión tuya no se aplicó porque otra persona revisó esa alerta antes.</string>
     <string name="telegram_bot">@zonda_alertas_bot</string>
     <string name="accion_guardar">Guardar</string>
     <string name="aviso_ok">OK</string>

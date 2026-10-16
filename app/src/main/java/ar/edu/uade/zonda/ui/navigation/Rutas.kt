@@ -51,12 +51,19 @@ object EnlacesInternos {
     const val ARG_RED = "red"
     const val ARG_ESTADO = "estado"
     const val ARG_SEVERIDAD = "severidad"
+
+    /** `envio=conflicto`: solo las revisiones de este teléfono que no se aplicaron (cambio 7). */
+    const val ARG_ENVIO = "envio"
+    const val ENVIO_CONFLICTO = "conflicto"
     const val ALERTAS = "zonda://alertas"
-    const val PATRON_ALERTAS = "zonda://alertas?red={red}&estado={estado}&severidad={severidad}"
+    const val PATRON_ALERTAS = "zonda://alertas?red={red}&estado={estado}&severidad={severidad}&envio={envio}"
     const val PATRON_DETALLE = "zonda://alerta/{alertaId}?red={red}"
 
     fun alertas(redId: String, estado: EstadoRevision, severidad: Severidad): String =
         "$ALERTAS?$ARG_RED=$redId&$ARG_ESTADO=${estado.name.lowercase()}&$ARG_SEVERIDAD=${severidad.name.lowercase()}"
+
+    /** Alertas de esa red con las revisiones de este teléfono que no se aplicaron. */
+    fun noAplicadas(redId: String): String = "$ALERTAS?$ARG_RED=$redId&$ARG_ENVIO=$ENVIO_CONFLICTO"
 
     fun detalle(redId: String, alertaId: String): String = "zonda://alerta/$alertaId?$ARG_RED=$redId"
 }

@@ -196,6 +196,11 @@ fun ZondaNavHost(
                                     navController.irAPestania(Rutas.ALERTAS)
                                     navController.currentBackStackEntry?.savedStateHandle?.set(VER_TODAS, true)
                                 },
+                                alVerNoAplicadas = {
+                                    // "Ver" del aviso con varias revisiones no aplicadas: Alertas con esas (cambio 7).
+                                    navController.irAPestania(Rutas.ALERTAS)
+                                    navController.currentBackStackEntry?.savedStateHandle?.set(VER_NO_APLICADAS, true)
+                                },
                                 alConectar = { navController.navigate(Rutas.CONEXION) },
                             )
                         }
@@ -204,7 +209,7 @@ fun ZondaNavHost(
                         }
                         composable(
                             route = Rutas.ALERTAS,
-                            arguments = listOf(EnlacesInternos.ARG_RED, EnlacesInternos.ARG_ESTADO, EnlacesInternos.ARG_SEVERIDAD).map { nombre ->
+                            arguments = listOf(EnlacesInternos.ARG_RED, EnlacesInternos.ARG_ESTADO, EnlacesInternos.ARG_SEVERIDAD, EnlacesInternos.ARG_ENVIO).map { nombre ->
                                 navArgument(nombre) {
                                     type = NavType.StringType
                                     nullable = true
@@ -229,6 +234,13 @@ fun ZondaNavHost(
                                 if (verTodas) {
                                     viewModel.quitarFiltros()
                                     entrada.savedStateHandle[VER_TODAS] = false
+                                }
+                            }
+                            val verNoAplicadas by entrada.savedStateHandle.getStateFlow(VER_NO_APLICADAS, false).collectAsStateWithLifecycle()
+                            LaunchedEffect(verNoAplicadas) {
+                                if (verNoAplicadas) {
+                                    viewModel.aplicarFiltro(FiltroAlertas(soloNoAplicadas = true))
+                                    entrada.savedStateHandle[VER_NO_APLICADAS] = false
                                 }
                             }
                             AlertasScreen(
@@ -346,10 +358,17 @@ private const val ENLACE_APLICADO = "enlace_aplicado"
 /** "Ver todas" de Estado: Alertas quita los filtros al llegar. */
 private const val VER_TODAS = "ver_todas"
 
-/** El filtro de un enlace interno (`estado=sin_revisar&severidad=alta`), o null si no trae ninguno. */
+/** "Ver" del aviso de Estado con varias revisiones no aplicadas: Alertas muestra solo esas (cambio 7). */
+private const val VER_NO_APLICADAS = "ver_no_aplicadas"
+
+/**
+ * El filtro de un enlace interno (`estado=sin_revisar&severidad=alta`, o `envio=conflicto` para las
+ * revisiones que no se aplicaron), o null si no trae ninguno.
+ */
 private fun filtroDelEnlace(argumentos: Bundle?): FiltroAlertas? {
     val estado = argumentos?.getString(EnlacesInternos.ARG_ESTADO)?.let { valor -> FiltroEstado.entries.firstOrNull { it.name.equals(valor, ignoreCase = true) } }
     val severidad = argumentos?.getString(EnlacesInternos.ARG_SEVERIDAD)?.let { valor -> Severidad.entries.firstOrNull { it.name.equals(valor, ignoreCase = true) } }
-    if (estado == null && severidad == null) return null
-    return FiltroAlertas(estado = estado ?: FiltroEstado.TODAS, severidades = setOfNotNull(severidad))
+    val noAplicadas = argumentos?.getString(EnlacesInternos.ARG_ENVIO) == EnlacesInternos.ENVIO_CONFLICTO
+    if (estado == null && severidad == null && !noAplicadas) return null
+    return FiltroAlertas(estado = estado ?: FiltroEstado.TODAS, severidades = setOfNotNull(severidad), soloNoAplicadas = noAplicadas)
 }

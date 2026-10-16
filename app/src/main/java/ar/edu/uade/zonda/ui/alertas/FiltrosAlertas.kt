@@ -28,6 +28,7 @@ import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.components.BotonesDeHoja
 import ar.edu.uade.zonda.ui.components.ChipOpcion
+import ar.edu.uade.zonda.ui.resumen.ChipFiltro
 import ar.edu.uade.zonda.ui.components.GrupoDeChips
 import ar.edu.uade.zonda.ui.components.HojaDeCasillas
 import ar.edu.uade.zonda.ui.components.HojaDeOpciones
@@ -66,6 +67,15 @@ fun FiltrosAlertas(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Lo pone "Ver" del aviso de Estado con varias revisiones no aplicadas (cambio 7); la cruz lo saca.
+        if (filtro.soloNoAplicadas) {
+            val noAplicadas = stringResource(R.string.filtro_no_aplicadas)
+            ChipFiltro(
+                texto = noAplicadas,
+                descripcionQuitar = stringResource(R.string.resumen_quitar_filtro, noAplicadas),
+                alQuitar = { alCambiar(filtro.copy(soloNoAplicadas = false)) },
+            )
+        }
         ChipOpcion(
             texto = stringResource(filtro.estado.etiqueta()),
             elegido = true,

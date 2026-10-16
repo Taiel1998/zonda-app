@@ -103,6 +103,7 @@ class SincronizadorHttp(
             hora = hora,
             idsAltasNuevas = descarga.idsAltasNuevas,
             idsAltasNuevasConAvisoTelegram = descarga.idsConAvisoTelegram,
+            conflictosNuevos = envio.conflictos,
         )
     }
 
@@ -115,11 +116,12 @@ class SincronizadorHttp(
 
     // ---- 1. Cola de acciones ----
 
-    private data class ResultadoEnvio(val enviadas: Int, val conError: Int)
+    private data class ResultadoEnvio(val enviadas: Int, val conError: Int, val conflictos: List<String>)
 
     private suspend fun enviarCola(redId: String, api: ZondaApi): ResultadoEnvio {
         var enviadas = 0
         var conError = 0
+        val conflictos = mutableListOf<String>()
         for (fila in accionesDao.listarParaEnviar(redId)) {
             val accion = fila.aDominio()
             accionesDao.actualizarEnvio(accion.id, EstadoEnvio.ENVIANDO.name, accion.intentos, accion.ultimoError)
@@ -137,6 +139,7 @@ class SincronizadorHttp(
                     fecha = ajena.fecha.toEpochMilli(),
                     revisadaEn = ajena.revisadaEn?.toEpochMilli(),
                 )
+                accion.alertaId?.let(conflictos::add)
             } catch (e: ErrorZonda.SinConexion) {
                 devolverAPendiente(accion)
                 throw e
@@ -152,7 +155,7 @@ class SincronizadorHttp(
                 conError++
             }
         }
-        return ResultadoEnvio(enviadas, conError)
+        return ResultadoEnvio(enviadas, conError, conflictos)
     }
 
     private suspend fun enviarUna(redId: String, accion: AccionPendiente, api: ZondaApi) {

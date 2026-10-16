@@ -33,7 +33,8 @@ import kotlinx.coroutines.flow.first
  * Sincronización en segundo plano (RNF08): cada 15 minutos, el mínimo que permite Android, solo con
  * red. Sincroniza todas las redes pareadas, no solo la activa, y, si el interruptor "Notificaciones
  * del sistema" de Ajustes está prendido, avisa las altas nuevas que Telegram no avisó en este
- * teléfono y recuerda una vez las que siguen sin revisar a los 15 minutos ([AvisosDeZonda], cambio 13).
+ * teléfono, recuerda una vez las que siguen sin revisar a los 15 minutos ([AvisosDeZonda], cambio 13)
+ * y avisa las revisiones de este teléfono que no se aplicaron porque otra persona revisó antes (cambio 7).
  * Si no hay red o el servidor falla, WorkManager reintenta con espera exponencial (informe, 14.3); una
  * red con el acceso vencido se saltea hasta que se vuelva a parear.
  */
@@ -74,6 +75,7 @@ class SincronizacionWorker(
         val red = redes.observarRedes().first().firstOrNull { it.id == redId } ?: return
         val avisos = preferencias.observarAvisos().first()
         notificador.avisarAltasNuevas(red, AvisosDeZonda.altasParaNotificar(resultado, red.telegramVinculado, avisos))
+        notificador.avisarRevisionesNoAplicadas(red, resultado.conflictosNuevos)
 
         val sinRevisar = alertas.observarAlertas(redId, ALTAS_SIN_REVISAR_DEL_DIA).first()
         val recordar = AvisosDeZonda.altasParaRecordar(sinRevisar, preferencias.recordatoriosHasta(redId), resultado.idsAltasNuevas, reloj())

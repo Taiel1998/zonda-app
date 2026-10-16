@@ -22,6 +22,11 @@ data class ResultadoSincronizacion(
     val idsAltasNuevas: List<String> = emptyList(),
     /** De esas altas, las que ya tenían aviso de Telegram al bajarlas: Zonda no las repite (cambio 13). */
     val idsAltasNuevasConAvisoTelegram: Set<String> = emptySet(),
+    /**
+     * Alertas cuya revisión de este teléfono no se aplicó en esta sincronización porque otra persona la
+     * revisó antes (409). Pasa una sola vez por revisión: el envío queda en conflicto y no se reintenta.
+     */
+    val conflictosNuevos: List<String> = emptyList(),
 )
 
 /**

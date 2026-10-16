@@ -37,11 +37,16 @@ import java.time.ZoneId
 class Notificador(private val contexto: Context) {
 
     fun crearCanales() {
-        val canal = NotificationChannelCompat.Builder(CANAL_ALERTAS, NotificationManagerCompat.IMPORTANCE_HIGH)
+        val alertas = NotificationChannelCompat.Builder(CANAL_ALERTAS, NotificationManagerCompat.IMPORTANCE_HIGH)
             .setName(contexto.getString(R.string.canal_alertas))
             .setDescription(contexto.getString(R.string.canal_alertas_descripcion))
             .build()
-        NotificationManagerCompat.from(contexto).createNotificationChannel(canal)
+        // Cambio 7: las revisiones que no se aplicaron van en un canal aparte, que se puede silenciar solo.
+        val revisiones = NotificationChannelCompat.Builder(CANAL_REVISIONES, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+            .setName(contexto.getString(R.string.canal_revisiones))
+            .setDescription(contexto.getString(R.string.canal_revisiones_descripcion))
+            .build()
+        NotificationManagerCompat.from(contexto).createNotificationChannelsCompat(listOf(alertas, revisiones))
     }
 
     /**
@@ -65,6 +70,35 @@ class Notificador(private val contexto: Context) {
         val desde = Formato.hora(altas.minOf { it.creadaEn }, zona)
         val texto = contexto.resources.getQuantityString(R.plurals.notificacion_recordatorio, altas.size, altas.size, desde)
         publicarAltas(red, ETIQUETA_RECORDATORIO, altas.map { it.id }, texto)
+    }
+
+    /**
+     * Las revisiones de este teléfono que no se aplicaron porque otra persona revisó antes, detectadas al
+     * sincronizar en segundo plano (cambio 7): una notificación por red en el canal "Revisiones", una
+     * sola vez por revisión. Con una abre su detalle, donde se elige cuál queda; con varias, Alertas con
+     * esas. Con la app abierta lo dice el aviso de Estado.
+     */
+    fun avisarRevisionesNoAplicadas(red: Red, alertaIds: List<String>) {
+        if (alertaIds.isEmpty()) return
+        val gestor = NotificationManagerCompat.from(contexto)
+        if (!gestor.areNotificationsEnabled()) return
+        val una = alertaIds.singleOrNull()
+        val texto = if (una != null) {
+            contexto.getString(R.string.notificacion_no_aplicada)
+        } else {
+            contexto.resources.getQuantityString(R.plurals.notificacion_no_aplicadas, alertaIds.size, alertaIds.size)
+        }
+        val destino = if (una != null) EnlacesInternos.detalle(red.id, una) else EnlacesInternos.noAplicadas(red.id)
+        val notificacion = NotificationCompat.Builder(contexto, CANAL_REVISIONES)
+            .setSmallIcon(R.drawable.ic_notificacion)
+            .setColor(VerdeZonda.toArgb())
+            .setContentTitle(contexto.getString(R.string.notificacion_titulo, red.nombre))
+            .setContentText(texto)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(texto))
+            .setContentIntent(abrir(destino))
+            .setAutoCancel(true)
+            .build()
+        publicar(gestor, ETIQUETA_REVISIONES, idDe(red), notificacion)
     }
 
     /** Abre el detalle si es una sola alta, o Alertas de esa red filtrada en "Alta · Sin revisar". */
@@ -131,6 +165,9 @@ class Notificador(private val contexto: Context) {
     companion object {
         const val CANAL_ALERTAS = "alertas_altas"
 
+        /** Las revisiones de este teléfono que no se aplicaron (cambio 7). */
+        const val CANAL_REVISIONES = "revisiones"
+
         /** El grupo de las notificaciones de alertas nuevas. */
         const val GRUPO = "ar.edu.uade.zonda.ALERTAS_NUEVAS"
 
@@ -140,5 +177,7 @@ class Notificador(private val contexto: Context) {
 
         /** El recordatorio usa el id de la red con su etiqueta: no reemplaza a la de alertas nuevas. */
         const val ETIQUETA_RECORDATORIO = "recordatorio"
+
+        const val ETIQUETA_REVISIONES = "revisiones"
     }
 }

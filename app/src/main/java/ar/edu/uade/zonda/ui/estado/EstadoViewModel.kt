@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRed
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroEstado
@@ -11,6 +12,7 @@ import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Semaforo
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.domain.repository.AccionesPendientesRepository
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.RedesRepository
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -49,6 +52,7 @@ class EstadoViewModel(
     private val redes: RedesRepository,
     alertas: AlertasRepository,
     private val conectividad: Conectividad,
+    acciones: AccionesPendientesRepository,
 ) : ViewModel() {
 
     /**
@@ -66,7 +70,20 @@ class EstadoViewModel(
         if (red == null) flowOf(null) else alertas.observarProgresoDescarga(red.id)
     }
 
-    private data class Datos(val red: EstadoRed?, val sinRevisar: List<Alerta>, val progreso: ProgresoDescarga?)
+    /**
+     * Las alertas de la red activa con una revisión de este teléfono que no se aplicó porque otra persona
+     * la revisó antes (cambio 7). Salen de la cola: el aviso se va al elegir "Aplicar la mía" o
+     * "Mantener la otra", porque la acción deja de estar en conflicto.
+     */
+    private val noAplicadas: Flow<List<String>> = redes.observarRedActiva().flatMapLatest { red ->
+        if (red == null) {
+            flowOf(emptyList())
+        } else {
+            acciones.observar(red.id).map { cola -> cola.filter { it.estado == EstadoEnvio.CONFLICTO }.mapNotNull { it.alertaId } }
+        }
+    }
+
+    private data class Datos(val red: EstadoRed?, val sinRevisar: List<Alerta>, val progreso: ProgresoDescarga?, val noAplicadas: List<String>)
 
     private data class Controles(
         val conectado: Boolean,
@@ -76,8 +93,8 @@ class EstadoViewModel(
     )
 
     val estado: StateFlow<EstadoUiState> = combine(
-        combine(obtenerEstadoRed(), observarAlertas(SIN_REVISAR_GUARDADAS), progreso) { red, sinRevisar, progreso ->
-            Datos(red, sinRevisar, progreso)
+        combine(obtenerEstadoRed(), observarAlertas(SIN_REVISAR_GUARDADAS), progreso, noAplicadas) { red, sinRevisar, progreso, noAplicadas ->
+            Datos(red, sinRevisar, progreso, noAplicadas)
         },
         combine(conectividad.conectado, severidadElegida, sincronizacion, aviso) { conectado, elegida, sincronizacion, aviso ->
             Controles(conectado, elegida, sincronizacion, aviso)
@@ -91,6 +108,7 @@ class EstadoViewModel(
             accesoVencido = datos.red?.red?.accesoVencido == true,
             sincronizando = controles.sincronizacion == Sincronizacion.PEDIDA,
             aviso = controles.aviso,
+            revisionesNoAplicadas = datos.noAplicadas,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EstadoUiState())
 

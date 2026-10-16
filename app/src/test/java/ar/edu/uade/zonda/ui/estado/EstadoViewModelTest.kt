@@ -3,11 +3,13 @@ package ar.edu.uade.zonda.ui.estado
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import ar.edu.uade.zonda.domain.Fixtures
+import ar.edu.uade.zonda.domain.fakes.FakeAccionesPendientesRepository
 import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeConectividad
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Semaforo
@@ -37,6 +39,7 @@ class EstadoViewModelTest {
     private val redes = FakeRedesRepository()
     private val alertas = FakeAlertasRepository()
     private val conectividad = FakeConectividad()
+    private val acciones = FakeAccionesPendientesRepository()
 
     private fun viewModel() = EstadoViewModel(
         obtenerEstadoRed = ObtenerEstadoRed(redes, alertas),
@@ -45,6 +48,7 @@ class EstadoViewModelTest {
         redes = redes,
         alertas = alertas,
         conectividad = conectividad,
+        acciones = acciones,
     )
 
     private suspend fun ReceiveTurbine<EstadoUiState>.esperar(condicion: (EstadoUiState) -> Boolean): EstadoUiState {
@@ -329,6 +333,22 @@ class EstadoViewModelTest {
             val estado = esperar { it.contenido is ContenidoEstado.Datos }
             assertTrue(estado.accesoVencido)
             assertEquals(Semaforo.ROJO, estado.datos.semaforo)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `una revision de este telefono en conflicto aparece en Estado hasta que se elige cual queda`() = runTest {
+        conRedYAlertas()
+        acciones.encolar(Fixtures.accion(id = "accion-1", alertaId = "alta-vieja", estado = EstadoEnvio.CONFLICTO))
+        acciones.encolar(Fixtures.accion(id = "accion-2", alertaId = "media", estado = EstadoEnvio.PENDIENTE))
+
+        viewModel().estado.test {
+            assertEquals(listOf("alta-vieja"), esperar { it.revisionesNoAplicadas.isNotEmpty() }.revisionesNoAplicadas)
+
+            // "Aplicar la mía" la vuelve a encolar como pendiente: el aviso se va.
+            acciones.encolar(Fixtures.accion(id = "accion-1", alertaId = "alta-vieja", estado = EstadoEnvio.PENDIENTE))
+            assertEquals(emptyList<String>(), esperar { it.revisionesNoAplicadas.isEmpty() }.revisionesNoAplicadas)
             cancelAndIgnoreRemainingEvents()
         }
     }

@@ -136,7 +136,8 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
             (severidades.isEmpty() || alerta.severidad in severidades) &&
             aceptaServicio(alerta.servicio) &&
             (destinoIp == null || alerta.destino.ip == destinoIp) &&
-            (metodo == null || metodo in alerta.metodos)
+            (metodo == null || metodo in alerta.metodos) &&
+            (!soloNoAplicadas || alerta.envio == EstadoEnvio.CONFLICTO)
 
     private fun FiltroAlertas.aceptaServicio(nombre: String): Boolean = when (val elegido = servicio) {
         null -> true
