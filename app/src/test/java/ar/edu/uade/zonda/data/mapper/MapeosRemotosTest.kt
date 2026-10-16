@@ -70,7 +70,7 @@ class MapeosRemotosTest {
     }
 
     @Test
-    fun `el tipo vacio es SOLO_REGLAS_O_UMBRALES y el historial llega como revisiones del servidor`() {
+    fun `el tipo vacio sale del detector que la marco y el historial llega como revisiones del servidor`() {
         val dto = DtoFixtures.alerta(
             tipoAtaque = null,
             severidad = "media",
@@ -81,7 +81,8 @@ class MapeosRemotosTest {
 
         val alerta = dto.aDominio("red-1")
 
-        assertEquals(TipoAtaque.SOLO_REGLAS_O_UMBRALES, alerta.tipoAtaque)
+        // La vieron los umbrales y no las reglas (cambio 9).
+        assertEquals(TipoAtaque.VOLUMEN_INUSUAL, alerta.tipoAtaque)
         assertNull(alerta.confianzaTipo)
         assertEquals(Severidad.MEDIA, alerta.severidad)
         assertEquals(EstadoRevision.FALSO_POSITIVO, alerta.estadoRevision)
@@ -123,15 +124,44 @@ class MapeosRemotosTest {
     }
 
     @Test
-    fun `las severidades van y vuelven en minusculas, con la clave del tipo vacio`() {
+    fun `sin la IA el tipo sale del detector que la marco y con los dos cuenta en los dos`() {
+        val sinTipo = DtoFixtures.alerta(tipoAtaque = null, severidad = "media")
+        fun con(reglas: Boolean, umbrales: Boolean) =
+            sinTipo.copy(veredictos = sinTipo.veredictos.copy(ia = false, reglas = reglas, umbrales = umbrales)).aDominio("red-1")
+
+        assertEquals(TipoAtaque.SERVICIO_NO_AUTORIZADO, con(reglas = true, umbrales = false).tipoAtaque)
+        assertEquals(setOf(TipoAtaque.SERVICIO_NO_AUTORIZADO), con(reglas = true, umbrales = false).tiposDeAtaque)
+        assertEquals(TipoAtaque.VOLUMEN_INUSUAL, con(reglas = false, umbrales = true).tipoAtaque)
+        // Las dos: se guarda como de las reglas y cuenta en los dos tipos (cambio 9).
+        val lasDos = con(reglas = true, umbrales = true)
+        assertEquals(TipoAtaque.SERVICIO_NO_AUTORIZADO, lasDos.tipoAtaque)
+        assertEquals(setOf(TipoAtaque.SERVICIO_NO_AUTORIZADO, TipoAtaque.VOLUMEN_INUSUAL), lasDos.tiposDeAtaque)
+    }
+
+    @Test
+    fun `las severidades van y vuelven en minusculas, con una clave por detector para el tipo vacio`() {
         val dto = SeveridadPorTipo.RECOMENDADA.aDto()
 
-        assertEquals(6, dto.size)
+        assertEquals(7, dto.size)
         assertEquals("alta", dto["fuerza_bruta"])
         assertEquals("alta", dto["sin_tipificar"])
-        assertEquals("media", dto["solo_reglas_o_umbrales"])
+        assertEquals("media", dto["servicio_no_autorizado"])
+        assertEquals("media", dto["volumen_inusual"])
         assertEquals("baja", dto["probable_falsa_alarma"])
         assertEquals(SeveridadPorTipo.RECOMENDADA, dto.aSeveridadPorTipo())
+    }
+
+    @Test
+    fun `de un servidor anterior, solo reglas o umbrales vale para los dos tipos y lo desconocido se ignora`() {
+        val anterior = mapOf("fuerza_bruta" to "alta", "solo_reglas_o_umbrales" to "baja", "ransomware" to "alta").aSeveridadPorTipo()
+
+        assertEquals(setOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.SERVICIO_NO_AUTORIZADO, TipoAtaque.VOLUMEN_INUSUAL), anterior.valores.keys)
+        assertEquals(Severidad.BAJA, anterior.severidadDe(TipoAtaque.SERVICIO_NO_AUTORIZADO))
+        assertEquals(Severidad.BAJA, anterior.severidadDe(TipoAtaque.VOLUMEN_INUSUAL))
+        // Si también vienen las claves nuevas, ganan ellas.
+        val mixto = mapOf("volumen_inusual" to "alta", "solo_reglas_o_umbrales" to "baja").aSeveridadPorTipo()
+        assertEquals(Severidad.ALTA, mixto.severidadDe(TipoAtaque.VOLUMEN_INUSUAL))
+        assertEquals(Severidad.BAJA, mixto.severidadDe(TipoAtaque.SERVICIO_NO_AUTORIZADO))
     }
 
     @Test

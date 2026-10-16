@@ -40,7 +40,8 @@ class ApiFalsa : ZondaApi {
         "sin_tipificar" to "alta",
         "escaneo" to "media",
         "ddos" to "media",
-        "solo_reglas_o_umbrales" to "media",
+        "servicio_no_autorizado" to "media",
+        "volumen_inusual" to "media",
         "probable_falsa_alarma" to "baja",
     )
     var catalogo = CatalogoDto(equipos = mapOf("192.168.10.50" to "srv-web", "192.168.10.9" to "pc-09"), servicios = listOf("smb", "ssh"))
@@ -154,10 +155,18 @@ class ApiFalsa : ZondaApi {
         fallarSiCorresponde("severidades")
         this.severidades.putAll(severidades)
         // Como la API: la severidad sale del tipo y todas las alertas vuelven a salir en la sincronización.
-        alertas.values.toList().forEach { alerta ->
-            publicar(alerta.copy(severidad = this.severidades.getValue(alerta.tipoAtaque ?: "solo_reglas_o_umbrales")))
-        }
+        alertas.values.toList().forEach { alerta -> publicar(alerta.copy(severidad = severidadDe(alerta))) }
         return this.severidades.toMap()
+    }
+
+    /** Como la API: la de su tipo o, si la IA no la vio, la más alta de los detectores que la marcaron (cambio 9). */
+    private fun severidadDe(alerta: AlertaDto): String {
+        val claves = alerta.tipoAtaque?.let(::listOf)
+            ?: listOfNotNull(
+                "servicio_no_autorizado".takeIf { alerta.veredictos.reglas },
+                "volumen_inusual".takeIf { alerta.veredictos.umbrales },
+            ).ifEmpty { listOf("servicio_no_autorizado", "volumen_inusual") }
+        return claves.map(severidades::getValue).maxBy { listOf("baja", "media", "alta").indexOf(it) }
     }
 
     override suspend fun catalogo(): CatalogoDto {

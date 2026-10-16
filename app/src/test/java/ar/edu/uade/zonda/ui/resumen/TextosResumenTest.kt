@@ -79,7 +79,7 @@ class TextosResumenTest {
         )
         assertEquals("Fuerza bruta", GrupoResumen.Tipo(TipoAtaque.FUERZA_BRUTA).etiquetaChip(recursos))
         assertEquals("Sin tipo identificado", GrupoResumen.Tipo(TipoAtaque.SIN_TIPIFICAR).etiquetaChip(recursos))
-        assertEquals("solo reglas o umbrales", GrupoResumen.Tipo(TipoAtaque.SOLO_REGLAS_O_UMBRALES).etiquetaFrase(recursos))
+        assertEquals("volumen inusual", GrupoResumen.Tipo(TipoAtaque.VOLUMEN_INUSUAL).etiquetaFrase(recursos))
     }
 
     @Test

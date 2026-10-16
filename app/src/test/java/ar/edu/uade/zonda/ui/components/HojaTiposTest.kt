@@ -62,6 +62,12 @@ class HojaTiposTest {
             .assertIsDisplayed()
         compose.onNodeWithText("LO QUE LA IA NO DETECTÓ").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Lo marcaron los otros dos detectores de Zonda.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Servicio no autorizado. Las reglas vieron una conexión a un servicio que no está en la lista de permitidos.")
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText("Volumen inusual. Los umbrales vieron demasiadas conexiones a un mismo servicio en un minuto.")
+            .performScrollTo()
+            .assertIsDisplayed()
         compose.onNodeWithText(
             "El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque.",
         ).performScrollTo().assertIsDisplayed()
@@ -73,9 +79,10 @@ class HojaTiposTest {
     fun `el punto de cada tipo es la severidad que eligio la red`() {
         dibujar(SeveridadPorTipo.RECOMENDADA.con(TipoAtaque.DDOS, Severidad.BAJA))
 
-        // Fuerza bruta y sin tipo: alta; escaneo y solo reglas o umbrales: media; probable falsa alarma y DDoS: baja.
+        // Fuerza bruta y sin tipo: alta; escaneo, servicio no autorizado y volumen inusual: media;
+        // probable falsa alarma y DDoS: baja.
         compose.onAllNodesWithContentDescription("Severidad alta").assertCountEquals(2)
-        compose.onAllNodesWithContentDescription("Severidad media").assertCountEquals(2)
+        compose.onAllNodesWithContentDescription("Severidad media").assertCountEquals(3)
         compose.onAllNodesWithContentDescription("Severidad baja").assertCountEquals(2)
     }
 

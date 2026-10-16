@@ -72,7 +72,10 @@ class SeveridadesScreenTest {
             "Denegación de servicio (DDoS)",
             "Probable falsa alarma",
             "LO QUE LA IA NO DETECTÓ",
-            "Detectado solo por reglas o umbrales",
+            "Servicio no autorizado",
+            "Lo detectan las reglas",
+            "Volumen inusual de conexiones",
+            "Lo detectan los umbrales",
             "Los cambios valen para todos los teléfonos pareados a esta red.",
         ).map(::alturaDe)
         assertEquals(alturas.sorted(), alturas)
@@ -85,8 +88,8 @@ class SeveridadesScreenTest {
         // Escaneo de puertos es el tercer tipo: viene en media y se pasa a alta.
         val altaDeEscaneo = compose.onAllNodesWithText("Alta")[2]
 
-        compose.onAllNodesWithText("Alta").assertCountEquals(6)
-        compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Selected, true)).assertCountEquals(6)
+        compose.onAllNodesWithText("Alta").assertCountEquals(7)
+        compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Selected, true)).assertCountEquals(7)
         compose.onAllNodesWithText("Media")[2].assertIsSelected()
 
         altaDeEscaneo.performScrollTo().performClick()

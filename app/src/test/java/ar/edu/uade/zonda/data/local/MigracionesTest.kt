@@ -6,10 +6,15 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import ar.edu.uade.zonda.data.mapper.aDominio
 import ar.edu.uade.zonda.data.mapper.aEntidad
+import ar.edu.uade.zonda.data.mapper.aEntidades
 import ar.edu.uade.zonda.data.repository.AlertasRepositoryImpl
 import ar.edu.uade.zonda.domain.Fixtures
+import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.TipoAtaque
 import java.time.Instant
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -117,8 +122,74 @@ class MigracionesTest {
         migrada.close()
     }
 
+    @Test
+    fun `la migracion 4 a 5 separa solo reglas o umbrales en servicio no autorizado y volumen inusual`() = runTest {
+        val nueva = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO).allowMainThreadQueries().build()
+        nueva.redesDao().insertar(Fixtures.red("red-1").aEntidad(creadaEn = Fixtures.AHORA))
+        AlertasRepositoryImpl(nueva.alertasDao(), reloj = { Fixtures.AHORA }).guardarDelServidor(
+            listOf(
+                Fixtures.alerta("reglas", tipoAtaque = TipoAtaque.SERVICIO_NO_AUTORIZADO, metodos = setOf(MetodoDeteccion.REGLAS)),
+                Fixtures.alerta("umbrales", tipoAtaque = TipoAtaque.VOLUMEN_INUSUAL, metodos = setOf(MetodoDeteccion.UMBRALES)),
+                Fixtures.alerta(
+                    "las-dos", tipoAtaque = TipoAtaque.SERVICIO_NO_AUTORIZADO,
+                    metodos = setOf(MetodoDeteccion.REGLAS, MetodoDeteccion.UMBRALES),
+                ),
+                Fixtures.alerta("ia", tipoAtaque = TipoAtaque.ESCANEO),
+            ),
+        )
+        nueva.redesDao().guardarSeveridades("red-1", SeveridadPorTipo.RECOMENDADA.con(TipoAtaque.SERVICIO_NO_AUTORIZADO, Severidad.ALTA).aEntidades("red-1"))
+        nueva.accionesPendientesDao().insertar(Fixtures.accion(id = "severidades", alertaId = null, revision = null).aEntidad())
+        nueva.close()
+        llevarAVersion4()
+
+        val migrada = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO)
+            .addMigrations(*MIGRACIONES)
+            .allowMainThreadQueries()
+            .build()
+        val alertas = AlertasRepositoryImpl(migrada.alertasDao(), reloj = { Fixtures.AHORA })
+        suspend fun tipoDe(id: String) = alertas.observarAlerta("red-1", id).first()!!
+
+        assertEquals(TipoAtaque.SERVICIO_NO_AUTORIZADO, tipoDe("reglas").tipoAtaque)
+        assertEquals(TipoAtaque.VOLUMEN_INUSUAL, tipoDe("umbrales").tipoAtaque)
+        // La que vieron los dos queda como de las reglas y el Resumen la cuenta en los dos tipos.
+        assertEquals(setOf(TipoAtaque.SERVICIO_NO_AUTORIZADO, TipoAtaque.VOLUMEN_INUSUAL), tipoDe("las-dos").tiposDeAtaque)
+        assertEquals(TipoAtaque.ESCANEO, tipoDe("ia").tipoAtaque)
+        // Lo que la red había elegido para "solo reglas o umbrales" pasa a los dos tipos nuevos.
+        val severidades = migrada.redesDao().observarSeveridades("red-1").first().aDominio()
+        assertEquals(Severidad.ALTA, severidades.severidadDe(TipoAtaque.SERVICIO_NO_AUTORIZADO))
+        assertEquals(Severidad.ALTA, severidades.severidadDe(TipoAtaque.VOLUMEN_INUSUAL))
+        assertEquals(TipoAtaque.entries.toSet(), severidades.valores.keys)
+        // También en un cambio de severidades que todavía no se envió.
+        val pendiente = migrada.accionesPendientesDao().listar("red-1").single().aDominio().severidades!!
+        assertEquals(Severidad.BAJA, pendiente.severidadDe(TipoAtaque.SERVICIO_NO_AUTORIZADO))
+        assertEquals(Severidad.BAJA, pendiente.severidadDe(TipoAtaque.VOLUMEN_INUSUAL))
+        assertEquals(Severidad.ALTA, pendiente.severidadDe(TipoAtaque.FUERZA_BRUTA))
+        migrada.close()
+    }
+
+    /**
+     * Deja el archivo como lo dejaba la versión 4: con "solo reglas o umbrales" donde ahora van servicio
+     * no autorizado y volumen inusual (cambio 9), y un cambio de severidades pendiente con ese nombre.
+     */
+    private fun llevarAVersion4() {
+        val db = SQLiteDatabase.openDatabase(contexto.getDatabasePath(ARCHIVO).path, null, SQLiteDatabase.OPEN_READWRITE)
+        db.beginTransaction()
+        try {
+            db.execSQL("UPDATE alertas SET tipoAtaque = 'SOLO_REGLAS_O_UMBRALES' WHERE tipoAtaque IN ('SERVICIO_NO_AUTORIZADO', 'VOLUMEN_INUSUAL')")
+            db.execSQL("DELETE FROM severidades WHERE tipoAtaque = 'VOLUMEN_INUSUAL'")
+            db.execSQL("UPDATE severidades SET tipoAtaque = 'SOLO_REGLAS_O_UMBRALES' WHERE tipoAtaque = 'SERVICIO_NO_AUTORIZADO'")
+            db.execSQL("UPDATE acciones_pendientes SET severidades = 'FUERZA_BRUTA=ALTA;SOLO_REGLAS_O_UMBRALES=BAJA' WHERE alertaId IS NULL")
+            db.version = 4
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+    }
+
     /** Deja el archivo como lo dejaba la versión 3: sin lo que suma Telegram (fase 10). */
     private fun llevarAVersion3() {
+        llevarAVersion4()
         val db = SQLiteDatabase.openDatabase(contexto.getDatabasePath(ARCHIVO).path, null, SQLiteDatabase.OPEN_READWRITE)
         db.beginTransaction()
         try {
@@ -208,7 +279,12 @@ class MigracionesTest {
 
     private companion object {
         const val ARCHIVO = "migracion.db"
-        val MIGRACIONES = arrayOf(ZondaDatabase.MIGRACION_1_2, ZondaDatabase.MIGRACION_2_3, ZondaDatabase.MIGRACION_3_4)
+        val MIGRACIONES = arrayOf(
+            ZondaDatabase.MIGRACION_1_2,
+            ZondaDatabase.MIGRACION_2_3,
+            ZondaDatabase.MIGRACION_3_4,
+            ZondaDatabase.MIGRACION_4_5,
+        )
         val COLUMNAS_VERSION_2 = listOf("accesoVencido", "accesoEmitidoEn", "accesoVenceEn")
     }
 }

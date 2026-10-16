@@ -276,25 +276,29 @@ class ResumenContenidoTest {
         assertEquals(TextoSecundario, colorDelTexto("Sin tipo identificado"))
         assertEquals(Texto, colorDelTexto("Fuerza bruta (SSH, FTP)"))
         compose.onAllNodesWithText("LO QUE LA IA NO DETECTÓ").assertCountEquals(0)
-        compose.onAllNodesWithText("Solo reglas o umbrales").assertCountEquals(0)
+        compose.onAllNodesWithText("Servicio no autorizado").assertCountEquals(0)
+        compose.onAllNodesWithText("Volumen inusual").assertCountEquals(0)
         compose.onAllNodesWithText("Otros").assertCountEquals(0)
     }
 
     @Test
     fun `con algo que la IA no detecto se ve su bloque y cada fila dice la severidad elegida`() {
         val solo = Fixtures.alerta(
-            "a-5", severidad = Severidad.MEDIA, tipoAtaque = TipoAtaque.SOLO_REGLAS_O_UMBRALES,
+            "a-5", severidad = Severidad.MEDIA, tipoAtaque = TipoAtaque.SERVICIO_NO_AUTORIZADO,
             creadaEn = ahora.minus(Duration.ofHours(2)), metodos = setOf(MetodoDeteccion.REGLAS),
         )
         val severidades = SeveridadPorTipo.RECOMENDADA.con(TipoAtaque.ESCANEO, Severidad.ALTA)
         dibujar(estado(resumen(lista = alertas() + solo)).copy(severidades = severidades))
 
         compose.onNodeWithText("LO QUE LA IA NO DETECTÓ").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Solo reglas o umbrales").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Servicio no autorizado").performScrollTo().assertIsDisplayed()
+        // Volumen inusual, en cero, queda en gris dentro del bloque.
+        compose.onNodeWithText("Volumen inusual").performScrollTo().assertIsDisplayed()
+        assertEquals(TextoSecundario, colorDelTexto("Volumen inusual"))
         // El punto de color también lo lee TalkBack.
         compose.onNode(hasText("Escaneo de puertos") and hasContentDescription("Severidad alta")).assertExists()
         compose.onNode(hasText("Probable falsa alarma") and hasContentDescription("Severidad baja")).assertExists()
-        compose.onNode(hasText("Solo reglas o umbrales") and hasContentDescription("Severidad media")).assertExists()
+        compose.onNode(hasText("Servicio no autorizado") and hasContentDescription("Severidad media")).assertExists()
     }
 
     @Test

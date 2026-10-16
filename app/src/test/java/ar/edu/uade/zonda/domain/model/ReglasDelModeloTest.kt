@@ -20,7 +20,8 @@ class ReglasDelModeloTest {
         assertEquals(Severidad.ALTA, recomendada.severidadDe(TipoAtaque.SIN_TIPIFICAR))
         assertEquals(Severidad.MEDIA, recomendada.severidadDe(TipoAtaque.ESCANEO))
         assertEquals(Severidad.MEDIA, recomendada.severidadDe(TipoAtaque.DDOS))
-        assertEquals(Severidad.MEDIA, recomendada.severidadDe(TipoAtaque.SOLO_REGLAS_O_UMBRALES))
+        assertEquals(Severidad.MEDIA, recomendada.severidadDe(TipoAtaque.SERVICIO_NO_AUTORIZADO))
+        assertEquals(Severidad.MEDIA, recomendada.severidadDe(TipoAtaque.VOLUMEN_INUSUAL))
         assertEquals(Severidad.BAJA, recomendada.severidadDe(TipoAtaque.PROBABLE_FALSA_ALARMA))
     }
 
