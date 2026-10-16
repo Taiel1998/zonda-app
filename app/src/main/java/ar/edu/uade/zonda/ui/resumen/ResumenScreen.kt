@@ -304,11 +304,10 @@ private fun CuerpoDelResumen(
         TarjetaTipos(resumen, estado.severidades, alTocarCifra, alPedirAyuda = { alPedirAyuda(AyudaResumen.TIPOS) })
         TarjetaRealesYFalsos(resumen, alTocarCifra)
         TarjetaPrecision(resumen, alTocarCifra, alPedirAyuda = { alPedirAyuda(AyudaResumen.PRECISION) })
-        PieDelResumen()
     }
 }
 
-/** Sin alertas en el período (Figma 52-2976): el círculo verde con el tilde y el pie. */
+/** Sin alertas en el período (Figma 52-2976): el círculo verde con el tilde. */
 @Composable
 private fun CuerpoVacio(
     estado: ResumenUiState,
@@ -336,7 +335,6 @@ private fun CuerpoVacio(
             colorIcono = Tonos.Baja.texto,
             modifier = Modifier.padding(top = 16.dp),
         )
-        PieDelResumen()
     }
 }
 
@@ -617,14 +615,4 @@ private fun TarjetaPrecision(resumen: ResumenActividad, alTocarCifra: (GrupoResu
             }
         }
     }
-}
-
-/** "Calculado con las alertas guardadas en el teléfono. No incluye direcciones IP ni nombres de equipos." */
-@Composable
-private fun PieDelResumen() {
-    Text(
-        text = stringResource(R.string.resumen_pie),
-        style = estiloRotuloChicoResumen,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }

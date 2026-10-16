@@ -833,7 +833,6 @@
     <string name="precision_filtro_reales">Estás viendo los ataques reales: todas son reales, así que cada modelo da 100 %.</string>
     <string name="precision_filtro_falsos">Estás viendo los falsos positivos: ninguna es real, así que cada modelo da 0 %.</string>
     <string name="precision_pie">Se calcula con las alertas guardadas en el teléfono, de los últimos 30 días.</string>
-    <string name="resumen_pie">Calculado con las alertas guardadas en el teléfono. No incluye direcciones IP ni nombres de equipos.</string>
     <string name="resumen_vacio_titulo_7">Sin alertas en los últimos 7 días</string>
     <string name="resumen_vacio_titulo_30">Sin alertas en los últimos 30 días</string>
     <string name="resumen_vacio_detalle_7">El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>

@@ -138,9 +138,8 @@ class ResumenContenidoTest {
         compose.onAllNodesWithText("Precisión =", substring = true).assertCountEquals(0)
         compose.onAllNodesWithText("precisión más alta", substring = true).assertCountEquals(0)
         compose.onAllNodesWithText("Recall", substring = true).assertCountEquals(0)
-        compose.onNodeWithText("Calculado con las alertas guardadas en el teléfono. No incluye direcciones IP ni nombres de equipos.")
-            .performScrollTo()
-            .assertIsDisplayed()
+        // Sin el pie gris: la pantalla termina en "Compartir resumen" (cambio 17).
+        compose.onAllNodesWithText("Calculado con", substring = true).assertCountEquals(0)
     }
 
     @Test
@@ -206,6 +205,7 @@ class ResumenContenidoTest {
         compose.onNodeWithText("Sin alertas en los últimos 7 días").assertIsDisplayed()
         compose.onNodeWithText("El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que la red estuvo tranquila.")
             .assertIsDisplayed()
+        compose.onAllNodesWithText("Calculado con", substring = true).assertCountEquals(0)
         compose.onAllNodesWithText("Compartir resumen").onFirst().performClick()
 
         assertTrue(compartido)
