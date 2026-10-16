@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
@@ -27,6 +30,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -48,12 +52,27 @@ import ar.edu.uade.zonda.ui.theme.tituloHoja
 // Piezas de la pantalla Estado (RF01; Figma 1-3, 1-178, 1-222, 50-616 y 99-122). Las usa también el tutorial.
 
 /**
- * Semáforo de la red: el círculo del color del estado, la etiqueta ("Atención", "Tranquila" o
- * "Sin datos"), el título y el detalle. Rojo si hay altas sin revisar, amarillo si solo quedan medias
- * y verde si no queda ninguna de las dos; las bajas no lo cambian. Sin datos, nunca verde.
+ * Lo que va adentro del círculo del semáforo (cambio 11): cuántas alertas faltan revisar del nivel que
+ * pinta el color, o una tilde si no falta ninguna. Así el estado se distingue sin depender del color.
+ */
+sealed interface MarcaSemaforo {
+    data class Numero(val cantidad: Int) : MarcaSemaforo
+
+    data object Tilde : MarcaSemaforo
+
+    /** Sin datos: el círculo gris va vacío. */
+    data object Nada : MarcaSemaforo
+}
+
+/**
+ * Semáforo de la red: el círculo del color del estado con el número o la tilde, la etiqueta
+ * ("Atención", "Sin urgencias", "Tranquila" o "Sin datos"), el título y el detalle. Rojo si hay altas
+ * sin revisar, amarillo si solo quedan medias y verde si no queda ninguna de las dos; las bajas no lo
+ * cambian. Sin datos, nunca verde.
  *
- * Medidas del Figma (35-263): esquinas de 16, 20 de margen, 12 entre la fila y el detalle, círculo
- * de 48 a 14 de los textos, etiqueta SemiBold 12, título SemiBold 20 y detalle Regular 13.
+ * Medidas del Figma (35-263 y 1-178): esquinas de 16, 20 de margen, 12 entre la fila y el detalle,
+ * círculo de 48 a 14 de los textos con el número SemiBold 20 o la tilde de 24, etiqueta SemiBold 12,
+ * título SemiBold 20 y detalle Regular 13.
  */
 @Composable
 fun Semaforo(
@@ -62,6 +81,7 @@ fun Semaforo(
     titulo: String,
     detalle: String,
     modifier: Modifier = Modifier,
+    marca: MarcaSemaforo = MarcaSemaforo.Nada,
 ) {
     Surface(
         color = tono.fondo,
@@ -72,11 +92,24 @@ fun Semaforo(
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                // El número ya lo dice el título: TalkBack no lo lee dos veces.
                 Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(48.dp)
-                        .background(tono.punto, CircleShape),
-                )
+                        .background(tono.punto, CircleShape)
+                        .clearAndSetSemantics {},
+                ) {
+                    when (marca) {
+                        is MarcaSemaforo.Numero -> Text(
+                            text = if (marca.cantidad > 99) "99+" else marca.cantidad.toString(),
+                            style = MaterialTheme.typography.tituloHoja,
+                            color = tono.sobrePunto,
+                        )
+                        MarcaSemaforo.Tilde -> Icon(Icons.Filled.Check, contentDescription = null, tint = tono.sobrePunto, modifier = Modifier.size(24.dp))
+                        MarcaSemaforo.Nada -> Unit
+                    }
+                }
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(text = etiqueta.uppercase(), style = MaterialTheme.typography.etiquetaBarra, color = tono.texto)
                     Text(text = titulo, style = MaterialTheme.typography.tituloHoja, color = tono.texto)
@@ -274,7 +307,8 @@ private fun SemaforoAtencionPreview() {
                 tono = Tonos.Alta,
                 etiqueta = stringResource(R.string.semaforo_atencion),
                 titulo = pluralStringResource(R.plurals.semaforo_altas_sin_revisar, 3, 3),
-                detalle = stringResource(R.string.semaforo_ultima_deteccion, "5 min", "02:14"),
+                detalle = stringResource(R.string.semaforo_ultima_alta, "5 min", "02:14"),
+                marca = MarcaSemaforo.Numero(3),
             )
             FilaContadores(altas = 3, medias = 1, bajas = 0, elegida = Severidad.ALTA, alTocar = {})
         }
@@ -291,6 +325,7 @@ private fun SemaforoTranquilaPreview() {
                 etiqueta = stringResource(R.string.semaforo_tranquila),
                 titulo = stringResource(R.string.semaforo_tranquila_titulo),
                 detalle = stringResource(R.string.semaforo_tranquila_detalle, "02:14"),
+                marca = MarcaSemaforo.Tilde,
             )
             LeyendaSemaforo()
         }

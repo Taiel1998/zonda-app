@@ -345,7 +345,7 @@
     <!-- Ilustraciones del tutorial: datos de ejemplo del Figma -->
     <string name="tutorial_semaforo_etiqueta">Atención</string>
     <string name="tutorial_semaforo_titulo">3 alertas altas sin revisar</string>
-    <string name="tutorial_semaforo_detalle">Última detección hace 5 min · actualizado 02:14</string>
+    <string name="tutorial_semaforo_detalle">Última alta sin revisar: hace 5 min · actualizado 02:14</string>
     <string name="tutorial_aviso_paso">1. Llega el aviso por Telegram</string>
     <string name="tutorial_aviso_origen">Telegram · Zonda alertas · ahora</string>
     <!-- El aviso de ejemplo es el texto que manda el bot (backend/app/telegram.py): sin nombres de equipos (RNF02). -->
@@ -494,6 +494,12 @@
 
     <!-- Semáforo, contadores y descarga inicial (Figma 1-3, 1-178, 1-222 y 50-616) -->
     <string name="semaforo_atencion">Atención</string>
+    <!-- Cambio 11 (1.0.3): verde con bajas pendientes. "Tranquila" queda para cuando no falta revisar nada. -->
+    <string name="semaforo_sin_urgencias">Sin urgencias</string>
+    <plurals name="semaforo_bajas_sin_revisar">
+        <item quantity="one">%d alerta baja sin revisar</item>
+        <item quantity="other">%d alertas bajas sin revisar</item>
+    </plurals>
     <string name="semaforo_tranquila">Tranquila</string>
     <string name="semaforo_sin_datos">Sin datos</string>
     <plurals name="semaforo_altas_sin_revisar">
@@ -505,10 +511,13 @@
         <item quantity="other">%d alertas medias sin revisar</item>
     </plurals>
     <string name="semaforo_tranquila_titulo">La red está tranquila</string>
-    <string name="semaforo_tranquila_detalle">Ninguna alerta alta ni media sin revisar · actualizado %1$s</string>
+    <string name="semaforo_tranquila_detalle">Ninguna alerta sin revisar · actualizado %1$s</string>
     <string name="semaforo_sin_datos_titulo">Sin datos todavía</string>
     <string name="semaforo_sin_datos_detalle">Todavía no hay una sincronización con el servidor de tu empresa</string>
-    <string name="semaforo_ultima_deteccion">Última detección hace %1$s · actualizado %2$s</string>
+    <!-- Cambio 11: la línea de abajo habla de lo mismo que el título (antes "Última detección"). -->
+    <string name="semaforo_ultima_alta">Última alta sin revisar: hace %1$s · actualizado %2$s</string>
+    <string name="semaforo_ultima_media">Última media sin revisar: hace %1$s · actualizado %2$s</string>
+    <string name="semaforo_ultima_baja">Última baja sin revisar: hace %1$s · actualizado %2$s</string>
     <string name="semaforo_ultimo_conocido">Último estado conocido · puede haber alertas nuevas</string>
     <string name="leyenda_rojo">Rojo: hay alertas altas sin revisar</string>
     <string name="leyenda_amarillo">Amarillo: solo quedan medias sin revisar</string>

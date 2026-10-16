@@ -193,15 +193,17 @@ class EstadoViewModel(
         }
 
         /**
-         * "Última detección hace 5 min": la hora de la sin revisar más reciente de la severidad que pone
-         * el color, la misma que muestra su tarjeta. En rojo cuentan las altas y en amarillo las medias:
-         * una baja nueva no puede hacer parecer reciente un semáforo rojo. En verde no se muestra.
+         * "Última alta sin revisar: hace 5 min" (cambio 11): la hora de la sin revisar más reciente de la
+         * severidad que pone el color, la misma que muestra su tarjeta. En rojo cuentan las altas y en
+         * amarillo las medias: una baja nueva no puede hacer parecer reciente un semáforo rojo. En verde,
+         * la baja más reciente si quedan bajas ("sin urgencias"); si no queda ninguna, null.
          */
         fun ultimaDeteccion(semaforo: Semaforo, sinRevisar: List<Alerta>): Instant? {
             val severidad = when (semaforo) {
                 Semaforo.ROJO -> Severidad.ALTA
                 Semaforo.AMARILLO -> Severidad.MEDIA
-                Semaforo.VERDE, Semaforo.SIN_DATOS -> return null
+                Semaforo.VERDE -> Severidad.BAJA
+                Semaforo.SIN_DATOS -> return null
             }
             return sinRevisar.filter { it.severidad == severidad }.maxOfOrNull { it.inicio }
         }

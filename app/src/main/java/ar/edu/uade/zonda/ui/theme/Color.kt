@@ -43,9 +43,12 @@ val GrisAviso = Color(0xFF2C2C2A)
 val FondoEscaner = Color(0xFF1E1E1C)
 val TextoEscaner = Color(0xFFE4E2DA)
 
-/** Los tres colores de un tono: el del texto, el del fondo y el del punto que lo acompaña. */
+/**
+ * Los colores de un tono: el del texto, el del fondo, el del punto que lo acompaña y el de lo que va
+ * escrito sobre el punto (el número del semáforo, cambio 11).
+ */
 @Immutable
-data class Tono(val texto: Color, val fondo: Color, val punto: Color)
+data class Tono(val texto: Color, val fondo: Color, val punto: Color, val sobrePunto: Color = Color.White)
 
 /**
  * Tonos de severidad y de estado. No son roles de Material 3, por eso van en un objeto propio.
@@ -53,7 +56,8 @@ data class Tono(val texto: Color, val fondo: Color, val punto: Color)
  */
 object Tonos {
     val Alta = Tono(texto = Color(0xFFA32D2D), fondo = Color(0xFFFCEBEB), punto = Color(0xFFE24B4A))
-    val Media = Tono(texto = Color(0xFF854F0B), fondo = Color(0xFFFAEEDA), punto = Color(0xFFEF9F27))
+    // Sobre el naranja, el blanco no se lee: el número va en marrón oscuro.
+    val Media = Tono(texto = Color(0xFF854F0B), fondo = Color(0xFFFAEEDA), punto = Color(0xFFEF9F27), sobrePunto = Color(0xFF3D2402))
     val Baja = Tono(texto = Color(0xFF3B6D11), fondo = Color(0xFFEAF3DE), punto = Color(0xFF639922))
 
     /** Azul informativo: "Sin revisar", lo pendiente y "Revisada desde otro teléfono". */
