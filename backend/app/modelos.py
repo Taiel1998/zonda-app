@@ -222,3 +222,66 @@ class EstadoTelegram(BaseModel):
 class Catalogo(BaseModel):
     equipos: dict[str, str]
     servicios: list[str]
+
+
+class AlertaIngesta(BaseModel):
+    """Un episodio que manda la plataforma de detección (el pipeline en vivo del laboratorio) a
+    POST /ingesta/alertas. Mismo formato que la semilla; los campos que la semilla trae de más
+    (dia, flujos*, history, etiquetaVerdad) se ignoran."""
+
+    model_config = {"extra": "ignore"}
+
+    id: str = Field(min_length=1, max_length=128)
+    inicio: str
+    fin: str
+    cantidadFlujos: int = Field(ge=1)
+    uidReferencia: str
+    origenIp: str
+    destinoIp: str
+    servicio: str
+    protocolo: str = "tcp"
+    puerto: int = Field(ge=0)
+    puertoReferencia: int | None = Field(default=None, ge=0)
+    puertosDistintos: int = Field(default=1, ge=1)
+    tipoAtaque: TipoAtaque | None = None
+    confianzaTipo: float | None = None
+    veredictoIa: bool
+    errorReconstruccion: float
+    umbralIa: float
+    veredictoUmbrales: bool
+    contexto60s: int = Field(ge=0)
+    umbralServicio: int = Field(ge=0)
+    # El máximo del día de calibración para ese puerto; null si el puerto no tenía línea base (igual que la semilla).
+    umbralServicioLunes: float | None = None
+    veredictoReglas: bool
+    parDestino: str
+    parEnCatalogo: bool
+
+    @field_validator("inicio", "fin")
+    @classmethod
+    def fecha_con_zona(cls, valor: str) -> str:
+        try:
+            momento = datetime.fromisoformat(valor)
+        except ValueError as error:
+            raise ValueError("la fecha tiene que ser ISO 8601") from error
+        if momento.tzinfo is None:
+            raise ValueError("la fecha tiene que tener la zona horaria")
+        return valor
+
+
+class CatalogoIngesta(BaseModel):
+    """Nombres de equipos (por IP) y servicios que trae la ingesta, para que la app los muestre."""
+
+    equipos: dict[str, str] = Field(default_factory=dict)
+    servicios: list[str] = Field(default_factory=list)
+
+
+class IngestaEntrada(BaseModel):
+    alertas: list[AlertaIngesta] = Field(min_length=1)
+    catalogo: CatalogoIngesta | None = None
+
+
+class IngestaResultado(BaseModel):
+    recibidas: int
+    creadas: int
+    actualizadas: int

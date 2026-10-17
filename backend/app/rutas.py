@@ -1,7 +1,8 @@
 """Las rutas del contrato (informe, sección 13.3). Cada una dice qué recibe, qué devuelve y qué error da."""
 
+import secrets
 import sqlite3
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
@@ -20,6 +21,7 @@ from .modelos import (
     MOTIVOS_POR_RESULTADO,
     TIPOS_SEVERIDAD,
     Alerta,
+    AlertaIngesta,
     AvisosTelegram,
     Catalogo,
     Conflicto,
@@ -27,6 +29,8 @@ from .modelos import (
     Estado,
     EstadoRevision,
     EstadoTelegram,
+    IngestaEntrada,
+    IngestaResultado,
     PaginaAlertas,
     PareoEntrada,
     PareoSalida,
@@ -401,3 +405,99 @@ def catalogo(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_ac
         equipos={f["ip"]: f["nombre"] for f in con.execute("SELECT * FROM catalogo_equipos ORDER BY ip")},
         servicios=[f["servicio"] for f in con.execute("SELECT * FROM catalogo_servicios ORDER BY servicio")],
     )
+
+
+# ---- Ingesta de alertas desde la plataforma de detección (prueba de punta a punta, §21.6) ----
+
+
+def verificar_token_ingesta(request: Request, x_token_ingesta: Annotated[str | None, Header()] = None) -> None:
+    """La plataforma de detección se autentica con un token propio (ZONDA_INGESTA_TOKEN), distinto del de
+    los teléfonos, en la cabecera X-Token-Ingesta. 503 si el servidor no tiene uno; 401 si no coincide."""
+    esperado = request.app.state.config.ingesta_token
+    if not esperado:
+        raise HTTPException(status_code=503, detail="La ingesta de alertas no está configurada")
+    if not x_token_ingesta or not secrets.compare_digest(x_token_ingesta, esperado):
+        raise HTTPException(status_code=401, detail="Token de ingesta inválido")
+
+
+def _a_utc(valor: str) -> str:
+    """Fecha ISO 8601 (con zona) a ISO en UTC con segundos, como guarda el resto de la base."""
+    return iso(datetime.fromisoformat(valor).astimezone(timezone.utc))
+
+
+def _guardar_ingesta(con: sqlite3.Connection, a: AlertaIngesta) -> bool:
+    """Crea la alerta si el id del episodio es nuevo, o actualiza sus datos si ya existe. Devuelve True si
+    la creó. En los dos casos mueve la secuencia y actualizadaEn para que la app la vuelva a bajar; el
+    aviso de Telegram de una alerta nueva lo manda el vigía del bot (una sola vez, por su dedup). La
+    revisión de una alerta ya existente (estado y versión) se conserva."""
+    momento = iso(ahora())
+    datos = {
+        "inicio": _a_utc(a.inicio),
+        "fin": _a_utc(a.fin),
+        "cantidad_flujos": a.cantidadFlujos,
+        "uid_referencia": a.uidReferencia,
+        "origen_ip": a.origenIp,
+        "destino_ip": a.destinoIp,
+        "servicio": a.servicio,
+        "protocolo": a.protocolo,
+        "puerto": a.puerto,
+        "puerto_referencia": a.puertoReferencia if a.puertoReferencia is not None else a.puerto,
+        "puertos_distintos": a.puertosDistintos,
+        "tipo_ataque": a.tipoAtaque,
+        "confianza_tipo": a.confianzaTipo,
+        "veredicto_ia": int(a.veredictoIa),
+        "error_reconstruccion": a.errorReconstruccion,
+        "umbral_ia": a.umbralIa,
+        "veredicto_umbrales": int(a.veredictoUmbrales),
+        "contexto_60s": a.contexto60s,
+        "umbral_servicio": a.umbralServicio,
+        "servicio_sin_linea_base": int(a.umbralServicioLunes is None),
+        "veredicto_reglas": int(a.veredictoReglas),
+        "par_destino": a.parDestino,
+        "par_en_catalogo": int(a.parEnCatalogo),
+    }
+    existe = con.execute("SELECT 1 FROM alertas WHERE id = ?", (a.id,)).fetchone() is not None
+    secuencia = Base.siguiente_secuencia(con)
+    if existe:
+        asignaciones = ", ".join(f"{col} = ?" for col in datos)
+        con.execute(
+            f"UPDATE alertas SET {asignaciones}, actualizada_en = ?, secuencia = ? WHERE id = ?",
+            (*datos.values(), momento, secuencia, a.id),
+        )
+        return False
+    columnas = ", ".join(datos)
+    marcadores = ", ".join("?" for _ in datos)
+    con.execute(
+        f"INSERT INTO alertas (id, creada_en, {columnas}, estado_revision, version, actualizada_en, secuencia) "
+        f"VALUES (?, ?, {marcadores}, 'sin_revisar', 1, ?, ?)",
+        (a.id, momento, *datos.values(), momento, secuencia),
+    )
+    return True
+
+
+@router.post("/ingesta/alertas", response_model=IngestaResultado)
+def ingesta_alertas(entrada: IngestaEntrada, request: Request, _: None = Depends(verificar_token_ingesta)) -> IngestaResultado:
+    """Recibe episodios de la plataforma de detección (el pipeline en vivo del laboratorio) con el mismo
+    formato de la semilla y los crea o actualiza por id (§21.6). El alta la avisa el bot de Telegram como
+    cualquier alerta nueva; la actualización mueve la secuencia para que la app la vuelva a bajar."""
+    base = _base(request)
+    creadas = 0
+    fin_mas_nuevo: str | None = None
+    with base.transaccion() as con:
+        if entrada.catalogo is not None:
+            for ip, nombre in entrada.catalogo.equipos.items():
+                if nombre:
+                    con.execute("INSERT OR REPLACE INTO catalogo_equipos (ip, nombre) VALUES (?, ?)", (ip, nombre))
+            for servicio in entrada.catalogo.servicios:
+                con.execute("INSERT OR IGNORE INTO catalogo_servicios (servicio) VALUES (?)", (servicio,))
+        for alerta in entrada.alertas:
+            if _guardar_ingesta(con, alerta):
+                creadas += 1
+            fin = _a_utc(alerta.fin)
+            if fin_mas_nuevo is None or fin > fin_mas_nuevo:
+                fin_mas_nuevo = fin
+        if fin_mas_nuevo is not None:
+            ultimo = base.leer_meta("ultimo_flujo")
+            if ultimo is None or ultimo < fin_mas_nuevo:
+                Base.escribir_meta(con, "ultimo_flujo", fin_mas_nuevo)
+    return IngestaResultado(recibidas=len(entrada.alertas), creadas=creadas, actualizadas=len(entrada.alertas) - creadas)
