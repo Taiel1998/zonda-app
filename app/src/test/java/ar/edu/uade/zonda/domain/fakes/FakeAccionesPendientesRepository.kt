@@ -33,6 +33,13 @@ class FakeAccionesPendientesRepository : AccionesPendientesRepository {
         acciones.value = acciones.value.filter { it.id != accionId }
     }
 
+    /** Las asignaciones encoladas: la última de cada alerta reemplaza a la anterior (decisión 42). */
+    val asignaciones = mutableMapOf<String, String?>()
+
+    override suspend fun encolarAsignacion(redId: String, alertaId: String, accionId: String, responsableId: String?, creadaEn: java.time.Instant) {
+        asignaciones[alertaId] = responsableId
+    }
+
     override suspend fun borrarDeRed(redId: String) {
         acciones.value = acciones.value.filter { it.redId != redId }
     }

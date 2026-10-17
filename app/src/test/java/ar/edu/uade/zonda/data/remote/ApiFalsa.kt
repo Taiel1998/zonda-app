@@ -51,6 +51,15 @@ class ApiFalsa : ZondaApi {
     var tokenRevocado = false
     var vinculo = VinculoTelegramDto("ABCD-EFGH", "https://t.me/zonda_alertas_bot?start=ABCD-EFGH", null)
 
+    /** La gente de la red, como `GET /personas`: este teléfono es el primero (d-1) y administrador. */
+    val personas = mutableListOf(PersonaDto("d-1", null, "Este teléfono", "administrador", "2026-10-12T00:00:00+00:00", vos = true))
+    val registro = mutableListOf<CambioRegistroDto>()
+    val importancias = mutableMapOf<String, String>()
+    val motivosRecibidos = mutableListOf<String>()
+    val asignacionesRecibidas = mutableListOf<AsignacionEntradaDto>()
+    /** Lo que devuelve `PUT /alertas/{id}/asignacion` en lugar de aplicarla (por ejemplo, un 409). */
+    var errorAlAsignar: Exception? = null
+
     /** Lo de Telegram de este teléfono, como lo guarda la API (`dispositivos` y su chat). */
     var telegramVinculado = false
     var botTelegram = "zonda_alertas_bot"
@@ -151,9 +160,12 @@ class ApiFalsa : ZondaApi {
         return severidades.toMap()
     }
 
-    override suspend fun guardarSeveridades(severidades: Map<String, String>): Map<String, String> {
+    override suspend fun guardarSeveridades(entrada: SeveridadesEntradaDto): Map<String, String> {
         fallarSiCorresponde("severidades")
-        this.severidades.putAll(severidades)
+        // Como la API 0.6.0: sin motivo, 422 (decisión 40).
+        if (entrada.motivo.isBlank()) throw errorHttp(422)
+        motivosRecibidos += entrada.motivo
+        this.severidades.putAll(entrada.severidades)
         // Como la API: la severidad sale del tipo y todas las alertas vuelven a salir en la sincronización.
         alertas.values.toList().forEach { alerta -> publicar(alerta.copy(severidad = severidadDe(alerta))) }
         return this.severidades.toMap()
@@ -166,7 +178,14 @@ class ApiFalsa : ZondaApi {
                 "servicio_no_autorizado".takeIf { alerta.veredictos.reglas },
                 "volumen_inusual".takeIf { alerta.veredictos.umbrales },
             ).ifEmpty { listOf("servicio_no_autorizado", "volumen_inusual") }
-        return claves.map(severidades::getValue).maxBy { listOf("baja", "media", "alta").indexOf(it) }
+        val delTipo = claves.map(severidades::getValue).maxBy { NIVELES.indexOf(it) }
+        // Y un nivel más o menos según la importancia del equipo destino (decisión 41).
+        val nivel = NIVELES.indexOf(delTipo) + when (importancias[alerta.destinoIp]) {
+            "critico" -> 1
+            "poco_importante" -> -1
+            else -> 0
+        }
+        return NIVELES[nivel.coerceIn(0, NIVELES.lastIndex)]
     }
 
     override suspend fun catalogo(): CatalogoDto {
@@ -221,6 +240,69 @@ class ApiFalsa : ZondaApi {
         fallarSiCorresponde("quitar")
         tokenRevocado = true
         return Response.success(204, Unit)
+    }
+
+    // ---- Personas, equipos, registro y asignaciones (API 0.6.0) ----
+
+    override suspend fun personas(): List<PersonaDto> {
+        fallarSiCorresponde("personas")
+        return personas.toList()
+    }
+
+    override suspend fun codigoParaPersona(entrada: CodigoPersonaEntradaDto): CodigoPersonaDto {
+        fallarSiCorresponde("codigo")
+        return CodigoPersonaDto("LAUR-A123", "2026-10-12T00:10:00+00:00", "zonda:https://zonda-equipo.duckdns.org#LAUR-A123;vence=2026-10-12T00:10:00+00:00", entrada.nombre, entrada.perfil)
+    }
+
+    override suspend fun cambiarPerfil(id: String, entrada: PerfilEntradaDto): PersonaDto {
+        fallarSiCorresponde("perfil")
+        val indice = personas.indexOfFirst { it.id == id }
+        if (indice < 0) throw errorHttp(404)
+        personas[indice] = personas[indice].copy(perfil = entrada.perfil)
+        return personas[indice]
+    }
+
+    override suspend fun quitarPersona(id: String): Response<Unit> {
+        fallarSiCorresponde("quitarPersona")
+        personas.removeAll { it.id == id }
+        return Response.success(204, Unit)
+    }
+
+    override suspend fun equipos(): List<EquipoDto> {
+        fallarSiCorresponde("equipos")
+        return catalogo.equipos.map { (ip, nombre) -> EquipoDto(ip, nombre, importancias[ip] ?: "normal") }
+    }
+
+    override suspend fun cambiarImportancia(ip: String, entrada: ImportanciaEntradaDto): EquipoDto {
+        fallarSiCorresponde("importancia")
+        if (entrada.motivo.isBlank()) throw errorHttp(422)
+        val nombre = catalogo.equipos[ip] ?: throw errorHttp(404)
+        importancias[ip] = entrada.importancia
+        motivosRecibidos += entrada.motivo
+        // Como la API: las alertas de ese equipo vuelven a salir con la severidad nueva.
+        alertas.values.filter { it.destinoIp == ip }.forEach { alerta -> publicar(alerta.copy(severidad = severidadDe(alerta))) }
+        return EquipoDto(ip, nombre, entrada.importancia)
+    }
+
+    override suspend fun registro(): List<CambioRegistroDto> {
+        fallarSiCorresponde("registro")
+        return registro.toList()
+    }
+
+    override suspend fun asignar(id: String, entrada: AsignacionEntradaDto): AlertaDto {
+        fallarSiCorresponde("asignar")
+        errorAlAsignar?.let { throw it }
+        val actual = alertas[id] ?: throw errorHttp(404)
+        asignacionesRecibidas += entrada
+        val persona = personas.firstOrNull { it.id == entrada.responsableId }
+        val evento = AsignacionDto(entrada.responsableId, persona?.let { it.nombre ?: it.telefono }, "d-1", "Este teléfono", "2026-10-12T06:00:00+00:00")
+        val nueva = actual.copy(asignacion = evento.takeIf { entrada.responsableId != null }, asignaciones = actual.asignaciones.orEmpty() + evento)
+        publicar(nueva)
+        return nueva
+    }
+
+    private companion object {
+        val NIVELES = listOf("baja", "media", "alta")
     }
 }
 

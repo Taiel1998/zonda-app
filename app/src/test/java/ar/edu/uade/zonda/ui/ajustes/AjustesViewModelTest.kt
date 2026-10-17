@@ -29,6 +29,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -136,12 +137,23 @@ class AjustesViewModelTest {
         viewModel.cambiarSeveridadDelBorrador(TipoAtaque.ESCANEO, Severidad.ALTA)
         assertEquals(Severidad.MEDIA, viewModel.estado.value.severidades.severidadDe(TipoAtaque.ESCANEO)) // todavía no se guardó
 
-        viewModel.guardarSeveridades()
+        // "Guardar" pide el motivo (decisión 40): sin escribirlo no se guarda nada.
+        assertTrue(viewModel.pedirMotivo())
+        assertEquals("", viewModel.estado.value.motivo)
+        assertFalse(viewModel.guardarSeveridades())
+        assertTrue(viewModel.estado.value.faltaMotivo)
+        assertTrue(acciones.todas.isEmpty())
+        viewModel.cambiarMotivo("Los escaneos ahora son prioridad.")
+        assertFalse(viewModel.estado.value.faltaMotivo)
+
+        assertTrue(viewModel.guardarSeveridades())
         runCurrent()
 
         val accion = acciones.todas.single()
         assertEquals(TipoAccion.CAMBIAR_SEVERIDADES, accion.tipo)
         assertEquals(Severidad.ALTA, accion.severidades?.severidadDe(TipoAtaque.ESCANEO))
+        assertEquals("Los escaneos ahora son prioridad.", accion.motivo)
+        assertNull(viewModel.estado.value.motivo)
         assertEquals(Severidad.ALTA, viewModel.estado.value.severidades.severidadDe(TipoAtaque.ESCANEO))
         assertNull(viewModel.estado.value.borradorSeveridades)
         assertEquals(AvisoAjustes.SeveridadesGuardadas, viewModel.estado.value.aviso)

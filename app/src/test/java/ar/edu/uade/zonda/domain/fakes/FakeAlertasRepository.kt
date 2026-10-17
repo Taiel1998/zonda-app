@@ -1,6 +1,7 @@
 package ar.edu.uade.zonda.domain.fakes
 
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.Asignacion
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
@@ -101,6 +102,21 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
         )
         reemplazar(nueva)
         return nueva
+    }
+
+    /** Las asignaciones hechas en el teléfono, en orden (decisión 42). */
+    val asignacionesLocales = mutableListOf<Pair<String, Asignacion>>()
+
+    override suspend fun aplicarAsignacionLocal(redId: String, alertaId: String, asignacion: Asignacion) {
+        if (alertas.value.none { it.id == alertaId && it.redId == redId }) throw ErrorZonda.NoEncontrado()
+        asignacionesLocales += alertaId to asignacion
+        alertas.value = alertas.value.map { alerta ->
+            if (alerta.id == alertaId) {
+                alerta.copy(asignacion = asignacion.takeIf { it.responsableId != null }, asignaciones = alerta.asignaciones + asignacion)
+            } else {
+                alerta
+            }
+        }
     }
 
     override suspend fun restaurarEstadoDelServidor(redId: String, alertaId: String) {

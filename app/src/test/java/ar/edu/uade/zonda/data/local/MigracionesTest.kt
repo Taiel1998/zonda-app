@@ -9,7 +9,9 @@ import ar.edu.uade.zonda.data.mapper.aEntidad
 import ar.edu.uade.zonda.data.mapper.aEntidades
 import ar.edu.uade.zonda.data.repository.AlertasRepositoryImpl
 import ar.edu.uade.zonda.domain.Fixtures
+import ar.edu.uade.zonda.data.local.entidades.CatalogoEquipoEntity
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
+import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.Severidad
@@ -167,11 +169,69 @@ class MigracionesTest {
         migrada.close()
     }
 
+    @Test
+    fun `la migracion 5 a 6 suma perfiles importancia y asignaciones sin perder nada`() = runTest {
+        val nueva = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO).allowMainThreadQueries().build()
+        nueva.redesDao().insertar(Fixtures.red("red-1").aEntidad(creadaEn = Fixtures.AHORA))
+        nueva.redesDao().insertarEquipos(listOf(CatalogoEquipoEntity("red-1", "192.168.10.50", "srv-sueldos")))
+        AlertasRepositoryImpl(nueva.alertasDao(), reloj = { Fixtures.AHORA }).guardarDelServidor(
+            listOf(Fixtures.alerta("a-1", revision = Fixtures.revision(origen = OrigenRevision.SERVIDOR))),
+        )
+        nueva.accionesPendientesDao().insertar(Fixtures.accion(id = "revision", alertaId = "a-1").aEntidad())
+        nueva.close()
+        llevarAVersion5()
+
+        val migrada = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO)
+            .addMigrations(*MIGRACIONES)
+            .allowMainThreadQueries()
+            .build()
+
+        // Los teléfonos pareados antes de la 1.0.5 quedan como administradores hasta que el servidor diga otra cosa.
+        val red = migrada.redesDao().obtener("red-1")?.aDominio()
+        assertEquals(Perfil.ADMINISTRADOR, red?.perfil)
+        assertNull(red?.dispositivoId)
+        // Todos los equipos arrancan normales: la app funciona como antes.
+        assertEquals(listOf("NORMAL"), migrada.redesDao().observarEquipos("red-1").first().map { it.importancia })
+        val alerta = AlertasRepositoryImpl(migrada.alertasDao(), reloj = { Fixtures.AHORA }).observarAlerta("red-1", "a-1").first()!!
+        assertNull(alerta.asignacion)
+        assertEquals(emptyList<Any>(), alerta.asignaciones)
+        assertEquals(OrigenRevision.SERVIDOR, alerta.revisionActual?.origen)
+        assertNull(alerta.revisionActual?.persona)
+        // La revisión que esperaba para enviarse sigue en la cola.
+        assertEquals(listOf("revision"), migrada.accionesPendientesDao().listar("red-1").map { it.id })
+        assertEquals(emptyList<Any>(), migrada.redesDao().observarPersonas("red-1").first())
+        assertEquals(emptyList<Any>(), migrada.redesDao().observarRegistro("red-1").first())
+        migrada.close()
+    }
+
+    /**
+     * Deja el archivo como lo dejaba la versión 5 (la 1.0.4): sin perfiles, personas, registro de
+     * cambios, importancia de los equipos ni asignaciones.
+     */
+    private fun llevarAVersion5() {
+        val db = SQLiteDatabase.openDatabase(contexto.getDatabasePath(ARCHIVO).path, null, SQLiteDatabase.OPEN_READWRITE)
+        db.beginTransaction()
+        try {
+            listOf("asignaciones_pendientes", "asignaciones", "registro_cambios", "personas").forEach { db.execSQL("DROP TABLE $it") }
+            quitarColumnas(db, "redes", listOf("perfil", "dispositivoId"))
+            quitarColumnas(db, "catalogo_equipos", listOf("importancia"))
+            quitarColumnas(db, "revisiones", listOf("persona"))
+            quitarColumnas(db, "alertas", listOf("responsableId", "responsable", "asignadaPorId", "asignadaPor", "asignadaEn"))
+            quitarColumnas(db, "acciones_pendientes", listOf("motivoCambio", "equipoIp", "importancia"))
+            db.version = 5
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+    }
+
     /**
      * Deja el archivo como lo dejaba la versión 4: con "solo reglas o umbrales" donde ahora van servicio
      * no autorizado y volumen inusual (cambio 9), y un cambio de severidades pendiente con ese nombre.
      */
     private fun llevarAVersion4() {
+        llevarAVersion5()
         val db = SQLiteDatabase.openDatabase(contexto.getDatabasePath(ARCHIVO).path, null, SQLiteDatabase.OPEN_READWRITE)
         db.beginTransaction()
         try {
@@ -284,6 +344,7 @@ class MigracionesTest {
             ZondaDatabase.MIGRACION_2_3,
             ZondaDatabase.MIGRACION_3_4,
             ZondaDatabase.MIGRACION_4_5,
+            ZondaDatabase.MIGRACION_5_6,
         )
         val COLUMNAS_VERSION_2 = listOf("accesoVencido", "accesoEmitidoEn", "accesoVenceEn")
     }
