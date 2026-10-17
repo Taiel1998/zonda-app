@@ -13,13 +13,17 @@ from app.telegram import BotTelegram, ClienteTelegram
 
 ARGENTINA = timezone(timedelta(hours=-3))
 
+# La semilla de ejemplo (28 episodios), movida a fixture de tests el 16/10: los tests dependen de su
+# contenido, mientras que backend/alertas_semilla.json pasó a ser la exportación real (516 episodios).
+SEMILLA_PRUEBA = RAIZ / "tests" / "semilla_de_prueba.json"
+
 
 @pytest.fixture
 def config(tmp_path):
     """Base nueva por test, con la semilla de ejemplo y páginas chicas para probar el cursor."""
     return Config(
         db_path=tmp_path / "zonda.db",
-        semilla=RAIZ / "alertas_semilla.json",
+        semilla=SEMILLA_PRUEBA,
         red_id="red-prueba",
         red_nombre="Red de prueba",
         url_publica="https://prueba.duckdns.org",

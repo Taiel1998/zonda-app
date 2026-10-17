@@ -1,9 +1,10 @@
-"""Genera una alertas_semilla.json DE EJEMPLO, con la misma forma que produce la exportación de la
-plataforma, para poder desarrollar y probar la API y la app antes de tener los datos reales.
+"""Genera la semilla DE EJEMPLO (backend/tests/semilla_de_prueba.json), con la misma forma que produce
+la exportación de la plataforma, para poder desarrollar y probar la API y la app.
 
 Los episodios están inventados a partir de lo que se sabe del banco de pruebas de CICIDS2017
 (un atacante externo contra un servidor web, falsas alarmas hacia el controlador de dominio).
-Cuando exista la exportación real, se reemplaza el archivo y nada más cambia.
+Desde el 16/10, la exportación real (516 episodios) vive en backend/alertas_semilla.json; este ejemplo
+quedó como fixture de los tests, que dependen de su contenido, y por eso se escribe en tests/.
 
 Uso (desde backend/): .venv\\Scripts\\python herramientas\\generar_semilla_de_ejemplo.py
 """
@@ -121,6 +122,6 @@ semilla = {
     "alertas": sorted(alertas, key=lambda a: a["inicio"]),
 }
 
-destino = Path(__file__).resolve().parent.parent / "alertas_semilla.json"
+destino = Path(__file__).resolve().parent.parent / "tests" / "semilla_de_prueba.json"
 destino.write_text(json.dumps(semilla, ensure_ascii=False, indent=1), encoding="utf-8")
 print(f"{len(alertas)} episodios de ejemplo guardados en {destino}")
