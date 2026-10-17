@@ -69,6 +69,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.Semaforo
 import ar.edu.uade.zonda.domain.model.Severidad
@@ -85,6 +86,8 @@ import ar.edu.uade.zonda.ui.components.Semaforo
 import ar.edu.uade.zonda.ui.components.TarjetaAlerta
 import ar.edu.uade.zonda.ui.components.TarjetaDescarga
 import ar.edu.uade.zonda.ui.mensaje
+import ar.edu.uade.zonda.ui.navigation.AlRetocarPestania
+import ar.edu.uade.zonda.ui.navigation.Rutas
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.theme.Tonos
@@ -108,6 +111,7 @@ fun EstadoScreen(
     alVerTodas: () -> Unit,
     alConectar: () -> Unit,
     alVerNoAplicadas: () -> Unit = {},
+    alVerAsignadas: () -> Unit = {},
     viewModel: EstadoViewModel = viewModelDeZonda {
         EstadoViewModel(it.obtenerEstadoRed, it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad, it.accionesPendientes)
     },
@@ -125,6 +129,7 @@ fun EstadoScreen(
             alConectar = alConectar,
             alAvisoMostrado = viewModel::avisoMostrado,
             alVerNoAplicadas = alVerNoAplicadas,
+            alVerAsignadas = alVerAsignadas,
         ),
         ahora = ahora,
     )
@@ -143,6 +148,8 @@ data class AccionesEstado(
     val alAvisoMostrado: () -> Unit = {},
     /** "Ver" del aviso con varias revisiones no aplicadas: Alertas con esas (cambio 7). Con una, se abre su detalle. */
     val alVerNoAplicadas: () -> Unit = {},
+    /** "Ver" del aviso de alertas asignadas: Alertas con "Asignadas a mí" (decisión 42; Figma 468-2018). */
+    val alVerAsignadas: () -> Unit = {},
 )
 
 /**
@@ -203,6 +210,7 @@ fun EstadoContenido(
             if (estado.accesoVencido) BannerAccesoVencido(alConectar = acciones.alConectar)
             if (estado.sinConexion) BannerSinConexion(datosDe = estado.datosDe, zona = zona)
             val lista = rememberLazyListState()
+            AlRetocarPestania(Rutas.ESTADO) { lista.animateScrollToItem(0) }
             if (contenido is ContenidoEstado.Cargando || contenido is ContenidoEstado.SinRed) {
                 CuerpoEstado(estado, acciones, ahora, zona, lista)
             } else {
@@ -293,7 +301,11 @@ private fun LazyListScope.datosDeLaRed(
             )
         }
     }
-    item { SemaforoDeLaRed(datos, estado, ahora, zona) }
+    val asignadas = estado.asignadasAMi
+    if (asignadas.isNotEmpty()) {
+        item { AvisoAsignadas(asignadas, estado.contexto.miId, acciones.alVerAsignadas) }
+    }
+    item { SemaforoDeLaRed(datos, estado, ahora, zona, acciones.alTocarContador) }
     item {
         Text(
             text = stringResource(ayudaDeLosContadores(elegida)),
@@ -329,7 +341,7 @@ private fun LazyListScope.datosDeLaRed(
         }
     } else {
         items(datos.alertas, key = { it.id }) { alerta ->
-            TarjetaAlerta(alerta = alerta, alTocar = acciones.alAbrirDetalle, zona = zona)
+            TarjetaAlerta(alerta = alerta, alTocar = acciones.alAbrirDetalle, zona = zona, contexto = estado.contexto)
         }
     }
     if (datos.semaforo == Semaforo.VERDE) item { LeyendaSemaforo() }
@@ -342,8 +354,24 @@ private fun LazyListScope.datosDeLaRed(
  * (443-24); sin conexión, "Último estado conocido" (1-87). Queda marcado para el paso 1 del recorrido.
  */
 @Composable
-private fun SemaforoDeLaRed(datos: ContenidoEstado.Datos, estado: EstadoUiState, ahora: Instant, zona: ZoneId) {
+private fun SemaforoDeLaRed(
+    datos: ContenidoEstado.Datos,
+    estado: EstadoUiState,
+    ahora: Instant,
+    zona: ZoneId,
+    alTocarContador: (Severidad) -> Unit = {},
+) {
     val actualizado = estado.datosDe?.let { Formato.horaDeLosDatos(it, ahora, zona) }.orEmpty()
+    // Corrección 9: tocar el recuadro hace lo mismo que el contador de su color; otro toque saca el filtro.
+    @Composable
+    fun descripcion(severidad: Severidad): String = stringResource(
+        when {
+            estado.severidadElegida == severidad -> R.string.semaforo_ver_todas
+            severidad == Severidad.ALTA -> R.string.semaforo_ver_altas
+            severidad == Severidad.MEDIA -> R.string.semaforo_ver_medias
+            else -> R.string.semaforo_ver_bajas
+        },
+    )
     val ultimoConocido = stringResource(R.string.semaforo_ultimo_conocido)
     val recorrido = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.SEMAFORO)
     when (datos.semaforo) {
@@ -361,6 +389,8 @@ private fun SemaforoDeLaRed(datos: ContenidoEstado.Datos, estado: EstadoUiState,
                 detalle = detalleDelSemaforo(datos, estado, ahora, actualizado, if (rojo) R.string.semaforo_ultima_alta else R.string.semaforo_ultima_media),
                 marca = MarcaSemaforo.Numero(cantidad),
                 modifier = recorrido,
+                alTocar = { alTocarContador(if (rojo) Severidad.ALTA else Severidad.MEDIA) },
+                descripcionAccion = descripcion(if (rojo) Severidad.ALTA else Severidad.MEDIA),
             )
         }
         Semaforo.VERDE -> {
@@ -373,6 +403,8 @@ private fun SemaforoDeLaRed(datos: ContenidoEstado.Datos, estado: EstadoUiState,
                     detalle = detalleDelSemaforo(datos, estado, ahora, actualizado, R.string.semaforo_ultima_baja),
                     marca = MarcaSemaforo.Numero(bajas),
                     modifier = recorrido,
+                    alTocar = { alTocarContador(Severidad.BAJA) },
+                    descripcionAccion = descripcion(Severidad.BAJA),
                 )
             } else {
                 Semaforo(
@@ -407,6 +439,16 @@ private fun detalleDelSemaforo(datos: ContenidoEstado.Datos, estado: EstadoUiSta
  */
 @Composable
 private fun AvisoRevisionesNoAplicadas(cantidad: Int, alVer: () -> Unit) {
+    AvisoAzul(
+        titulo = pluralStringResource(R.plurals.estado_no_aplicadas_titulo, cantidad, cantidad),
+        texto = stringResource(if (cantidad == 1) R.string.estado_no_aplicada_texto else R.string.estado_no_aplicadas_texto),
+        alVer = alVer,
+    )
+}
+
+/** El aviso azul de Estado: título SemiBold 14, texto Regular 13 y "Ver" a la derecha; se toca entero. */
+@Composable
+private fun AvisoAzul(titulo: String, texto: String, alVer: () -> Unit) {
     Surface(
         onClick = alVer,
         color = Tonos.Info.fondo,
@@ -420,15 +462,33 @@ private fun AvisoRevisionesNoAplicadas(cantidad: Int, alVer: () -> Unit) {
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
-                Text(text = pluralStringResource(R.plurals.estado_no_aplicadas_titulo, cantidad, cantidad), style = MaterialTheme.typography.labelLarge)
-                Text(
-                    text = stringResource(if (cantidad == 1) R.string.estado_no_aplicada_texto else R.string.estado_no_aplicadas_texto),
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Text(text = titulo, style = MaterialTheme.typography.labelLarge)
+                Text(text = texto, style = MaterialTheme.typography.bodySmall)
             }
             Text(text = stringResource(R.string.estado_no_aplicadas_ver), style = MaterialTheme.typography.labelLarge)
         }
     }
+}
+
+/**
+ * El aviso azul de las alertas asignadas a vos sin revisar (decisión 42; Figma 468-2144): "1 alerta
+ * asignada a vos" / "Te la asignó Taiel." y "Ver", que abre Alertas con "Asignadas a mí".
+ */
+@Composable
+private fun AvisoAsignadas(asignadas: List<Alerta>, miId: String?, alVer: () -> Unit) {
+    val cantidad = asignadas.size
+    val porOtros = asignadas.mapNotNull { it.asignacion }.filter { it.porId != miId }.map { it.por }.distinct()
+    val texto = when {
+        porOtros.isEmpty() -> stringResource(if (cantidad == 1) R.string.estado_te_la_asignaste else R.string.estado_te_las_asignaste)
+        cantidad == 1 -> stringResource(R.string.estado_asignada_por, porOtros.single())
+        porOtros.size == 1 -> stringResource(R.string.estado_asignadas_por, porOtros.single())
+        else -> stringResource(R.string.estado_asignadas_por_varios, porOtros.dropLast(1).joinToString(", ") + " y " + porOtros.last())
+    }
+    AvisoAzul(
+        titulo = pluralStringResource(R.plurals.estado_asignadas_titulo, cantidad, cantidad),
+        texto = texto,
+        alVer = alVer,
+    )
 }
 
 /** Gris y nunca verde mientras la red no se sincronizó (RF01, criterio 3; Figma 1-222). */

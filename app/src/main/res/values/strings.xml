@@ -590,9 +590,9 @@
     <!-- Pantalla Estado (RF01; Figma 1-3, 1-178, 1-222 y 99-122 a 99-442). Los que no están en el Figma
          (lista vacía, notas de Alta y Media, sin datos con la red pareada y alertas nuevas) son para que Meli los revise. -->
     <string name="estado_ayuda_contadores">Alertas sin revisar, por severidad. Tocá una para filtrar la lista.</string>
-    <string name="estado_ayuda_altas">Mostrando solo altas sin revisar. Tocá el contador de nuevo para ver todas.</string>
-    <string name="estado_ayuda_medias">Mostrando solo medias sin revisar. Tocá el contador de nuevo para ver todas.</string>
-    <string name="estado_ayuda_bajas">Mostrando solo bajas sin revisar. Tocá el contador de nuevo para ver todas.</string>
+    <string name="estado_ayuda_altas">Mostrando solo altas sin revisar. Tocá de nuevo para ver todas.</string>
+    <string name="estado_ayuda_medias">Mostrando solo medias sin revisar. Tocá de nuevo para ver todas.</string>
+    <string name="estado_ayuda_bajas">Mostrando solo bajas sin revisar. Tocá de nuevo para ver todas.</string>
     <string name="estado_lista_sin_revisar">Sin revisar</string>
     <string name="estado_lista_altas">Solo altas sin revisar</string>
     <string name="estado_lista_medias">Solo medias sin revisar</string>
@@ -1133,4 +1133,39 @@
     <string name="historial_quedo_sin_asignar">Quedó sin asignar</string>
     <string name="historial_sin_asignar">Sin asignar</string>
     <string name="historial_saco_la_asignacion">%1$s sacó la asignación</string>
+    <!-- Estado: alertas asignadas a vos y el semáforo que filtra (decisiones 42 y 44; Figma 468-2018) -->
+    <plurals name="estado_asignadas_titulo">
+        <item quantity="one">%d alerta asignada a vos</item>
+        <item quantity="other">%d alertas asignadas a vos</item>
+    </plurals>
+    <string name="estado_asignada_por">Te la asignó %1$s.</string>
+    <string name="estado_asignadas_por">Te las asignó %1$s.</string>
+    <string name="estado_asignadas_por_varios">Te las asignaron %1$s.</string>
+    <string name="estado_te_la_asignaste">Te la asignaste.</string>
+    <string name="estado_te_las_asignaste">Te las asignaste.</string>
+    <string name="semaforo_ver_altas">Ver las alertas altas sin revisar</string>
+    <string name="semaforo_ver_medias">Ver las alertas medias sin revisar</string>
+    <string name="semaforo_ver_bajas">Ver las alertas bajas sin revisar</string>
+    <string name="semaforo_ver_todas">Ver todas las alertas sin revisar</string>
+
+    <!-- Tarjeta de alerta: responsable e importancia del equipo destino (Figma 468-1454) -->
+    <string name="tarjeta_vos">Vos</string>
+    <string name="tarjeta_subio">Subió de %1$s a %2$s: %3$s es %4$s.</string>
+    <string name="tarjeta_bajo">Bajó de %1$s a %2$s: %3$s es %4$s.</string>
+    <string name="tarjeta_ya_era">%1$s es %2$s (ya era %3$s).</string>
+
+    <!-- Alertas: el filtro Responsable (Figma 468-1603 y 468-1744) -->
+    <string name="filtro_responsable">Responsable</string>
+    <string name="filtro_cualquiera">Cualquiera</string>
+    <string name="filtro_asignadas_a_mi">Asignadas a mí</string>
+    <string name="filtro_sin_asignar">Sin asignar</string>
+    <string name="resumen_asignadas_a_mi">asignadas a mí</string>
+    <string name="resumen_sin_asignar">sin asignar</string>
+    <string name="resumen_asignadas_a">asignadas a %1$s</string>
+
+    <!-- Aviso de Zonda cuando otra persona te asigna una alerta y la red no tiene Telegram (decisión 42) -->
+    <string name="canal_asignaciones">Asignaciones</string>
+    <string name="canal_asignaciones_descripcion">Avisa cuando otra persona te asigna una alerta.</string>
+    <string name="notificacion_asignada_titulo">%1$s te asignó una alerta %2$s · %3$s · %4$s</string>
+    <string name="notificacion_asignada_texto">Tocá para ver el detalle en Zonda.</string>
 </resources>

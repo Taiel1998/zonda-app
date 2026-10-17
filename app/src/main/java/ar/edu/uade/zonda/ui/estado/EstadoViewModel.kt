@@ -19,6 +19,8 @@ import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.ObservarAlertas
 import ar.edu.uade.zonda.domain.usecase.ObtenerEstadoRed
 import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
+import ar.edu.uade.zonda.ui.ContextoTarjetas
+import ar.edu.uade.zonda.ui.observarContextoTarjetas
 import java.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -83,7 +85,13 @@ class EstadoViewModel(
         }
     }
 
-    private data class Datos(val red: EstadoRed?, val sinRevisar: List<Alerta>, val progreso: ProgresoDescarga?, val noAplicadas: List<String>)
+    private data class Datos(
+        val red: EstadoRed?,
+        val sinRevisar: List<Alerta>,
+        val progreso: ProgresoDescarga?,
+        val noAplicadas: List<String>,
+        val contexto: ContextoTarjetas,
+    )
 
     private data class Controles(
         val conectado: Boolean,
@@ -93,8 +101,8 @@ class EstadoViewModel(
     )
 
     val estado: StateFlow<EstadoUiState> = combine(
-        combine(obtenerEstadoRed(), observarAlertas(SIN_REVISAR_GUARDADAS), progreso, noAplicadas) { red, sinRevisar, progreso, noAplicadas ->
-            Datos(red, sinRevisar, progreso, noAplicadas)
+        combine(obtenerEstadoRed(), observarAlertas(SIN_REVISAR_GUARDADAS), progreso, noAplicadas, redes.observarContextoTarjetas()) { red, sinRevisar, progreso, noAplicadas, contexto ->
+            Datos(red, sinRevisar, progreso, noAplicadas, contexto)
         },
         combine(conectividad.conectado, severidadElegida, sincronizacion, aviso) { conectado, elegida, sincronizacion, aviso ->
             Controles(conectado, elegida, sincronizacion, aviso)
@@ -109,6 +117,8 @@ class EstadoViewModel(
             sincronizando = controles.sincronizacion == Sincronizacion.PEDIDA,
             aviso = controles.aviso,
             revisionesNoAplicadas = datos.noAplicadas,
+            asignadasAMi = datos.sinRevisar.filter { datos.contexto.esMia(it) },
+            contexto = datos.contexto,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EstadoUiState())
 
@@ -127,7 +137,10 @@ class EstadoViewModel(
         }
     }
 
-    /** Tocar un contador deja en la lista solo las sin revisar de esa severidad; tocarlo de nuevo, todas (criterio 4). */
+    /**
+     * Tocar un contador, o el recuadro del semáforo de su color (corrección 9, decisión 44), deja en la
+     * lista solo las sin revisar de esa severidad; tocarlo de nuevo, todas (criterio 4).
+     */
     fun tocarContador(severidad: Severidad) {
         severidadElegida.update { elegida -> if (elegida == severidad) null else severidad }
     }

@@ -80,6 +80,8 @@ class SincronizacionWorker(
             notificador.avisarNuevas(red, severidad, ids, notificaciones.para(severidad))
         }
         notificador.avisarRevisionesNoAplicadas(red, resultado.conflictosNuevos)
+        // Decisión 42: con Telegram, la asignación la avisa el bot; sin Telegram, Zonda.
+        if (!red.telegramVinculado) notificador.avisarAsignaciones(red, resultado.asignacionesNuevas)
 
         if (!notificaciones.recordatorio) return
         val sinRevisar = alertas.observarAlertas(redId, ALTAS_SIN_REVISAR_DEL_DIA).first()

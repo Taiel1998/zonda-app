@@ -42,6 +42,27 @@ sealed interface FiltroServicio {
 }
 
 /**
+ * El responsable de Más filtros (decisión 42; Figma 468-1921): "Asignadas a mí", "Sin asignar" o una
+ * persona. Sin filtro ("Cualquiera"), todas.
+ */
+sealed interface FiltroResponsable {
+    fun acepta(alerta: Alerta): Boolean
+
+    /** Las de este teléfono: lo pone también "Ver" del aviso de Estado. */
+    data class AsignadasAMi(val miId: String) : FiltroResponsable {
+        override fun acepta(alerta: Alerta): Boolean = alerta.asignacion?.responsableId == miId
+    }
+
+    data object SinAsignar : FiltroResponsable {
+        override fun acepta(alerta: Alerta): Boolean = alerta.asignacion?.responsableId == null
+    }
+
+    data class De(val personaId: String) : FiltroResponsable {
+        override fun acepta(alerta: Alerta): Boolean = alerta.asignacion?.responsableId == personaId
+    }
+}
+
+/**
  * Filtros de la lista de alertas (RF02; Figma 2-3 y las hojas 51-1805 a 51-2202). Por defecto muestra
  * todas las de los últimos 30 días, que es todo lo que guarda el teléfono: ninguna alerta se oculta
  * por defecto (decisión 4). Las severidades se combinan; un conjunto vacío son todas.
@@ -58,13 +79,15 @@ data class FiltroAlertas(
      * antes (el envío quedó en conflicto). Lo pone "Ver" del aviso de Estado con varias (cambio 7).
      */
     val soloNoAplicadas: Boolean = false,
+    /** Quién la tiene asignada (decisión 42); null es "Cualquiera". */
+    val responsable: FiltroResponsable? = null,
 ) {
     val activo: Boolean
         get() = this != TODAS
 
     /** Cuántos de Más filtros hay puestos: "Más filtros (1)". */
     val cantidadMasFiltros: Int
-        get() = listOfNotNull(servicio, destinoIp, metodo).size
+        get() = listOfNotNull(servicio, destinoIp, metodo, responsable).size
 
     companion object {
         val TODAS = FiltroAlertas()

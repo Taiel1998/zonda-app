@@ -55,8 +55,11 @@ class AlertasRepositoryImpl(
             metodo = filtro.metodo?.name,
         ).map { filas ->
             val alertas = filas.map(AlertaConDetalles::aDominio)
-            // El envío sale de la acción pendiente de cada alerta, que ya viene en la fila (cambio 7).
-            if (filtro.soloNoAplicadas) alertas.filter { it.envio == EstadoEnvio.CONFLICTO } else alertas
+            // El envío sale de la acción pendiente de cada alerta, que ya viene en la fila (cambio 7), y el
+            // responsable, de la asignación de la alerta (decisión 42).
+            alertas
+                .filter { !filtro.soloNoAplicadas || it.envio == EstadoEnvio.CONFLICTO }
+                .filter { filtro.responsable?.acepta(it) ?: true }
         }
 
     override fun observarOpcionesDeFiltro(redId: String): Flow<OpcionesDeFiltro> =

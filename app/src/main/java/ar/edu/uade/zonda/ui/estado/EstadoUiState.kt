@@ -5,6 +5,7 @@ import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Semaforo
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.ui.ContextoTarjetas
 import java.time.Instant
 
 /** Qué se muestra debajo de la barra de Estado (Figma 1-3, 1-178, 1-222, 1-256 y 50-616). */
@@ -73,4 +74,8 @@ data class EstadoUiState(
      * aviso azul arriba del semáforo (cambio 7; Figma 443-113 y 443-189). Vacía, no hay aviso.
      */
     val revisionesNoAplicadas: List<String> = emptyList(),
+    /** Las sin revisar asignadas a este teléfono: el aviso azul "1 alerta asignada a vos" (decisión 42; Figma 468-2018). */
+    val asignadasAMi: List<Alerta> = emptyList(),
+    /** Quién es este teléfono y la importancia de los equipos, para las tarjetas (Figma 468-1454). */
+    val contexto: ContextoTarjetas = ContextoTarjetas(),
 )

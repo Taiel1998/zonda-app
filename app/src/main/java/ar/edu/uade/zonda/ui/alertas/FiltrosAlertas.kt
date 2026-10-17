@@ -21,7 +21,9 @@ import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroEstado
+import ar.edu.uade.zonda.domain.model.FiltroResponsable
 import ar.edu.uade.zonda.domain.model.FiltroServicio
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.Periodo
@@ -54,6 +56,9 @@ fun FiltrosAlertas(
     opciones: OpcionesDeFiltro,
     alCambiar: (FiltroAlertas) -> Unit,
     modifier: Modifier = Modifier,
+    /** La gente de la red, para el grupo Responsable (decisión 42); vacía con un servidor anterior. */
+    personas: List<Persona> = emptyList(),
+    miId: String? = null,
 ) {
     var hoja by remember { mutableStateOf<HojaFiltro?>(null) }
     val masFiltros = filtro.cantidadMasFiltros
@@ -142,6 +147,8 @@ fun FiltrosAlertas(
         HojaFiltro.MAS -> HojaMasFiltros(
             filtro = filtro,
             opciones = opciones,
+            personas = personas,
+            miId = miId,
             alCerrar = { hoja = null },
             alAplicar = { alCambiar(it); hoja = null },
         )
@@ -167,11 +174,13 @@ private fun textoDeSeveridades(severidades: Set<Severidad>): String =
 private fun HojaMasFiltros(
     filtro: FiltroAlertas,
     opciones: OpcionesDeFiltro,
+    personas: List<Persona>,
+    miId: String?,
     alCerrar: () -> Unit,
     alAplicar: (FiltroAlertas) -> Unit,
 ) {
     HojaInferior(alCerrar = alCerrar) {
-        ContenidoMasFiltros(filtro, opciones, alAplicar)
+        ContenidoMasFiltros(filtro, opciones, alAplicar, personas, miId)
     }
 }
 
@@ -181,7 +190,10 @@ fun ContenidoMasFiltros(
     filtro: FiltroAlertas,
     opciones: OpcionesDeFiltro,
     alAplicar: (FiltroAlertas) -> Unit,
+    personas: List<Persona> = emptyList(),
+    miId: String? = null,
 ) {
+    var responsable by remember(filtro) { mutableStateOf(filtro.responsable) }
     var servicio by remember(filtro) { mutableStateOf(filtro.servicio) }
     var destino by remember(filtro) { mutableStateOf(filtro.destinoIp) }
     var metodo by remember(filtro) { mutableStateOf(filtro.metodo) }
@@ -215,6 +227,25 @@ fun ContenidoMasFiltros(
             ChipOpcion(stringResource(valor.nombreEnFiltro()), elegido = metodo == valor, alTocar = { metodo = if (metodo == valor) null else valor })
         }
     }
+    // Figma 468-1921: "Cualquiera", "Asignadas a mí", "Sin asignar" y cada una de las otras personas.
+    if (personas.isNotEmpty()) {
+        GrupoDeChips(titulo = stringResource(R.string.filtro_responsable)) {
+            ChipOpcion(stringResource(R.string.filtro_cualquiera), elegido = responsable == null, alTocar = { responsable = null })
+            if (miId != null) {
+                val mias = FiltroResponsable.AsignadasAMi(miId)
+                ChipOpcion(stringResource(R.string.filtro_asignadas_a_mi), elegido = responsable == mias, alTocar = { responsable = mias })
+            }
+            ChipOpcion(
+                stringResource(R.string.filtro_sin_asignar),
+                elegido = responsable == FiltroResponsable.SinAsignar,
+                alTocar = { responsable = FiltroResponsable.SinAsignar },
+            )
+            personas.filter { it.id != miId }.forEach { persona ->
+                val deEsa = FiltroResponsable.De(persona.id)
+                ChipOpcion(persona.nombreVisible, elegido = responsable == deEsa, alTocar = { responsable = deEsa })
+            }
+        }
+    }
     Text(
         text = stringResource(R.string.filtro_mas_nota),
         style = MaterialTheme.typography.nota,
@@ -222,11 +253,21 @@ fun ContenidoMasFiltros(
     )
     BotonesDeHoja(
         // "Otros" se arma con los chips de ahora: si llegaron servicios nuevos, quedan bien repartidos.
-        alAplicar = { alAplicar(filtro.copy(servicio = if (servicio is FiltroServicio.Otros) otros else servicio, destinoIp = destino, metodo = metodo)) },
+        alAplicar = {
+            alAplicar(
+                filtro.copy(
+                    servicio = if (servicio is FiltroServicio.Otros) otros else servicio,
+                    destinoIp = destino,
+                    metodo = metodo,
+                    responsable = responsable,
+                ),
+            )
+        },
         alLimpiar = {
             servicio = null
             destino = null
             metodo = null
+            responsable = null
         },
     )
 }

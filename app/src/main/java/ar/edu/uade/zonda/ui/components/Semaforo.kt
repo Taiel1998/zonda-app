@@ -25,6 +25,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.Layout
@@ -82,12 +84,19 @@ fun Semaforo(
     detalle: String,
     modifier: Modifier = Modifier,
     marca: MarcaSemaforo = MarcaSemaforo.Nada,
+    /** Tocar el recuadro filtra la lista como el contador de su color (corrección 9); sin acción, no se toca. */
+    alTocar: (() -> Unit)? = null,
+    /** Lo que dice TalkBack al tocarlo: "Ver las alertas altas sin revisar". */
+    descripcionAccion: String? = null,
 ) {
+    val forma = RoundedCornerShape(16.dp)
     Surface(
         color = tono.fondo,
-        shape = RoundedCornerShape(16.dp),
+        shape = forma,
         modifier = modifier
             .fillMaxWidth()
+            .clip(forma)
+            .then(if (alTocar != null) Modifier.clickable(onClickLabel = descripcionAccion, role = Role.Button, onClick = alTocar) else Modifier)
             .semantics(mergeDescendants = true) {},
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

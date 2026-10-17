@@ -4,6 +4,7 @@ import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
+import ar.edu.uade.zonda.ui.ContextoTarjetas
 import java.time.Instant
 
 /** Qué se muestra en el cuerpo de la pantalla Alertas (Figma 2-3, 2-218, 2-255 y 2-292). */
@@ -61,4 +62,6 @@ data class AlertasUiState(
     val accesoVencido: Boolean = false,
     val sincronizando: Boolean = false,
     val aviso: AvisoAlertas? = null,
+    /** Quién es este teléfono, la gente y la importancia de los equipos: chips, líneas y el filtro Responsable. */
+    val contexto: ContextoTarjetas = ContextoTarjetas(),
 )

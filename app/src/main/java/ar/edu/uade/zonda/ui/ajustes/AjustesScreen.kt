@@ -35,8 +35,6 @@ import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Red
-import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
-import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.EstadoPermiso
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.abrirAjustesDeNotificaciones
@@ -51,7 +49,11 @@ import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
 import ar.edu.uade.zonda.ui.components.TarjetaAdvertencia
 import ar.edu.uade.zonda.ui.components.TarjetaSeccion
 import ar.edu.uade.zonda.ui.mensaje
+import ar.edu.uade.zonda.ui.navigation.AlRetocarPestania
+import ar.edu.uade.zonda.ui.navigation.Rutas
 import ar.edu.uade.zonda.ui.nombreDelBot
+import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
+import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.rememberPermisoNotificaciones
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.Instant
@@ -193,11 +195,13 @@ fun AjustesContenido(
         topBar = { BarraSuperior(titulo = stringResource(R.string.destino_ajustes)) },
         snackbarHost = { SnackbarHost(snackbar) { AvisoInferior(it) } },
     ) { relleno ->
+        val desplazamiento = rememberScrollState()
+        AlRetocarPestania(Rutas.AJUSTES) { desplazamiento.animateScrollTo(0) }
         Column(
             modifier = Modifier
                 .padding(relleno)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(desplazamiento)
                 .padding(MargenAjustes),
             verticalArrangement = EntreTarjetas,
         ) {

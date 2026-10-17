@@ -78,6 +78,7 @@ import ar.edu.uade.zonda.ui.resumen.resumenViewModel
 import ar.edu.uade.zonda.ui.telegram.TelegramScreen
 import ar.edu.uade.zonda.ui.theme.etiquetaBarra
 import ar.edu.uade.zonda.ui.viewModelDeZonda
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 /**
  * Grafo de navegación de la app (informe, sección 11.11; plan, sección 4.4).
@@ -151,7 +152,9 @@ fun ZondaNavHost(
     // Un solo Scaffold con la barra inferior. No suma insets: cada pantalla maneja los suyos con su
     // barra superior, y las pestañas no vuelven a sumar el de abajo (lo cubre la barra inferior).
     // El recorrido va encima de todo, también de la barra inferior (Figma 107-3321 a 107-4731).
-    CompositionLocalProvider(LocalRegistroRecorrido provides registroRecorrido) {
+    // Tocar la pestaña en la que ya estás vuelve su lista arriba, como en las apps grandes.
+    val pestaniaRetocada = remember { MutableSharedFlow<String>(extraBufferCapacity = 1) }
+    CompositionLocalProvider(LocalRegistroRecorrido provides registroRecorrido, LocalPestaniaRetocada provides pestaniaRetocada) {
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 contentWindowInsets = WindowInsets(0),
@@ -173,7 +176,9 @@ fun ZondaNavHost(
                                     val elegida = rutaActual == destino.ruta
                                     NavigationBarItem(
                                         selected = elegida,
-                                        onClick = { navController.irAPestania(destino.ruta) },
+                                        onClick = {
+                                            if (elegida) pestaniaRetocada.tryEmit(destino.ruta) else navController.irAPestania(destino.ruta)
+                                        },
                                         modifier = if (destino.ruta == Rutas.ALERTAS) Modifier.objetivoDelRecorrido(ObjetivoRecorrido.PESTANIA_ALERTAS) else Modifier,
                                         icon = { Icon(destino.icono, contentDescription = null) },
                                         // Figma: la pestaña elegida en SemiBold 12 y las otras en Medium 12.
@@ -222,6 +227,11 @@ fun ZondaNavHost(
                                     navController.irAPestania(Rutas.ALERTAS)
                                     navController.currentBackStackEntry?.savedStateHandle?.set(VER_NO_APLICADAS, true)
                                 },
+                                alVerAsignadas = {
+                                    // "Ver" del aviso de alertas asignadas: Alertas con "Asignadas a mí" (decisión 42).
+                                    navController.irAPestania(Rutas.ALERTAS)
+                                    navController.currentBackStackEntry?.savedStateHandle?.set(VER_ASIGNADAS, true)
+                                },
                                 alConectar = { navController.navigate(Rutas.CONEXION) },
                             )
                         }
@@ -267,6 +277,13 @@ fun ZondaNavHost(
                                 if (verTodas) {
                                     viewModel.quitarFiltros()
                                     entrada.savedStateHandle[VER_TODAS] = false
+                                }
+                            }
+                            val verAsignadas by entrada.savedStateHandle.getStateFlow(VER_ASIGNADAS, false).collectAsStateWithLifecycle()
+                            LaunchedEffect(verAsignadas) {
+                                if (verAsignadas) {
+                                    viewModel.verAsignadasAMi()
+                                    entrada.savedStateHandle[VER_ASIGNADAS] = false
                                 }
                             }
                             val verNoAplicadas by entrada.savedStateHandle.getStateFlow(VER_NO_APLICADAS, false).collectAsStateWithLifecycle()
@@ -398,6 +415,9 @@ private const val VER_TODAS = "ver_todas"
 
 /** "Ver" del aviso de Estado con varias revisiones no aplicadas: Alertas muestra solo esas (cambio 7). */
 private const val VER_NO_APLICADAS = "ver_no_aplicadas"
+
+/** "Ver" del aviso de alertas asignadas de Estado: Alertas con "Asignadas a mí" (decisión 42). */
+private const val VER_ASIGNADAS = "ver_asignadas"
 
 /**
  * El filtro de un enlace interno (`estado=sin_revisar&severidad=alta`, o `envio=conflicto` para las
