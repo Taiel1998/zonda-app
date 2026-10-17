@@ -2,8 +2,11 @@ package ar.edu.uade.zonda.ui.ajustes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ar.edu.uade.zonda.domain.model.CambioRegistro
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.ModoNotificacion
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
@@ -59,6 +62,8 @@ class AjustesViewModel(
         val borradorNotificaciones: PreferenciasNotificaciones? = null,
         val sincronizando: Boolean = false,
         val aviso: AvisoAjustes? = null,
+        val motivo: String? = null,
+        val faltaMotivo: Boolean = false,
     )
 
     private val controles = MutableStateFlow(Controles())
@@ -77,14 +82,27 @@ class AjustesViewModel(
         }
     }
 
-    private data class DeLaRedActiva(val red: Red?, val severidades: SeveridadPorTipo, val alertas: Int)
+    private data class DeLaRedActiva(
+        val red: Red?,
+        val severidades: SeveridadPorTipo,
+        val alertas: Int,
+        val personas: List<Persona> = emptyList(),
+        val equipos: List<EquipoDeLaRed> = emptyList(),
+        val registro: List<CambioRegistro> = emptyList(),
+    )
 
     private val deLaRedActiva: Flow<DeLaRedActiva> = redes.observarRedActiva().flatMapLatest { red ->
         if (red == null) {
             flowOf(DeLaRedActiva(null, SeveridadPorTipo.RECOMENDADA, 0))
         } else {
-            combine(redes.observarSeveridades(red.id), alertas.observarCantidad(red.id)) { severidades, cantidad ->
-                DeLaRedActiva(red, severidades, cantidad)
+            combine(
+                redes.observarSeveridades(red.id),
+                alertas.observarCantidad(red.id),
+                redes.observarPersonas(red.id),
+                redes.observarEquipos(red.id),
+                redes.observarRegistro(red.id),
+            ) { severidades, cantidad, personas, equipos, registro ->
+                DeLaRedActiva(red, severidades, cantidad, Persona.ordenar(personas), equipos, registro)
             }
         }
     }
@@ -112,6 +130,11 @@ class AjustesViewModel(
             sincronizando = c.sincronizando,
             nombreDelTelefono = nombreDelTelefono,
             aviso = c.aviso,
+            personas = activa.personas,
+            equipos = activa.equipos,
+            registro = activa.registro,
+            motivo = c.motivo,
+            faltaMotivo = c.faltaMotivo,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AjustesUiState(nombreDelTelefono = nombreDelTelefono))
 
@@ -201,18 +224,52 @@ class AjustesViewModel(
     }
 
     fun descartarBorrador() {
-        controles.update { it.copy(borradorSeveridades = null) }
+        controles.update { it.copy(borradorSeveridades = null, motivo = null, faltaMotivo = false) }
     }
 
-    /** Guarda en el teléfono, encola `PUT /severidades` para toda la red y lo envía (RF06); sin red queda en la cola. */
-    fun guardarSeveridades() {
-        val borrador = controles.value.borradorSeveridades ?: return
+    /**
+     * "Guardar" de Severidad por tipo (decisión 40): si cambió algo, abre "¿Por qué la cambiás?" y
+     * devuelve true; si no cambió nada, devuelve false y no hay nada que guardar.
+     */
+    fun pedirMotivo(): Boolean {
+        val borrador = controles.value.borradorSeveridades ?: return false
+        if (borrador == estado.value.severidades) return false
+        controles.update { it.copy(motivo = "", faltaMotivo = false) }
+        return true
+    }
+
+    fun cambiarMotivo(texto: String) {
+        controles.update { it.copy(motivo = texto, faltaMotivo = false) }
+    }
+
+    /** "Cancelar" de la hoja del motivo: vuelve a la pantalla con los cambios sin guardar. */
+    fun cancelarMotivo() {
+        controles.update { it.copy(motivo = null, faltaMotivo = false) }
+    }
+
+    /**
+     * "Guardar cambios": con el motivo, guarda en el teléfono, encola `PUT /severidades` para toda la red
+     * y lo envía (RF06); sin red queda en la cola. Sin motivo no guarda y devuelve false.
+     */
+    fun guardarSeveridades(): Boolean {
+        val borrador = controles.value.borradorSeveridades ?: return false
+        val motivo = controles.value.motivo?.trim().orEmpty()
+        if (motivo.isEmpty()) {
+            controles.update { it.copy(faltaMotivo = true) }
+            return false
+        }
+        controles.update { it.copy(borradorSeveridades = null, motivo = null, faltaMotivo = false) }
         viewModelScope.launch {
             val red = redes.observarRedActiva().first() ?: return@launch
-            cambiarSeveridades(red.id, borrador)
-            controles.update { it.copy(borradorSeveridades = null, aviso = AvisoAjustes.SeveridadesGuardadas) }
-            alcanceDeEnvio.launch { runCatching { sincronizarAlertas(red.id) } }
+            try {
+                cambiarSeveridades(red.id, borrador, motivo)
+                controles.update { it.copy(aviso = AvisoAjustes.SeveridadesGuardadas) }
+                alcanceDeEnvio.launch { runCatching { sincronizarAlertas(red.id) } }
+            } catch (e: ErrorZonda) {
+                controles.update { it.copy(aviso = AvisoAjustes.Error(e)) }
+            }
         }
+        return true
     }
 
     // ---- Datos locales ----

@@ -9,18 +9,29 @@ import ar.edu.uade.zonda.data.mapper.aDto
 import ar.edu.uade.zonda.data.mapper.aEntidad
 import ar.edu.uade.zonda.data.mapper.aEntidades
 import ar.edu.uade.zonda.data.mapper.aInstante
+import ar.edu.uade.zonda.data.mapper.enLaApi
+import ar.edu.uade.zonda.data.remote.CodigoPersonaEntradaDto
 import ar.edu.uade.zonda.data.remote.OperacionHttp
 import ar.edu.uade.zonda.data.remote.PareoEntradaDto
+import ar.edu.uade.zonda.data.remote.PerfilEntradaDto
 import ar.edu.uade.zonda.data.remote.ProveedorDeApi
 import ar.edu.uade.zonda.data.remote.ProveedorDeApiRetrofit
 import ar.edu.uade.zonda.data.remote.VinculoEntradaDto
 import ar.edu.uade.zonda.data.remote.conErroresTraducidos
 import ar.edu.uade.zonda.data.seguridad.AlmacenSeguro
+import ar.edu.uade.zonda.data.sync.perfilDelPareo
+import ar.edu.uade.zonda.data.sync.traerPersonasYRegistro
+import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.Catalogo
+import ar.edu.uade.zonda.domain.model.CodigoPersona
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoTelegram
+import ar.edu.uade.zonda.domain.model.Importancia
+import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.RedPareada
@@ -88,6 +99,9 @@ class RedesRepositoryImpl(
             activa = true,
             accesoEmitido = salida.emitido?.aInstante() ?: reloj(),
             accesoVence = salida.vence.aInstante(),
+            // Entra con el perfil del código: los de la terminal son de administrador (decisión 39).
+            perfil = perfilDelPareo(salida.perfil),
+            dispositivoId = salida.dispositivoId,
         )
         guardarRedPareada(red, salida.token)
         return RedPareada(
@@ -105,6 +119,7 @@ class RedesRepositoryImpl(
             dao.insertarComoActiva(red.aEntidad(creadaEn = reloj()))
         } else {
             dao.actualizarDatosDePareo(red.id, red.nombre, red.urlBase, red.accesoEmitido?.toEpochMilli(), red.accesoVence?.toEpochMilli())
+            dao.actualizarPerfil(red.id, red.perfil.name, red.dispositivoId)
             dao.activar(red.id)
         }
         almacen.guardar(claveToken(red.id), token)
@@ -115,15 +130,18 @@ class RedesRepositoryImpl(
 
     /**
      * Revoca el token en el servidor y borra todo lo local. Si no hay conexión o el token ya no vale,
-     * se borra igual: el token del servidor vence solo a los 90 días.
+     * se borra igual: el token del servidor vence solo a los 90 días. Si es el último administrador y
+     * queda más gente, el servidor no lo deja (409) y no se borra nada (decisión 39).
      */
     override suspend fun quitarDispositivo(redId: String) {
         dao.obtener(redId)?.aDominio()?.let { red ->
             try {
-                conErroresTraducidos {
+                conErroresTraducidos(OperacionHttp.PERSONAS) {
                     val respuesta = apis.para(red).quitarDispositivo()
                     if (!respuesta.isSuccessful) throw HttpException(respuesta)
                 }
+            } catch (e: ErrorZonda.UltimoAdministrador) {
+                throw e
             } catch (e: ErrorZonda) {
                 // Se sigue con el borrado local.
             }
@@ -209,6 +227,45 @@ class RedesRepositoryImpl(
                 servicios = servicios.map { it.servicio },
             )
         }
+
+    // ---- Personas, equipos y registro de cambios (decisiones 39 a 41) ----
+
+    override fun observarPersonas(redId: String): Flow<List<Persona>> =
+        dao.observarPersonas(redId).map { filas -> filas.map { it.aDominio() } }
+
+    override fun observarEquipos(redId: String): Flow<List<EquipoDeLaRed>> =
+        dao.observarEquipos(redId).map { filas -> filas.map { it.aDominio() }.sortedWith(compareBy({ it.nombre }, { it.ip })) }
+
+    override fun observarRegistro(redId: String): Flow<List<CambioRegistro>> =
+        dao.observarRegistro(redId).map { filas -> filas.map { it.aDominio() } }
+
+    override suspend fun crearCodigoPersona(redId: String, nombre: String, perfil: Perfil): CodigoPersona {
+        val api = apis.para(red(redId))
+        return conErroresTraducidos(OperacionHttp.PERSONAS) {
+            api.codigoParaPersona(CodigoPersonaEntradaDto(nombre = nombre.trim(), perfil = perfil.enLaApi()))
+        }.aDominio()
+    }
+
+    override suspend fun cambiarPerfil(redId: String, personaId: String, perfil: Perfil) {
+        val api = apis.para(red(redId))
+        conErroresTraducidos(OperacionHttp.PERSONAS) { api.cambiarPerfil(personaId, PerfilEntradaDto(perfil.enLaApi())) }
+        actualizarPersonasYRegistro(redId)
+    }
+
+    override suspend fun quitarPersona(redId: String, personaId: String) {
+        val api = apis.para(red(redId))
+        conErroresTraducidos(OperacionHttp.PERSONAS) {
+            val respuesta = api.quitarPersona(personaId)
+            if (!respuesta.isSuccessful) throw HttpException(respuesta)
+        }
+        actualizarPersonasYRegistro(redId)
+    }
+
+    override suspend fun actualizarPersonasYRegistro(redId: String) =
+        traerPersonasYRegistro(redId, apis.para(red(redId)), dao)
+
+    override suspend fun guardarImportanciaLocal(redId: String, ip: String, importancia: Importancia) =
+        dao.actualizarImportancia(redId, ip, importancia.name)
 
     suspend fun guardarCatalogo(redId: String, catalogo: Catalogo) = dao.guardarCatalogo(
         redId = redId,

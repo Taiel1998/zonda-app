@@ -42,6 +42,10 @@ data class Alerta(
     val actualizadaEn: Instant,
     /** Cuándo salió el primer aviso de Telegram de esta alerta; null si no salió ninguno. */
     val avisoTelegram: Instant? = null,
+    /** El responsable de ahora; null si está sin asignar (decisión 42). */
+    val asignacion: Asignacion? = null,
+    /** Cada cambio de responsable, del primero al último, para el historial del detalle. */
+    val asignaciones: List<Asignacion> = emptyList(),
 ) {
     val duracion: Duration
         get() = Duration.between(inicio, fin)

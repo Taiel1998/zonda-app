@@ -1,7 +1,11 @@
 package ar.edu.uade.zonda.ui.ajustes
 
+import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Red
@@ -39,7 +43,25 @@ data class AjustesUiState(
     val sincronizando: Boolean = false,
     val nombreDelTelefono: String = "",
     val aviso: AvisoAjustes? = null,
-)
+    /** La gente de la red activa, vos primero (decisión 39). */
+    val personas: List<Persona> = emptyList(),
+    /** Los equipos de la red activa con su importancia (decisión 41). */
+    val equipos: List<EquipoDeLaRed> = emptyList(),
+    /** El registro de cambios de la red activa, de lo más nuevo a lo más viejo (decisión 40). */
+    val registro: List<CambioRegistro> = emptyList(),
+    /** El motivo que se está escribiendo en "¿Por qué la cambiás?"; null si la hoja está cerrada. */
+    val motivo: String? = null,
+    /** Se tocó "Guardar cambios" sin motivo: la hoja dice "Escribí por qué la cambiás.". */
+    val faltaMotivo: Boolean = false,
+) {
+    /** El perfil de este teléfono en la red activa: los botones de configuración son del administrador. */
+    val perfil: Perfil
+        get() = redActiva?.perfil ?: Perfil.ADMINISTRADOR
+
+    /** "Taiel o Meli": quienes pueden cambiar la configuración, para la pantalla de la analista. */
+    val administradores: List<String>
+        get() = personas.filter { it.perfil.esAdministrador }.map { it.nombreVisible }
+}
 
 /** Avisos inferiores de un solo uso (snackbar). */
 sealed interface AvisoAjustes {

@@ -24,6 +24,13 @@ data class Red(
     val accesoVence: Instant? = null,
     /** Usuario del bot de Telegram de la red, sin la arroba; null hasta que el servidor lo diga. */
     val telegramBot: String? = null,
+    /**
+     * El perfil de este teléfono en la red (decisión 39). Los pareados antes de la 1.0.5 son
+     * administradores; lo confirma el servidor en cada sincronización.
+     */
+    val perfil: Perfil = Perfil.ADMINISTRADOR,
+    /** El id de este teléfono en el servidor, para saber cuáles alertas son "asignadas a mí". */
+    val dispositivoId: String? = null,
 ) {
     /** Nunca se sincronizó: la pantalla Estado muestra "sin datos" y nunca un semáforo verde (RF01, criterio 3). */
     val sinDatos: Boolean

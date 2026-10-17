@@ -45,6 +45,7 @@ import ar.edu.uade.zonda.ui.ajustes.AvisosPorSeveridadScreen
 import ar.edu.uade.zonda.ui.ajustes.CondicionesScreen
 import ar.edu.uade.zonda.ui.ajustes.DetallesTecnicosScreen
 import ar.edu.uade.zonda.ui.ajustes.RedesScreen
+import ar.edu.uade.zonda.ui.ajustes.SeveridadesDeLaRedScreen
 import ar.edu.uade.zonda.ui.ajustes.ajustesViewModel
 import ar.edu.uade.zonda.ui.alertas.AlertasScreen
 import ar.edu.uade.zonda.ui.alertas.alertasViewModel
@@ -57,7 +58,6 @@ import ar.edu.uade.zonda.ui.detalle.detalleAlerta
 import ar.edu.uade.zonda.ui.estado.EstadoScreen
 import ar.edu.uade.zonda.ui.inicio.ArranqueViewModel
 import ar.edu.uade.zonda.ui.inicio.DestinoInicial
-import ar.edu.uade.zonda.ui.primerinicio.SeveridadesScreen
 import ar.edu.uade.zonda.ui.primerinicio.TutorialScreen
 import ar.edu.uade.zonda.ui.primerinicio.primerInicio
 import ar.edu.uade.zonda.ui.recorrido.CapaRecorrido
@@ -314,23 +314,7 @@ fun ZondaNavHost(
                             )
                         }
                         composable(Rutas.SEVERIDADES) { entrada ->
-                            val viewModel = viewModelDeAjustes(navController, entrada)
-                            val estado by viewModel.estado.collectAsStateWithLifecycle()
-                            SeveridadesScreen(
-                                severidades = estado.borradorSeveridades ?: estado.severidades,
-                                alCambiar = viewModel::cambiarSeveridadDelBorrador,
-                                textoBoton = stringResource(R.string.ajustes_guardar_severidades),
-                                titulo = stringResource(R.string.ajustes_severidad_por_tipo),
-                                intro = stringResource(R.string.ajustes_severidades_intro),
-                                alGuardar = {
-                                    viewModel.guardarSeveridades()
-                                    navController.popBackStack()
-                                },
-                                alVolver = {
-                                    viewModel.descartarBorrador()
-                                    navController.popBackStack()
-                                },
-                            )
+                            SeveridadesDeLaRedScreen(viewModel = viewModelDeAjustes(navController, entrada), alVolver = { navController.popBackStack() })
                         }
                         // Desde Ajustes: "Omitir" vuelve y "Configurar mis avisos" abre los avisos por severidad.
                         composable(Rutas.INTRODUCCION) {

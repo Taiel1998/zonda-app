@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import ar.edu.uade.zonda.data.local.entidades.AccionPendienteEntity
+import ar.edu.uade.zonda.data.local.entidades.AsignacionPendienteEntity
 import kotlinx.coroutines.flow.Flow
 
 /** Cola de acciones pendientes de envío (tabla `acciones_pendientes`). */
@@ -66,6 +67,23 @@ abstract class AccionesPendientesDao {
     /** Reintento manual de una acción con error: vuelve a pendiente con los intentos en cero. */
     @Query("UPDATE acciones_pendientes SET estado = 'PENDIENTE', intentos = 0, ultimoError = NULL WHERE id = :id")
     abstract suspend fun reintentar(id: String)
+
+    // ---- Asignaciones pendientes (decisión 42): una por alerta, la última reemplaza a la anterior ----
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun encolarAsignacion(fila: AsignacionPendienteEntity)
+
+    @Query("SELECT * FROM asignaciones_pendientes WHERE redId = :redId AND estado IN ('PENDIENTE', 'ENVIANDO') ORDER BY creadaEn ASC")
+    abstract suspend fun asignacionesParaEnviar(redId: String): List<AsignacionPendienteEntity>
+
+    @Query("UPDATE asignaciones_pendientes SET estado = :estado, intentos = :intentos, ultimoError = :ultimoError WHERE alertaId = :alertaId")
+    abstract suspend fun actualizarEnvioAsignacion(alertaId: String, estado: String, intentos: Int, ultimoError: String?)
+
+    @Query("DELETE FROM asignaciones_pendientes WHERE alertaId = :alertaId")
+    abstract suspend fun borrarAsignacion(alertaId: String)
+
+    @Query("DELETE FROM asignaciones_pendientes WHERE redId = :redId")
+    abstract suspend fun borrarAsignacionesDeRed(redId: String)
 
     /** Como máximo hay una acción por alerta: la nueva reemplaza a la anterior. */
     @Transaction

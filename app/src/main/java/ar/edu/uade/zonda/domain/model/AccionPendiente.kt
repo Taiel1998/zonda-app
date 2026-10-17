@@ -15,7 +15,7 @@ enum class EstadoEnvio {
     CONFLICTO,
 }
 
-enum class TipoAccion { REVISAR_ALERTA, CAMBIAR_SEVERIDADES }
+enum class TipoAccion { REVISAR_ALERTA, CAMBIAR_SEVERIDADES, CAMBIAR_IMPORTANCIA }
 
 /**
  * Acción del usuario que todavía no llegó al servidor. Tiene un id único por acción para que la API
@@ -36,6 +36,11 @@ data class AccionPendiente(
     val ultimoError: String?,
     /** La revisión de la otra persona, cuando el estado es [EstadoEnvio.CONFLICTO]. */
     val revisionAjena: Revision?,
+    /** Por qué se cambió la configuración: obligatorio en las severidades y la importancia (decisión 40). */
+    val motivo: String? = null,
+    /** El equipo y su importancia nueva, solo para [TipoAccion.CAMBIAR_IMPORTANCIA]. */
+    val equipoIp: String? = null,
+    val importancia: Importancia? = null,
 ) {
     companion object {
         const val MAXIMO_INTENTOS = 5

@@ -42,6 +42,9 @@ val GrisAviso = Color(0xFF2C2C2A)
 /** La letra del globito de ayuda del detalle, sobre [GrisAviso] (Figma 468-723). */
 val TextoGlobito = Color(0xFFF4F1EA)
 
+/** Gris oscuro de las notas que no se pueden cambiar y de los motivos citados del registro (Figma 468-3441 y 468-3330). */
+val TextoNota = Color(0xFF444441)
+
 /** Fondo del escáner del QR y texto claro sobre él (Figma 35-464 y 49-284). */
 val FondoEscaner = Color(0xFF1E1E1C)
 val TextoEscaner = Color(0xFFE4E2DA)

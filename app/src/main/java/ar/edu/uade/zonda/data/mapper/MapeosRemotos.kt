@@ -1,27 +1,40 @@
 package ar.edu.uade.zonda.data.mapper
 
 import ar.edu.uade.zonda.data.remote.AlertaDto
+import ar.edu.uade.zonda.data.remote.AsignacionDto
 import ar.edu.uade.zonda.data.remote.AvisosDto
+import ar.edu.uade.zonda.data.remote.CambioRegistroDto
 import ar.edu.uade.zonda.data.remote.CatalogoDto
+import ar.edu.uade.zonda.data.remote.CodigoPersonaDto
+import ar.edu.uade.zonda.data.remote.EquipoDto
 import ar.edu.uade.zonda.data.remote.EstadoTelegramDto
+import ar.edu.uade.zonda.data.remote.PersonaDto
 import ar.edu.uade.zonda.data.remote.RevisionDto
 import ar.edu.uade.zonda.data.remote.RevisionEntradaDto
 import ar.edu.uade.zonda.data.remote.VinculoTelegramDto
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.Asignacion
+import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.Catalogo
+import ar.edu.uade.zonda.domain.model.CodigoPersona
 import ar.edu.uade.zonda.domain.model.Equipo
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.EstadoTelegram
+import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
+import ar.edu.uade.zonda.domain.model.TipoCambio
 import ar.edu.uade.zonda.domain.model.VeredictoIa
 import ar.edu.uade.zonda.domain.model.VeredictoReglas
 import ar.edu.uade.zonda.domain.model.VeredictoUmbrales
@@ -75,8 +88,18 @@ fun AlertaDto.aDominio(redId: String): Alerta {
         version = version,
         actualizadaEn = actualizadaEn.aInstante(),
         avisoTelegram = avisoTelegram?.aInstante(),
+        asignacion = asignacion?.takeIf { it.responsableId != null }?.aDominio(),
+        asignaciones = asignaciones.orEmpty().map { it.aDominio() },
     )
 }
+
+fun AsignacionDto.aDominio(): Asignacion = Asignacion(
+    responsableId = responsableId,
+    responsable = responsable,
+    porId = porId,
+    por = por,
+    fecha = fecha.aInstante(),
+)
 
 /** Toda revisión que llega de la API es del servidor, aunque la haya hecho este mismo teléfono. */
 fun RevisionDto.aDominio(): Revision = Revision(
@@ -87,6 +110,7 @@ fun RevisionDto.aDominio(): Revision = Revision(
     fecha = fecha.aInstante(),
     origen = OrigenRevision.SERVIDOR,
     revisadaEn = revisadaEn?.aInstante(),
+    persona = persona,
 )
 
 /** La acción pendiente de revisar, como la espera `POST /alertas/{id}/revision`. Null si no tiene revisión. */
@@ -161,3 +185,47 @@ private fun modoDeLaApi(valor: String): ModoAviso =
     if (valor.equals(SILENCIO_EN_LA_API, ignoreCase = true)) ModoAviso.SILENCIO else ModoAviso.valueOf(valor.uppercase())
 
 fun EstadoTelegramDto.aDominio(): EstadoTelegram = EstadoTelegram(vinculado = vinculado, bot = bot, avisos = avisos.aDominio())
+
+// ---- Personas, equipos y registro (API 0.6.0) ----
+
+/** `administrador` ↔ ADMINISTRADOR. Uno desconocido lanza IllegalArgumentException, como los demás enums. */
+fun perfilDeLaApi(valor: String): Perfil = Perfil.valueOf(valor.uppercase())
+
+fun Perfil.enLaApi(): String = name.lowercase()
+
+/** `poco_importante` ↔ POCO_IMPORTANTE. */
+fun importanciaDeLaApi(valor: String): Importancia = Importancia.valueOf(valor.uppercase())
+
+fun Importancia.enLaApi(): String = name.lowercase()
+
+fun PersonaDto.aDominio(): Persona = Persona(
+    id = id,
+    nombre = nombre,
+    telefono = telefono,
+    perfil = perfilDeLaApi(perfil),
+    ultimoUso = ultimoUso?.aInstante(),
+    vos = vos,
+)
+
+fun CodigoPersonaDto.aDominio(): CodigoPersona = CodigoPersona(
+    codigo = codigo,
+    vence = vence.aInstante(),
+    contenido = contenido,
+    nombre = nombre,
+    perfil = perfilDeLaApi(perfil),
+)
+
+fun EquipoDto.aDominio(): EquipoDeLaRed = EquipoDeLaRed(ip = ip, nombre = nombre, importancia = importanciaDeLaApi(importancia))
+
+fun CambioRegistroDto.aDominio(): CambioRegistro = CambioRegistro(
+    id = id,
+    fecha = fecha.aInstante(),
+    tipo = TipoCambio.valueOf(tipo.uppercase()),
+    autorId = autorId,
+    autor = autor,
+    objeto = objeto,
+    nombre = nombre,
+    antes = antes,
+    despues = despues,
+    motivo = motivo,
+)

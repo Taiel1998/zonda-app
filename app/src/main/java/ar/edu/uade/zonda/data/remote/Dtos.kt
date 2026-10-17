@@ -54,6 +54,24 @@ data class AlertaDto(
     val actualizadaEn: String,
     /** Cuándo salió el primer aviso de Telegram; un servidor anterior no lo manda. */
     val avisoTelegram: String? = null,
+    /** El responsable de ahora (API 0.6.0); null si está sin asignar o el servidor es anterior. */
+    val asignacion: AsignacionDto? = null,
+    /** Cada cambio de responsable, del primero al último; un servidor anterior no lo manda. */
+    val asignaciones: List<AsignacionDto>? = null,
+)
+
+data class AsignacionDto(
+    val responsableId: String?,
+    val responsable: String?,
+    val porId: String,
+    val por: String,
+    val fecha: String,
+)
+
+/** Cuerpo de `PUT /alertas/{id}/asignacion`: a quién (null para dejarla sin asignar). */
+data class AsignacionEntradaDto(
+    val accionId: String,
+    val responsableId: String?,
 )
 
 data class VeredictosDto(
@@ -78,6 +96,8 @@ data class RevisionDto(
     val fecha: String,
     /** Cuándo se revisó en el teléfono; null en las revisiones anteriores a este dato. */
     val revisadaEn: String? = null,
+    /** La persona de ese teléfono ("Laura"); un servidor anterior no la manda. */
+    val persona: String? = null,
 )
 
 /** Cuerpo de `POST /alertas/{id}/revision`. */
@@ -117,6 +137,71 @@ data class PareoSalidaDto(
     val emitido: String? = null,
     /** Alertas de los últimos 30 días que tiene la red para descargar (Figma 35-692). */
     val alertas30Dias: Int = 0,
+    /** `administrador` o `analista` (API 0.6.0); un servidor anterior no lo manda y todos son administradores. */
+    val perfil: String? = null,
+    val persona: String? = null,
+)
+
+/** Una persona del equipo (`GET /personas`). */
+data class PersonaDto(
+    val id: String,
+    val nombre: String?,
+    val telefono: String,
+    val perfil: String,
+    val ultimoUso: String?,
+    val vos: Boolean,
+)
+
+/** Cuerpo de `POST /personas/codigo`. */
+data class CodigoPersonaEntradaDto(
+    val nombre: String,
+    val perfil: String,
+)
+
+data class CodigoPersonaDto(
+    val codigo: String,
+    val vence: String,
+    val contenido: String,
+    val nombre: String,
+    val perfil: String,
+)
+
+/** Cuerpo de `PUT /personas/{id}/perfil`. */
+data class PerfilEntradaDto(
+    val perfil: String,
+)
+
+/** Un equipo de la red con su importancia (`GET /equipos`). */
+data class EquipoDto(
+    val ip: String,
+    val nombre: String,
+    val importancia: String,
+)
+
+/** Cuerpo de `PUT /equipos/{ip}`: la importancia y su motivo obligatorio. */
+data class ImportanciaEntradaDto(
+    val importancia: String,
+    val motivo: String,
+)
+
+/** Cuerpo de `PUT /severidades` desde la API 0.6.0: las severidades y un solo motivo para todos los cambios. */
+data class SeveridadesEntradaDto(
+    val severidades: Map<String, String>,
+    val motivo: String,
+)
+
+/** Una línea del registro de cambios (`GET /registro`). */
+data class CambioRegistroDto(
+    val id: Long,
+    val fecha: String,
+    val tipo: String,
+    val autorId: String?,
+    val autor: String,
+    val objeto: String,
+    val nombre: String?,
+    val antes: String?,
+    val despues: String?,
+    val motivo: String?,
 )
 
 data class CatalogoDto(

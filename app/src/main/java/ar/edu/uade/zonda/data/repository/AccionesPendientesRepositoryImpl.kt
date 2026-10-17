@@ -2,11 +2,13 @@ package ar.edu.uade.zonda.data.repository
 
 import ar.edu.uade.zonda.data.local.dao.AccionesPendientesDao
 import ar.edu.uade.zonda.data.local.entidades.AccionPendienteEntity
+import ar.edu.uade.zonda.data.local.entidades.AsignacionPendienteEntity
 import ar.edu.uade.zonda.data.mapper.aDominio
 import ar.edu.uade.zonda.data.mapper.aEntidad
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.repository.AccionesPendientesRepository
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -25,7 +27,24 @@ class AccionesPendientesRepositoryImpl(
 
     override suspend fun quitar(accionId: String) = dao.borrar(accionId)
 
-    override suspend fun borrarDeRed(redId: String) = dao.borrarDeRed(redId)
+    override suspend fun encolarAsignacion(redId: String, alertaId: String, accionId: String, responsableId: String?, creadaEn: Instant) =
+        dao.encolarAsignacion(
+            AsignacionPendienteEntity(
+                alertaId = alertaId,
+                redId = redId,
+                accionId = accionId,
+                responsableId = responsableId,
+                creadaEn = creadaEn.toEpochMilli(),
+                intentos = 0,
+                estado = EstadoEnvio.PENDIENTE.name,
+                ultimoError = null,
+            ),
+        )
+
+    override suspend fun borrarDeRed(redId: String) {
+        dao.borrarDeRed(redId)
+        dao.borrarAsignacionesDeRed(redId)
+    }
 
     /** Lo usa la sincronización para marcar reintentos, errores y conflictos. */
     suspend fun actualizarEnvio(accionId: String, estado: EstadoEnvio, intentos: Int, ultimoError: String?) =

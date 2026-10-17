@@ -16,7 +16,6 @@ object Rutas {
     const val BIENVENIDA = "bienvenida"
     const val TUTORIAL = "tutorial"
     const val AVISOS = "avisos"
-    const val SEVERIDADES_INICIALES = "severidades_iniciales"
     const val CONEXION_INICIAL = "conexion_inicial"
 
     /** Conectar Telegram después de la red conectada, con "Ahora no" (Figma 50-942 y 50-1003). */

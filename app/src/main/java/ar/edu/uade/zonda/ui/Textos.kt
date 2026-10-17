@@ -278,4 +278,7 @@ fun ErrorZonda.mensaje(): Int = when (this) {
     is ErrorZonda.Validacion -> R.string.error_validacion
     is ErrorZonda.TelegramNoDisponible -> R.string.error_telegram_no_disponible
     is ErrorZonda.TelegramSinVincular -> R.string.error_telegram_sin_vincular
+    is ErrorZonda.SinPermiso -> R.string.error_sin_permiso
+    is ErrorZonda.UltimoAdministrador -> R.string.error_ultimo_administrador
+    is ErrorZonda.YaAsignada -> R.string.error_ya_asignada
 }

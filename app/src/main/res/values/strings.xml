@@ -202,6 +202,21 @@
     <string name="error_telegram_no_disponible">El servidor de esta red todavía no tiene el bot de Telegram. Avisale al administrador.</string>
     <string name="error_telegram_sin_vincular">Telegram ya no está vinculado. Conectalo de nuevo.</string>
     <string name="error_generico">Algo salió mal.</string>
+    <!-- Severidades de la analista (corrección 2; Figma 468-3353) -->
+    <string name="severidades_las_cambia">Las cambia un administrador: %1$s. Valen para todo el equipo.</string>
+    <string name="severidades_las_cambia_sin_nombres">Las cambia un administrador. Valen para todo el equipo.</string>
+    <!-- "¿Por qué la cambiás?" al cambiar severidades o la importancia de un equipo (corrección 3; Figma 468-3463) -->
+    <string name="motivo_titulo">¿Por qué la cambiás?</string>
+    <string name="motivo_campo">Motivo (obligatorio)</string>
+    <string name="motivo_ejemplo">Por ejemplo: el backup nocturno usa SSH y daba falsas alarmas.</string>
+    <string name="motivo_ayuda">Queda en el registro de cambios con tu nombre y la hora.</string>
+    <string name="motivo_falta">Escribí por qué la cambiás.</string>
+    <string name="motivo_guardar">Guardar cambios</string>
+    <string name="motivo_pasa_a">pasa a</string>
+    <!-- Perfiles y asignaciones (decisiones 39 y 42) -->
+    <string name="error_sin_permiso">Eso lo cambia un administrador.</string>
+    <string name="error_ultimo_administrador">Tiene que quedar al menos un administrador en el equipo.</string>
+    <string name="error_ya_asignada">Otra persona ya se la asignó.</string>
 
     <!-- Detalle -->
     <string name="detalle_titulo">Alerta</string>
@@ -418,7 +433,6 @@
     <string name="notificaciones_rechazadas">Sin permiso, Zonda no puede mostrar notificaciones. La app sigue funcionando; podés activarlas desde los ajustes del sistema.</string>
     <string name="severidades_intro">Último paso: elegí qué tan grave es cada tipo de ataque. Eso define el color del semáforo y cómo te avisa cada alerta. Ya vienen los valores recomendados; los podés cambiar después en Ajustes.</string>
     <string name="severidades_nota">Los cambios valen para todos los teléfonos pareados a esta red.</string>
-    <string name="severidades_guardar">Guardar y conectar con la red</string>
 
     <!-- Conexión (pareo) -->
     <string name="conexion_titulo">Conectar con la red</string>

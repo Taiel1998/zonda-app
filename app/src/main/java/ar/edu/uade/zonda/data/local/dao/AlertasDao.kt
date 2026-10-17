@@ -7,6 +7,7 @@ import androidx.room.Transaction
 import androidx.room.Upsert
 import ar.edu.uade.zonda.data.local.entidades.AlertaConDetalles
 import ar.edu.uade.zonda.data.local.entidades.AlertaEntity
+import ar.edu.uade.zonda.data.local.entidades.AsignacionEntity
 import ar.edu.uade.zonda.data.local.entidades.ConteoPorSeveridad
 import ar.edu.uade.zonda.data.local.entidades.RevisionEntity
 import ar.edu.uade.zonda.data.local.entidades.ValorFrecuente
@@ -110,6 +111,13 @@ abstract class AlertasDao {
     @Query("DELETE FROM alertas WHERE redId = :redId AND inicio < :antesDe")
     abstract suspend fun purgarAnterioresA(redId: String, antesDe: Long): Int
 
+    /**
+     * La última asignación del servidor que conoce el teléfono de cada alerta de la lista: la
+     * sincronización la compara con la que llega para saber si a esta persona le asignaron una alerta nueva.
+     */
+    @Query("SELECT alertaId AS alertaId, MAX(fecha) AS fecha FROM asignaciones WHERE alertaId IN (:ids) AND origen = 'SERVIDOR' GROUP BY alertaId")
+    abstract suspend fun ultimasAsignacionesDelServidor(ids: List<String>): List<UltimaAsignacion>
+
     /** De una lista de ids, cuáles ya están en el teléfono (la sincronización cuenta nuevas y modificadas). */
     @Query("SELECT id FROM alertas WHERE redId = :redId AND id IN (:ids)")
     abstract suspend fun idsExistentes(redId: String, ids: List<String>): List<String>
@@ -119,10 +127,59 @@ abstract class AlertasDao {
      * provisoria (ya está en el historial que manda el servidor) y la alerta queda como la devolvió la API.
      */
     @Transaction
-    open suspend fun confirmarDelServidor(alerta: AlertaEntity, revisiones: List<RevisionEntity>) {
+    open suspend fun confirmarDelServidor(alerta: AlertaEntity, revisiones: List<RevisionEntity>, asignaciones: List<AsignacionEntity> = emptyList()) {
         borrarRevisionesLocales(alerta.id)
-        guardarDelServidor(listOf(alerta), mapOf(alerta.id to revisiones))
+        guardarDelServidor(listOf(alerta), mapOf(alerta.id to revisiones), mapOf(alerta.id to asignaciones))
     }
+
+    /** El servidor confirmó la asignación hecha en este teléfono: la local deja de ser provisoria. */
+    @Transaction
+    open suspend fun confirmarAsignacionDelServidor(alerta: AlertaEntity, revisiones: List<RevisionEntity>, asignaciones: List<AsignacionEntity>) {
+        borrarAsignacionesLocales(alerta.id)
+        guardarDelServidor(listOf(alerta), mapOf(alerta.id to revisiones), mapOf(alerta.id to asignaciones))
+    }
+
+    /**
+     * Asignación hecha en este teléfono (decisión 42): reemplaza la local anterior, si había, y deja a la
+     * alerta con ese responsable hasta que el servidor la confirme.
+     */
+    @Transaction
+    open suspend fun aplicarAsignacionLocal(asignacion: AsignacionEntity) {
+        borrarAsignacionesLocales(asignacion.alertaId)
+        insertarAsignaciones(listOf(asignacion))
+        ponerResponsable(asignacion.alertaId, asignacion)
+    }
+
+    /** El servidor rechazó la asignación (403, 409): la alerta vuelve al responsable que dice el servidor. */
+    @Transaction
+    open suspend fun restaurarAsignacionDelServidor(alertaId: String) {
+        borrarAsignacionesLocales(alertaId)
+        ponerResponsable(alertaId, ultimaAsignacionDelServidor(alertaId))
+    }
+
+    private suspend fun ponerResponsable(alertaId: String, asignacion: AsignacionEntity?) {
+        // Sin responsable (la última dejó la alerta sin asignar) no hay quién ni cuándo que mostrar.
+        val vigente = asignacion?.takeIf { it.responsableId != null }
+        actualizarResponsable(alertaId, vigente?.responsableId, vigente?.responsable, vigente?.porId, vigente?.por, vigente?.fecha)
+    }
+
+    @Query("UPDATE alertas SET responsableId = :responsableId, responsable = :responsable, asignadaPorId = :porId, asignadaPor = :por, asignadaEn = :fecha WHERE id = :alertaId")
+    abstract suspend fun actualizarResponsable(alertaId: String, responsableId: String?, responsable: String?, porId: String?, por: String?, fecha: Long?)
+
+    @Insert
+    abstract suspend fun insertarAsignaciones(asignaciones: List<AsignacionEntity>)
+
+    @Query("DELETE FROM asignaciones WHERE alertaId = :alertaId AND origen = 'ESTE_TELEFONO'")
+    abstract suspend fun borrarAsignacionesLocales(alertaId: String)
+
+    @Query("DELETE FROM asignaciones WHERE alertaId = :alertaId AND origen = 'SERVIDOR'")
+    abstract suspend fun borrarAsignacionesDelServidor(alertaId: String)
+
+    @Query("SELECT * FROM asignaciones WHERE alertaId = :alertaId AND origen = 'ESTE_TELEFONO' ORDER BY id DESC LIMIT 1")
+    abstract suspend fun asignacionLocal(alertaId: String): AsignacionEntity?
+
+    @Query("SELECT * FROM asignaciones WHERE alertaId = :alertaId AND origen = 'SERVIDOR' ORDER BY fecha DESC, id DESC LIMIT 1")
+    abstract suspend fun ultimaAsignacionDelServidor(alertaId: String): AsignacionEntity?
 
     /**
      * Revisión hecha en este teléfono: reemplaza la revisión local anterior si había una (nunca
@@ -144,17 +201,24 @@ abstract class AlertasDao {
     }
 
     /**
-     * Guarda alertas que llegaron del servidor: la alerta se inserta o actualiza y su historial se
-     * reemplaza por el del servidor. Una revisión local pendiente se conserva y sigue mandando sobre
-     * el estado que se muestra, porque todavía no se envió.
+     * Guarda alertas que llegaron del servidor: la alerta se inserta o actualiza y su historial (las
+     * revisiones y las asignaciones) se reemplaza por el del servidor. Una revisión o una asignación
+     * local pendiente se conserva y sigue mandando sobre lo que se muestra, porque todavía no se envió.
      */
     @Transaction
-    open suspend fun guardarDelServidor(alertas: List<AlertaEntity>, revisionesPorAlerta: Map<String, List<RevisionEntity>>) {
+    open suspend fun guardarDelServidor(
+        alertas: List<AlertaEntity>,
+        revisionesPorAlerta: Map<String, List<RevisionEntity>>,
+        asignacionesPorAlerta: Map<String, List<AsignacionEntity>> = emptyMap(),
+    ) {
         upsertAlertas(alertas)
         for (alerta in alertas) {
             borrarRevisionesDelServidor(alerta.id)
             revisionesPorAlerta[alerta.id]?.let { insertarRevisiones(it) }
             revisionLocal(alerta.id)?.let { actualizarEstadoRevision(alerta.id, estadoDe(it.resultado)) }
+            borrarAsignacionesDelServidor(alerta.id)
+            asignacionesPorAlerta[alerta.id]?.let { insertarAsignaciones(it) }
+            asignacionLocal(alerta.id)?.let { ponerResponsable(alerta.id, it) }
         }
     }
 
@@ -163,6 +227,9 @@ abstract class AlertasDao {
 
     @Query("SELECT * FROM revisiones WHERE alertaId = :alertaId AND origen = 'ESTE_TELEFONO' ORDER BY fecha DESC LIMIT 1")
     abstract suspend fun revisionLocal(alertaId: String): RevisionEntity?
+
+    /** La hora de la última asignación del servidor de una alerta (resultado de [ultimasAsignacionesDelServidor]). */
+    data class UltimaAsignacion(val alertaId: String, val fecha: Long)
 
     private fun estadoDe(resultado: String): String = when (resultado) {
         "ATAQUE_REAL" -> "ATAQUE_REAL"
