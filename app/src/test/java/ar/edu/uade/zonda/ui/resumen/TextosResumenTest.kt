@@ -3,7 +3,8 @@ package ar.edu.uade.zonda.ui.resumen
 import android.content.res.Resources
 import androidx.test.core.app.ApplicationProvider
 import ar.edu.uade.zonda.domain.Fixtures
-import ar.edu.uade.zonda.domain.model.GrupoResumen
+import ar.edu.uade.zonda.domain.model.FiltroResumen
+import ar.edu.uade.zonda.domain.model.Franja
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
@@ -11,8 +12,9 @@ import ar.edu.uade.zonda.domain.model.Proporcion
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.Revision
+import ar.edu.uade.zonda.domain.model.RevisionResumen
+import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
-import ar.edu.uade.zonda.domain.model.Tramo
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -77,9 +79,7 @@ class TextosResumenTest {
             "El viernes concentra 1 alerta: 1 sin tipo identificado.",
             fraseDelGrafico(ResumenActividad.calcular(sinTipo, PeriodoResumen.SIETE_DIAS, domingo, utc), recursos),
         )
-        assertEquals("Fuerza bruta", GrupoResumen.Tipo(TipoAtaque.FUERZA_BRUTA).etiquetaChip(recursos))
-        assertEquals("Sin tipo identificado", GrupoResumen.Tipo(TipoAtaque.SIN_TIPIFICAR).etiquetaChip(recursos))
-        assertEquals("volumen inusual", GrupoResumen.Tipo(TipoAtaque.VOLUMEN_INUSUAL).etiquetaFrase(recursos))
+        assertEquals(listOf("volumen inusual"), FiltroResumen(tipos = setOf(TipoAtaque.VOLUMEN_INUSUAL)).grupos(recursos, emptySet(), conFecha = false))
     }
 
     @Test
@@ -92,16 +92,69 @@ class TextosResumenTest {
     }
 
     @Test
-    fun `con un grupo la frase dice que se esta mostrando, con el dia y el metodo como en el chip`() {
+    fun `con un filtro la frase dice que se esta mostrando y como sacarlo, Figma 100-8096`() {
         val lista = listOf(alertaDel("2026-09-25", "v-1"))
-        val viernes = LocalDate.of(2026, 9, 25)
+        val viernes = Franja.dia(LocalDate.of(2026, 9, 25))
 
-        val porDia = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, GrupoResumen.Barra(Tramo(viernes, viernes)))
-        val porMetodo = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, GrupoResumen.Metodo(MetodoDeteccion.IA))
+        val porDia = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, FiltroResumen(barras = setOf(viernes)))
+        val porMetodo = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, FiltroResumen(metodo = MetodoDeteccion.IA))
 
-        assertEquals("Mostrando Viernes 25/09: 1 alerta. Tocá de nuevo para ver todas.", fraseDelGrafico(porDia, recursos))
-        assertEquals("Mostrando modelo de IA: 1 alerta. Tocá de nuevo para ver todas.", fraseDelGrafico(porMetodo, recursos))
-        assertEquals("Semana del 28/8", Tramo(LocalDate.of(2026, 8, 28), LocalDate.of(2026, 9, 6)).etiquetaChip(recursos))
+        assertEquals("Mostrando Viernes 25/09: 1 alerta. Tocá de nuevo para sacarlo.", fraseDelGrafico(porDia, recursos))
+        assertEquals("Mostrando modelo de IA: 1 alerta. Tocá de nuevo para sacarlo.", fraseDelGrafico(porMetodo, recursos))
+        // En la imagen no se puede tocar.
+        assertEquals("Mostrando Viernes 25/09: 1 alerta.", fraseDelGrafico(porDia, recursos, enImagen = true))
+    }
+
+    @Test
+    fun `con varios filtros la frase los nombra, y con mas de cuatro dice cuantos son, Figma 463-1145`() {
+        val lista = listOf(alertaDel("2026-09-25", "v-1"), alertaDel("2026-09-26", "s-1", tipo = TipoAtaque.ESCANEO))
+        val viernes = Franja.dia(LocalDate.of(2026, 9, 25))
+        val sabado = Franja.dia(LocalDate.of(2026, 9, 26))
+        fun frase(filtro: FiltroResumen) = fraseDelGrafico(ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, filtro), recursos)
+
+        assertEquals("Mostrando 1 alerta: viernes · fuerza bruta.", frase(FiltroResumen(barras = setOf(viernes), tipos = setOf(TipoAtaque.FUERZA_BRUTA))))
+        assertEquals(
+            "Mostrando 2 alertas: viernes y sábado · fuerza bruta y escaneo de puertos.",
+            frase(FiltroResumen(barras = setOf(sabado, viernes), tipos = setOf(TipoAtaque.ESCANEO, TipoAtaque.FUERZA_BRUTA))),
+        )
+        assertEquals(
+            "Mostrando 0 alertas con 5 filtros.",
+            frase(FiltroResumen(barras = setOf(sabado, viernes), tipos = setOf(TipoAtaque.ESCANEO, TipoAtaque.FUERZA_BRUTA), revision = RevisionResumen.REALES)),
+        )
+    }
+
+    @Test
+    fun `los tipos que la red tiene en alta se nombran como las altas`() {
+        val lista = listOf(alertaDel("2026-09-25", "v-1"))
+        val altas = SeveridadPorTipo.RECOMENDADA.tiposAltos
+        val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, FiltroResumen(tipos = altas))
+
+        assertEquals("Mostrando las altas: 1 alerta. Tocá de nuevo para sacarlo.", fraseDelGrafico(resumen, recursos, altas))
+        assertEquals("Estás viendo las altas: la precisión cuenta solo las alertas altas revisadas.", recuadroDePrecision(resumen, recursos, altas))
+    }
+
+    @Test
+    fun `los dias y las semanas se nombran como en el Figma`() {
+        val viernes = Franja.dia(LocalDate.of(2026, 9, 25))
+        val semana = Franja.semana(LocalDate.of(2026, 8, 28), LocalDate.of(2026, 9, 6))
+
+        assertEquals("vie", viernes.etiquetaGrafico())
+        assertEquals("viernes", viernes.enFrase(recursos))
+        assertEquals("viernes 25/09", viernes.conFecha(recursos))
+        assertEquals("vie 25/09", viernes.enHoja(recursos))
+        assertEquals("28/8", semana.etiquetaGrafico())
+        assertEquals("semana del 28/8", semana.enHoja(recursos))
+    }
+
+    @Test
+    fun `la lista dice de donde salen sus alertas, Figma 463-1669`() {
+        val lista = listOf(alertaDel("2026-09-25", "v-1"))
+        val viernes = Franja.dia(LocalDate.of(2026, 9, 25))
+        fun linea(filtro: FiltroResumen) =
+            lineaDeLaLista(ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, filtro), recursos, emptySet())
+
+        assertEquals("Del Resumen: viernes 25/09 · fuerza bruta", linea(FiltroResumen(barras = setOf(viernes), tipos = setOf(TipoAtaque.FUERZA_BRUTA))))
+        assertEquals("Del Resumen: del 21/09 al 27/09 · sin revisar", linea(FiltroResumen(revision = RevisionResumen.SIN_REVISAR)))
     }
 
     @Test
@@ -145,27 +198,36 @@ class TextosResumenTest {
     @Test
     fun `el recuadro de la hoja cambia con el filtro elegido`() {
         val lista = listOf(alertaDel("2026-09-25", "v-1", revision = Fixtures.revision(fecha = domingo)))
-        fun recuadro(grupo: GrupoResumen?, periodo: PeriodoResumen = PeriodoResumen.SIETE_DIAS) =
-            recuadroDePrecision(ResumenActividad.calcular(lista, periodo, domingo, utc, grupo), recursos)
-        val viernes = LocalDate.parse("2026-09-25")
+        fun recuadro(filtro: FiltroResumen, periodo: PeriodoResumen = PeriodoResumen.SIETE_DIAS) =
+            recuadroDePrecision(ResumenActividad.calcular(lista, periodo, domingo, utc, filtro), recursos)
+        val viernes = Franja.dia(LocalDate.parse("2026-09-25"))
 
-        assertEquals("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 7 días.", recuadro(null))
-        assertEquals("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 30 días.", recuadro(null, PeriodoResumen.TREINTA_DIAS))
+        assertEquals("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 7 días.", recuadro(FiltroResumen()))
+        assertEquals("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 30 días.", recuadro(FiltroResumen(), PeriodoResumen.TREINTA_DIAS))
         assertEquals(
             "Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese modelo.",
-            recuadro(GrupoResumen.Metodo(MetodoDeteccion.IA)),
+            recuadro(FiltroResumen(metodo = MetodoDeteccion.IA)),
         )
         assertEquals(
             "Estás viendo el viernes 25/09: la precisión cuenta solo las alertas revisadas de ese día.",
-            recuadro(GrupoResumen.Barra(Tramo(viernes, viernes))),
+            recuadro(FiltroResumen(barras = setOf(viernes))),
         )
         assertEquals(
             "Estás viendo fuerza bruta: la precisión cuenta solo las alertas revisadas de ese tipo.",
-            recuadro(GrupoResumen.Tipo(TipoAtaque.FUERZA_BRUTA)),
+            recuadro(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA))),
         )
         assertEquals(
             "Estás viendo los falsos positivos: ninguna es real, así que cada modelo da 0 %.",
-            recuadro(GrupoResumen.FalsosPositivos),
+            recuadro(FiltroResumen(revision = RevisionResumen.FALSOS_POSITIVOS)),
+        )
+        // Con un modelo elegido manda lo del modelo; con varios filtros de otra clase, que cuenta los que pasan todos.
+        assertEquals(
+            "Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese modelo.",
+            recuadro(FiltroResumen(barras = setOf(viernes), metodo = MetodoDeteccion.IA)),
+        )
+        assertEquals(
+            "Estás viendo varios filtros juntos: la precisión cuenta solo las alertas revisadas que pasan todos.",
+            recuadro(FiltroResumen(barras = setOf(viernes), tipos = setOf(TipoAtaque.FUERZA_BRUTA))),
         )
     }
 }

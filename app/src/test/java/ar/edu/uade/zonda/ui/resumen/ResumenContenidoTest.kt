@@ -20,16 +20,18 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.Alerta
-import ar.edu.uade.zonda.domain.model.GrupoResumen
+import ar.edu.uade.zonda.domain.model.FiltroResumen
+import ar.edu.uade.zonda.domain.model.Franja
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.ResumenActividad
+import ar.edu.uade.zonda.domain.model.RevisionResumen
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
-import ar.edu.uade.zonda.domain.model.Tramo
+import ar.edu.uade.zonda.domain.model.ToqueResumen
 import ar.edu.uade.zonda.ui.theme.Texto
 import ar.edu.uade.zonda.ui.theme.TextoSecundario
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
@@ -77,13 +79,13 @@ class ResumenContenidoTest {
         )
     }
 
-    private fun resumen(grupo: GrupoResumen? = null, lista: List<Alerta> = alertas()) =
-        ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc, grupo)
+    private fun resumen(filtro: FiltroResumen = FiltroResumen(), lista: List<Alerta> = alertas()) =
+        ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc, filtro)
 
     private fun estado(resumen: ResumenActividad, sinConexion: Boolean = false) = ResumenUiState(
         contenido = if (resumen.totalDelPeriodo == 0) ContenidoResumen.Vacio(resumen) else ContenidoResumen.Datos(resumen),
         periodo = resumen.periodo,
-        grupo = resumen.grupo,
+        filtro = resumen.filtro,
         red = "Oficina central",
         datosDe = ahora,
         sinConexion = sinConexion,
@@ -99,10 +101,11 @@ class ResumenContenidoTest {
 
     private fun dibujar(
         estado: ResumenUiState,
-        alTocarCifra: (GrupoResumen?) -> Unit = {},
-        alQuitarFiltro: () -> Unit = {},
+        alTocar: (ToqueResumen) -> Unit = {},
         alCompartir: () -> Unit = {},
         alElegirPeriodo: (PeriodoResumen) -> Unit = {},
+        alAplicarFiltro: (FiltroResumen) -> Unit = {},
+        alVerAlertas: (FiltroResumen) -> Unit = {},
     ) {
         compose.setContent {
             ZondaTheme {
@@ -110,9 +113,10 @@ class ResumenContenidoTest {
                     estado = estado,
                     alVolver = {},
                     alElegirPeriodo = alElegirPeriodo,
-                    alTocarCifra = alTocarCifra,
-                    alQuitarFiltro = alQuitarFiltro,
+                    alTocar = alTocar,
                     alCompartir = alCompartir,
+                    alAplicarFiltro = alAplicarFiltro,
+                    alVerAlertas = alVerAlertas,
                     zona = utc,
                 )
             }
@@ -143,9 +147,9 @@ class ResumenContenidoTest {
     }
 
     @Test
-    fun `cada cifra se toca y pide recalcular sobre su grupo`() {
-        val tocadas = mutableListOf<GrupoResumen?>()
-        dibujar(estado(resumen()), alTocarCifra = { tocadas += it })
+    fun `cada cifra se toca y suma o saca su filtro`() {
+        val tocadas = mutableListOf<ToqueResumen>()
+        dibujar(estado(resumen()), alTocar = { tocadas += it })
 
         compose.onNodeWithText("sin revisar").performClick()
         compose.onNodeWithText("alertas").performClick()
@@ -156,31 +160,73 @@ class ResumenContenidoTest {
         compose.onNodeWithText("Umbrales estadísticos").performScrollTo().performClick()
         compose.onNodeWithText("Cobertura de revisión").performScrollTo().performClick()
 
-        val viernes = LocalDate.of(2026, 10, 9)
+        val viernes = Franja.dia(LocalDate.of(2026, 10, 9))
         assertEquals(
             listOf(
-                GrupoResumen.SinRevisar,
-                null,
-                GrupoResumen.Altas,
-                GrupoResumen.Barra(Tramo(viernes, viernes)),
-                GrupoResumen.Tipo(TipoAtaque.PROBABLE_FALSA_ALARMA),
-                GrupoResumen.FalsosPositivos,
-                GrupoResumen.Metodo(MetodoDeteccion.UMBRALES),
-                GrupoResumen.Revisadas,
+                ToqueResumen.Revision(RevisionResumen.SIN_REVISAR),
+                ToqueResumen.Total,
+                ToqueResumen.Altas,
+                ToqueResumen.Barra(viernes),
+                ToqueResumen.Tipo(TipoAtaque.PROBABLE_FALSA_ALARMA),
+                ToqueResumen.Revision(RevisionResumen.FALSOS_POSITIVOS),
+                ToqueResumen.Metodo(MetodoDeteccion.UMBRALES),
+                ToqueResumen.Revision(RevisionResumen.REVISADAS),
             ),
             tocadas,
         )
     }
 
     @Test
-    fun `con un grupo muestra su chip con la cruz y la frase de lo que se esta mostrando`() {
-        var quitado = false
-        dibujar(estado(resumen(GrupoResumen.Tipo(TipoAtaque.FUERZA_BRUTA))), alQuitarFiltro = { quitado = true })
+    fun `con un filtro el boton dice Filtros (1) y la frase lo que se esta mostrando`() {
+        dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA)))))
 
-        compose.onNodeWithContentDescription("Quitar el filtro Fuerza bruta").performClick()
-        compose.onNodeWithText("Mostrando fuerza bruta: 2 alertas. Tocá de nuevo para ver todas.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Filtros (1)").assertIsDisplayed()
+        compose.onNodeWithText("Mostrando fuerza bruta: 2 alertas. Tocá de nuevo para sacarlo.").performScrollTo().assertIsDisplayed()
+    }
 
-        assertTrue(quitado)
+    @Test
+    fun `sin filtros el boton dice Filtros y abre la hoja con todas las opciones`() {
+        dibujar(estado(resumen()))
+
+        compose.onNodeWithText("Filtros").performClick()
+
+        compose.onNodeWithText("Filtrar el resumen").assertIsDisplayed()
+        compose.onNodeWithText("Cuándo · podés elegir varios").assertExists()
+        compose.onNodeWithText("vie 09/10").assertExists()
+        compose.onNodeWithText("Tipo de ataque · podés elegir varios").assertExists()
+        compose.onNodeWithText("Volumen inusual de conexiones").assertExists()
+        compose.onNodeWithText("Revisión").assertExists()
+        compose.onNodeWithText("Modelo").assertExists()
+        compose.onNodeWithText("Ver estas 4 alertas en la lista →").assertExists()
+        compose.onNodeWithText("Mostrar 4 alertas").assertExists()
+    }
+
+    @Test
+    fun `la hoja cuenta cuantas quedan antes de aplicar y Mostrar aplica todo junto`() {
+        val aplicados = mutableListOf<FiltroResumen>()
+        dibujar(estado(resumen()), alAplicarFiltro = { aplicados += it })
+
+        compose.onNodeWithText("Filtros").performClick()
+        compose.onNode(hasText("Fuerza bruta (SSH, FTP)") and SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)).performScrollTo().performClick()
+        compose.onNodeWithText("Mostrar 2 alertas").performScrollTo()
+        compose.onNodeWithText("Sin revisar").performScrollTo().performClick()
+        compose.onNodeWithText("Mostrar 1 alerta").performScrollTo().performClick()
+
+        assertEquals(listOf(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA), revision = RevisionResumen.SIN_REVISAR)), aplicados)
+        compose.onAllNodesWithText("Filtrar el resumen").assertCountEquals(0)
+    }
+
+    @Test
+    fun `la hoja muestra tildado lo que se toco en el Resumen, Limpiar lo saca y Ver en la lista lleva esos filtros`() {
+        val enLista = mutableListOf<FiltroResumen>()
+        dibujar(estado(resumen(FiltroResumen(revision = RevisionResumen.REVISADAS))), alVerAlertas = { enLista += it })
+
+        compose.onNodeWithText("Filtros (1)").performClick()
+        compose.onNodeWithText("Ver estas 2 alertas en la lista →").performScrollTo()
+        compose.onNodeWithText("Limpiar").performScrollTo().performClick()
+        compose.onNodeWithText("Ver estas 4 alertas en la lista →").performScrollTo().performClick()
+
+        assertEquals(listOf(FiltroResumen()), enLista)
     }
 
     @Test

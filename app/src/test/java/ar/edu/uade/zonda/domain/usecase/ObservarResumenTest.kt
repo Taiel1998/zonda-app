@@ -4,8 +4,9 @@ import app.cash.turbine.test
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
-import ar.edu.uade.zonda.domain.model.GrupoResumen
+import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.RevisionResumen
 import java.time.Duration
 import java.time.ZoneOffset
 import kotlinx.coroutines.test.runTest
@@ -51,9 +52,9 @@ class ObservarResumenTest {
         val redes = FakeRedesRepository(listOf(Fixtures.red()))
         val alertas = FakeAlertasRepository(listOf(Fixtures.alerta("a-1", revision = Fixtures.revision()), Fixtures.alerta("a-2")))
 
-        observar(redes, alertas)(PeriodoResumen.SIETE_DIAS, GrupoResumen.SinRevisar).test {
+        observar(redes, alertas)(PeriodoResumen.SIETE_DIAS, FiltroResumen(revision = RevisionResumen.SIN_REVISAR)).test {
             val resumen = awaitItem()!!
-            assertEquals(GrupoResumen.SinRevisar, resumen.grupo)
+            assertEquals(RevisionResumen.SIN_REVISAR, resumen.filtro.revision)
             assertEquals(1, resumen.total)
             assertEquals(2, resumen.totalDelPeriodo)
             cancelAndIgnoreRemainingEvents()

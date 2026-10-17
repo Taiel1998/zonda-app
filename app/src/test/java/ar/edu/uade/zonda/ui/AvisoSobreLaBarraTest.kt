@@ -173,14 +173,13 @@ class AvisoSobreLaBarraTest {
     @Test
     fun `el aviso del Resumen queda arriba de la barra`() {
         // Solo hay avisos después de compartir, y para compartir hace falta el resumen: con el botón fijo abajo.
-        val resumen = ResumenActividad.calcular(listOf(Fixtures.alerta("a-1")), PeriodoResumen.SIETE_DIAS, Fixtures.AHORA, utc, null)
+        val resumen = ResumenActividad.calcular(listOf(Fixtures.alerta("a-1")), PeriodoResumen.SIETE_DIAS, Fixtures.AHORA, utc)
         dibujarConLaBarra {
             ResumenContenido(
                 estado = ResumenUiState(contenido = ContenidoResumen.Datos(resumen), red = "Oficina central", datosDe = Fixtures.AHORA, aviso = AvisoResumen.Copiado),
                 alVolver = {},
                 alElegirPeriodo = {},
-                alTocarCifra = {},
-                alQuitarFiltro = {},
+                alTocar = {},
                 alCompartir = {},
                 zona = utc,
             )
