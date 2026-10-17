@@ -8,7 +8,9 @@ import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.domain.fakes.GeneradorDeIdsFijo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.ModoNotificacion
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
+import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAccion
@@ -27,7 +29,6 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -82,7 +83,7 @@ class AjustesViewModelTest {
         assertEquals(3, estado.alertasGuardadas)
         assertEquals(ModoAviso.SONIDO, estado.avisos.alta)
         assertEquals(Severidad.ALTA, estado.severidades.severidadDe(TipoAtaque.ESCANEO))
-        assertTrue(estado.notificacionesActivas)
+        assertEquals(PreferenciasNotificaciones(), estado.notificaciones)
         assertEquals("Google Pixel 7", estado.nombreDelTelefono)
         assertNull(estado.borradorSeveridades)
         assertNull(estado.borradorAvisos)
@@ -154,12 +155,28 @@ class AjustesViewModelTest {
     }
 
     @Test
-    fun `el interruptor de notificaciones se guarda`() = runTest {
+    fun `las notificaciones de Zonda se editan con los avisos y Guardar guarda las dos tarjetas`() = runTest {
         val viewModel = viewModel()
 
-        viewModel.cambiarNotificaciones(false)
-        assertFalse(preferencias.notificaciones.value)
-        assertFalse(viewModel.estado.value.notificacionesActivas)
+        viewModel.empezarAEditarAvisos()
+        assertEquals(PreferenciasNotificaciones(), viewModel.estado.value.borradorNotificaciones)
+        viewModel.cambiarNotificacionDelBorrador(Severidad.MEDIA, ModoNotificacion.EN_SILENCIO)
+        viewModel.cambiarRecordatorioDelBorrador(false)
+        assertEquals(ModoNotificacion.SOLO_VIBRACION, preferencias.notificaciones.value.media) // todavía no se guardó
+
+        viewModel.guardarAvisos()
+
+        assertEquals(PreferenciasNotificaciones(media = ModoNotificacion.EN_SILENCIO, recordatorio = false), preferencias.notificaciones.value)
+        assertEquals(ModoNotificacion.EN_SILENCIO, viewModel.estado.value.notificaciones.media)
+        assertNull(viewModel.estado.value.borradorNotificaciones)
+
+        // Volver sin guardar descarta las dos.
+        viewModel.empezarAEditarAvisos()
+        viewModel.cambiarNotificacionDelBorrador(Severidad.ALTA, ModoNotificacion.SIN_AVISO)
+        viewModel.descartarBorradorAvisos()
+        assertEquals(ModoNotificacion.SONIDO_Y_VIBRACION, preferencias.notificaciones.value.alta)
+        assertNull(viewModel.estado.value.borradorNotificaciones)
+        assertNull(viewModel.estado.value.borradorAvisos)
     }
 
     @Test

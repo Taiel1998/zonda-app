@@ -63,7 +63,9 @@ import ar.edu.uade.zonda.ui.recorrido.PantallaRecorrido
 import ar.edu.uade.zonda.ui.recorrido.RecorridoViewModel
 import ar.edu.uade.zonda.ui.recorrido.RegistroRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
+import ar.edu.uade.zonda.ui.resumen.AlertasDelResumenScreen
 import ar.edu.uade.zonda.ui.resumen.ResumenScreen
+import ar.edu.uade.zonda.ui.resumen.resumenViewModel
 import ar.edu.uade.zonda.ui.telegram.TelegramScreen
 import ar.edu.uade.zonda.ui.theme.etiquetaBarra
 import ar.edu.uade.zonda.ui.viewModelDeZonda
@@ -205,7 +207,19 @@ fun ZondaNavHost(
                             )
                         }
                         composable(Rutas.RESUMEN) {
-                            ResumenScreen(alVolver = { navController.popBackStack() })
+                            ResumenScreen(
+                                alVolver = { navController.popBackStack() },
+                                alVerAlertas = { navController.navigate(Rutas.ALERTAS_DEL_RESUMEN) },
+                            )
+                        }
+                        // "Ver estas alertas" (cambio 16): usa el ViewModel del Resumen, que queda abajo con sus filtros.
+                        composable(Rutas.ALERTAS_DEL_RESUMEN) { entrada ->
+                            val dueño = remember(entrada) { navController.getBackStackEntry(Rutas.RESUMEN) }
+                            AlertasDelResumenScreen(
+                                viewModel = resumenViewModel(dueño),
+                                alAbrirDetalle = { alertaId -> navController.navigate(RutaDetalle.crear(alertaId)) },
+                                alVolver = { navController.popBackStack() },
+                            )
                         }
                         composable(
                             route = Rutas.ALERTAS,

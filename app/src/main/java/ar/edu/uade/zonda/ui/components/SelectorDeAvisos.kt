@@ -30,12 +30,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.ModoNotificacion
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
+import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.tituloHoja
 import ar.edu.uade.zonda.ui.tituloHojaAvisos
+import ar.edu.uade.zonda.ui.tituloHojaNotificaciones
 
 /**
  * Una opción para elegir (Figma 51-1688 y 66-3212): 28 de alto, esquinas de 8 y texto Medium 13. La
@@ -81,9 +84,11 @@ fun AvisosDeTelegram(avisos: PreferenciasAvisos, alCambiar: (Severidad, ModoAvis
     var eligiendo by rememberSaveable { mutableStateOf<Severidad?>(null) }
     Column(modifier = modifier) {
         Severidad.entries.forEach { severidad ->
+            val modo = avisos.para(severidad)
             FilaDeAviso(
                 severidad = severidad,
-                modo = avisos.para(severidad),
+                texto = stringResource(modo.etiqueta()),
+                activo = modo != ModoAviso.SIN_AVISO,
                 alTocar = { eligiendo = severidad },
                 alCambiarInterruptor = { prendido ->
                     if (prendido) eligiendo = severidad else alCambiar(severidad, ModoAviso.SIN_AVISO)
@@ -107,7 +112,7 @@ fun AvisosDeTelegram(avisos: PreferenciasAvisos, alCambiar: (Severidad, ModoAvis
 
 /** Figma 51-1688: la etiqueta de color, el modo en Regular 13 gris a 6 y el interruptor, con 8 arriba y abajo. */
 @Composable
-private fun FilaDeAviso(severidad: Severidad, modo: ModoAviso, alTocar: () -> Unit, alCambiarInterruptor: (Boolean) -> Unit) {
+private fun FilaDeAviso(severidad: Severidad, texto: String, activo: Boolean, alTocar: () -> Unit, alCambiarInterruptor: (Boolean) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -118,9 +123,9 @@ private fun FilaDeAviso(severidad: Severidad, modo: ModoAviso, alTocar: () -> Un
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
             IndicadorSeveridad(severidad)
-            Text(text = stringResource(modo.etiqueta()), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = texto, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Interruptor(activo = modo != ModoAviso.SIN_AVISO, alCambiar = alCambiarInterruptor)
+        Interruptor(activo = activo, alCambiar = alCambiarInterruptor)
     }
 }
 
@@ -135,6 +140,81 @@ fun ColumnScope.ContenidoHojaModoAviso(severidad: Severidad, elegido: ModoAviso,
         listOf(ModoAviso.SONIDO, ModoAviso.SILENCIO).forEach { modo ->
             FilaRadio(
                 opcion = Opcion(valor = modo, titulo = stringResource(modo.etiqueta())),
+                elegida = elegido == modo,
+                alElegir = { alElegir(modo) },
+            )
+        }
+    }
+}
+
+/**
+ * Cómo avisa Zonda cada severidad (1.0.4; Figma 51-1688): las mismas filas que las de Telegram, con lo
+ * elegido debajo y un interruptor; apagado es "Sin aviso". Tocar la fila, o prender el interruptor,
+ * abre la hoja de los cuatro modos, que vuelve sola al elegir. Abajo, el recordatorio de las altas.
+ * [alActivar] avisa que se prendió algo, para pedir el permiso de notificaciones si falta.
+ */
+@Composable
+fun NotificacionesDeZonda(
+    notificaciones: PreferenciasNotificaciones,
+    alCambiar: (Severidad, ModoNotificacion) -> Unit,
+    alCambiarRecordatorio: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    alActivar: () -> Unit = {},
+) {
+    var eligiendo by rememberSaveable { mutableStateOf<Severidad?>(null) }
+    Column(modifier = modifier) {
+        Severidad.entries.forEach { severidad ->
+            val modo = notificaciones.para(severidad)
+            FilaDeAviso(
+                severidad = severidad,
+                texto = stringResource(modo.etiqueta()),
+                activo = modo != ModoNotificacion.SIN_AVISO,
+                alTocar = { eligiendo = severidad },
+                alCambiarInterruptor = { prendido ->
+                    if (prendido) eligiendo = severidad else alCambiar(severidad, ModoNotificacion.SIN_AVISO)
+                },
+            )
+        }
+        FilaConInterruptor(
+            titulo = stringResource(R.string.notificaciones_zonda_recordatorio),
+            detalle = stringResource(R.string.notificaciones_zonda_recordatorio_detalle),
+            activo = notificaciones.recordatorio,
+            alCambiar = { prendido ->
+                alCambiarRecordatorio(prendido)
+                if (prendido) alActivar()
+            },
+        )
+    }
+    eligiendo?.let { severidad ->
+        HojaInferior(alCerrar = { eligiendo = null }) {
+            ContenidoHojaModoNotificacion(
+                severidad = severidad,
+                elegido = notificaciones.para(severidad),
+                alElegir = { modo ->
+                    eligiendo = null
+                    alCambiar(severidad, modo)
+                    alActivar()
+                },
+            )
+        }
+    }
+}
+
+/**
+ * La hoja "¿Cómo te avisa Zonda las medias?" (Figma 463-70): los cuatro modos, uno por canal de
+ * Android, de un toque y sin "Listo", igual que la de Telegram. Aparte para dibujarla en las pruebas.
+ */
+@Composable
+fun ColumnScope.ContenidoHojaModoNotificacion(severidad: Severidad, elegido: ModoNotificacion, alElegir: (ModoNotificacion) -> Unit) {
+    Text(text = stringResource(severidad.tituloHojaNotificaciones()), style = MaterialTheme.typography.tituloHoja)
+    Column(modifier = Modifier.selectableGroup()) {
+        PreferenciasNotificaciones.MODOS_ELEGIBLES.forEach { modo ->
+            FilaRadio(
+                opcion = Opcion(
+                    valor = modo,
+                    titulo = stringResource(modo.etiqueta()),
+                    detalle = if (modo == ModoNotificacion.EN_SILENCIO) stringResource(R.string.notificacion_modo_en_silencio_detalle) else null,
+                ),
                 elegida = elegido == modo,
                 alElegir = { alElegir(modo) },
             )

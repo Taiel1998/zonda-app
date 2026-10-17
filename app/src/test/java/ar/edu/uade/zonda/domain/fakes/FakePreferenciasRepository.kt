@@ -1,6 +1,7 @@
 package ar.edu.uade.zonda.domain.fakes
 
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
+import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -15,7 +16,7 @@ class FakePreferenciasRepository(
     val avisos = MutableStateFlow(PreferenciasAvisos())
     val primerInicio = MutableStateFlow(primerInicioHecho)
     val recorrido = MutableStateFlow(recorridoHecho)
-    val notificaciones = MutableStateFlow(true)
+    val notificaciones = MutableStateFlow(PreferenciasNotificaciones())
 
     override fun observarAvisos(): Flow<PreferenciasAvisos> = avisos
 
@@ -23,10 +24,10 @@ class FakePreferenciasRepository(
         avisos.value = preferencias
     }
 
-    override fun observarNotificacionesActivas(): Flow<Boolean> = notificaciones
+    override fun observarNotificaciones(): Flow<PreferenciasNotificaciones> = notificaciones
 
-    override suspend fun guardarNotificacionesActivas(activas: Boolean) {
-        notificaciones.value = activas
+    override suspend fun guardarNotificaciones(preferencias: PreferenciasNotificaciones) {
+        notificaciones.value = preferencias
     }
 
     override fun observarPrimerInicioHecho(): Flow<Boolean> = primerInicio

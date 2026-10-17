@@ -102,11 +102,11 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 
 **Dice.** "La revisión quedó en una cola dentro de la base del teléfono, con un identificador propio. Cuando vuelve la red se manda sola, y si por un corte se manda dos veces, el servidor la reconoce y no la aplica dos veces. Lo mismo hace la sincronización en segundo plano cada 15 minutos, con WorkManager."
 
-### Paso 10. El Resumen (1 minuto)
+### Paso 10. El Resumen (1 minuto y medio)
 
-**Muestra.** El ícono de barras arriba en Estado. "7 días" y "30 días". "Por tipo de ataque" en los dos bloques de las severidades, cada tipo con el punto del color de su severidad: tocar un tipo y todas las cifras se recalculan sobre ese grupo; otro toque vuelve a todo. En "Precisión de cada modelo", las barras claras son los modelos con menos de 30 revisiones; el ⓘ abre "Cómo se lee la precisión". "Compartir resumen" abre la hoja con las apps instaladas (WhatsApp, Telegram, Gmail, Drive) y "Copiar".
+**Muestra.** El ícono de barras arriba en Estado. "7 días" y "30 días". Tocar el día con más alertas en el gráfico y "Fuerza bruta (SSH, FTP)" en "Por tipo de ataque" (cada tipo con el punto del color de su severidad): los filtros se suman, todas las cifras son de esas alertas y el botón dice "Filtros (2)". Ese botón abre "Filtrar el resumen" con todo lo elegido, y "Ver estas alertas en la lista" las muestra; la flecha vuelve al Resumen como estaba. Tocar el total de alertas saca los filtros. Después "Fechas": en "Elegí las fechas", tocar un día, la hora de "Hasta" (el reloj de Android) y "Mostrar": el gráfico pasa a "Alertas por hora". En "Precisión de cada modelo", las barras claras son los modelos con menos de 30 revisiones; el ⓘ abre "Cómo se lee la precisión". "Compartir resumen" abre la hoja con "Imagen · PDF", las apps instaladas (WhatsApp, Telegram, Gmail, Drive) y "Copiar"; con PDF, "Imprimir".
 
-**Dice.** "Esto es para el dueño de la empresa, que no abre Zonda: cuántas alertas hubo, cuántas se revisaron y las dos métricas que propusimos en el informe, la mediana hasta la primera revisión y el porcentaje de altas revisadas en la primera hora. La precisión dice cuánto acierta cada modelo cuando avisa, no cuál es el mejor; con menos de 30 revisiones la barra va clara porque todavía no se puede comparar. Se calcula en el teléfono con lo guardado, así que también anda sin conexión. La imagen que se comparte no tiene IP ni nombres de equipos."
+**Dice.** "Esto es para el dueño de la empresa, que no abre Zonda: cuántas alertas hubo, cuántas se revisaron y las dos métricas que propusimos en el informe, la mediana hasta la primera revisión y el porcentaje de altas revisadas en la primera hora. La precisión dice cuánto acierta cada modelo cuando avisa, no cuál es el mejor; con menos de 30 revisiones la barra va clara porque todavía no se puede comparar. Se calcula en el teléfono con lo guardado, así que también anda sin conexión. Los filtros se suman para ver, por ejemplo, la fuerza bruta del viernes, y con las fechas se mira una madrugada o un fin de semana. Se comparte como imagen o como PDF de una hoja A4, para imprimir o adjuntar a un correo, y ninguno de los dos tiene IP ni nombres de equipos."
 
 ### Paso 11. La red tranquila (45 segundos)
 
@@ -151,7 +151,8 @@ La consigna dice que en la defensa pueden preguntar a cada integrante por el có
 | Red | `data/remote/ZondaApi.kt` (Retrofit), `InterceptorDeToken.kt`, `ErroresHttp.kt` y `res/xml/network_security_config.xml` | 12 y 26 |
 | Sincronización | `data/sync/SincronizadorHttp.kt` (cola, cursor, catálogo y purga), `sync/SincronizacionWorker.kt` y `sync/ConectividadAndroid.kt` | 13 y 17 |
 | Revisión y conflicto | `domain/usecase/RevisarAlerta.kt`, `ResolverEnvioRevision.kt` y `ui/detalle/HojaRevision.kt` | 15 y 21 |
-| Capacidades del teléfono | Cámara: `ui/conexion/EscanerQr.kt` (CameraX y ML Kit). Notificaciones: `notificaciones/Notificador.kt`. Compartir: `ui/resumen/CompartirResumen.kt` | 16, 17 y 24 |
+| Capacidades del teléfono | Cámara: `ui/conexion/EscanerQr.kt` (CameraX y ML Kit). Notificaciones: `notificaciones/Notificador.kt`, un canal por modo. Compartir e imprimir: `ui/resumen/CompartirResumen.kt` (`PdfDocument` y `PrintManager`) | 16, 17, 24, 33 y 36 |
+| Resumen: filtros y fechas | `domain/model/ResumenActividad.kt` (`FiltroResumen`, `RangoResumen` y `Franja`), `ui/resumen/FiltrosResumen.kt` y `FechasResumen.kt` | 24, 34 y 35 |
 | Inyección de dependencias | `di/AppContainer.kt`, a mano y sin Hilt | 2 |
 | Backend, bot y HTTPS | `backend/app/rutas.py`, `backend/app/telegram.py`, `backend/Caddyfile` y `backend/scripts/demo.ps1` | 25 y 26 |
 | Firma del APK | `app/build.gradle.kts` | 28 |

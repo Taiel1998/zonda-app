@@ -20,16 +20,19 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.Alerta
-import ar.edu.uade.zonda.domain.model.GrupoResumen
+import ar.edu.uade.zonda.domain.model.FiltroResumen
+import ar.edu.uade.zonda.domain.model.Franja
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.ResumenActividad
+import ar.edu.uade.zonda.domain.model.RevisionResumen
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
-import ar.edu.uade.zonda.domain.model.Tramo
+import ar.edu.uade.zonda.domain.model.ToqueResumen
 import ar.edu.uade.zonda.ui.theme.Texto
 import ar.edu.uade.zonda.ui.theme.TextoSecundario
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
@@ -77,13 +80,13 @@ class ResumenContenidoTest {
         )
     }
 
-    private fun resumen(grupo: GrupoResumen? = null, lista: List<Alerta> = alertas()) =
-        ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc, grupo)
+    private fun resumen(filtro: FiltroResumen = FiltroResumen(), lista: List<Alerta> = alertas()) =
+        ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc, filtro)
 
     private fun estado(resumen: ResumenActividad, sinConexion: Boolean = false) = ResumenUiState(
         contenido = if (resumen.totalDelPeriodo == 0) ContenidoResumen.Vacio(resumen) else ContenidoResumen.Datos(resumen),
-        periodo = resumen.periodo,
-        grupo = resumen.grupo,
+        periodo = resumen.periodo ?: PeriodoResumen.SIETE_DIAS,
+        filtro = resumen.filtro,
         red = "Oficina central",
         datosDe = ahora,
         sinConexion = sinConexion,
@@ -99,10 +102,11 @@ class ResumenContenidoTest {
 
     private fun dibujar(
         estado: ResumenUiState,
-        alTocarCifra: (GrupoResumen?) -> Unit = {},
-        alQuitarFiltro: () -> Unit = {},
+        alTocar: (ToqueResumen) -> Unit = {},
         alCompartir: () -> Unit = {},
         alElegirPeriodo: (PeriodoResumen) -> Unit = {},
+        alAplicarFiltro: (FiltroResumen) -> Unit = {},
+        alVerAlertas: (FiltroResumen) -> Unit = {},
     ) {
         compose.setContent {
             ZondaTheme {
@@ -110,9 +114,10 @@ class ResumenContenidoTest {
                     estado = estado,
                     alVolver = {},
                     alElegirPeriodo = alElegirPeriodo,
-                    alTocarCifra = alTocarCifra,
-                    alQuitarFiltro = alQuitarFiltro,
+                    alTocar = alTocar,
                     alCompartir = alCompartir,
+                    alAplicarFiltro = alAplicarFiltro,
+                    alVerAlertas = alVerAlertas,
                     zona = utc,
                 )
             }
@@ -143,9 +148,9 @@ class ResumenContenidoTest {
     }
 
     @Test
-    fun `cada cifra se toca y pide recalcular sobre su grupo`() {
-        val tocadas = mutableListOf<GrupoResumen?>()
-        dibujar(estado(resumen()), alTocarCifra = { tocadas += it })
+    fun `cada cifra se toca y suma o saca su filtro`() {
+        val tocadas = mutableListOf<ToqueResumen>()
+        dibujar(estado(resumen()), alTocar = { tocadas += it })
 
         compose.onNodeWithText("sin revisar").performClick()
         compose.onNodeWithText("alertas").performClick()
@@ -156,31 +161,108 @@ class ResumenContenidoTest {
         compose.onNodeWithText("Umbrales estadísticos").performScrollTo().performClick()
         compose.onNodeWithText("Cobertura de revisión").performScrollTo().performClick()
 
-        val viernes = LocalDate.of(2026, 10, 9)
+        val viernes = Franja.dia(LocalDate.of(2026, 10, 9))
         assertEquals(
             listOf(
-                GrupoResumen.SinRevisar,
-                null,
-                GrupoResumen.Altas,
-                GrupoResumen.Barra(Tramo(viernes, viernes)),
-                GrupoResumen.Tipo(TipoAtaque.PROBABLE_FALSA_ALARMA),
-                GrupoResumen.FalsosPositivos,
-                GrupoResumen.Metodo(MetodoDeteccion.UMBRALES),
-                GrupoResumen.Revisadas,
+                ToqueResumen.Revision(RevisionResumen.SIN_REVISAR),
+                ToqueResumen.Total,
+                ToqueResumen.Altas,
+                ToqueResumen.Barra(viernes),
+                ToqueResumen.Tipo(TipoAtaque.PROBABLE_FALSA_ALARMA),
+                ToqueResumen.Revision(RevisionResumen.FALSOS_POSITIVOS),
+                ToqueResumen.Metodo(MetodoDeteccion.UMBRALES),
+                ToqueResumen.Revision(RevisionResumen.REVISADAS),
             ),
             tocadas,
         )
     }
 
     @Test
-    fun `con un grupo muestra su chip con la cruz y la frase de lo que se esta mostrando`() {
-        var quitado = false
-        dibujar(estado(resumen(GrupoResumen.Tipo(TipoAtaque.FUERZA_BRUTA))), alQuitarFiltro = { quitado = true })
+    fun `con un filtro el boton dice Filtros (1) y la frase lo que se esta mostrando`() {
+        dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA)))))
 
-        compose.onNodeWithContentDescription("Quitar el filtro Fuerza bruta").performClick()
-        compose.onNodeWithText("Mostrando fuerza bruta: 2 alertas. Tocá de nuevo para ver todas.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Filtros (1)").assertIsDisplayed()
+        compose.onNodeWithText("Mostrando fuerza bruta: 2 alertas. Tocá de nuevo para sacarlo.").performScrollTo().assertIsDisplayed()
+    }
 
-        assertTrue(quitado)
+    @Test
+    fun `el chip Fechas abre la hoja y con fechas elegidas dice los dias y el relojito`() {
+        dibujar(estado(resumen()))
+        compose.onNodeWithText("Fechas").performClick()
+        compose.onNodeWithText("Elegí las fechas").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h917dp")
+    fun `con unas horas de un dia el grafico va por hora y la linea dice el rango exacto`() {
+        val rango = RangoResumen(LocalDate.of(2026, 10, 12).atStartOfDay(), LocalDate.of(2026, 10, 12).atTime(11, 59))
+        val resumen = ResumenActividad.calcular(alertas(), rango, ahora, utc)
+        dibujar(estado(resumen).copy(fechas = rango))
+
+        compose.onNodeWithText("lun 12/10").assertIsDisplayed()
+        compose.onNodeWithText("Alertas por hora").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Oficina central · lunes 12/10 · de 00:00 a 11:59 · actualizado 12:00").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h917dp")
+    fun `si el chip de las fechas no entra al lado de Filtros dice lo mas corto en lugar de cortarse`() {
+        val rango = RangoResumen(LocalDate.of(2026, 10, 11).atStartOfDay(), LocalDate.of(2026, 10, 12).atTime(8, 59))
+        val resumen = ResumenActividad.calcular(alertas(), rango, ahora, utc, FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA)))
+        dibujar(estado(resumen).copy(fechas = rango))
+
+        compose.onNodeWithText("Filtros (1)").assertIsDisplayed()
+        // "11/10 al 12/10" con el relojito no entra: va con el mes una sola vez.
+        compose.onNodeWithText("11 al 12/10").assertIsDisplayed()
+        compose.onNodeWithText("Oficina central · del dom 11/10 00:00 al lun 12/10 08:59 · actualizado 12:00").assertIsDisplayed()
+    }
+
+    @Test
+    fun `sin filtros el boton dice Filtros y abre la hoja con todas las opciones`() {
+        dibujar(estado(resumen()))
+
+        compose.onNodeWithText("Filtros").performClick()
+
+        compose.onNodeWithText("Filtrar el resumen").assertIsDisplayed()
+        compose.onNodeWithText("Cuándo · podés elegir varios").assertExists()
+        compose.onNodeWithText("vie 09/10").assertExists()
+        compose.onNodeWithText("Tipo de ataque · podés elegir varios").assertExists()
+        compose.onNodeWithText("Volumen inusual de conexiones").assertExists()
+        // Figma 463-1317: "Sin tipo identificado", como en la tarjeta "Por tipo de ataque".
+        compose.onNode(hasText("Sin tipo identificado") and SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)).assertExists()
+        assertTrue(compose.onAllNodesWithText("Tráfico anómalo sin tipo identificado").fetchSemanticsNodes().isEmpty())
+        compose.onNodeWithText("Revisión").assertExists()
+        compose.onNodeWithText("Modelo").assertExists()
+        compose.onNodeWithText("Ver estas 4 alertas en la lista →").assertExists()
+        compose.onNodeWithText("Mostrar 4 alertas").assertExists()
+    }
+
+    @Test
+    fun `la hoja cuenta cuantas quedan antes de aplicar y Mostrar aplica todo junto`() {
+        val aplicados = mutableListOf<FiltroResumen>()
+        dibujar(estado(resumen()), alAplicarFiltro = { aplicados += it })
+
+        compose.onNodeWithText("Filtros").performClick()
+        compose.onNode(hasText("Fuerza bruta (SSH, FTP)") and SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)).performScrollTo().performClick()
+        compose.onNodeWithText("Mostrar 2 alertas").performScrollTo()
+        compose.onNodeWithText("Sin revisar").performScrollTo().performClick()
+        compose.onNodeWithText("Mostrar 1 alerta").performScrollTo().performClick()
+
+        assertEquals(listOf(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA), revision = RevisionResumen.SIN_REVISAR)), aplicados)
+        compose.onAllNodesWithText("Filtrar el resumen").assertCountEquals(0)
+    }
+
+    @Test
+    fun `la hoja muestra tildado lo que se toco en el Resumen, Limpiar lo saca y Ver en la lista lleva esos filtros`() {
+        val enLista = mutableListOf<FiltroResumen>()
+        dibujar(estado(resumen(FiltroResumen(revision = RevisionResumen.REVISADAS))), alVerAlertas = { enLista += it })
+
+        compose.onNodeWithText("Filtros (1)").performClick()
+        compose.onNodeWithText("Ver estas 2 alertas en la lista →").performScrollTo()
+        compose.onNodeWithText("Limpiar").performScrollTo().performClick()
+        compose.onNodeWithText("Ver estas 4 alertas en la lista →").performScrollTo().performClick()
+
+        assertEquals(listOf(FiltroResumen()), enLista)
     }
 
     @Test
@@ -231,38 +313,87 @@ class ResumenContenidoTest {
             .flatMap { nodo -> nodo.config[SemanticsProperties.Text].map { it.text } }
         assertTrue(textos.contains("Resumen semanal"))
         assertTrue(textos.contains("Generado con Zonda · no incluye IPs ni nombres de equipos"))
+        // Cambio 18: suma "Por tipo de ataque" y "Reales y falsos positivos", sin la precisión ni los ⓘ.
+        assertTrue(textos.contains("Por tipo de ataque"))
+        assertTrue(textos.contains("Reales y falsos positivos (de las revisadas)"))
+        assertFalse(textos.contains("Precisión de cada modelo (de las revisadas)"))
+        assertFalse(textos.contains("Un falso positivo con motivo sirve para ajustar la detección."))
+        assertTrue(compose.onAllNodes(hasContentDescription("Qué es cada tipo")).fetchSemanticsNodes().isEmpty())
         // Las alertas de prueba van de pc-09 (192.168.10.9) a srv-web (192.168.10.50) (RNF02).
         assertFalse(textos.any { it.contains("192.168") || it.contains("pc-09") || it.contains("srv-web") })
     }
 
     @Test
-    fun `la hoja de compartir muestra el archivo y solo las apps que hay`() {
-        val elegidos = mutableListOf<DestinoCompartir>()
-        val imagen = ImagenCompartida(
-            nombre = "Resumen_06-10_12-10.png",
-            uri = Uri.parse("content://ar.edu.uade.zonda.archivos/compartir/Resumen_06-10_12-10.png"),
-            bytes = 48_500,
-            vistaPrevia = ImageBitmap(10, 10),
-            texto = "Resumen Zonda",
-        )
+    fun `con filtros la imagen dice cuales debajo de la linea de la red, Figma 463-3007`() {
+        val viernes = Franja.dia(LocalDate.of(2026, 10, 9))
         compose.setContent {
             ZondaTheme {
-                ContenidoHojaCompartir(
-                    imagen = imagen,
-                    destinos = listOf(DestinoCompartir.GMAIL, DestinoCompartir.COPIAR),
-                    alElegir = { elegidos += it },
-                    alCancelar = {},
+                ImagenResumen(
+                    resumen = resumen(FiltroResumen(barras = setOf(viernes), tipos = setOf(TipoAtaque.FUERZA_BRUTA))),
+                    red = "Oficina central",
+                    datosDe = ahora,
+                    sinConexion = false,
+                    zona = utc,
                 )
             }
         }
 
+        compose.onNodeWithText("Filtros: viernes 09/10 · fuerza bruta").assertExists()
+        compose.onNodeWithText("Mostrando 0 alertas: viernes · fuerza bruta.").assertExists()
+    }
+
+    private val paraCompartir = ResumenParaCompartir(
+        nombreBase = "Resumen_06-10_12-10",
+        imagen = Uri.parse("content://ar.edu.uade.zonda.archivos/compartir/Resumen_06-10_12-10.png"),
+        pdf = Uri.parse("content://ar.edu.uade.zonda.archivos/compartir/Resumen_06-10_12-10.pdf"),
+        archivoPdf = java.io.File("Resumen_06-10_12-10.pdf"),
+        vistaPrevia = ImageBitmap(10, 10),
+        texto = "Resumen Zonda",
+    )
+
+    private fun dibujarHojaCompartir(elegidos: MutableList<Pair<DestinoCompartir, FormatoResumen>>) {
+        compose.setContent {
+            ZondaTheme {
+                ContenidoHojaCompartir(
+                    resumen = paraCompartir,
+                    apps = listOf(DestinoCompartir.GMAIL),
+                    alElegir = { destino, formato -> elegidos += destino to formato },
+                    alCancelar = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `la hoja de compartir empieza en Imagen, con el archivo y solo las apps que hay y Copiar`() {
+        val elegidos = mutableListOf<Pair<DestinoCompartir, FormatoResumen>>()
+        dibujarHojaCompartir(elegidos)
+
+        compose.onNode(hasText("Imagen") and SemanticsMatcher.expectValue(SemanticsProperties.Selected, true)).assertExists()
         compose.onNodeWithText("Resumen_06-10_12-10.png").assertIsDisplayed()
-        compose.onNodeWithText("Imagen · 48 KB · sin IPs ni nombres de equipos").assertIsDisplayed()
+        // Sin el tamaño ni "sin IPs ni nombres de equipos" (cambio 18): lo dice el pie de la imagen.
+        assertTrue(compose.onAllNodesWithText("sin IPs", substring = true).fetchSemanticsNodes().isEmpty())
         compose.onNodeWithText("Gmail").assertIsDisplayed()
         assertTrue(compose.onAllNodesWithText("WhatsApp").fetchSemanticsNodes().isEmpty())
         compose.onNodeWithText("Copiar").performClick()
 
-        assertEquals(listOf(DestinoCompartir.COPIAR), elegidos)
+        assertEquals(listOf(DestinoCompartir.COPIAR to FormatoResumen.IMAGEN), elegidos)
+    }
+
+    @Test
+    fun `con PDF el archivo es el pdf de una hoja A4 y Copiar pasa a ser Imprimir, Figma 463-3243`() {
+        val elegidos = mutableListOf<Pair<DestinoCompartir, FormatoResumen>>()
+        dibujarHojaCompartir(elegidos)
+
+        compose.onNodeWithText("PDF").performClick()
+
+        compose.onNodeWithText("Resumen_06-10_12-10.pdf").assertIsDisplayed()
+        compose.onNodeWithText("PDF · 1 página A4").assertIsDisplayed()
+        assertTrue(compose.onAllNodesWithText("Copiar").fetchSemanticsNodes().isEmpty())
+        compose.onNodeWithText("Gmail").performClick()
+        compose.onNodeWithText("Imprimir").performClick()
+
+        assertEquals(listOf(DestinoCompartir.GMAIL to FormatoResumen.PDF, DestinoCompartir.IMPRIMIR to FormatoResumen.PDF), elegidos)
     }
 
     @Test

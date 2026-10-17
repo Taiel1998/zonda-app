@@ -162,13 +162,15 @@ fun BotonesDeHoja(
     alAplicar: () -> Unit,
     modifier: Modifier = Modifier,
     alLimpiar: (() -> Unit)? = null,
+    /** El texto del botón lleno: "Aplicar", o "Mostrar 11 alertas" en la hoja del Resumen (Figma 463-1317). */
+    textoAplicar: String = stringResource(R.string.filtro_aplicar),
 ) {
     Row(modifier = modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         if (alLimpiar != null) {
             BotonContorno(texto = stringResource(R.string.filtro_limpiar), alTocar = alLimpiar, modifier = Modifier.weight(1f), relleno = RellenoBotonAngosto)
-            BotonPrincipal(texto = stringResource(R.string.filtro_aplicar), alTocar = alAplicar, modifier = Modifier.weight(1f))
+            BotonPrincipal(texto = textoAplicar, alTocar = alAplicar, modifier = Modifier.weight(1f))
         } else {
-            BotonPrincipal(texto = stringResource(R.string.filtro_aplicar), alTocar = alAplicar)
+            BotonPrincipal(texto = textoAplicar, alTocar = alAplicar)
         }
     }
 }

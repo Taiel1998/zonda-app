@@ -24,6 +24,7 @@ import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
+import ar.edu.uade.zonda.domain.repository.AlertaNueva
 import ar.edu.uade.zonda.domain.repository.GeneradorDeIds
 import ar.edu.uade.zonda.domain.usecase.CambiarSeveridades
 import ar.edu.uade.zonda.domain.usecase.ResolverEnvioRevision
@@ -440,7 +441,7 @@ class SincronizadorHttpTest : PruebaConBase() {
     }
 
     @Test
-    fun `marca las altas nuevas que ya tenian aviso de Telegram, para que Zonda no las repita`() = runTest {
+    fun `marca las alertas nuevas de cada severidad que ya tenian aviso de Telegram, para que Zonda no las repita`() = runTest {
         conRed()
         api.publicar(DtoFixtures.alerta("a-1", avisoTelegram = "2026-10-11T14:25:15+00:00"))
         api.publicar(DtoFixtures.alerta("a-2"))
@@ -449,7 +450,14 @@ class SincronizadorHttpTest : PruebaConBase() {
         val resultado = alertas.sincronizar("red-1")
 
         assertEquals(listOf("a-1", "a-2"), resultado.idsAltasNuevas)
-        assertEquals(setOf("a-1"), resultado.idsAltasNuevasConAvisoTelegram)
+        assertEquals(
+            listOf(
+                AlertaNueva("a-1", Severidad.ALTA, conAvisoTelegram = true),
+                AlertaNueva("a-2", Severidad.ALTA, conAvisoTelegram = false),
+                AlertaNueva("a-3", Severidad.MEDIA, conAvisoTelegram = true),
+            ),
+            resultado.alertasNuevas.sortedBy { it.id },
+        )
     }
 
     @Test

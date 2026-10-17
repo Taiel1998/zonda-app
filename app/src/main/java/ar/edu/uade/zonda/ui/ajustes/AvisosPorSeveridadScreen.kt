@@ -1,17 +1,13 @@
 package ar.edu.uade.zonda.ui.ajustes
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,20 +18,27 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.ModoNotificacion
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
+import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.components.AvisosDeTelegram
 import ar.edu.uade.zonda.ui.components.BarraSuperior
 import ar.edu.uade.zonda.ui.components.BotonEnlace
 import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.components.ConsejoSonidoDeTelegram
+import ar.edu.uade.zonda.ui.components.NotificacionesDeZonda
 import ar.edu.uade.zonda.ui.components.TarjetaSeccion
+import ar.edu.uade.zonda.ui.EstadoPermiso
 import ar.edu.uade.zonda.ui.nombreDelBot
+import ar.edu.uade.zonda.ui.rememberPermisoNotificaciones
 
 /**
  * Avisos por severidad (Figma 51-1688): cómo avisa Telegram cada severidad con el consejo del sonido
- * propio (cambio 6), el sonido de las notificaciones de Zonda y el atajo a la severidad de cada tipo
- * de ataque. Se edita en un borrador y se guarda con "Guardar"; volver sin guardar lo descarta.
+ * propio (cambio 6), cómo avisa Zonda lo que no llegó por Telegram con el recordatorio de altas (1.0.4)
+ * y el atajo a la severidad de cada tipo de ataque. Las dos tarjetas se editan en un borrador y se
+ * guardan juntas con "Guardar"; volver sin guardar lo descarta. Al prender una notificación de Zonda
+ * sin el permiso del sistema, se pide, como hacía el interruptor de Ajustes hasta la 1.0.3.
  */
 @Composable
 fun AvisosPorSeveridadScreen(
@@ -44,10 +47,15 @@ fun AvisosPorSeveridadScreen(
     alVolver: () -> Unit,
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
+    val permiso = rememberPermisoNotificaciones()
     AvisosPorSeveridadContenido(
         avisos = estado.borradorAvisos ?: estado.avisos,
+        notificaciones = estado.borradorNotificaciones ?: estado.notificaciones,
         bot = nombreDelBot(estado.redActiva),
         alCambiar = viewModel::cambiarAvisoDelBorrador,
+        alCambiarNotificacion = viewModel::cambiarNotificacionDelBorrador,
+        alCambiarRecordatorio = viewModel::cambiarRecordatorioDelBorrador,
+        alActivarNotificacion = { if (permiso.estado != EstadoPermiso.CONCEDIDO) permiso.pedir() },
         alCambiarSeveridades = {
             viewModel.empezarAEditarSeveridades()
             alCambiarSeveridades()
@@ -67,6 +75,11 @@ fun AvisosPorSeveridadScreen(
 fun AvisosPorSeveridadContenido(
     avisos: PreferenciasAvisos,
     alCambiar: (Severidad, ModoAviso) -> Unit,
+    notificaciones: PreferenciasNotificaciones = PreferenciasNotificaciones(),
+    alCambiarNotificacion: (Severidad, ModoNotificacion) -> Unit = { _, _ -> },
+    alCambiarRecordatorio: (Boolean) -> Unit = {},
+    /** Se prendió una notificación de Zonda o el recordatorio: la pantalla pide el permiso si falta. */
+    alActivarNotificacion: () -> Unit = {},
     /** "@zonda_alertas_bot": el chat al que llegan los avisos. */
     bot: String = stringResource(R.string.telegram_bot),
     alCambiarSeveridades: () -> Unit,
@@ -94,24 +107,19 @@ fun AvisosPorSeveridadContenido(
                 AvisosDeTelegram(avisos = avisos, alCambiar = alCambiar)
                 ConsejoSonidoDeTelegram()
             }
-            // Lo del sonido de Telegram pasó al consejo de arriba (cambio 6); queda el de las notificaciones de Zonda.
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = stringResource(R.string.avisos_sonido_titulo),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = stringResource(R.string.avisos_sonido_zonda),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            // 1.0.4: en el lugar del recuadro gris "Sonido de los avisos" (Figma 51-1688).
+            TarjetaSeccion(titulo = stringResource(R.string.notificaciones_zonda_titulo)) {
+                Text(
+                    text = stringResource(R.string.notificaciones_zonda_texto),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                NotificacionesDeZonda(
+                    notificaciones = notificaciones,
+                    alCambiar = alCambiarNotificacion,
+                    alCambiarRecordatorio = alCambiarRecordatorio,
+                    alActivar = alActivarNotificacion,
+                )
             }
             BotonEnlace(
                 texto = stringResource(R.string.avisos_cambiar_severidad),

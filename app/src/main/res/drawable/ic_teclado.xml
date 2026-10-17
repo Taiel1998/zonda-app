@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El ícono del teclado del reloj de "Elegí las fechas" (Figma 463-2466, icon/teclado): pasa a escribir la hora. Se tiñe con el gris del texto. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M4,6H20A2,2 0,0 1,22 8V16A2,2 0,0 1,20 18H4A2,2 0,0 1,2 16V8A2,2 0,0 1,4 6ZM6,10V10.01M10,10V10.01M14,10V10.01M18,10V10.01M6,14V14.01M18,14V14.01M10,14L14,14.01"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

@@ -42,7 +42,6 @@ import ar.edu.uade.zonda.ui.components.AvisoInferior
 import ar.edu.uade.zonda.ui.components.BarraSuperior
 import ar.edu.uade.zonda.ui.components.BotonTonal
 import ar.edu.uade.zonda.ui.components.BotonTonalPeligro
-import ar.edu.uade.zonda.ui.components.FilaConInterruptor
 import ar.edu.uade.zonda.ui.components.FilaNavegable
 import ar.edu.uade.zonda.ui.components.FilaTexto
 import ar.edu.uade.zonda.ui.components.HojaConfirmacion
@@ -52,7 +51,6 @@ import ar.edu.uade.zonda.ui.components.TarjetaSeccion
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.nombreDelBot
 import ar.edu.uade.zonda.ui.rememberPermisoNotificaciones
-import ar.edu.uade.zonda.ui.resumenDeAvisos
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.Instant
 import java.time.ZoneId
@@ -64,8 +62,9 @@ internal val EntreTarjetas = Arrangement.spacedBy(16.dp)
 
 /**
  * Ajustes (RF05 y RF06; Figma 4-66 y 51-1137): una lista de tarjetas que abren otras pantallas.
- * Red (Redes y Detalles técnicos), Avisos (Telegram, avisos por severidad, severidad por tipo de ataque
- * y el interruptor de notificaciones), Datos locales, Este dispositivo y Ayuda. Las confirmaciones son
+ * Red (Redes y Detalles técnicos), Avisos (Telegram, avisos por severidad y severidad por tipo de
+ * ataque; desde la 1.0.4 sin "Notificaciones del sistema", porque cada severidad tiene su interruptor),
+ * Datos locales, Este dispositivo y Ayuda. Las confirmaciones son
  * hojas inferiores con el botón rojo.
  */
 @Composable
@@ -96,7 +95,6 @@ fun AjustesScreen(
                 alAbrirSeveridades()
             },
             alAbrirTelegram = alAbrirTelegram,
-            alCambiarNotificaciones = viewModel::cambiarNotificaciones,
             alSincronizar = viewModel::sincronizarAhora,
             alBorrarDatos = viewModel::borrarDatosLocales,
             alQuitarDispositivo = { viewModel.quitarDispositivo() },
@@ -137,7 +135,6 @@ data class AccionesAjustes(
     val alAbrirSeveridades: () -> Unit = {},
     /** La tarjeta "Telegram sin conectar" y la fila de Telegram abren su pantalla (Figma 66-4205 y 66-3484). */
     val alAbrirTelegram: () -> Unit = {},
-    val alCambiarNotificaciones: (Boolean) -> Unit = {},
     val alSincronizar: () -> Unit = {},
     val alBorrarDatos: () -> Unit = {},
     val alQuitarDispositivo: () -> Unit = {},
@@ -160,7 +157,7 @@ fun AjustesContenido(
     val snackbar = remember { SnackbarHostState() }
     val contexto = LocalContext.current
     var hoja by rememberSaveable { mutableStateOf<HojaAjustes?>(null) }
-    val permiso = rememberPermisoNotificaciones { concedido -> if (concedido) acciones.alCambiarNotificaciones(true) }
+    val permiso = rememberPermisoNotificaciones()
     val alcance = rememberCoroutineScope()
 
     LaunchedEffect(estado.aviso) {
@@ -234,7 +231,7 @@ fun AjustesContenido(
                 }
                 FilaNavegable(
                     titulo = stringResource(R.string.ajustes_avisos_por_severidad),
-                    detalle = resumenDeAvisos(estado.avisos),
+                    detalle = stringResource(R.string.ajustes_avisos_por_severidad_detalle),
                     alTocar = acciones.alAbrirAvisos,
                 )
                 FilaNavegable(
@@ -242,6 +239,7 @@ fun AjustesContenido(
                     detalle = stringResource(R.string.ajustes_severidad_por_tipo_detalle),
                     alTocar = acciones.alAbrirSeveridades,
                 )
+                // El permiso bloqueado se sigue avisando (Figma 4-130): sin él no sale ninguna notificación de Zonda.
                 if (permiso.estado == EstadoPermiso.RECHAZADO) {
                     TarjetaAdvertencia(
                         titulo = stringResource(R.string.ajustes_notificaciones_bloqueadas_titulo),
@@ -249,18 +247,6 @@ fun AjustesContenido(
                         accion = stringResource(R.string.abrir_ajustes),
                         alAccionar = { abrirAjustesDeNotificaciones(contexto) },
                         nota = stringResource(R.string.ajustes_notificaciones_bloqueadas_nota),
-                    )
-                } else {
-                    val activas = estado.notificacionesActivas && permiso.estado == EstadoPermiso.CONCEDIDO
-                    FilaConInterruptor(
-                        titulo = stringResource(R.string.ajustes_notificaciones_sistema),
-                        detalle = stringResource(if (activas) R.string.ajustes_notificaciones_permitidas else R.string.ajustes_notificaciones_desactivadas),
-                        activo = activas,
-                        alCambiar = { prender ->
-                            if (!prender) acciones.alCambiarNotificaciones(false)
-                            else if (permiso.estado == EstadoPermiso.CONCEDIDO) acciones.alCambiarNotificaciones(true)
-                            else permiso.pedir()
-                        },
                     )
                 }
             }

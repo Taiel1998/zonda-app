@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El ícono del botón "Filtros" del Resumen (Figma 52-2629, icon/fil): tres rieles con su perilla. Se tiñe con el color del texto. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="14dp"
+    android:height="14dp"
+    android:viewportWidth="14"
+    android:viewportHeight="14">
+    <path
+        android:pathData="M7,3.5a1.16667,1.16667 0,1 0,2.33333 0a1.16667,1.16667 0,1 0,-2.33333 0M2.33333,3.5H7M9.33333,3.5H11.6667M3.5,7a1.16667,1.16667 0,1 0,2.33333 0a1.16667,1.16667 0,1 0,-2.33333 0M2.33333,7H3.5M5.83333,7H11.6667M8.75,10.5a1.16667,1.16667 0,1 0,2.33333 0a1.16667,1.16667 0,1 0,-2.33333 0M2.33333,10.5H8.75M11.0833,10.5H11.6667"
+        android:strokeWidth="1.16667"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
