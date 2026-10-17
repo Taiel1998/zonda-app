@@ -48,15 +48,18 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
-import ar.edu.uade.zonda.domain.model.GrupoResumen
+import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
+import ar.edu.uade.zonda.domain.model.RevisionResumen
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
+import ar.edu.uade.zonda.domain.model.ToqueResumen
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.AvisoInferior
 import ar.edu.uade.zonda.ui.components.BannerSinConexion
@@ -81,13 +84,16 @@ import kotlinx.coroutines.launch
 
 /**
  * Pantalla Resumen (RF07; Figma 52-2629 a 107-5511): la actividad de 7 o 30 días de la red activa,
- * calculada en el teléfono. Tocar una cifra recalcula todo sobre ese grupo y "Compartir resumen" arma
- * la imagen sin IP ni nombres de equipos y abre la hoja de compartir.
+ * calculada en el teléfono. Tocar una cifra suma o saca su filtro y todo se recalcula (cambio 16); el
+ * botón "Filtros" abre la hoja con todos, que también lleva a la lista de esas alertas
+ * ([alVerAlertas]). "Compartir resumen" arma la imagen sin IP ni nombres de equipos y abre la hoja de
+ * compartir.
  */
 @Composable
 fun ResumenScreen(
     alVolver: () -> Unit,
-    viewModel: ResumenViewModel = viewModelDeZonda { ResumenViewModel(it.observarResumen, it.redes, it.conectividad) },
+    alVerAlertas: () -> Unit = {},
+    viewModel: ResumenViewModel = resumenViewModel(),
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
@@ -114,15 +120,19 @@ fun ResumenScreen(
                     .clearAndSetSemantics {}
                     .drawWithContent { capa.record { this@drawWithContent.drawContent() } },
             ) {
-                ImagenResumen(resumen = resumen, red = estado.red, datosDe = estado.datosDe, sinConexion = estado.sinConexion, zona = zona)
+                ImagenResumen(resumen = resumen, red = estado.red, datosDe = estado.datosDe, sinConexion = estado.sinConexion, zona = zona, altas = estado.altas)
             }
         }
         ResumenContenido(
             estado = estado,
             alVolver = alVolver,
             alElegirPeriodo = viewModel::elegirPeriodo,
-            alTocarCifra = viewModel::tocarCifra,
-            alQuitarFiltro = viewModel::quitarFiltro,
+            alTocar = viewModel::tocar,
+            alAplicarFiltro = viewModel::aplicarFiltro,
+            alVerAlertas = { filtro ->
+                viewModel.aplicarFiltro(filtro)
+                alVerAlertas()
+            },
             alCompartir = {
                 val actual = estado.resumen
                 if (actual != null) {
@@ -166,6 +176,14 @@ fun ResumenScreen(
     }
 }
 
+/**
+ * El ViewModel del Resumen. La lista "Ver estas alertas" pasa la entrada del Resumen como [dueño]: así
+ * comparten los filtros y la flecha vuelve al Resumen como estaba.
+ */
+@Composable
+fun resumenViewModel(dueño: ViewModelStoreOwner? = null): ResumenViewModel =
+    viewModelDeZonda(dueño) { ResumenViewModel(it.observarResumen, it.redes, it.conectividad) }
+
 /** El resumen calculado, si ya hay uno (con alertas o vacío). */
 val ResumenUiState.resumen: ResumenActividad?
     get() = when (val contenido = contenido) {
@@ -180,9 +198,10 @@ fun ResumenContenido(
     estado: ResumenUiState,
     alVolver: () -> Unit,
     alElegirPeriodo: (PeriodoResumen) -> Unit,
-    alTocarCifra: (GrupoResumen?) -> Unit,
-    alQuitarFiltro: () -> Unit,
+    alTocar: (ToqueResumen) -> Unit,
     alCompartir: () -> Unit,
+    alAplicarFiltro: (FiltroResumen) -> Unit = {},
+    alVerAlertas: (FiltroResumen) -> Unit = {},
     alAvisoMostrado: () -> Unit = {},
     zona: ZoneId = ZoneId.systemDefault(),
 ) {
@@ -198,6 +217,7 @@ fun ResumenContenido(
     }
     val hayResumen = estado.resumen != null
     var ayuda by rememberSaveable { mutableStateOf<AyudaResumen?>(null) }
+    var filtrando by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -252,13 +272,13 @@ fun ResumenContenido(
                     titulo = stringResource(R.string.vacio_sin_red_titulo),
                     detalle = stringResource(R.string.vacio_sin_red_detalle),
                 )
-                is ContenidoResumen.Vacio -> CuerpoVacio(estado, contenido.resumen, alElegirPeriodo, alQuitarFiltro, zona)
+                is ContenidoResumen.Vacio -> CuerpoVacio(estado, contenido.resumen, alElegirPeriodo, alAbrirFiltros = { filtrando = true }, zona)
                 is ContenidoResumen.Datos -> CuerpoDelResumen(
                     estado = estado,
                     resumen = contenido.resumen,
                     alElegirPeriodo = alElegirPeriodo,
-                    alTocarCifra = alTocarCifra,
-                    alQuitarFiltro = alQuitarFiltro,
+                    alTocar = alTocar,
+                    alAbrirFiltros = { filtrando = true },
                     alPedirAyuda = { ayuda = it },
                     zona = zona,
                 )
@@ -270,9 +290,27 @@ fun ResumenContenido(
     val resumenActual = estado.resumen
     if (resumenActual != null) {
         when (ayuda) {
-            AyudaResumen.PRECISION -> HojaPrecision(resumen = resumenActual, alCerrar = { ayuda = null })
+            AyudaResumen.PRECISION -> HojaPrecision(resumen = resumenActual, altas = estado.altas, alCerrar = { ayuda = null })
             AyudaResumen.TIPOS -> HojaTipos(severidades = estado.severidades, alCerrar = { ayuda = null })
             null -> Unit
+        }
+        // La hoja de filtros (cambio 16) cuenta cuántas quedarían con las alertas del período.
+        if (filtrando) {
+            HojaFiltrosResumen(
+                filtro = estado.filtro,
+                barras = resumenActual.barras.map { it.franja },
+                severidades = estado.severidades,
+                cuantas = { filtro -> resumenActual.delPeriodo.count { filtro.incluye(it, zona) } },
+                alMostrar = { filtro ->
+                    filtrando = false
+                    alAplicarFiltro(filtro)
+                },
+                alVerEnLista = { filtro ->
+                    filtrando = false
+                    alVerAlertas(filtro)
+                },
+                alCerrar = { filtrando = false },
+            )
         }
     }
 }
@@ -283,12 +321,13 @@ private fun CuerpoDelResumen(
     estado: ResumenUiState,
     resumen: ResumenActividad,
     alElegirPeriodo: (PeriodoResumen) -> Unit,
-    alTocarCifra: (GrupoResumen?) -> Unit,
-    alQuitarFiltro: () -> Unit,
+    alTocar: (ToqueResumen) -> Unit,
+    alAbrirFiltros: () -> Unit,
     alPedirAyuda: (AyudaResumen) -> Unit,
     zona: ZoneId,
 ) {
     val recursos = LocalContext.current.resources
+    val altas = estado.altas
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -296,14 +335,14 @@ private fun CuerpoDelResumen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        FilaDePeriodo(periodo = estado.periodo, grupo = estado.grupo, alElegir = alElegirPeriodo, alQuitarFiltro = alQuitarFiltro)
+        FilaDePeriodo(periodo = estado.periodo, cantidadDeFiltros = estado.filtro.cantidad, alElegir = alElegirPeriodo, alAbrirFiltros = alAbrirFiltros)
         LineaDelResumen(estado, resumen, zona)
-        FilaDeTotales(resumen, alTocarCifra, modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.CIFRAS_RESUMEN))
-        FilaDeMetricas(resumen, alTocarCifra)
-        TarjetaGrafico(resumen, alTocarCifra, frase = fraseDelGrafico(resumen, recursos))
-        TarjetaTipos(resumen, estado.severidades, alTocarCifra, alPedirAyuda = { alPedirAyuda(AyudaResumen.TIPOS) })
-        TarjetaRealesYFalsos(resumen, alTocarCifra)
-        TarjetaPrecision(resumen, alTocarCifra, alPedirAyuda = { alPedirAyuda(AyudaResumen.PRECISION) })
+        FilaDeTotales(resumen, alTocar, modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.CIFRAS_RESUMEN))
+        FilaDeMetricas(resumen, altas, alTocar)
+        TarjetaGrafico(resumen, alTocar, frase = fraseDelGrafico(resumen, recursos, altas))
+        TarjetaTipos(resumen, estado.severidades, alTocar, alPedirAyuda = { alPedirAyuda(AyudaResumen.TIPOS) })
+        TarjetaRealesYFalsos(resumen, alTocar)
+        TarjetaPrecision(resumen, alTocar, alPedirAyuda = { alPedirAyuda(AyudaResumen.PRECISION) })
     }
 }
 
@@ -313,7 +352,7 @@ private fun CuerpoVacio(
     estado: ResumenUiState,
     resumen: ResumenActividad,
     alElegirPeriodo: (PeriodoResumen) -> Unit,
-    alQuitarFiltro: () -> Unit,
+    alAbrirFiltros: () -> Unit,
     zona: ZoneId,
 ) {
     Column(
@@ -322,7 +361,7 @@ private fun CuerpoVacio(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        FilaDePeriodo(periodo = estado.periodo, grupo = estado.grupo, alElegir = alElegirPeriodo, alQuitarFiltro = alQuitarFiltro)
+        FilaDePeriodo(periodo = estado.periodo, cantidadDeFiltros = estado.filtro.cantidad, alElegir = alElegirPeriodo, alAbrirFiltros = alAbrirFiltros)
         Spacer(modifier = Modifier.height(16.dp))
         LineaDelResumen(estado, resumen, zona)
         val siete = resumen.periodo == PeriodoResumen.SIETE_DIAS
@@ -339,20 +378,19 @@ private fun CuerpoVacio(
 }
 
 /**
- * 7 días, 30 días y el chip del filtro aplicado con su cruz (Figma 100-8096). El recorrido resalta
- * toda la fila (paso 10).
+ * 7 días, 30 días y, a la derecha, el botón "Filtros" con cuántos hay puestos (cambio 16; Figma
+ * 52-2629 y 463-1145). El recorrido resalta toda la fila (paso 10).
  */
 @Composable
 private fun FilaDePeriodo(
     periodo: PeriodoResumen,
-    grupo: GrupoResumen?,
+    cantidadDeFiltros: Int,
     alElegir: (PeriodoResumen) -> Unit,
-    alQuitarFiltro: () -> Unit,
+    alAbrirFiltros: () -> Unit,
 ) {
-    val recursos = LocalContext.current.resources
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.Top,
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .objetivoDelRecorrido(ObjetivoRecorrido.PERIODO_RESUMEN),
@@ -369,14 +407,8 @@ private fun FilaDePeriodo(
             alTocar = { alElegir(PeriodoResumen.TREINTA_DIAS) },
             rol = Role.RadioButton,
         )
-        if (grupo != null) {
-            val etiqueta = grupo.etiquetaChip(recursos)
-            ChipFiltro(
-                texto = etiqueta,
-                descripcionQuitar = stringResource(R.string.resumen_quitar_filtro, etiqueta),
-                alQuitar = alQuitarFiltro,
-            )
-        }
+        Spacer(modifier = Modifier.weight(1f))
+        BotonFiltros(cantidad = cantidadDeFiltros, alTocar = alAbrirFiltros)
     }
 }
 
@@ -389,10 +421,10 @@ private fun LineaDelResumen(estado: ResumenUiState, resumen: ResumenActividad, z
     )
 }
 
-/** Los tres totales; tocar "alertas" vuelve a todas (Figma 52-2629 y 100-7158). */
+/** Los tres totales; tocar "alertas" saca todos los filtros (Figma 52-2629 y 100-7158; cambio 16). */
 @Composable
-fun FilaDeTotales(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit, modifier: Modifier = Modifier) {
-    val grupo = resumen.grupo
+fun FilaDeTotales(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, modifier: Modifier = Modifier) {
+    val revision = resumen.filtro.revision
     Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier
@@ -406,7 +438,7 @@ fun FilaDeTotales(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Un
             fondo = CremaBarra,
             colorNumero = MaterialTheme.colorScheme.onSurface,
             elegida = false,
-            alTocar = { alTocarCifra(null) },
+            alTocar = { alTocar(ToqueResumen.Total) },
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
@@ -416,8 +448,8 @@ fun FilaDeTotales(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Un
             rotulo = pluralStringResource(R.plurals.resumen_total_revisadas, resumen.revisadas, porcentaje),
             fondo = VerdeZondaClaro,
             colorNumero = VerdeZonda,
-            elegida = grupo == GrupoResumen.Revisadas,
-            alTocar = { alTocarCifra(GrupoResumen.Revisadas) },
+            elegida = revision == RevisionResumen.REVISADAS,
+            alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.REVISADAS)) },
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
@@ -427,8 +459,8 @@ fun FilaDeTotales(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Un
             rotulo = stringResource(R.string.resumen_total_sin_revisar),
             fondo = Tonos.Media.fondo,
             colorNumero = Tonos.Media.texto,
-            elegida = grupo == GrupoResumen.SinRevisar,
-            alTocar = { alTocarCifra(GrupoResumen.SinRevisar) },
+            elegida = revision == RevisionResumen.SIN_REVISAR,
+            alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.SIN_REVISAR)) },
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
@@ -436,13 +468,16 @@ fun FilaDeTotales(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Un
     }
 }
 
-/** Las dos métricas de éxito (sección 7 del informe); tocarlas filtra por revisadas o por altas. */
+/**
+ * Las dos métricas de éxito (sección 7 del informe); tocarlas filtra por revisadas o por los tipos que
+ * la red tiene en alta ([altas], cambio 16).
+ */
 @Composable
-fun FilaDeMetricas(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit, modifier: Modifier = Modifier) {
-    val grupo = resumen.grupo
+fun FilaDeMetricas(resumen: ResumenActividad, altas: Set<TipoAtaque>, alTocar: (ToqueResumen) -> Unit, modifier: Modifier = Modifier) {
+    val filtro = resumen.filtro
     val sinDato = stringResource(R.string.resumen_sin_dato)
     val mediana = resumen.tiempoMedianoHastaRevision
-    val altas = resumen.altasRevisadasEnUnaHora
+    val enLaPrimeraHora = resumen.altasRevisadasEnUnaHora
     Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier
@@ -453,18 +488,22 @@ fun FilaDeMetricas(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> U
             valor = mediana?.let(Formato::duracionCorta) ?: sinDato,
             rotulo = stringResource(R.string.resumen_hasta_primera_revision),
             detalle = stringResource(if (mediana == null) R.string.resumen_sin_revisiones else R.string.resumen_mediana),
-            elegida = grupo == GrupoResumen.Revisadas,
-            alTocar = { alTocarCifra(GrupoResumen.Revisadas) },
+            elegida = filtro.revision == RevisionResumen.REVISADAS,
+            alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.REVISADAS)) },
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
         )
         TarjetaMetrica(
-            valor = Formato.porcentaje(altas) ?: sinDato,
+            valor = Formato.porcentaje(enLaPrimeraHora) ?: sinDato,
             rotulo = stringResource(R.string.resumen_altas_primera_hora),
-            detalle = if (altas.total == 0) stringResource(R.string.resumen_sin_altas) else stringResource(R.string.resumen_x_de_y, altas.parte, altas.total),
-            elegida = grupo == GrupoResumen.Altas,
-            alTocar = { alTocarCifra(GrupoResumen.Altas) },
+            detalle = if (enLaPrimeraHora.total == 0) {
+                stringResource(R.string.resumen_sin_altas)
+            } else {
+                stringResource(R.string.resumen_x_de_y, enLaPrimeraHora.parte, enLaPrimeraHora.total)
+            },
+            elegida = filtro.tiposSonLasAltas(altas),
+            alTocar = { alTocar(ToqueResumen.Altas) },
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
@@ -474,12 +513,12 @@ fun FilaDeMetricas(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> U
 
 /**
  * Alertas por día o por semana, con la frase de abajo (Figma 52-2629 y 100-7024). En 7 días la barra
- * de hoy va en el verde base.
+ * de hoy va en el verde base. Las barras elegidas llevan el borde verde y las otras quedan atenuadas.
  */
 @Composable
-fun TarjetaGrafico(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit, frase: String?, modifier: Modifier = Modifier) {
+fun TarjetaGrafico(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, frase: String?, modifier: Modifier = Modifier) {
     val siete = resumen.periodo == PeriodoResumen.SIETE_DIAS
-    val elegido = (resumen.grupo as? GrupoResumen.Barra)?.tramo
+    val elegidas = resumen.filtro.barras
     TarjetaResumen(
         titulo = stringResource(if (siete) R.string.resumen_alertas_por_dia else R.string.resumen_alertas_por_semana),
         espacioTitulo = 10.dp,
@@ -488,14 +527,14 @@ fun TarjetaGrafico(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> U
         GraficoDeBarras(
             barras = resumen.barras.mapIndexed { indice, barra ->
                 BarraGrafico(
-                    etiqueta = if (siete) Formato.diaDeLaSemanaCorto(barra.tramo.desde) else Formato.diaYMesCorto(barra.tramo.desde),
+                    etiqueta = barra.franja.etiquetaGrafico(),
                     cantidad = barra.cantidad,
                     resaltada = siete && indice == resumen.barras.lastIndex,
-                    elegida = barra.tramo == elegido,
-                    atenuada = elegido != null && barra.tramo != elegido,
+                    elegida = barra.franja in elegidas,
+                    atenuada = elegidas.isNotEmpty() && barra.franja !in elegidas,
                 )
             },
-            alTocar = { indice -> alTocarCifra(GrupoResumen.Barra(resumen.barras[indice].tramo)) },
+            alTocar = { indice -> alTocar(ToqueResumen.Barra(resumen.barras[indice].franja)) },
         )
         if (frase != null) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -514,7 +553,7 @@ fun TarjetaGrafico(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> U
 private fun TarjetaTipos(
     resumen: ResumenActividad,
     severidades: SeveridadPorTipo,
-    alTocarCifra: (GrupoResumen?) -> Unit,
+    alTocar: (ToqueResumen) -> Unit,
     alPedirAyuda: () -> Unit,
 ) {
     val maximo = resumen.porTipo.values.maxOrNull() ?: 0
@@ -532,14 +571,13 @@ private fun TarjetaTipos(
                 if (indice > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 TituloDeBloque(stringResource(titulo))
                 tipos.forEach { tipo ->
-                    val grupo = GrupoResumen.Tipo(tipo)
                     FilaTipo(
                         rotulo = stringResource(tipo.enFila()),
                         severidad = severidades.severidadDe(tipo),
                         valor = resumen.porTipo[tipo] ?: 0,
                         maximo = maximo,
-                        elegida = resumen.grupo == grupo,
-                        alTocar = { alTocarCifra(grupo) },
+                        elegida = tipo in resumen.filtro.tipos,
+                        alTocar = { alTocar(ToqueResumen.Tipo(tipo)) },
                     )
                 }
             }
@@ -549,7 +587,7 @@ private fun TarjetaTipos(
 
 /** Reales y falsos positivos de las revisadas, con la nota de abajo (Figma 52-2629). */
 @Composable
-private fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit) {
+private fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit) {
     val maximo = maxOf(resumen.reales, resumen.falsosPositivos)
     TarjetaResumen(titulo = stringResource(R.string.resumen_reales_y_falsos)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -558,16 +596,16 @@ private fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocarCifra: (Grupo
                 valor = resumen.reales,
                 maximo = maximo,
                 color = VerdeZonda,
-                elegida = resumen.grupo == GrupoResumen.Reales,
-                alTocar = { alTocarCifra(GrupoResumen.Reales) },
+                elegida = resumen.filtro.revision == RevisionResumen.REALES,
+                alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.REALES)) },
             )
             FilaConBarra(
                 rotulo = stringResource(R.string.resumen_falsos_positivos),
                 valor = resumen.falsosPositivos,
                 maximo = maximo,
                 color = NaranjaFalsos,
-                elegida = resumen.grupo == GrupoResumen.FalsosPositivos,
-                alTocar = { alTocarCifra(GrupoResumen.FalsosPositivos) },
+                elegida = resumen.filtro.revision == RevisionResumen.FALSOS_POSITIVOS,
+                alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.FALSOS_POSITIVOS)) },
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
@@ -581,7 +619,7 @@ private fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocarCifra: (Grupo
  * avisa y no cuál es el mejor. Cómo se lee lo explica la hoja del ⓘ.
  */
 @Composable
-private fun TarjetaPrecision(resumen: ResumenActividad, alTocarCifra: (GrupoResumen?) -> Unit, alPedirAyuda: () -> Unit) {
+private fun TarjetaPrecision(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, alPedirAyuda: () -> Unit) {
     val sinDato = stringResource(R.string.resumen_sin_dato)
     TarjetaResumen(
         titulo = stringResource(R.string.resumen_precision),
@@ -595,21 +633,20 @@ private fun TarjetaPrecision(resumen: ResumenActividad, alTocarCifra: (GrupoResu
                 resumen.cobertura.parte,
                 resumen.cobertura.total,
             ),
-            elegida = resumen.grupo == GrupoResumen.Revisadas,
-            alTocar = { alTocarCifra(GrupoResumen.Revisadas) },
+            elegida = resumen.filtro.revision == RevisionResumen.REVISADAS,
+            alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.REVISADAS)) },
         )
         Spacer(modifier = Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             MetodoDeteccion.entries.forEach { metodo ->
                 val precision = resumen.precisionPorMetodo.getValue(metodo)
-                val grupo = GrupoResumen.Metodo(metodo)
                 FilaPrecision(
                     rotulo = stringResource(metodo.enPrecision()),
                     porcentaje = Formato.porcentaje(precision) ?: sinDato,
                     xDeY = stringResource(R.string.resumen_x_de_y, precision.parte, precision.total),
                     fraccion = precision.valor?.toFloat() ?: 0f,
-                    elegida = resumen.grupo == grupo,
-                    alTocar = { alTocarCifra(grupo) },
+                    elegida = resumen.filtro.metodo == metodo,
+                    alTocar = { alTocar(ToqueResumen.Metodo(metodo)) },
                     clara = precision.barraClara(),
                 )
             }

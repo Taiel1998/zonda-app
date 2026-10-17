@@ -1,9 +1,10 @@
 package ar.edu.uade.zonda.ui.resumen
 
-import ar.edu.uade.zonda.domain.model.GrupoResumen
+import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.TipoAtaque
 import java.time.Instant
 
 /** Qué se muestra en el cuerpo del Resumen (Figma 52-2629, 100-7024 y 52-2976). */
@@ -41,8 +42,8 @@ sealed interface AvisoResumen {
 data class ResumenUiState(
     val contenido: ContenidoResumen = ContenidoResumen.Cargando,
     val periodo: PeriodoResumen = PeriodoResumen.SIETE_DIAS,
-    /** La cifra tocada, o null si el Resumen muestra todas las alertas del período. */
-    val grupo: GrupoResumen? = null,
+    /** Los filtros puestos (cambio 16); vacío si el Resumen muestra todas las alertas del período. */
+    val filtro: FiltroResumen = FiltroResumen(),
     /** Nombre de la red activa ("Oficina central"). */
     val red: String? = null,
     /** Hora de la última sincronización ("actualizado 02:14"); null si nunca se sincronizó. */
@@ -51,4 +52,8 @@ data class ResumenUiState(
     val aviso: AvisoResumen? = null,
     /** La severidad que eligió la red para cada tipo: el punto de color de "Por tipo de ataque" (cambio 14). */
     val severidades: SeveridadPorTipo = SeveridadPorTipo.RECOMENDADA,
-)
+) {
+    /** Los tipos que la red tiene en alta: los que filtra "altas revisadas en la primera hora" (cambio 16). */
+    val altas: Set<TipoAtaque>
+        get() = severidades.tiposAltos
+}

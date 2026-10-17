@@ -2,10 +2,11 @@ package ar.edu.uade.zonda.ui.resumen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ar.edu.uade.zonda.domain.model.GrupoResumen
+import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.ToqueResumen
 import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.ObservarResumen
@@ -22,9 +23,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
 /**
- * ViewModel del Resumen (RF07). Guarda el período y la cifra tocada, y observa el resumen que calcula
- * [ObservarResumen] con las alertas del teléfono: cambiar el período o tocar una cifra cambia la
- * consulta y todas las cifras se recalculan al instante, con o sin conexión.
+ * ViewModel del Resumen (RF07) y de su lista "Ver estas alertas", que lo comparte. Guarda el período y
+ * los filtros (cambio 16), y observa el resumen que calcula [ObservarResumen] con las alertas del
+ * teléfono: cambiar el período, tocar una cifra o aplicar la hoja de filtros cambia la consulta y
+ * todas las cifras se recalculan al instante, con o sin conexión.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ResumenViewModel(
@@ -33,14 +35,14 @@ class ResumenViewModel(
     conectividad: Conectividad,
 ) : ViewModel() {
 
-    /** El período y la cifra tocada van juntos: al cambiar el período, el filtro cambia en el mismo paso. */
-    private data class Consulta(val periodo: PeriodoResumen = PeriodoResumen.SIETE_DIAS, val grupo: GrupoResumen? = null)
+    /** El período y los filtros van juntos: al cambiar el período, los filtros cambian en el mismo paso. */
+    private data class Consulta(val periodo: PeriodoResumen = PeriodoResumen.SIETE_DIAS, val filtro: FiltroResumen = FiltroResumen())
 
     private val consulta = MutableStateFlow(Consulta())
     private val aviso = MutableStateFlow<AvisoResumen?>(null)
 
     private val contenido: Flow<ContenidoResumen> = consulta
-        .flatMapLatest { observarResumen(it.periodo, it.grupo) }
+        .flatMapLatest { observarResumen(it.periodo, it.filtro) }
         .map { resumen ->
             when {
                 resumen == null -> ContenidoResumen.SinRed
@@ -69,7 +71,7 @@ class ResumenViewModel(
         ResumenUiState(
             contenido = contenido,
             periodo = consulta.periodo,
-            grupo = consulta.grupo,
+            filtro = consulta.filtro,
             red = red?.nombre,
             datosDe = red?.ultimaSincronizacion,
             sinConexion = !conectado,
@@ -78,24 +80,29 @@ class ResumenViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ResumenUiState())
 
-    /** 7 o 30 días. Un día o una semana elegidos no existen en el otro período: ese filtro se quita. */
+    /**
+     * 7 o 30 días. Los días o las semanas elegidos eran del otro período: se sacan y quedan los demás
+     * filtros (cambio 16).
+     */
     fun elegirPeriodo(nuevo: PeriodoResumen) {
         consulta.update { actual ->
-            if (actual.periodo == nuevo) actual else Consulta(nuevo, actual.grupo.takeUnless { it is GrupoResumen.Barra })
+            if (actual.periodo == nuevo) actual else Consulta(nuevo, actual.filtro.sinBarras())
         }
     }
 
     /**
-     * Tocar una cifra recalcula todo el Resumen sobre ese grupo; tocarla de nuevo vuelve a todas
-     * (RF07). Tocar el total de alertas ([nuevo] null) también vuelve a todas.
+     * Tocar una cifra suma o saca su filtro y todo el Resumen se recalcula (RF07, cambio 16): los días y
+     * los tipos de a varios, la revisión y el modelo de a uno; el total saca todos. Las altas son los
+     * tipos que la red tiene en alta.
      */
-    fun tocarCifra(nuevo: GrupoResumen?) {
-        consulta.update { actual -> actual.copy(grupo = if (nuevo == null || nuevo == actual.grupo) null else nuevo) }
+    fun tocar(toque: ToqueResumen) {
+        val altas = estado.value.altas
+        consulta.update { actual -> actual.copy(filtro = actual.filtro.tocar(toque, altas)) }
     }
 
-    /** La cruz del chip del filtro. */
-    fun quitarFiltro() {
-        consulta.update { it.copy(grupo = null) }
+    /** "Mostrar N alertas" (o "Ver estas alertas en la lista") de la hoja de filtros: reemplaza los filtros. */
+    fun aplicarFiltro(filtro: FiltroResumen) {
+        consulta.update { it.copy(filtro = filtro) }
     }
 
     /** La imagen salió por [destino]: el aviso lo confirma al volver (Figma 107-4941 a 107-5349). */

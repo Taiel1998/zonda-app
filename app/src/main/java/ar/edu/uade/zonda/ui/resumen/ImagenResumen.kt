@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
+import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.ui.theme.VerdeZonda
 import ar.edu.uade.zonda.ui.theme.nota
 import java.time.Instant
@@ -46,12 +47,11 @@ fun ImagenResumen(
     sinConexion: Boolean,
     zona: ZoneId,
     modifier: Modifier = Modifier,
+    altas: Set<TipoAtaque> = emptySet(),
 ) {
     val recursos = LocalContext.current.resources
-    // En la imagen no se puede tocar nada: la frase de un grupo no dice "Tocá de nuevo".
-    val frase = resumen.grupo?.let { grupo ->
-        recursos.getQuantityString(R.plurals.resumen_mostrando_imagen, resumen.total, grupo.etiquetaFrase(recursos), resumen.total)
-    } ?: fraseDelGrafico(resumen, recursos)
+    // En la imagen no se puede tocar nada: la frase de un filtro no dice "Tocá de nuevo".
+    val frase = fraseDelGrafico(resumen, recursos, altas, enImagen = true)
     Column(
         modifier = modifier
             .width(AnchoImagen)
@@ -81,11 +81,11 @@ fun ImagenResumen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(12.dp))
-        FilaDeTotales(resumen = resumen, alTocarCifra = {})
+        FilaDeTotales(resumen = resumen, alTocar = {})
         Spacer(modifier = Modifier.height(10.dp))
-        FilaDeMetricas(resumen = resumen, alTocarCifra = {})
+        FilaDeMetricas(resumen = resumen, altas = altas, alTocar = {})
         Spacer(modifier = Modifier.height(12.dp))
-        TarjetaGrafico(resumen = resumen, alTocarCifra = {}, frase = frase)
+        TarjetaGrafico(resumen = resumen, alTocar = {}, frase = frase)
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = stringResource(R.string.resumen_imagen_pie),

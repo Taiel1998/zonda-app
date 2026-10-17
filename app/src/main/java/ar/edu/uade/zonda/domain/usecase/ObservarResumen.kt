@@ -1,7 +1,7 @@
 package ar.edu.uade.zonda.domain.usecase
 
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
-import ar.edu.uade.zonda.domain.model.GrupoResumen
+import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
@@ -28,7 +28,7 @@ class ObservarResumen(
     private val reloj: () -> Instant = Instant::now,
     private val zona: () -> ZoneId = ZoneId::systemDefault,
 ) {
-    operator fun invoke(periodo: PeriodoResumen, grupo: GrupoResumen? = null): Flow<ResumenActividad?> =
+    operator fun invoke(periodo: PeriodoResumen, filtro: FiltroResumen = FiltroResumen()): Flow<ResumenActividad?> =
         redes.observarRedActiva()
             .map { it?.id }
             .distinctUntilChanged()
@@ -38,7 +38,7 @@ class ObservarResumen(
                 } else {
                     // Todo lo guardado (son 30 días como mucho): el período se corta por días al calcular.
                     alertas.observarAlertas(redId, FiltroAlertas(periodo = Periodo.TODO))
-                        .map { lista -> ResumenActividad.calcular(lista, periodo, reloj(), zona(), grupo) }
+                        .map { lista -> ResumenActividad.calcular(lista, periodo, reloj(), zona(), filtro) }
                 }
             }
 }

@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
@@ -58,7 +59,7 @@ import ar.edu.uade.zonda.ui.theme.rotulo
 // barra. Toda cifra que se puede tocar, elegida, lleva el borde verde de 2.
 
 /** Verde claro de las barras del gráfico; la de hoy va en el verde base. */
-val VerdeBarra = Color(0xFF59B89A)
+val VerdeBarra = Color(0xFF5AB89A)
 
 /** La barra de precisión de un modelo con menos de 30 revisiones (cambio 4; Figma 72-5240). */
 val VerdeBarraClara = Color(0xFF9FE1CB)
@@ -201,19 +202,19 @@ data class BarraGrafico(
     /** La de hoy en 7 días: verde base. */
     val resaltada: Boolean,
     val elegida: Boolean,
-    /** Hay otra barra elegida: esta va atenuada (Figma 100-8096). */
+    /** Hay otra barra elegida: esta va atenuada (Figma 463-1145). */
     val atenuada: Boolean,
 )
 
-private val AltoMaximoBarra = 92.dp
+private val AltoMaximoBarra = 90.dp
 private val AnchoBarra = 28.dp
-private val AnchoColumna = 44.dp
 
 /**
- * Alertas por día o por semana (Figma 52-2629 y 100-7024): una columna por barra con el número arriba
- * (Regular 12), la barra de 28 de ancho (alto proporcional, 92 la mayor) y el día abajo (Regular 12
- * gris), repartidas con el mismo espacio. Las barras en cero son una raya. La elegida lleva el borde
- * verde y las demás quedan atenuadas.
+ * Alertas por día o por semana (Figma 52-2629, 100-7024 y 463-1145): una columna por barra, todas del
+ * mismo ancho con 8 entre ellas, con el número arriba (Medium 11), la barra de 28 de ancho (alto
+ * proporcional, 90 la mayor, esquinas de 3) y el día abajo (Regular 11 gris), con 4 entre cada cosa.
+ * Las barras en cero son una raya de 2. Las elegidas llevan el borde verde de 2, a 2 por fuera, y las
+ * demás quedan al 35 %.
  */
 @Composable
 fun GraficoDeBarras(
@@ -222,37 +223,34 @@ fun GraficoDeBarras(
     modifier: Modifier = Modifier,
 ) {
     val maximo = barras.maxOfOrNull { it.cantidad }?.coerceAtLeast(1) ?: 1
-    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
         barras.forEachIndexed { indice, barra ->
-            val alfa = if (barra.atenuada) 0.4f else 1f
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
-                    .width(AnchoColumna)
-                    .marcoElegido(barra.elegida, horizontal = 0.dp, vertical = 4.dp)
+                    .weight(1f)
+                    .alpha(if (barra.atenuada) 0.35f else 1f)
+                    .marcoElegido(barra.elegida, horizontal = 2.dp, vertical = 2.dp)
                     .selectable(selected = barra.elegida, role = Role.Button) { alTocar(indice) },
             ) {
                 Text(
                     text = barra.cantidad.toString(),
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = alfa),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
                 )
-                Spacer(modifier = Modifier.height(2.dp))
                 val alto = AltoMaximoBarra * (barra.cantidad.toFloat() / maximo)
                 Box(
                     modifier = Modifier
                         .width(AnchoBarra)
                         .height(if (barra.cantidad == 0) 2.dp else alto.coerceAtLeast(2.dp))
-                        .background(
-                            color = (if (barra.resaltada) VerdeZonda else VerdeBarra).copy(alpha = if (barra.cantidad == 0) 0.35f else alfa),
-                            shape = RoundedCornerShape(if (barra.cantidad == 0) 1.dp else 4.dp),
-                        ),
+                        .background(color = if (barra.resaltada) VerdeZonda else VerdeBarra, shape = RoundedCornerShape(3.dp)),
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = barra.etiqueta,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alfa),
+                    style = estiloRotuloChicoResumen,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
             }

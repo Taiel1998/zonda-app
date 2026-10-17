@@ -3,6 +3,7 @@ package ar.edu.uade.zonda.domain.model
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 
 /** Una cifra "x de y", por ejemplo 27 alertas reales de 33 revisadas. [valor] es la fracción, o null si no hay base. */
@@ -32,72 +33,144 @@ enum class PeriodoResumen(private val diasAtras: Long) {
     fun tramo(hoy: LocalDate): Tramo = Tramo(hoy.minusDays(diasAtras), hoy)
 
     /**
-     * Los días de cada barra del gráfico. En 7 días, una por día. En 30 días, cuatro: las tres semanas
-     * que terminan hoy y una primera con lo que queda del período (Figma 100-7024: 28/8, 7/9, 14/9 y 21/9).
+     * Las barras del gráfico. En 7 días, una por día. En 30 días, cuatro: las tres semanas que terminan
+     * hoy y una primera con lo que queda del período (Figma 100-7024: 28/8, 7/9, 14/9 y 21/9).
      */
-    fun barras(hoy: LocalDate): List<Tramo> = when (this) {
-        SIETE_DIAS -> (6L downTo 0L).map { atras -> hoy.minusDays(atras).let { dia -> Tramo(dia, dia) } }
+    fun barras(hoy: LocalDate): List<Franja> = when (this) {
+        SIETE_DIAS -> (6L downTo 0L).map { atras -> Franja.dia(hoy.minusDays(atras)) }
         TREINTA_DIAS -> listOf(
-            Tramo(tramo(hoy).desde, hoy.minusDays(21)),
-            Tramo(hoy.minusDays(20), hoy.minusDays(14)),
-            Tramo(hoy.minusDays(13), hoy.minusDays(7)),
-            Tramo(hoy.minusDays(6), hoy),
+            Franja.semana(tramo(hoy).desde, hoy.minusDays(21)),
+            Franja.semana(hoy.minusDays(20), hoy.minusDays(14)),
+            Franja.semana(hoy.minusDays(13), hoy.minusDays(7)),
+            Franja.semana(hoy.minusDays(6), hoy),
         )
     }
 }
 
+/** De qué es cada barra del gráfico del Resumen: un día o una semana (cambio 16). */
+enum class EscalaBarra { DIA, SEMANA }
+
 /**
- * La cifra que se tocó en el Resumen (RF07; Figma 100-7158 a 100-11534). Recalcular sobre ese grupo es
- * quedarse con las alertas que [incluye] y volver a calcular todo; por eso, con un día elegido, los
- * demás días quedan en cero, igual que en el Figma.
+ * Una barra del gráfico: desde (incluido) hasta (sin incluir), en la hora del teléfono. Un día va de
+ * las 00:00 a las 00:00 del siguiente; una semana, de las 00:00 de su primer día a las 00:00 del día
+ * después del último.
  */
-sealed interface GrupoResumen {
+data class Franja(val desde: LocalDateTime, val hasta: LocalDateTime, val escala: EscalaBarra) {
 
-    fun incluye(alerta: Alerta, zona: ZoneId): Boolean
+    operator fun contains(momento: LocalDateTime): Boolean = !momento.isBefore(desde) && momento.isBefore(hasta)
 
-    /** "revisadas", "hasta la primera revisión" y la cobertura: las que alguien ya marcó como real o falso positivo. */
-    data object Revisadas : GrupoResumen {
-        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = !alerta.sinRevisar
-    }
+    /** El primer día de la barra: el que la nombra ("vie", "28/8"). */
+    val primerDia: LocalDate
+        get() = desde.toLocalDate()
 
-    data object SinRevisar : GrupoResumen {
-        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = alerta.sinRevisar
-    }
+    companion object {
+        fun dia(dia: LocalDate) = Franja(dia.atStartOfDay(), dia.plusDays(1).atStartOfDay(), EscalaBarra.DIA)
 
-    /** "altas revisadas en la primera hora": todas las altas, revisadas o no. */
-    data object Altas : GrupoResumen {
-        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = alerta.severidad == Severidad.ALTA
-    }
-
-    /** Una barra del gráfico: un día en 7 días o una semana en 30 días. */
-    data class Barra(val tramo: Tramo) : GrupoResumen {
-        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = alerta.dia(zona) in tramo
-    }
-
-    /**
-     * Una fila de "Por tipo de ataque": las alertas de ese tipo (cambio 14: ya no hay "Otros"). Una que
-     * vieron las reglas y los umbrales está en las dos filas (cambio 9).
-     */
-    data class Tipo(val tipo: TipoAtaque) : GrupoResumen {
-        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = tipo in alerta.tiposDeAtaque
-    }
-
-    data object Reales : GrupoResumen {
-        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = alerta.estadoRevision == EstadoRevision.ATAQUE_REAL
-    }
-
-    data object FalsosPositivos : GrupoResumen {
-        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = alerta.estadoRevision == EstadoRevision.FALSO_POSITIVO
-    }
-
-    /** Una fila de la precisión: las alertas que ese método marcó. */
-    data class Metodo(val metodo: MetodoDeteccion) : GrupoResumen {
-        override fun incluye(alerta: Alerta, zona: ZoneId): Boolean = metodo in alerta.metodos
+        fun semana(desde: LocalDate, hasta: LocalDate) = Franja(desde.atStartOfDay(), hasta.plusDays(1).atStartOfDay(), EscalaBarra.SEMANA)
     }
 }
 
-/** Una barra del gráfico de actividad y cuántas alertas empezaron en sus días. */
-data class BarraActividad(val tramo: Tramo, val cantidad: Int)
+/**
+ * La revisión del filtro del Resumen (cambio 16). Va una sola: juntas no dicen nada nuevo (reales con
+ * falsos son las revisadas, y revisadas con sin revisar son todas).
+ */
+enum class RevisionResumen {
+    REVISADAS, SIN_REVISAR, REALES, FALSOS_POSITIVOS;
+
+    fun incluye(alerta: Alerta): Boolean = when (this) {
+        REVISADAS -> !alerta.sinRevisar
+        SIN_REVISAR -> alerta.sinRevisar
+        REALES -> alerta.estadoRevision == EstadoRevision.ATAQUE_REAL
+        FALSOS_POSITIVOS -> alerta.estadoRevision == EstadoRevision.FALSO_POSITIVO
+    }
+}
+
+/** Lo que se puede tocar en el Resumen (cambio 16): cada cifra suma o saca su filtro. */
+sealed interface ToqueResumen {
+
+    /** El total de alertas: saca todos los filtros. */
+    data object Total : ToqueResumen
+
+    /** Una barra del gráfico: un día, o una semana en 30 días. */
+    data class Barra(val franja: Franja) : ToqueResumen
+
+    /** Una fila de "Por tipo de ataque". */
+    data class Tipo(val tipo: TipoAtaque) : ToqueResumen
+
+    /** "altas revisadas en la primera hora": los tipos que la red tiene en alta. */
+    data object Altas : ToqueResumen
+
+    /** "revisadas", "sin revisar", la cobertura, el tiempo hasta la revisión, reales o falsos positivos. */
+    data class Revision(val revision: RevisionResumen) : ToqueResumen
+
+    /** Una fila de la precisión: la IA, los umbrales o las reglas. */
+    data class Metodo(val metodo: MetodoDeteccion) : ToqueResumen
+}
+
+/**
+ * Los filtros del Resumen (cambio 16), que se suman: con el domingo y fuerza bruta quedan las de fuerza
+ * bruta del domingo. Los días (o semanas) y los tipos van de a varios, como casillas: una alerta empieza
+ * un solo día y tiene un solo tipo, así que "domingo y lunes" o "fuerza bruta y escaneo" se leen de una
+ * sola manera ("uno u otro"). La revisión y el modelo van de a uno: dos revisiones no dicen nada nuevo y
+ * una alerta puede tener dos modelos, así que "IA y umbrales" se leería de dos maneras.
+ */
+data class FiltroResumen(
+    val barras: Set<Franja> = emptySet(),
+    val tipos: Set<TipoAtaque> = emptySet(),
+    val revision: RevisionResumen? = null,
+    val metodo: MetodoDeteccion? = null,
+) {
+    /** Cuántos hay puestos: lo que dice el botón "Filtros (4)". */
+    val cantidad: Int
+        get() = barras.size + tipos.size + (if (revision == null) 0 else 1) + (if (metodo == null) 0 else 1)
+
+    val vacio: Boolean
+        get() = cantidad == 0
+
+    /**
+     * Si la alerta pasa todos los filtros. Una que vieron las reglas y los umbrales tiene dos tipos
+     * (cambio 9): con los dos elegidos entra una sola vez.
+     */
+    fun incluye(alerta: Alerta, zona: ZoneId): Boolean {
+        if (barras.isNotEmpty()) {
+            val momento = alerta.inicio.atZone(zona).toLocalDateTime()
+            if (barras.none { momento in it }) return false
+        }
+        if (tipos.isNotEmpty() && tipos.none { it in alerta.tiposDeAtaque }) return false
+        if (revision != null && !revision.incluye(alerta)) return false
+        if (metodo != null && metodo !in alerta.metodos) return false
+        return true
+    }
+
+    /**
+     * Lo que pasa al tocar una cifra: los días y los tipos se suman o se sacan, la revisión y el modelo
+     * reemplazan al que estaba (o se sacan si se toca el mismo), y el total saca todo. [altas] son los
+     * tipos que la red tiene en alta: tocar "altas revisadas en la primera hora" los suma, o los saca si
+     * ya estaban todos.
+     */
+    fun tocar(toque: ToqueResumen, altas: Set<TipoAtaque>): FiltroResumen = when (toque) {
+        ToqueResumen.Total -> FiltroResumen()
+        is ToqueResumen.Barra -> copy(barras = barras.alternar(toque.franja))
+        is ToqueResumen.Tipo -> copy(tipos = tipos.alternar(toque.tipo))
+        ToqueResumen.Altas -> copy(tipos = if (altas.isNotEmpty() && tipos.containsAll(altas)) tipos - altas else tipos + altas)
+        is ToqueResumen.Revision -> copy(revision = toque.revision.takeUnless { it == revision })
+        is ToqueResumen.Metodo -> copy(metodo = toque.metodo.takeUnless { it == metodo })
+    }
+
+    /** Al cambiar de período, los días elegidos eran del otro: se sacan y queda lo demás. */
+    fun sinBarras(): FiltroResumen = copy(barras = emptySet())
+
+    /**
+     * Si los tipos elegidos son justo los que la red tiene en alta: la métrica de las altas queda
+     * resaltada y la frase los nombra como "las altas".
+     */
+    fun tiposSonLasAltas(altas: Set<TipoAtaque>): Boolean = altas.isNotEmpty() && tipos == altas
+
+    private fun <T> Set<T>.alternar(elemento: T): Set<T> = if (elemento in this) this - elemento else this + elemento
+}
+
+/** Una barra del gráfico de actividad y cuántas alertas empezaron en ella. */
+data class BarraActividad(val franja: Franja, val cantidad: Int)
 
 /**
  * Lo que dice la frase debajo del gráfico (Figma 52-2629 y 100-7024): la barra con más alertas, el tipo
@@ -119,9 +192,9 @@ data class ResumenActividad(
     val periodo: PeriodoResumen,
     /** Del primer día del período a hoy ("del 21/09 al 27/09"). */
     val tramo: Tramo,
-    /** El grupo sobre el que se calculó todo, o null si son todas las alertas del período. */
-    val grupo: GrupoResumen?,
-    /** Las alertas del período antes de aplicar el grupo; con cero, la pantalla muestra el estado vacío. */
+    /** Los filtros con los que se calculó todo; vacío si son todas las alertas del período. */
+    val filtro: FiltroResumen,
+    /** Las alertas del período antes de aplicar los filtros; con cero, la pantalla muestra el estado vacío. */
     val totalDelPeriodo: Int,
     val total: Int,
     val revisadas: Int,
@@ -147,6 +220,10 @@ data class ResumenActividad(
     /** Por método: alertas reales sobre alertas revisadas entre las que ese método detectó. */
     val precisionPorMetodo: Map<MetodoDeteccion, Proporcion>,
     val destacado: Destacado?,
+    /** Las alertas que pasan los filtros, de la más nueva a la más vieja: la lista "Ver estas alertas". */
+    val alertas: List<Alerta> = emptyList(),
+    /** Todas las del período, sin filtros: la hoja de filtros cuenta con ellas cuántas quedarían. */
+    val delPeriodo: List<Alerta> = emptyList(),
 ) {
 
     companion object {
@@ -159,20 +236,20 @@ data class ResumenActividad(
 
         /**
          * Calcula el resumen del [periodo] que termina hoy. Solo cuentan las alertas que empezaron dentro
-         * del período; el que llama puede pasar más y acá se descartan. Con un [grupo], todas las cifras
-         * se calculan solo sobre las alertas de ese grupo.
+         * del período; el que llama puede pasar más y acá se descartan. Con [filtro], todas las cifras se
+         * calculan solo sobre las alertas que lo pasan.
          */
         fun calcular(
             alertas: List<Alerta>,
             periodo: PeriodoResumen,
             ahora: Instant,
             zona: ZoneId,
-            grupo: GrupoResumen? = null,
+            filtro: FiltroResumen = FiltroResumen(),
         ): ResumenActividad {
             val hoy = ahora.atZone(zona).toLocalDate()
             val tramo = periodo.tramo(hoy)
-            val delPeriodo = alertas.filter { it.dia(zona) in tramo }
-            val lista = if (grupo == null) delPeriodo else delPeriodo.filter { grupo.incluye(it, zona) }
+            val delPeriodo = alertas.filter { it.dia(zona) in tramo }.sortedByDescending { it.inicio }
+            val lista = if (filtro.vacio) delPeriodo else delPeriodo.filter { filtro.incluye(it, zona) }
             val revisadas = lista.filter { !it.sinRevisar }
 
             val tiemposHastaRevision = revisadas
@@ -204,12 +281,12 @@ data class ResumenActividad(
                 )
             }
 
-            val barras = periodo.barras(hoy).map { dias -> BarraActividad(dias, lista.count { it.dia(zona) in dias }) }
+            val barras = periodo.barras(hoy).map { franja -> BarraActividad(franja, lista.count { it.momento(zona) in franja }) }
 
             return ResumenActividad(
                 periodo = periodo,
                 tramo = tramo,
-                grupo = grupo,
+                filtro = filtro,
                 totalDelPeriodo = delPeriodo.size,
                 total = lista.size,
                 revisadas = revisadas.size,
@@ -223,6 +300,8 @@ data class ResumenActividad(
                 cobertura = Proporcion(revisadas.size, lista.size),
                 precisionPorMetodo = precisionPorMetodo,
                 destacado = destacado(lista, barras, zona),
+                alertas = lista,
+                delPeriodo = delPeriodo,
             )
         }
 
@@ -233,10 +312,10 @@ data class ResumenActividad(
         private fun destacado(lista: List<Alerta>, barras: List<BarraActividad>, zona: ZoneId): Destacado? {
             val barra = barras
                 .filter { it.cantidad > 0 }
-                .maxWithOrNull(compareBy<BarraActividad>({ it.cantidad }, { it.tramo.desde }))
+                .maxWithOrNull(compareBy<BarraActividad>({ it.cantidad }, { it.franja.desde }))
                 ?: return null
             val (tipo, delTipo) = lista
-                .filter { it.dia(zona) in barra.tramo }
+                .filter { it.momento(zona) in barra.franja }
                 .flatMap { alerta -> alerta.tiposDeAtaque.map { it to alerta } }
                 .groupBy({ it.first }, { it.second })
                 .entries
@@ -255,6 +334,9 @@ private val UNA_HORA: Duration = Duration.ofHours(1)
 
 /** El día del calendario en que empezó la alerta, en la zona del teléfono. */
 private fun Alerta.dia(zona: ZoneId): LocalDate = inicio.atZone(zona).toLocalDate()
+
+/** El día y la hora en que empezó la alerta, en la zona del teléfono. */
+private fun Alerta.momento(zona: ZoneId): LocalDateTime = inicio.atZone(zona).toLocalDateTime()
 
 /**
  * Cuándo se revisó por primera vez: la revisión más vieja del historial, con la hora del teléfono que

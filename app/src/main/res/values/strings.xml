@@ -517,7 +517,7 @@
     <string name="recorrido_8_titulo">Revisar</string>
     <string name="recorrido_8_texto">Un solo botón: elegís si fue ataque real o falso positivo, y después el motivo y un comentario. Los dos son obligatorios.</string>
     <string name="recorrido_9_titulo">Todo el Resumen se puede tocar</string>
-    <string name="recorrido_9_texto">Tocá un total, un día, un tipo de ataque o un método y todas las cifras se recalculan sobre ese grupo. Tocá de nuevo para volver a todo.</string>
+    <string name="recorrido_9_texto">Tocá un día, un tipo de ataque o un modelo y se suma al filtro. Tocalo de nuevo para sacarlo.</string>
     <string name="recorrido_10_titulo">7 o 30 días y compartir</string>
     <string name="recorrido_10_texto">Cambiá el período acá arriba. Compartir resumen lo envía como imagen por WhatsApp u otra app, sin IPs ni nombres de equipos.</string>
     <string name="recorrido_11_titulo">Ajustes</string>
@@ -813,13 +813,49 @@
         <item quantity="other">La semana del %1$s fue la de más actividad: %2$d alertas.</item>
     </plurals>
     <plurals name="resumen_mostrando">
-        <item quantity="one">Mostrando %1$s: %2$d alerta. Tocá de nuevo para ver todas.</item>
-        <item quantity="other">Mostrando %1$s: %2$d alertas. Tocá de nuevo para ver todas.</item>
+        <item quantity="one">Mostrando %1$s: %2$d alerta. Tocá de nuevo para sacarlo.</item>
+        <item quantity="other">Mostrando %1$s: %2$d alertas. Tocá de nuevo para sacarlo.</item>
     </plurals>
+    <!-- Cambio 16 (1.0.4): con varios filtros la frase los nombra (Figma 463-1145); con más de cuatro, dice cuántos son. -->
+    <plurals name="resumen_mostrando_filtros">
+        <item quantity="one">Mostrando %1$d alerta: %2$s.</item>
+        <item quantity="other">Mostrando %1$d alertas: %2$s.</item>
+    </plurals>
+    <plurals name="resumen_mostrando_con_filtros">
+        <item quantity="one">Mostrando %1$d alerta con %2$d filtros.</item>
+        <item quantity="other">Mostrando %1$d alertas con %2$d filtros.</item>
+    </plurals>
+    <string name="resumen_las_altas">las altas</string>
+    <string name="resumen_y">%1$s y %2$s</string>
+    <string name="resumen_filtros">Filtros</string>
+    <string name="resumen_filtros_con_cantidad">Filtros (%1$d)</string>
+    <!-- La hoja "Filtrar el resumen" (Figma 463-1317) -->
+    <string name="resumen_filtrar_titulo">Filtrar el resumen</string>
+    <string name="resumen_filtrar_cuando">Cuándo · podés elegir varios</string>
+    <string name="resumen_filtrar_tipos">Tipo de ataque · podés elegir varios</string>
+    <string name="resumen_filtrar_revision">Revisión</string>
+    <string name="resumen_filtrar_modelo">Modelo</string>
+    <string name="resumen_filtrar_todas">Todas</string>
+    <string name="resumen_filtrar_todos">Todos</string>
+    <plurals name="resumen_ver_en_la_lista">
+        <item quantity="one">Ver esta alerta en la lista →</item>
+        <item quantity="other">Ver estas %1$d alertas en la lista →</item>
+    </plurals>
+    <plurals name="resumen_mostrar_alertas">
+        <item quantity="one">Mostrar %1$d alerta</item>
+        <item quantity="other">Mostrar %1$d alertas</item>
+    </plurals>
+    <!-- La lista de "Ver estas alertas" (Figma 463-1669) -->
+    <plurals name="resumen_lista_titulo">
+        <item quantity="one">%1$d alerta</item>
+        <item quantity="other">%1$d alertas</item>
+    </plurals>
+    <string name="resumen_lista_del_resumen">Del Resumen: %1$s</string>
+    <string name="resumen_lista_vacia">Ninguna alerta con estos filtros</string>
+    <string name="resumen_lista_vacia_detalle">Volvé al Resumen y cambiá los filtros.</string>
     <string name="resumen_semana_del">Semana del %1$s</string>
     <string name="resumen_chip_revisadas">Revisadas</string>
     <string name="resumen_chip_sin_revisar">Sin revisar</string>
-    <string name="resumen_chip_altas">Altas</string>
     <string name="resumen_por_tipo">Por tipo de ataque</string>
     <string name="resumen_tipo_fuerza_bruta">Fuerza bruta (SSH, FTP)</string>
     <string name="resumen_reales_y_falsos">Reales y falsos positivos (de las revisadas)</string>
@@ -865,6 +901,7 @@
     <string name="precision_filtro_sin_revisar">Estás viendo las sin revisar: todavía no tienen revisión, así que no hay precisión para calcular.</string>
     <string name="precision_filtro_altas">Estás viendo las altas: la precisión cuenta solo las alertas altas revisadas.</string>
     <string name="precision_filtro_reales">Estás viendo los ataques reales: todas son reales, así que cada modelo da 100 %.</string>
+    <string name="precision_filtro_varios">Estás viendo varios filtros juntos: la precisión cuenta solo las alertas revisadas que pasan todos.</string>
     <string name="precision_filtro_falsos">Estás viendo los falsos positivos: ninguna es real, así que cada modelo da 0 %.</string>
     <string name="precision_pie">Se calcula con las alertas guardadas en el teléfono, de los últimos 30 días.</string>
     <string name="resumen_vacio_titulo_7">Sin alertas en los últimos 7 días</string>

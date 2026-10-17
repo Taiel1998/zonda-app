@@ -4,11 +4,14 @@ import android.content.res.Resources
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import ar.edu.uade.zonda.R
-import ar.edu.uade.zonda.domain.model.GrupoResumen
+import ar.edu.uade.zonda.domain.model.EscalaBarra
+import ar.edu.uade.zonda.domain.model.FiltroResumen
+import ar.edu.uade.zonda.domain.model.Franja
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.Proporcion
 import ar.edu.uade.zonda.domain.model.ResumenActividad
+import ar.edu.uade.zonda.domain.model.RevisionResumen
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.model.Tramo
 import ar.edu.uade.zonda.ui.Formato
@@ -49,38 +52,113 @@ fun MetodoDeteccion.enPrecision(): Int = when (this) {
     MetodoDeteccion.REGLAS -> R.string.resumen_metodo_reglas
 }
 
-/** El texto del chip del filtro: "Revisadas", "Viernes 25/09", "Semana del 28/8", "Modelo de IA". */
-fun GrupoResumen.etiquetaChip(recursos: Resources): String = when (this) {
-    GrupoResumen.Revisadas -> recursos.getString(R.string.resumen_chip_revisadas)
-    GrupoResumen.SinRevisar -> recursos.getString(R.string.resumen_chip_sin_revisar)
-    GrupoResumen.Altas -> recursos.getString(R.string.resumen_chip_altas)
-    GrupoResumen.Reales -> recursos.getString(R.string.resumen_reales)
-    GrupoResumen.FalsosPositivos -> recursos.getString(R.string.resumen_falsos_positivos)
-    is GrupoResumen.Tipo -> recursos.getString(tipo.nombreCorto())
-    is GrupoResumen.Metodo -> recursos.getString(metodo.enPrecision())
-    is GrupoResumen.Barra -> tramo.etiquetaChip(recursos)
+/** Debajo de cada barra del gráfico: el día en 7 días ("vie") o el comienzo de la semana en 30 días ("28/8"). */
+fun Franja.etiquetaGrafico(): String = when (escala) {
+    EscalaBarra.DIA -> Formato.diaDeLaSemanaCorto(primerDia)
+    EscalaBarra.SEMANA -> Formato.diaYMesCorto(primerDia)
 }
 
-/** Un día ("Viernes 25/09") o una semana ("Semana del 28/8"). */
-fun Tramo.etiquetaChip(recursos: Resources): String =
-    if (unSoloDia) Formato.diaDeLaSemanaYFecha(desde) else recursos.getString(R.string.resumen_semana_del, Formato.diaYMesCorto(desde))
+/** Dentro de una frase con varios filtros: "viernes", "semana del 28/8" (Figma 463-1145). */
+fun Franja.enFrase(recursos: Resources): String = when (escala) {
+    EscalaBarra.DIA -> Formato.diaDeLaSemana(primerDia)
+    EscalaBarra.SEMANA -> recursos.getString(R.string.resumen_semana_del, Formato.diaYMesCorto(primerDia)).replaceFirstChar { it.lowercase(LOCALE) }
+}
+
+/** Con la fecha, en la lista y en la imagen: "viernes 25/09", "semana del 28/8" (Figma 463-1669 y 463-3007). */
+fun Franja.conFecha(recursos: Resources): String = when (escala) {
+    EscalaBarra.DIA -> Formato.diaDeLaSemana(primerDia) + " " + Formato.diaYMes(primerDia)
+    EscalaBarra.SEMANA -> enFrase(recursos)
+}
+
+/** El chip de la hoja de filtros: "vie 25/09", "semana del 28/8" (Figma 463-1317). */
+fun Franja.enHoja(recursos: Resources): String = when (escala) {
+    EscalaBarra.DIA -> Formato.diaDeLaSemanaCorto(primerDia) + " " + Formato.diaYMes(primerDia)
+    EscalaBarra.SEMANA -> enFrase(recursos)
+}
+
+/** "Revisadas", "Sin revisar", "Reales", "Falsos positivos": los chips de la hoja de filtros. */
+@StringRes
+fun RevisionResumen.nombre(): Int = when (this) {
+    RevisionResumen.REVISADAS -> R.string.resumen_chip_revisadas
+    RevisionResumen.SIN_REVISAR -> R.string.resumen_chip_sin_revisar
+    RevisionResumen.REALES -> R.string.resumen_reales
+    RevisionResumen.FALSOS_POSITIVOS -> R.string.resumen_falsos_positivos
+}
+
+/** "a", "a y b", "a, b y c". */
+private fun enumerar(partes: List<String>, recursos: Resources): String = when (partes.size) {
+    0 -> ""
+    1 -> partes.single()
+    else -> recursos.getString(R.string.resumen_y, partes.dropLast(1).joinToString(", "), partes.last())
+}
+
+private fun String.minuscula(): String = replaceFirstChar { it.lowercase(LOCALE) }
 
 /**
- * Cómo se nombra el grupo en "Mostrando …": como el chip, con minúscula al comienzo salvo el día y la
- * semana ("Mostrando fuerza bruta", "Mostrando Viernes 25/09").
+ * Cada filtro puesto, con palabras y en el orden de la hoja (cuándo, tipo, revisión y modelo), un
+ * grupo por clase: "sábado y domingo", "fuerza bruta y escaneo de puertos". Los tipos que la red tiene
+ * en alta, si son justo esos, son "las altas". Con [conFecha], los días llevan la fecha (la lista y la
+ * imagen); si no, solo el nombre (la frase del gráfico).
  */
-fun GrupoResumen.etiquetaFrase(recursos: Resources): String {
-    val chip = etiquetaChip(recursos)
-    return if (this is GrupoResumen.Barra) chip else chip.replaceFirstChar { it.lowercase(LOCALE) }
+fun FiltroResumen.grupos(recursos: Resources, altas: Set<TipoAtaque>, conFecha: Boolean): List<String> {
+    val grupos = mutableListOf<String>()
+    if (barras.isNotEmpty()) {
+        grupos += enumerar(barras.sortedBy { it.desde }.map { if (conFecha) it.conFecha(recursos) else it.enFrase(recursos) }, recursos)
+    }
+    if (tipos.isNotEmpty()) {
+        grupos += if (tiposSonLasAltas(altas)) {
+            recursos.getString(R.string.resumen_las_altas)
+        } else {
+            enumerar(TipoAtaque.EN_PANTALLA.filter { it in tipos }.map { recursos.getString(it.nombreCorto()).minuscula() }, recursos)
+        }
+    }
+    revision?.let { grupos += recursos.getString(it.nombre()).minuscula() }
+    metodo?.let { grupos += recursos.getString(it.enPrecision()).minuscula() }
+    return grupos
+}
+
+/** Cuántas cosas nombra la frase: con más de cuatro queda larga y dice cuántos filtros hay. */
+private fun FiltroResumen.nombrados(altas: Set<TipoAtaque>): Int =
+    barras.size + (if (tiposSonLasAltas(altas)) 1 else tipos.size) + (if (revision == null) 0 else 1) + (if (metodo == null) 0 else 1)
+
+/**
+ * Cómo se nombra un filtro solo en "Mostrando …": el día con mayúscula y la fecha, como el chip que
+ * había antes ("Mostrando Viernes 25/09"), y lo demás en minúscula ("Mostrando fuerza bruta").
+ */
+private fun FiltroResumen.unoSolo(recursos: Resources, altas: Set<TipoAtaque>): String {
+    barras.singleOrNull()?.let { barra ->
+        return if (barra.escala == EscalaBarra.DIA) Formato.diaDeLaSemanaYFecha(barra.primerDia) else barra.enFrase(recursos)
+    }
+    return grupos(recursos, altas, conFecha = false).single()
 }
 
 /**
- * La frase debajo del gráfico (Figma 52-2629, 100-7024 y las variantes filtradas): con un grupo,
- * "Mostrando revisadas: 37 alertas. Tocá de nuevo para ver todas."; si no, lo que más pasó.
+ * La frase debajo del gráfico (cambio 16; Figma 100-8096 y 463-1145): con un filtro, "Mostrando
+ * fuerza bruta: 15 alertas. Tocá de nuevo para sacarlo."; con más, los nombra ("Mostrando 9 alertas:
+ * sábado y domingo · fuerza bruta y escaneo de puertos.") y, si quedan más de cuatro, dice cuántos son
+ * ("Mostrando 20 alertas con 5 filtros."). Sin filtros, lo que más pasó. En la imagen no se puede
+ * tocar nada: la de un filtro no dice "Tocá de nuevo" ([enImagen]).
  */
-fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources): String? {
-    resumen.grupo?.let { grupo ->
-        return recursos.getQuantityString(R.plurals.resumen_mostrando, resumen.total, grupo.etiquetaFrase(recursos), resumen.total)
+fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources, altas: Set<TipoAtaque> = emptySet(), enImagen: Boolean = false): String? {
+    val filtro = resumen.filtro
+    val total = resumen.total
+    if (!filtro.vacio) {
+        val nombrados = filtro.nombrados(altas)
+        return when {
+            nombrados == 1 -> recursos.getQuantityString(
+                if (enImagen) R.plurals.resumen_mostrando_imagen else R.plurals.resumen_mostrando,
+                total,
+                filtro.unoSolo(recursos, altas),
+                total,
+            )
+            nombrados <= MAXIMO_NOMBRADOS -> recursos.getQuantityString(
+                R.plurals.resumen_mostrando_filtros,
+                total,
+                total,
+                filtro.grupos(recursos, altas, conFecha = false).joinToString(" · "),
+            )
+            else -> recursos.getQuantityString(R.plurals.resumen_mostrando_con_filtros, total, total, filtro.cantidad)
+        }
     }
     val destacado = resumen.destacado ?: return null
     val barra = destacado.barra
@@ -88,18 +166,21 @@ fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources): String? {
         PeriodoResumen.SIETE_DIAS -> recursos.getQuantityString(
             if (destacado.mismoDestino) R.plurals.resumen_destacado_dia_servidor else R.plurals.resumen_destacado_dia,
             barra.cantidad,
-            Formato.diaDeLaSemana(barra.tramo.desde),
+            Formato.diaDeLaSemana(barra.franja.primerDia),
             barra.cantidad,
             recursos.getQuantityString(destacado.tipo.enFrase(), destacado.delTipo, destacado.delTipo),
         )
         PeriodoResumen.TREINTA_DIAS -> recursos.getQuantityString(
             R.plurals.resumen_destacado_semana,
             barra.cantidad,
-            Formato.diaYMesCorto(barra.tramo.desde),
+            Formato.diaYMesCorto(barra.franja.primerDia),
             barra.cantidad,
         )
     }
 }
+
+/** Más de cuatro cosas en la frase la hacen larga: se dice cuántos filtros hay. */
+private const val MAXIMO_NOMBRADOS = 4
 
 /**
  * La barra de un modelo va clara si ese modelo tiene menos de [ResumenActividad.REVISIONES_PARA_COMPARAR]
@@ -126,32 +207,57 @@ fun ejemploDePrecision(resumen: ResumenActividad, recursos: Resources): String? 
 }
 
 /**
- * El recuadro azul de la hoja del ⓘ, que cambia con el filtro elegido (cambio 10): sin filtro, de qué
- * días es la precisión; con un modelo elegido, que cada fila cuenta las que marcó ese modelo junto con
- * el de la fila (por eso las otras filas bajan); con un día, una semana o un tipo, que cuenta solo esas.
+ * El recuadro azul de la hoja del ⓘ, que cambia con los filtros (cambio 10): sin filtros, de qué días
+ * es la precisión; con un modelo elegido, que cada fila cuenta las que marcó ese modelo junto con el
+ * de la fila (por eso las otras filas bajan); con un solo filtro de otra clase, que cuenta solo esas; y
+ * con varios, que cuenta solo las revisadas de los filtros elegidos.
  */
-fun recuadroDePrecision(resumen: ResumenActividad, recursos: Resources): String = when (val grupo = resumen.grupo) {
-    null -> recursos.getString(
-        if (resumen.periodo == PeriodoResumen.SIETE_DIAS) R.string.precision_sin_filtro_7 else R.string.precision_sin_filtro_30,
-    )
-    is GrupoResumen.Metodo -> recursos.getString(
-        when (grupo.metodo) {
-            MetodoDeteccion.IA -> R.string.precision_filtro_ia
-            MetodoDeteccion.UMBRALES -> R.string.precision_filtro_umbrales
-            MetodoDeteccion.REGLAS -> R.string.precision_filtro_reglas
+fun recuadroDePrecision(resumen: ResumenActividad, recursos: Resources, altas: Set<TipoAtaque> = emptySet()): String {
+    val filtro = resumen.filtro
+    if (filtro.vacio) {
+        return recursos.getString(if (resumen.periodo == PeriodoResumen.SIETE_DIAS) R.string.precision_sin_filtro_7 else R.string.precision_sin_filtro_30)
+    }
+    filtro.metodo?.let { metodo ->
+        return recursos.getString(
+            when (metodo) {
+                MetodoDeteccion.IA -> R.string.precision_filtro_ia
+                MetodoDeteccion.UMBRALES -> R.string.precision_filtro_umbrales
+                MetodoDeteccion.REGLAS -> R.string.precision_filtro_reglas
+            },
+        )
+    }
+    if (filtro.tiposSonLasAltas(altas) && filtro.cantidad == filtro.tipos.size) return recursos.getString(R.string.precision_filtro_altas)
+    if (filtro.cantidad > 1) return recursos.getString(R.string.precision_filtro_varios)
+    filtro.barras.singleOrNull()?.let { barra ->
+        // "Estás viendo el viernes 25/09", "Estás viendo la semana del 28/8".
+        return recursos.getString(
+            if (barra.escala == EscalaBarra.DIA) R.string.precision_filtro_dia else R.string.precision_filtro_semana,
+            barra.conFecha(recursos),
+        )
+    }
+    filtro.tipos.singleOrNull()?.let { tipo ->
+        return recursos.getString(R.string.precision_filtro_tipo, recursos.getString(tipo.nombreCorto()).minuscula())
+    }
+    return recursos.getString(
+        when (filtro.revision) {
+            RevisionResumen.REVISADAS -> R.string.precision_filtro_revisadas
+            RevisionResumen.SIN_REVISAR -> R.string.precision_filtro_sin_revisar
+            RevisionResumen.REALES -> R.string.precision_filtro_reales
+            RevisionResumen.FALSOS_POSITIVOS, null -> R.string.precision_filtro_falsos
         },
     )
-    // "Estás viendo el viernes 25/09", "Estás viendo la semana del 28/8": el día y la semana en minúscula.
-    is GrupoResumen.Barra -> recursos.getString(
-        if (grupo.tramo.unSoloDia) R.string.precision_filtro_dia else R.string.precision_filtro_semana,
-        grupo.etiquetaChip(recursos).replaceFirstChar { it.lowercase(LOCALE) },
-    )
-    is GrupoResumen.Tipo -> recursos.getString(R.string.precision_filtro_tipo, grupo.etiquetaFrase(recursos))
-    GrupoResumen.Revisadas -> recursos.getString(R.string.precision_filtro_revisadas)
-    GrupoResumen.SinRevisar -> recursos.getString(R.string.precision_filtro_sin_revisar)
-    GrupoResumen.Altas -> recursos.getString(R.string.precision_filtro_altas)
-    GrupoResumen.Reales -> recursos.getString(R.string.precision_filtro_reales)
-    GrupoResumen.FalsosPositivos -> recursos.getString(R.string.precision_filtro_falsos)
+}
+
+/**
+ * Lo que dice la lista de "Ver estas alertas" debajo del título (Figma 463-1669): "Del Resumen: viernes
+ * 25/09 · fuerza bruta". Sin días elegidos, el período ("del 21/09 al 27/09").
+ */
+fun lineaDeLaLista(resumen: ResumenActividad, recursos: Resources, altas: Set<TipoAtaque>): String {
+    val grupos = resumen.filtro.grupos(recursos, altas, conFecha = true).toMutableList()
+    if (resumen.filtro.barras.isEmpty()) {
+        grupos.add(0, recursos.getString(R.string.resumen_del_al, Formato.diaYMes(resumen.tramo.desde), Formato.diaYMes(resumen.tramo.hasta)))
+    }
+    return recursos.getString(R.string.resumen_lista_del_resumen, grupos.joinToString(" · "))
 }
 
 /**
