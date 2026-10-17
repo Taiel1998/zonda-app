@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -48,7 +49,10 @@ import ar.edu.uade.zonda.ui.ajustes.ajustesViewModel
 import ar.edu.uade.zonda.ui.alertas.AlertasScreen
 import ar.edu.uade.zonda.ui.alertas.alertasViewModel
 import ar.edu.uade.zonda.ui.conexion.ConexionScreen
+import ar.edu.uade.zonda.ui.contenedorDeZonda
+import ar.edu.uade.zonda.ui.detalle.AvisoRevisasteEnLasListas
 import ar.edu.uade.zonda.ui.detalle.RutaDetalle
+import ar.edu.uade.zonda.ui.detalle.VentanaDeshacer
 import ar.edu.uade.zonda.ui.detalle.detalleAlerta
 import ar.edu.uade.zonda.ui.estado.EstadoScreen
 import ar.edu.uade.zonda.ui.inicio.ArranqueViewModel
@@ -89,6 +93,7 @@ fun ZondaNavHost(
     navController: NavHostController = rememberNavController(),
     arranque: ArranqueViewModel = viewModelDeZonda { ArranqueViewModel(it.redes, it.preferencias) },
     recorrido: RecorridoViewModel = viewModelDeZonda { RecorridoViewModel(it.preferencias, it.redes, it.alertas) },
+    ventanaDeshacer: VentanaDeshacer = contenedorDeZonda().ventanaDeshacer,
 ) {
     val destinoInicial by arranque.destinoInicial.collectAsStateWithLifecycle()
     val inicio = destinoInicial
@@ -145,6 +150,15 @@ fun ZondaNavHost(
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 contentWindowInsets = WindowInsets(0),
+                // "Revisaste ..." con Deshacer en la lista a la que volvió el detalle (decisión 38): arriba de
+                // la barra de pestañas o, en la lista del Resumen, de la barra de navegación de Android.
+                snackbarHost = {
+                    AvisoRevisasteEnLasListas(
+                        ventana = ventanaDeshacer,
+                        navController = navController,
+                        modifier = if (enPestania) Modifier else Modifier.navigationBarsPadding(),
+                    )
+                },
                 bottomBar = {
                     if (enPestania) {
                         Column {

@@ -37,6 +37,7 @@ import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import ar.edu.uade.zonda.domain.usecase.VincularTelegram
 import ar.edu.uade.zonda.notificaciones.Notificador
 import ar.edu.uade.zonda.sync.ConectividadAndroid
+import ar.edu.uade.zonda.ui.detalle.VentanaDeshacer
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -112,4 +113,10 @@ class AppContainer(context: Context) {
     val borrarDatosLocales: BorrarDatosLocales by lazy { BorrarDatosLocales(redes, alertas, accionesPendientes) }
     val vincularTelegram: VincularTelegram by lazy { VincularTelegram(redes, preferencias) }
     val enviarAvisosTelegram: EnviarAvisosTelegram by lazy { EnviarAvisosTelegram(redes) }
+
+    /**
+     * La ventana de Deshacer de las revisiones (decisión 38): una para toda la app, porque al confirmar
+     * el detalle se cierra y el "Revisaste ..." con Deshacer lo muestra la lista a la que se volvió.
+     */
+    val ventanaDeshacer: VentanaDeshacer by lazy { VentanaDeshacer(deshacerRevision, sincronizarAlertas, conectividad, alcanceDeLaApp) }
 }

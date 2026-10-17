@@ -20,10 +20,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,7 +100,6 @@ class AccionesDetalle(
     val alVolverAlResultado: () -> Unit = {},
     val alCancelarRevision: () -> Unit = {},
     val alConfirmarRevision: () -> Unit = {},
-    val alDeshacer: () -> Unit = {},
     val alAplicarLaMia: () -> Unit = {},
     val alQuedarmeConLaOtra: () -> Unit = {},
     val alReintentarEnvio: () -> Unit = {},
@@ -111,8 +108,9 @@ class AccionesDetalle(
 
 /**
  * Pantalla Detalle (RF03 y RF04; Figma 3-3 a 3-139 y 51-2379 a 51-2497): los datos del flujo, el
- * veredicto de cada método con el dato que lo justifica, la revisión con su historial y la acción
- * Revisar en dos pasos. Deshacer descarta la revisión y vuelve a la lista de la que se vino.
+ * veredicto de cada método con palabras, la revisión con su historial y la acción Revisar en dos
+ * pasos. Al confirmar, el detalle se cierra solo y vuelve a la pantalla de la que se vino, que muestra
+ * "Revisaste ..." con Deshacer (corrección 7, decisión 38).
  */
 @Composable
 fun DetalleScreen(
@@ -124,7 +122,7 @@ fun DetalleScreen(
         DetalleViewModel(
             obtenerDetalle = contenedor.obtenerDetalleAlerta,
             revisarAlerta = contenedor.revisarAlerta,
-            deshacerRevision = contenedor.deshacerRevision,
+            ventana = contenedor.ventanaDeshacer,
             resolverEnvio = contenedor.resolverEnvioRevision,
             sincronizarAlertas = contenedor.sincronizarAlertas,
             redes = contenedor.redes,
@@ -141,7 +139,11 @@ fun DetalleScreen(
     // El comentario se escribe en la hoja: el estado se lee sin demora para que el teclado no pierda letras.
     val formulario by viewModel.formulario.collectAsStateWithLifecycle(context = Dispatchers.Main.immediate)
     val aviso by viewModel.aviso.collectAsStateWithLifecycle()
+    val cerrar by viewModel.cerrar.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
+
+    // La revisión quedó guardada: vuelve a la lista de la que se vino (o a Estado, si se abrió desde un aviso).
+    LaunchedEffect(cerrar) { if (cerrar) alVolver() }
 
     DetalleContenido(
         estado = estado,
@@ -161,11 +163,6 @@ fun DetalleScreen(
             alVolverAlResultado = viewModel::volverAlResultado,
             alCancelarRevision = viewModel::cancelarRevision,
             alConfirmarRevision = viewModel::confirmarRevision,
-            // Deshacer descarta la revisión y vuelve a la lista de la que se vino (RF04, criterio 1).
-            alDeshacer = {
-                viewModel.deshacer()
-                alVolver()
-            },
             alAplicarLaMia = viewModel::aplicarLaMiaIgual,
             alQuedarmeConLaOtra = viewModel::quedarmeConLaOtra,
             alReintentarEnvio = viewModel::reintentarEnvio,
@@ -181,9 +178,6 @@ private enum class ModoDetalle {
 
     /** 51-2379: la revisión y el historial arriba, "Cambiar revisión" y recién ahí los datos. */
     REVISADA,
-
-    /** "revisada con éxito": la revisión abajo, recién hecha en esta pantalla. */
-    RECIEN_REVISADA,
 
     /** 3-70: todavía no salió del teléfono. */
     PENDIENTE,
@@ -201,10 +195,8 @@ private fun modoDe(estado: DetalleUiState.Contenido): ModoDetalle {
     return when {
         accion?.estado == EstadoEnvio.CONFLICTO && accion.revisionAjena != null -> ModoDetalle.CONFLICTO
         accion?.estado == EstadoEnvio.ERROR -> ModoDetalle.ENVIO_FALLIDO
-        // Con conexión, la revisión recién hecha sale cuando termina la ventana de Deshacer.
-        enCola -> if (estado.recienRevisada && !estado.sinConexion) ModoDetalle.RECIEN_REVISADA else ModoDetalle.PENDIENTE
+        enCola -> ModoDetalle.PENDIENTE
         estado.alerta.sinRevisar || estado.alerta.revisionActual == null -> ModoDetalle.SIN_REVISAR
-        estado.recienRevisada -> ModoDetalle.RECIEN_REVISADA
         else -> ModoDetalle.REVISADA
     }
 }
@@ -221,21 +213,8 @@ fun DetalleContenido(
     val snackbar = remember { SnackbarHostState() }
     val contexto = LocalContext.current
 
-    // El aviso con Deshacer queda a la vista mientras el ViewModel tenga la ventana abierta; cuando la
-    // cierra (aviso en null), este efecto se cancela y el aviso desaparece.
     LaunchedEffect(aviso) {
         when (aviso) {
-            is AvisoDetalle.RevisionGuardada -> {
-                val mensaje = contexto.getString(
-                    if (aviso.conConexion) R.string.aviso_revision_guardada else R.string.aviso_revision_guardada_sin_conexion,
-                )
-                val resultado = snackbar.showSnackbar(
-                    message = mensaje,
-                    actionLabel = contexto.getString(R.string.aviso_deshacer),
-                    duration = SnackbarDuration.Indefinite,
-                )
-                if (resultado == SnackbarResult.ActionPerformed) acciones.alDeshacer()
-            }
             is AvisoDetalle.Error -> {
                 snackbar.showSnackbar(contexto.getString(aviso.error.mensaje()))
                 acciones.alAvisoMostrado()
@@ -354,15 +333,6 @@ private fun CuerpoDetalle(
                 )
                 DatosDelFlujo(alerta, zona)
                 Veredictos(alerta)
-            }
-            ModoDetalle.RECIEN_REVISADA -> {
-                DatosDelFlujo(alerta, zona)
-                Veredictos(alerta)
-                alerta.revisionActual?.let { revision ->
-                    // Con conexión sale al terminar la ventana de Deshacer: se muestra como enviada, igual que el aviso.
-                    TarjetaRevisionHecha(revision, estado.nombreDelTelefono, enviada = !estado.sinConexion || revision.origen == OrigenRevision.SERVIDOR, zona = zona, ahora = ahora)
-                }
-                BotonContorno(texto = stringResource(R.string.detalle_cambiar_revision), alTocar = acciones.alRevisar, modifier = Modifier.fillMaxWidth())
             }
             ModoDetalle.PENDIENTE -> {
                 DatosDelFlujo(alerta, zona)
@@ -511,33 +481,6 @@ private fun TarjetaRevision(revision: Revision, nombreDelTelefono: String, zona:
         FilaDato(stringResource(R.string.detalle_motivo), stringResource(revision.motivo.etiqueta()))
         FilaDato(stringResource(R.string.detalle_comentario), revision.comentario)
         FilaDato(stringResource(R.string.detalle_quien), autorDe(revision, nombreDelTelefono))
-    }
-}
-
-/**
- * Los cuadros "revisada con éxito" del Figma: el resultado en su color, el motivo, el comentario entre
- * comillas y "Celular Martín · hoy 02:12 · enviada".
- */
-@Composable
-private fun TarjetaRevisionHecha(revision: Revision, nombreDelTelefono: String, enviada: Boolean, zona: ZoneId, ahora: Instant) {
-    Panel {
-        TituloSeccion(stringResource(R.string.detalle_revision))
-        FilaDato(
-            etiqueta = stringResource(R.string.detalle_resultado),
-            valor = stringResource(revision.resultado.etiqueta()),
-            colorValor = colorDe(revision.resultado),
-        )
-        FilaDato(stringResource(R.string.detalle_motivo), stringResource(revision.motivo.etiqueta()))
-        Text(text = "“${revision.comentario}”", style = MaterialTheme.typography.bodyMedium)
-        Text(
-            text = listOf(
-                autorDe(revision, nombreDelTelefono),
-                "${Formato.diaRelativo(revision.hechaEn, ahora, zona)} ${Formato.hora(revision.hechaEn, zona)}",
-                stringResource(if (enviada) R.string.detalle_enviada else R.string.detalle_pendiente_de_envio),
-            ).joinToString(" · "),
-            style = MaterialTheme.typography.nota,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -757,12 +700,6 @@ private fun textoParaCompartir(alerta: Alerta, red: String, zona: ZoneId): Strin
 /** El autor de la revisión; las de este teléfono que todavía no salieron llevan su nombre. */
 private fun autorDe(revision: Revision, nombreDelTelefono: String): String =
     revision.autor ?: nombreDelTelefono
-
-@Composable
-private fun colorDe(resultado: ResultadoRevision) = when (resultado) {
-    ResultadoRevision.ATAQUE_REAL -> Tonos.Alta.texto
-    ResultadoRevision.FALSO_POSITIVO -> Tonos.Baja.texto
-}
 
 /** "IA", "IA y umbrales", "IA, umbrales y reglas". */
 private fun enumerar(partes: List<String>): String = when (partes.size) {

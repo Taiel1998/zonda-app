@@ -241,7 +241,6 @@
     <string name="detalle_resultado">Resultado</string>
     <string name="detalle_motivo">Motivo</string>
     <string name="detalle_este_telefono">Este teléfono</string>
-    <string name="detalle_enviada">enviada</string>
     <string name="detalle_pendiente_de_envio">pendiente de envío</string>
     <string name="detalle_historial">Historial</string>
     <string name="detalle_revisar_explicacion">Al revisar vas a indicar si fue un ataque real o un falso positivo, con su motivo y un comentario.</string>
@@ -304,9 +303,9 @@
     <string name="comentario_usuario_autorizado">Es un acceso autorizado del administrador.</string>
     <string name="comentario_otro">Prueba de conectividad que hizo el proveedor.</string>
 
-    <!-- Aviso con Deshacer, conflicto y envío fallido -->
-    <string name="aviso_revision_guardada">Revisión guardada y enviada al servidor.</string>
-    <string name="aviso_revision_guardada_sin_conexion">Revisión guardada. Se enviará cuando haya conexión.</string>
+    <!-- Aviso con Deshacer en la lista a la que vuelve el detalle (corrección 7; Figma 468-1320), conflicto y envío fallido -->
+    <string name="aviso_revisaste">Revisaste %1$s.</string>
+    <string name="aviso_revisaste_sin_conexion">Revisaste %1$s. Se envía cuando haya conexión.</string>
     <string name="aviso_deshacer">Deshacer</string>
     <!-- Revisada desde otro teléfono (Figma 51-2497) -->
     <string name="conflicto_titulo">Revisada desde otro teléfono</string>
