@@ -19,6 +19,8 @@ class Config:
     bot_usuario: str = "zonda_alertas_bot"
     # El token del bot es una contraseña: repr=False para que no aparezca si se imprime la configuración.
     telegram_token: str = field(default="", repr=False)
+    # Token con el que la plataforma de detección manda alertas a POST /ingesta/alertas; también es secreto.
+    ingesta_token: str = field(default="", repr=False)
     telegram_api: str = "https://api.telegram.org"
     enlace_aviso: str = "https://taiel1998.github.io/a/"
     emitir_cada: int = 0
@@ -44,6 +46,7 @@ class Config:
             url_publica=leer("ZONDA_URL_PUBLICA", "").strip() or (f"https://{dominio}" if dominio else "http://127.0.0.1:8000"),
             bot_usuario=leer("ZONDA_TELEGRAM_BOT", "zonda_alertas_bot"),
             telegram_token=leer("TELEGRAM_BOT_TOKEN", "").strip(),
+            ingesta_token=leer("ZONDA_INGESTA_TOKEN", "").strip(),
             telegram_api=leer("ZONDA_TELEGRAM_API", "https://api.telegram.org").rstrip("/"),
             enlace_aviso=leer("ZONDA_ENLACE_AVISO", "https://taiel1998.github.io/a/"),
             emitir_cada=int(leer("ZONDA_EMITIR_CADA", "0")),
