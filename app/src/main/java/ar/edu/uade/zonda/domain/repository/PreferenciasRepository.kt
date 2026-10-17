@@ -1,6 +1,7 @@
 package ar.edu.uade.zonda.domain.repository
 
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
+import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
@@ -14,10 +15,10 @@ interface PreferenciasRepository {
 
     suspend fun guardarAvisos(preferencias: PreferenciasAvisos)
 
-    /** El interruptor "Notificaciones del sistema" de Ajustes: si la app muestra la notificación local de altas nuevas. */
-    fun observarNotificacionesActivas(): Flow<Boolean>
+    /** Cómo avisa Zonda cada severidad y si recuerda las altas (tarjeta "Notificaciones de Zonda", 1.0.4). */
+    fun observarNotificaciones(): Flow<PreferenciasNotificaciones>
 
-    suspend fun guardarNotificacionesActivas(activas: Boolean)
+    suspend fun guardarNotificaciones(preferencias: PreferenciasNotificaciones)
 
     /** La bienvenida, el tutorial y las preferencias ya se mostraron: no vuelven a aparecer (RF05). */
     fun observarPrimerInicioHecho(): Flow<Boolean>

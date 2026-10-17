@@ -79,7 +79,7 @@ class ResumenActividadTest {
         assertEquals(1, resumen.falsosPositivos)
         assertEquals(2, resumen.sinRevisar)
         assertEquals(Proporcion(3, 5), resumen.cobertura)
-        assertNull(resumen.grupo)
+        assertTrue(resumen.filtro.vacio)
     }
 
     @Test
@@ -89,8 +89,8 @@ class ResumenActividadTest {
         val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc)
 
         assertEquals(Tramo(dia(6), dia(12)), resumen.tramo)
-        assertEquals((6..12).map { dia(it) }, resumen.barras.map { it.tramo.desde })
-        assertTrue(resumen.barras.all { it.tramo.unSoloDia })
+        assertEquals((6..12).map { dia(it) }, resumen.barras.map { it.franja.primerDia })
+        assertTrue(resumen.barras.all { it.franja.escala == EscalaBarra.DIA })
         assertEquals(listOf(0, 0, 0, 1, 0, 0, 2), resumen.barras.map { it.cantidad })
         assertEquals(3, resumen.total)
     }
@@ -122,12 +122,12 @@ class ResumenActividadTest {
         assertEquals(Tramo(dia(28, 8), dia(27, 9)), resumen.tramo)
         assertEquals(
             listOf(
-                Tramo(dia(28, 8), dia(6, 9)),
-                Tramo(dia(7, 9), dia(13, 9)),
-                Tramo(dia(14, 9), dia(20, 9)),
-                Tramo(dia(21, 9), dia(27, 9)),
+                Franja.semana(dia(28, 8), dia(6, 9)),
+                Franja.semana(dia(7, 9), dia(13, 9)),
+                Franja.semana(dia(14, 9), dia(20, 9)),
+                Franja.semana(dia(21, 9), dia(27, 9)),
             ),
-            resumen.barras.map { it.tramo },
+            resumen.barras.map { it.franja },
         )
         assertEquals(listOf(2, 0, 1, 1), resumen.barras.map { it.cantidad })
         assertEquals(4, resumen.total)
@@ -141,7 +141,7 @@ class ResumenActividadTest {
 
         val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, buenosAires)
 
-        assertEquals(1, resumen.barras.single { it.tramo.desde == dia(11) }.cantidad)
+        assertEquals(1, resumen.barras.single { it.franja.primerDia == dia(11) }.cantidad)
     }
 
     @Test
@@ -240,7 +240,7 @@ class ResumenActividadTest {
         assertEquals(2, resumen.porTipo.getValue(TipoAtaque.SERVICIO_NO_AUTORIZADO))
         assertEquals(2, resumen.porTipo.getValue(TipoAtaque.VOLUMEN_INUSUAL))
         // Tocar cualquiera de las dos filas la muestra.
-        val umbrales = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc, GrupoResumen.Tipo(TipoAtaque.VOLUMEN_INUSUAL))
+        val umbrales = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc, FiltroResumen(tipos = setOf(TipoAtaque.VOLUMEN_INUSUAL)))
         assertEquals(2, umbrales.total)
         // El destacado también: los dos tipos empatan y va el primero en pantalla.
         assertEquals(TipoAtaque.SERVICIO_NO_AUTORIZADO, resumen.destacado?.tipo)
@@ -248,11 +248,11 @@ class ResumenActividadTest {
     }
 
     @Test
-    fun `revisadas y sin revisar recalculan todo sobre ese grupo`() {
-        val revisadas = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc, GrupoResumen.Revisadas)
-        val sinRevisar = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc, GrupoResumen.SinRevisar)
+    fun `revisadas y sin revisar recalculan todo sobre esas alertas`() {
+        val revisadas = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc, FiltroResumen(revision = RevisionResumen.REVISADAS))
+        val sinRevisar = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc, FiltroResumen(revision = RevisionResumen.SIN_REVISAR))
 
-        assertEquals(GrupoResumen.Revisadas, revisadas.grupo)
+        assertEquals(RevisionResumen.REVISADAS, revisadas.filtro.revision)
         assertEquals(5, revisadas.totalDelPeriodo)
         assertEquals(3, revisadas.total)
         assertEquals(Proporcion(3, 3), revisadas.cobertura)
@@ -267,25 +267,26 @@ class ResumenActividadTest {
     }
 
     @Test
-    fun `altas, reales, falsos positivos, un tipo y un metodo son grupos`() {
-        fun total(grupo: GrupoResumen) = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc, grupo).total
+    fun `reales, falsos positivos, un tipo, los tipos altos y un metodo son filtros`() {
+        fun total(filtro: FiltroResumen) = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc, filtro).total
 
-        assertEquals(2, total(GrupoResumen.Altas))
-        assertEquals(2, total(GrupoResumen.Reales))
-        assertEquals(1, total(GrupoResumen.FalsosPositivos))
-        assertEquals(1, total(GrupoResumen.Tipo(TipoAtaque.SERVICIO_NO_AUTORIZADO)))
-        assertEquals(0, total(GrupoResumen.Tipo(TipoAtaque.VOLUMEN_INUSUAL)))
-        assertEquals(1, total(GrupoResumen.Tipo(TipoAtaque.DDOS)))
-        assertEquals(0, total(GrupoResumen.Tipo(TipoAtaque.SIN_TIPIFICAR)))
-        assertEquals(2, total(GrupoResumen.Metodo(MetodoDeteccion.REGLAS)))
-        assertEquals(3, total(GrupoResumen.Metodo(MetodoDeteccion.IA)))
+        assertEquals(2, total(FiltroResumen(revision = RevisionResumen.REALES)))
+        assertEquals(1, total(FiltroResumen(revision = RevisionResumen.FALSOS_POSITIVOS)))
+        assertEquals(1, total(FiltroResumen(tipos = setOf(TipoAtaque.SERVICIO_NO_AUTORIZADO))))
+        assertEquals(0, total(FiltroResumen(tipos = setOf(TipoAtaque.VOLUMEN_INUSUAL))))
+        assertEquals(1, total(FiltroResumen(tipos = setOf(TipoAtaque.DDOS))))
+        assertEquals(0, total(FiltroResumen(tipos = setOf(TipoAtaque.SIN_TIPIFICAR))))
+        assertEquals(2, total(FiltroResumen(metodo = MetodoDeteccion.REGLAS)))
+        assertEquals(3, total(FiltroResumen(metodo = MetodoDeteccion.IA)))
+        // Las altas son los tipos que la red tiene en alta: de fábrica, fuerza bruta y sin tipo identificado.
+        assertEquals(1, total(FiltroResumen(tipos = SeveridadPorTipo.RECOMENDADA.tiposAltos)))
     }
 
     @Test
     fun `con un dia elegido los demas dias quedan en cero, como el Figma`() {
         val lista = listOf(alertaDel(12, "hoy"), alertaDel(9, "viernes-1"), alertaDel(9, "viernes-2"))
 
-        val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc, GrupoResumen.Barra(Tramo(dia(9), dia(9))))
+        val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc, FiltroResumen(barras = setOf(Franja.dia(dia(9)))))
 
         assertEquals(listOf(0, 0, 0, 2, 0, 0, 0), resumen.barras.map { it.cantidad })
         assertEquals(2, resumen.total)
@@ -302,7 +303,7 @@ class ResumenActividadTest {
 
         val destacado = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc).destacado!!
 
-        assertEquals(Tramo(dia(9), dia(9)), destacado.barra.tramo)
+        assertEquals(Franja.dia(dia(9)), destacado.barra.franja)
         assertEquals(4, destacado.barra.cantidad)
         assertEquals(TipoAtaque.FUERZA_BRUTA, destacado.tipo)
         assertEquals(3, destacado.delTipo)
@@ -325,7 +326,7 @@ class ResumenActividadTest {
 
         val destacado = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc).destacado!!
 
-        assertEquals(dia(10), destacado.barra.tramo.desde)
+        assertEquals(dia(10), destacado.barra.franja.primerDia)
         // Con una sola alerta del tipo no tiene sentido decir "el mismo servidor".
         assertFalse(destacado.mismoDestino)
     }

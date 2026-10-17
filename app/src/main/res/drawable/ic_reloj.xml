@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El relojito del chip "Fechas" cuando lo elegido no son días enteros (Figma 463-1836, icon/reloj). Se tiñe con el color del texto. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="14dp"
+    android:height="14dp"
+    android:viewportWidth="14"
+    android:viewportHeight="14">
+    <path
+        android:pathData="M1.75,7a5.25,5.25 0,1 0,10.5 0a5.25,5.25 0,1 0,-10.5 0M7,4.08333V7L8.75,8.75"
+        android:strokeWidth="1.16667"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

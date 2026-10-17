@@ -5,6 +5,7 @@ import ar.edu.uade.zonda.domain.model.Proporcion
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -29,6 +30,9 @@ object Formato {
 
     /** `02:09` */
     fun hora(instante: Instant, zona: ZoneId = ZoneId.systemDefault()): String = HORA.format(instante.atZone(zona))
+
+    /** `22:00`: una hora del día sin fecha, como las de "Desde" y "Hasta" del Resumen. */
+    fun horaDelDia(hora: LocalTime): String = HORA.format(hora)
 
     /** `02:09:12` */
     fun horaConSegundos(instante: Instant, zona: ZoneId = ZoneId.systemDefault()): String =

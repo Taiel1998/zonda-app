@@ -3,6 +3,7 @@ package ar.edu.uade.zonda.ui.ajustes
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
+import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 
@@ -24,12 +25,14 @@ data class AjustesUiState(
     val avisos: PreferenciasAvisos = PreferenciasAvisos(),
     /** Los avisos mientras se editan; null si no se están editando. */
     val borradorAvisos: PreferenciasAvisos? = null,
+    /** Cómo avisa Zonda cada severidad y el recordatorio (tarjeta "Notificaciones de Zonda", 1.0.4). */
+    val notificaciones: PreferenciasNotificaciones = PreferenciasNotificaciones(),
+    /** Las notificaciones mientras se editan, junto con los avisos; null si no se están editando. */
+    val borradorNotificaciones: PreferenciasNotificaciones? = null,
     /** La severidad por tipo de la red activa, la que rige. */
     val severidades: SeveridadPorTipo = SeveridadPorTipo.RECOMENDADA,
     /** La que se está editando en Severidad por tipo de ataque; null si no se está editando. */
     val borradorSeveridades: SeveridadPorTipo? = null,
-    /** El interruptor "Notificaciones del sistema". */
-    val notificacionesActivas: Boolean = true,
     val alertasDeLaRedActiva: Int = 0,
     /** Todas las alertas guardadas en el teléfono, de todas las redes (lo que borra "Borrar datos locales"). */
     val alertasGuardadas: Int = 0,

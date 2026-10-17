@@ -1,0 +1,160 @@
+
+====================================================================================================
+1. CALIBRACION DEL LUNES (catalogo de las reglas y umbrales por puerto, sin modificacion)
+====================================================================================================
+  python 3.12.3 | pandas 3.0.3 | numpy 2.4.6
+  monday   context alineado con meta por uid: True
+  pares autorizados en el catalogo                                   16   documentado        16   OK
+  umbral del puerto 21 (maximo del lunes)                             1   documentado         1   OK
+  umbral del puerto 22 (maximo del lunes)                             2   documentado         2   OK
+  Catalogo: 192.168.10.1:53, 192.168.10.12:137, 192.168.10.12:139, 192.168.10.255:137, 192.168.10.255:138, 192.168.10.3:53, 192.168.10.3:88, 192.168.10.3:123, 192.168.10.3:135, 192.168.10.3:137, 192.168.10.3:389, 192.168.10.3:445, 192.168.10.3:3268, 192.168.10.3:49666, 192.168.10.50:21, 192.168.10.50:22
+
+====================================================================================================
+2. MARTES: ALCANCE, ETIQUETA Y PUNTAJES (Secciones 52 y 59.2)
+====================================================================================================
+  tuesday  context alineado con meta por uid: True
+  tuesday  flujos   323331 | columnas de meta: ts, uid, id.orig_h, id.orig_p, id.resp_h, id.resp_p, history
+  martes: diferencia maxima entre el puntaje de umbrales recalculado y el guardado: 0.00e+00
+  martes: flujos donde la regla B recalculada difiere de la guardada: 0
+  martes: flujos en alcance                                      213338   documentado    213338   OK
+  martes: flujos de fuerza bruta (puertos 21 y 22)                 6971   documentado      6971   OK
+  martes: reglas B, TP                                                0   documentado         0   OK
+  martes: reglas B, FP                                             1788   documentado      1788   OK
+  martes: umbrales, TP                                             6966   documentado      6966   OK
+  martes: umbrales, FP                                               32   documentado        32   OK
+  martes: umbrales, FN                                                5   documentado         5   OK
+  martes: autoencoder, TP                                          6937   documentado      6937   OK
+  martes: autoencoder, FP                                           470   documentado       470   OK
+  martes: autoencoder, FN                                            34   documentado        34   OK
+  Trafico del atacante a otros puertos (fuera de las clases, se excluye): 1 flujos
+
+====================================================================================================
+3. VIERNES: ALCANCE CIC, ETIQUETAS Y PUNTAJES (Seccion 57)
+====================================================================================================
+  friday   context alineado con meta por uid: True
+  friday   flujos   547341 | columnas de meta: ts, uid, id.orig_h, id.orig_p, id.resp_h, id.resp_p, history
+  viernes: flujos en el alcance del escaneo                      354510   documentado    354510   OK
+  viernes: flujos de escaneo                                     160411   documentado    160411   OK
+  viernes: flujos en el alcance del DDoS                         289782   documentado    289782   OK
+  viernes: flujos de DDoS                                         95683   documentado     95683   OK
+  viernes: benigno (el mismo en los dos alcances)                194099   documentado    194099   OK
+  Benigno igual en scores_escaneo_cic y scores_ddos_cic: error 0.0e+00, umbrales 0.0e+00, reglas B distintas 0
+  viernes: diferencia maxima entre el puntaje de umbrales recalculado y el guardado: 0.00e+00
+  viernes: flujos donde la regla B recalculada difiere de la guardada: 0
+  viernes escaneo: reglas B, TP                                  159885   documentado    159885   OK
+  viernes escaneo: reglas B, FN                                     526   documentado       526   OK
+  viernes escaneo: umbrales, TP                                  156003   documentado    156003   OK
+  viernes escaneo: umbrales, FN                                    4408   documentado      4408   OK
+  viernes escaneo: autoencoder, TP                               159840   documentado    159840   OK
+  viernes escaneo: autoencoder, FN                                  571   documentado       571   OK
+  viernes DDoS: reglas B, TP                                      95683   documentado     95683   OK
+  viernes DDoS: reglas B, FN                                          0   documentado         0   OK
+  viernes DDoS: umbrales, TP                                      95682   documentado     95682   OK
+  viernes DDoS: umbrales, FN                                          1   documentado         1   OK
+  viernes DDoS: autoencoder, TP                                   95675   documentado     95675   OK
+  viernes DDoS: autoencoder, FN                                       8   documentado         8   OK
+  viernes benigno: reglas B, FP                                    1529   documentado      1529   OK
+  viernes benigno: umbrales, FP                                      93   documentado        93   OK
+  viernes benigno: autoencoder, FP                                  452   documentado       452   OK
+
+====================================================================================================
+4. SEGUNDA ETAPA: PREDICCIONES DE PRUEBA DEL RANDOM FOREST (Seccion 58)
+====================================================================================================
+  Columnas: uid, dia, subgrupo, clase, error, pred, detectado_ae, proba_benigno, proba_ddos, proba_escaneo, proba_fuerza_bruta
+  prueba del Random Forest, ftp                                    1198   documentado      1198   OK
+  prueba del Random Forest, ssh                                     894   documentado       894   OK
+  prueba del Random Forest, escaneo                               48123   documentado     48123   OK
+  prueba del Random Forest, ddos                                  28705   documentado     28705   OK
+  prueba del Random Forest, benigno_tuesday                         470   documentado       470   OK
+  prueba del Random Forest, benigno_friday                          452   documentado       452   OK
+
+  Tipo por subgrupo de prueba (theta = 0.50; benigno -> probable_falsa_alarma):
+    ftp              fuerza_bruta 1198
+    ssh              fuerza_bruta 889, sin_tipificar 3, probable_falsa_alarma 2
+    escaneo          escaneo 48119, sin_tipificar 3, probable_falsa_alarma 1
+    ddos             ddos 28705
+    benigno_tuesday  probable_falsa_alarma 469, escaneo 1
+    benigno_friday   probable_falsa_alarma 452
+
+  filas de prueba del Random Forest encontradas en el alcance     79842   documentado     79842   OK
+  filas de prueba con otro subgrupo que el del alcance                0   documentado         0   OK
+  Error del autoencoder: diferencia maxima entre rf_test_predicciones y los puntajes: 0.00e+00 | flujos donde cambia el veredicto (error > tau): 0
+
+====================================================================================================
+5. FLUJOS QUE ENTRAN EN LA SEMILLA
+====================================================================================================
+  subgrupo            flujos  marcados   entran  fuera (entren.)   entran marcados por:  IA  umbrales  reglas
+  ftp                   3992      3991     1198             2793                          1198      1198       0
+  ssh                   2979      2976      893             2083                           883       893       0
+  escaneo             160411    160407    48123           112284                         47928     45942   47989
+  ddos                 95683     95683    28705            66978                         28705     28705   28705
+  benigno_tuesday     206366      2064     2064                0                           470        32    1787
+  benigno_friday      194099      1895     1895                0                           452        93    1529
+  excluido                 1         1        0                1                             0         0       0
+  Flujos marcados por el autoencoder sin prediccion del Random Forest: 0
+  Flujos marcados que entran: 82878
+
+====================================================================================================
+6. EPISODIOS (dia, origen y destino, hasta 300 s sin flujos nuevos)
+====================================================================================================
+  Episodios: 1304 (martes 710, viernes 594) con 82878 flujos
+  ATENCION: mas de 1.000 episodios (RF02 de la app habla de 1.000 alertas en cache).
+
+  tipo                                sever.    martes  viernes   flujos   etiqueta ataque | benigno
+  ddos                                media          0        1    28705                 1 | 0
+  escaneo                             media          1        3    48125                 3 | 1
+  fuerza_bruta                        alta           2        0     2091                 2 | 0
+  probable_falsa_alarma               baja         209      219     1954                 0 | 428
+  sin tipo (solo reglas o umbrales)   media        498      371     2003                 0 | 869
+
+  Por severidad recomendada: alta 2, media 874, baja 428
+  Por metodos que lo marcan (IA, umbrales, reglas): -- - R 868, IA - - 369, IA - R 55, IA U R 9, IA U - 2, -- U - 1
+  Por cantidad de flujos: 1: 964, 2-5: 285, 6-20: 37, 21-100: 6, mas de 100: 12
+
+  Los 12 episodios con mas flujos (hora local del dataset):
+    viernes 16:10-16:16  172.16.0.1 -> 192.168.10.50     http/80         28705 flujos  ddos                   IA  28705 | U  28705 | R  28705 | etiqueta ataque
+    viernes 14:55-14:56  172.16.0.1 -> 192.168.10.50     otro/79         27711 flujos  escaneo                IA  27711 | U  27684 | R  27657 | etiqueta ataque
+    viernes 15:03-15:15  172.16.0.1 -> 192.168.10.50     http/80         11332 flujos  escaneo                IA  11222 | U  10211 | R  11288 | etiqueta ataque
+    viernes 15:21-15:23  172.16.0.1 -> 192.168.10.50     http/80          9080 flujos  escaneo                IA   8995 | U   8047 | R   9044 | etiqueta ataque
+    martes  10:02-10:20  172.16.0.1 -> 192.168.10.50     ftp/21           1198 flujos  fuerza_bruta           IA   1198 | U   1198 | R      0 | etiqueta ataque
+    martes  14:52-15:11  172.16.0.1 -> 192.168.10.50     ssh/22            893 flujos  fuerza_bruta           IA    883 | U    893 | R      0 | etiqueta ataque
+    martes  09:02-16:59  192.168.10.25 -> 192.168.10.50  netbios/137       512 flujos  probable_falsa_alarma  IA    187 | U     27 | R    512 | etiqueta benigno
+    viernes 09:01-17:01  192.168.10.25 -> 192.168.10.50  netbios/137       471 flujos  probable_falsa_alarma  IA    161 | U      5 | R    471 | etiqueta benigno
+    martes  09:13-16:57  192.168.10.16 -> 192.168.10.50  netbios/137       229 flujos  (sin tipo)             IA      0 | U      0 | R    229 | etiqueta benigno
+    martes  09:58-16:58  192.168.10.12 -> 192.168.10.50  netbios/139       208 flujos  (sin tipo)             IA      0 | U      0 | R    208 | etiqueta benigno
+    viernes 12:00-17:00  192.168.10.12 -> 192.168.10.50  netbios/137       164 flujos  probable_falsa_alarma  IA      4 | U      0 | R    164 | etiqueta benigno
+    viernes 12:56-17:01  192.168.10.16 -> 192.168.10.50  netbios/139       131 flujos  probable_falsa_alarma  IA      1 | U      0 | R    131 | etiqueta benigno
+
+  Ejemplos por tipo (los 3 primeros de cada uno):
+  ddos:
+    viernes 16:10-16:16  172.16.0.1 -> 192.168.10.50     http/80         28705 flujos  ddos                   IA  28705 | U  28705 | R  28705 | etiqueta ataque
+  escaneo:
+    martes  13:02-13:03  192.168.10.15 -> 192.168.10.3   smb/445             2 flujos  escaneo                IA      2 | U      0 | R      0 | etiqueta benigno
+    viernes 14:55-14:56  172.16.0.1 -> 192.168.10.50     otro/79         27711 flujos  escaneo                IA  27711 | U  27684 | R  27657 | etiqueta ataque
+    viernes 15:03-15:15  172.16.0.1 -> 192.168.10.50     http/80         11332 flujos  escaneo                IA  11222 | U  10211 | R  11288 | etiqueta ataque
+  fuerza_bruta:
+    martes  10:02-10:20  172.16.0.1 -> 192.168.10.50     ftp/21           1198 flujos  fuerza_bruta           IA   1198 | U   1198 | R      0 | etiqueta ataque
+    martes  14:52-15:11  172.16.0.1 -> 192.168.10.50     ssh/22            893 flujos  fuerza_bruta           IA    883 | U    893 | R      0 | etiqueta ataque
+  probable_falsa_alarma:
+    martes  08:53-08:58  192.168.10.5 -> 192.168.10.3    smb/445             4 flujos  probable_falsa_alarma  IA      2 | U      0 | R      2 | etiqueta benigno
+    martes  08:56-08:56  192.168.10.15 -> 192.168.10.3   smb/445             1 flujos  probable_falsa_alarma  IA      1 | U      0 | R      0 | etiqueta benigno
+    martes  08:57-08:58  192.168.10.51 -> 192.168.10.3   ldap/389            4 flujos  probable_falsa_alarma  IA      3 | U      0 | R      1 | etiqueta benigno
+  sin tipo (solo reglas o umbrales):
+    martes  08:56-08:56  192.168.10.3 -> 192.168.10.50   netbios/137         1 flujos  (sin tipo)             IA      0 | U      0 | R      1 | etiqueta benigno
+    martes  08:56-08:56  192.168.10.3 -> 192.168.10.1    netbios/137         1 flujos  (sin tipo)             IA      0 | U      0 | R      1 | etiqueta benigno
+    martes  08:56-08:56  192.168.10.1 -> 192.168.10.3    icmp/3              1 flujos  (sin tipo)             IA      0 | U      0 | R      1 | etiqueta benigno
+
+  Destinos:puerto mas frecuentes entre los episodios solo de reglas o umbrales:
+    192.168.10.50:137 217, 192.168.10.8:3 92, 192.168.10.255:8610 27, 192.168.10.8:10 13, 192.168.10.3:49671 11, 192.168.10.3:3 7, 192.168.10.19:137 7, 192.168.10.17:137 5, 192.168.10.16:137 5, 192.168.10.1:137 4
+
+  Servicios: otro 489, smb 281, netbios 251, icmp 147, ldap 120, kerberos 6, dns 5, http 3, ftp 1, ssh 1
+  IP sin nombre en el catalogo (la app muestra la IP): 192.168.10.255 (29 episodios), 192.168.10.1 (10 episodios), 77.238.121.220 (4 episodios), 185.49.84.72 (3 episodios), 192.82.242.50 (2 episodios), 63.251.98.12 (2 episodios), 63.241.108.104 (2 episodios), 68.67.154.70 (2 episodios), 156.154.200.36 (2 episodios), 212.45.97.31 (2 episodios), 109.201.130.57 (2 episodios), 109.201.130.58 (2 episodios), 199.38.164.55 (2 episodios), 192.35.249.127 (2 episodios), 8.41.222.241 (2 episodios), 63.251.240.12 (2 episodios), 204.16.35.74 (2 episodios), 192.82.242.23 (2 episodios), 209.15.36.33 (2 episodios), 188.92.40.81 (2 episodios), 95.163.95.169 (2 episodios), 172.16.0.2 (2 episodios), 199.16.157.105 (1 episodios), 192.243.54.160 (1 episodios), 156.154.202.36 (1 episodios), 23.227.138.202 (1 episodios), 38.72.130.155 (1 episodios), 198.8.70.212 (1 episodios), 199.244.48.50 (1 episodios), 94.198.62.150 (1 episodios), 208.81.233.32 (1 episodios), 199.187.193.140 (1 episodios), 204.13.194.232 (1 episodios), 192.35.249.120 (1 episodios), 198.211.102.79 (1 episodios), 210.151.8.24 (1 episodios), 185.86.139.29 (1 episodios), 74.117.199.102 (1 episodios), 216.104.218.225 (1 episodios), 192.252.222.148 (1 episodios), 178.62.200.204 (1 episodios), 31.172.81.160 (1 episodios), 83.222.104.102 (1 episodios), 204.2.255.234 (1 episodios), 118.26.205.151 (1 episodios), 213.196.34.200 (1 episodios), 185.86.139.32 (1 episodios), 194.126.157.22 (1 episodios), 199.187.193.133 (1 episodios), 206.54.177.100 (1 episodios), 216.104.218.219 (1 episodios), 69.89.74.66 (1 episodios), 192.82.242.30 (1 episodios), 192.82.242.21 (1 episodios), 74.217.253.61 (1 episodios), 204.2.255.233 (1 episodios), 199.187.193.130 (1 episodios), 37.187.86.42 (1 episodios), 198.8.70.211 (1 episodios), 208.81.233.48 (1 episodios), 185.86.139.58 (1 episodios), 162.248.16.28 (1 episodios), 63.241.108.103 (1 episodios), 80.82.201.94 (1 episodios), 188.165.32.247 (1 episodios), 156.154.202.32 (1 episodios), 65.153.158.131 (1 episodios), 220.243.219.55 (1 episodios), 198.57.30.31 (1 episodios), 192.132.33.27 (1 episodios), 209.15.36.21 (1 episodios), 173.231.185.79 (1 episodios), 198.54.12.145 (1 episodios), 38.72.130.139 (1 episodios), 63.251.252.12 (1 episodios), 123.130.127.12 (1 episodios), 199.16.156.75 (1 episodios), 162.255.119.249 (1 episodios), 209.15.36.32 (1 episodios), 121.40.97.32 (1 episodios), 74.217.81.211 (1 episodios), 198.255.77.54 (1 episodios), 192.240.115.54 (1 episodios), 95.163.95.38 (1 episodios), 185.15.175.135 (1 episodios), 195.54.48.228 (1 episodios), 91.216.195.218 (1 episodios), 109.248.237.34 (1 episodios), 5.79.65.140 (1 episodios), 109.248.237.36 (1 episodios), 117.121.28.4 (1 episodios), 137.74.127.227 (1 episodios), 5.79.65.138 (1 episodios), 109.248.237.37 (1 episodios), 192.82.242.92 (1 episodios), 138.108.6.20 (1 episodios), 104.193.83.57 (1 episodios), 199.16.156.105 (1 episodios), 162.248.16.30 (1 episodios), 199.38.164.54 (1 episodios), 162.248.16.24 (1 episodios), 138.108.50.100 (1 episodios), 209.15.36.34 (1 episodios), 74.118.186.127 (1 episodios), 192.243.250.68 (1 episodios), 153.120.128.154 (1 episodios), 216.6.81.22 (1 episodios), 210.14.132.70 (1 episodios)
+
+====================================================================================================
+7. ARCHIVOS
+====================================================================================================
+  semilla/alertas_semilla.json (1304 episodios, 1.19 MB)
+  semilla/semilla_flujos.parquet (82878 flujos marcados)
+
+Verificacion: todo coincide con lo documentado.
+Tiempo total: 48 s

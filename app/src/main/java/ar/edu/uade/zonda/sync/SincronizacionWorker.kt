@@ -19,6 +19,7 @@ import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.Periodo
+import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
@@ -31,10 +32,11 @@ import kotlinx.coroutines.flow.first
 
 /**
  * Sincronización en segundo plano (RNF08): cada 15 minutos, el mínimo que permite Android, solo con
- * red. Sincroniza todas las redes pareadas, no solo la activa, y, si el interruptor "Notificaciones
- * del sistema" de Ajustes está prendido, avisa las altas nuevas que Telegram no avisó en este
- * teléfono, recuerda una vez las que siguen sin revisar a los 15 minutos ([AvisosDeZonda], cambio 13)
- * y avisa las revisiones de este teléfono que no se aplicaron porque otra persona revisó antes (cambio 7).
+ * red. Sincroniza todas las redes pareadas, no solo la activa, y avisa como eligió la persona en
+ * "Notificaciones de Zonda" (1.0.4): las alertas nuevas que Telegram no avisó en este teléfono, de cada
+ * severidad que no esté en "Sin aviso", y, con el recordatorio prendido, una vez las altas que siguen
+ * sin revisar a los 15 minutos ([AvisosDeZonda], cambio 13). También avisa las revisiones de este
+ * teléfono que no se aplicaron porque otra persona revisó antes (cambio 7), en su propio canal.
  * Si no hay red o el servidor falla, WorkManager reintenta con espera exponencial (informe, 14.3); una
  * red con el acceso vencido se saltea hasta que se vuelva a parear.
  */
@@ -50,12 +52,12 @@ class SincronizacionWorker(
 
     override suspend fun doWork(): Result {
         var reintentar = false
-        val notificar = preferencias.observarNotificacionesActivas().first()
+        val notificaciones = preferencias.observarNotificaciones().first()
         for (red in redes.observarRedes().first()) {
             if (red.accesoVencido) continue
             try {
                 val resultado = alertas.sincronizar(red.id)
-                if (notificar) avisar(red.id, resultado)
+                avisar(red.id, resultado, notificaciones)
             } catch (e: ErrorZonda.SinConexion) {
                 reintentar = true
             } catch (e: ErrorZonda.ErrorDelServidor) {
@@ -71,16 +73,19 @@ class SincronizacionWorker(
      * Las notificaciones de una red después de sincronizarla. La red se lee de nuevo porque la
      * sincronización acaba de actualizar si Telegram sigue vinculado.
      */
-    private suspend fun avisar(redId: String, resultado: ResultadoSincronizacion) {
+    private suspend fun avisar(redId: String, resultado: ResultadoSincronizacion, notificaciones: PreferenciasNotificaciones) {
         val red = redes.observarRedes().first().firstOrNull { it.id == redId } ?: return
         val avisos = preferencias.observarAvisos().first()
-        notificador.avisarAltasNuevas(red, AvisosDeZonda.altasParaNotificar(resultado, red.telegramVinculado, avisos))
+        AvisosDeZonda.paraNotificar(resultado, red.telegramVinculado, avisos, notificaciones).forEach { (severidad, ids) ->
+            notificador.avisarNuevas(red, severidad, ids, notificaciones.para(severidad))
+        }
         notificador.avisarRevisionesNoAplicadas(red, resultado.conflictosNuevos)
 
+        if (!notificaciones.recordatorio) return
         val sinRevisar = alertas.observarAlertas(redId, ALTAS_SIN_REVISAR_DEL_DIA).first()
         val recordar = AvisosDeZonda.altasParaRecordar(sinRevisar, preferencias.recordatoriosHasta(redId), resultado.idsAltasNuevas, reloj())
         if (recordar.isNotEmpty()) {
-            notificador.recordarAltas(red, recordar)
+            notificador.recordarAltas(red, recordar, notificaciones.modoDelRecordatorio)
             preferencias.guardarRecordatoriosHasta(redId, recordar.maxOf { it.creadaEn })
         }
     }

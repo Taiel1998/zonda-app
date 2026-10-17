@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.ModoNotificacion
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
+import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
@@ -33,9 +35,9 @@ import kotlinx.coroutines.launch
 
 /**
  * ViewModel de Ajustes y de sus pantallas Redes, Avisos por severidad y Severidad por tipo de ataque, que lo
- * comparten (RF05 y RF06). Redes y red activa, avisos de Telegram, severidad de cada tipo (vale para
- * toda la red y viaja al servidor), el interruptor de notificaciones, sincronizar, borrar datos
- * locales y quitar este dispositivo.
+ * comparten (RF05 y RF06). Redes y red activa, avisos de Telegram y notificaciones de Zonda, severidad
+ * de cada tipo (vale para toda la red y viaja al servidor), sincronizar, borrar datos locales y quitar
+ * este dispositivo.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AjustesViewModel(
@@ -54,6 +56,7 @@ class AjustesViewModel(
     private data class Controles(
         val borradorSeveridades: SeveridadPorTipo? = null,
         val borradorAvisos: PreferenciasAvisos? = null,
+        val borradorNotificaciones: PreferenciasNotificaciones? = null,
         val sincronizando: Boolean = false,
         val aviso: AvisoAjustes? = null,
     )
@@ -86,11 +89,11 @@ class AjustesViewModel(
         }
     }
 
-    private data class DelTelefono(val avisos: PreferenciasAvisos, val notificaciones: Boolean, val alertasGuardadas: Int)
+    private data class DelTelefono(val avisos: PreferenciasAvisos, val notificaciones: PreferenciasNotificaciones, val alertasGuardadas: Int)
 
     private val delTelefono: Flow<DelTelefono> = combine(
         preferencias.observarAvisos(),
-        preferencias.observarNotificacionesActivas(),
+        preferencias.observarNotificaciones(),
         alertas.observarCantidadTotal(),
     ) { avisos, notificaciones, total -> DelTelefono(avisos, notificaciones, total) }
 
@@ -100,9 +103,10 @@ class AjustesViewModel(
             redActiva = activa.red,
             avisos = telefono.avisos,
             borradorAvisos = c.borradorAvisos,
+            notificaciones = telefono.notificaciones,
+            borradorNotificaciones = c.borradorNotificaciones,
             severidades = activa.severidades,
             borradorSeveridades = c.borradorSeveridades,
-            notificacionesActivas = telefono.notificaciones,
             alertasDeLaRedActiva = activa.alertas,
             alertasGuardadas = telefono.alertasGuardadas,
             sincronizando = c.sincronizando,
@@ -141,12 +145,13 @@ class AjustesViewModel(
         }
     }
 
-    // ---- Avisos de Telegram: se editan en un borrador y se guardan con "Guardar" ----
+    // ---- Avisos por severidad: Telegram y las notificaciones de Zonda se editan en un borrador y se guardan juntos ----
 
     fun empezarAEditarAvisos() {
         viewModelScope.launch {
-            val actuales = preferencias.observarAvisos().first()
-            controles.update { it.copy(borradorAvisos = actuales) }
+            val avisos = preferencias.observarAvisos().first()
+            val notificaciones = preferencias.observarNotificaciones().first()
+            controles.update { it.copy(borradorAvisos = avisos, borradorNotificaciones = notificaciones) }
         }
     }
 
@@ -154,17 +159,31 @@ class AjustesViewModel(
         controles.update { it.copy(borradorAvisos = it.borradorAvisos?.con(severidad, modo)) }
     }
 
-    fun descartarBorradorAvisos() {
-        controles.update { it.copy(borradorAvisos = null) }
+    fun cambiarNotificacionDelBorrador(severidad: Severidad, modo: ModoNotificacion) {
+        controles.update { it.copy(borradorNotificaciones = it.borradorNotificaciones?.con(severidad, modo)) }
     }
 
-    /** Guarda en el teléfono y se lo manda al bot de cada red; sin conexión lo manda la sincronización. */
+    fun cambiarRecordatorioDelBorrador(prendido: Boolean) {
+        controles.update { it.copy(borradorNotificaciones = it.borradorNotificaciones?.copy(recordatorio = prendido)) }
+    }
+
+    fun descartarBorradorAvisos() {
+        controles.update { it.copy(borradorAvisos = null, borradorNotificaciones = null) }
+    }
+
+    /**
+     * "Guardar" guarda las dos tarjetas en el teléfono, y los avisos de Telegram también se los manda al
+     * bot de cada red; sin conexión los manda la sincronización.
+     */
     fun guardarAvisos() {
-        val borrador = controles.value.borradorAvisos ?: return
+        val avisos = controles.value.borradorAvisos
+        val notificaciones = controles.value.borradorNotificaciones
+        if (avisos == null && notificaciones == null) return
         viewModelScope.launch {
-            preferencias.guardarAvisos(borrador)
-            controles.update { it.copy(borradorAvisos = null) }
-            alcanceDeEnvio.launch { enviarAvisosTelegram(borrador) }
+            notificaciones?.let { preferencias.guardarNotificaciones(it) }
+            avisos?.let { preferencias.guardarAvisos(it) }
+            controles.update { it.copy(borradorAvisos = null, borradorNotificaciones = null) }
+            if (avisos != null) alcanceDeEnvio.launch { enviarAvisosTelegram(avisos) }
         }
     }
 
@@ -194,13 +213,6 @@ class AjustesViewModel(
             controles.update { it.copy(borradorSeveridades = null, aviso = AvisoAjustes.SeveridadesGuardadas) }
             alcanceDeEnvio.launch { runCatching { sincronizarAlertas(red.id) } }
         }
-    }
-
-    // ---- Notificaciones ----
-
-    /** El interruptor "Notificaciones del sistema": si la app muestra la notificación local de altas nuevas. */
-    fun cambiarNotificaciones(activas: Boolean) {
-        viewModelScope.launch { preferencias.guardarNotificacionesActivas(activas) }
     }
 
     // ---- Datos locales ----

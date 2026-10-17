@@ -15,7 +15,6 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
 import java.time.ZoneId
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -60,8 +59,7 @@ class AjustesContenidoTest {
         compose.onNodeWithText("Oficina").assertIsDisplayed()
         compose.onNodeWithText("zonda-equipo.duckdns.org · 1 red pareada").assertIsDisplayed()
         compose.onNodeWithText("Telegram sin conectar").assertIsDisplayed()
-        compose.onNodeWithText("Alta con sonido · Media en silencio · Baja sin aviso").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Permitidas · avisan cuando la sincronización trae alertas altas nuevas").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Por Telegram y con notificaciones de Zonda").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Hoy 12:00 · 213 alertas en el teléfono").performScrollTo().assertIsDisplayed()
 
         compose.onNodeWithText("Conectar Telegram").performScrollTo().performClick()
@@ -69,18 +67,17 @@ class AjustesContenidoTest {
     }
 
     @Test
-    fun `el interruptor apaga las notificaciones del sistema`() {
-        var activas: Boolean? = null
-        mostrar(AccionesAjustes(alCambiarNotificaciones = { activas = it }))
+    fun `ya no esta la fila Notificaciones del sistema, cada severidad tiene su interruptor en Avisos por severidad`() {
+        mostrar()
 
-        compose.onNodeWithText("Notificaciones del sistema").performScrollTo().performClick()
-
-        assertEquals(false, activas)
+        compose.onNodeWithText("Avisos por severidad").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Notificaciones del sistema").assertDoesNotExist()
+        compose.onNodeWithText("Notificaciones desactivadas").assertDoesNotExist()
     }
 
     @Test
     @Config(sdk = [32])
-    fun `sin permiso del sistema la fila del interruptor pasa a la tarjeta ambar con Abrir ajustes`() {
+    fun `sin permiso del sistema aparece la tarjeta ambar con Abrir ajustes`() {
         val gestor = ApplicationProvider.getApplicationContext<Context>().getSystemService(NotificationManager::class.java)
         shadowOf(gestor).setNotificationsEnabled(false)
         mostrar()

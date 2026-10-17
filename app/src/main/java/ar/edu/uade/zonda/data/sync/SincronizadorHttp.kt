@@ -22,6 +22,7 @@ import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.TipoAccion
+import ar.edu.uade.zonda.domain.repository.AlertaNueva
 import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
 import java.time.Duration
 import java.time.Instant
@@ -101,8 +102,7 @@ class SincronizadorHttp(
             accionesEnviadas = envio.enviadas,
             accionesConError = envio.conError,
             hora = hora,
-            idsAltasNuevas = descarga.idsAltasNuevas,
-            idsAltasNuevasConAvisoTelegram = descarga.idsConAvisoTelegram,
+            alertasNuevas = descarga.alertasNuevas,
             conflictosNuevos = envio.conflictos,
         )
     }
@@ -200,8 +200,7 @@ class SincronizadorHttp(
         val nuevas: Int,
         val modificadas: Int,
         val altasNuevas: Int,
-        val idsAltasNuevas: List<String>,
-        val idsConAvisoTelegram: Set<String>,
+        val alertasNuevas: List<AlertaNueva>,
     )
 
     private suspend fun descargar(redId: String, cursorInicial: String?, api: ZondaApi): ResultadoDescarga =
@@ -218,8 +217,7 @@ class SincronizadorHttp(
         var nuevas = 0
         var modificadas = 0
         var altasNuevas = 0
-        val idsAltasNuevas = mutableListOf<String>()
-        val idsConAvisoTelegram = mutableSetOf<String>()
+        val alertasNuevas = mutableListOf<AlertaNueva>()
         var paginas = 0
         // Desde cero se baja todo lo de los últimos 30 días: la pantalla Estado muestra cuántas van.
         val desdeCero = cursorInicial == null
@@ -240,11 +238,8 @@ class SincronizadorHttp(
                         modificadas++
                     } else {
                         nuevas++
-                        if (alerta.severidad == Severidad.ALTA) {
-                            altasNuevas++
-                            idsAltasNuevas += alerta.id
-                            if (alerta.avisoTelegram != null) idsConAvisoTelegram += alerta.id
-                        }
+                        if (alerta.severidad == Severidad.ALTA) altasNuevas++
+                        alertasNuevas += AlertaNueva(alerta.id, alerta.severidad, conAvisoTelegram = alerta.avisoTelegram != null)
                     }
                 }
                 guardar(alertas)
@@ -256,7 +251,7 @@ class SincronizadorHttp(
             paginas++
             if (!pagina.hayMas || paginas >= MAXIMO_PAGINAS) break
         }
-        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, idsAltasNuevas, idsConAvisoTelegram)
+        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, alertasNuevas)
     }
 
     /** SQLite admite hasta 999 parámetros por consulta. */

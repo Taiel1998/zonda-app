@@ -5,12 +5,14 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * Qué avisa Zonda con sus propias notificaciones después de sincronizar en segundo plano (cambio 13).
+ * Qué avisa Zonda con sus propias notificaciones después de sincronizar en segundo plano (cambio 13 y
+ * 1.0.4).
  *
  * Telegram avisa al instante y Zonda, hasta 15 minutos después. Para no avisar dos veces lo mismo,
- * Zonda calla las altas nuevas que Telegram ya avisó en este teléfono: si hay un chat vinculado, el
- * aviso de esa alerta salió y en Telegram las altas no están en "Sin aviso". El servidor dice si salió
- * el aviso de cada alerta, no a qué chat, pero manda a todos los chats vinculados a la vez.
+ * Zonda calla las alertas nuevas que Telegram ya avisó en este teléfono: si hay un chat vinculado, el
+ * aviso de esa alerta salió y en Telegram esa severidad no está en "Sin aviso". El servidor dice si
+ * salió el aviso de cada alerta, no a qué chat, pero manda a todos los chats vinculados a la vez. Lo
+ * que queda se avisa como eligió la persona para esa severidad en "Notificaciones de Zonda".
  *
  * Y si una alta sigue sin revisar a los 15 minutos de llegar, Zonda la recuerda una sola vez, aunque
  * Telegram la haya avisado. Para no recordar dos veces la misma, cada red guarda hasta qué hora ya
@@ -27,12 +29,26 @@ object AvisosDeZonda {
      */
     val VENTANA_RECORDATORIO: Duration = Duration.ofHours(24)
 
-    /** Las altas nuevas de esta sincronización que Zonda tiene que avisar. */
-    fun altasParaNotificar(resultado: ResultadoSincronizacion, telegramVinculado: Boolean, avisos: PreferenciasAvisos): List<String> {
-        val telegramAvisaLasAltas = telegramVinculado && avisos.alta != ModoAviso.SIN_AVISO
-        if (!telegramAvisaLasAltas) return resultado.idsAltasNuevas
-        return resultado.idsAltasNuevas.filterNot { it in resultado.idsAltasNuevasConAvisoTelegram }
-    }
+    /**
+     * Las alertas nuevas de esta sincronización que Zonda tiene que avisar, por severidad: las que
+     * Telegram no avisó en este teléfono, solo de las severidades que no están en "Sin aviso" en
+     * [notificaciones]. Una severidad sin nada para avisar no aparece.
+     */
+    fun paraNotificar(
+        resultado: ResultadoSincronizacion,
+        telegramVinculado: Boolean,
+        avisos: PreferenciasAvisos,
+        notificaciones: PreferenciasNotificaciones,
+    ): Map<Severidad, List<String>> =
+        Severidad.entries
+            .filter { notificaciones.para(it) != ModoNotificacion.SIN_AVISO }
+            .associateWith { severidad ->
+                val telegramLaAvisa = telegramVinculado && avisos.para(severidad) != ModoAviso.SIN_AVISO
+                resultado.alertasNuevas
+                    .filter { it.severidad == severidad && !(telegramLaAvisa && it.conAvisoTelegram) }
+                    .map { it.id }
+            }
+            .filterValues { it.isNotEmpty() }
 
     /**
      * Las altas que hay que recordar ahora, de la más vieja a la más nueva: sin revisar, que llegaron

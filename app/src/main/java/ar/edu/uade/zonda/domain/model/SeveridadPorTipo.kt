@@ -9,6 +9,10 @@ data class SeveridadPorTipo(val valores: Map<TipoAtaque, Severidad>) {
     /** Severidad del tipo dado; si la red no eligió una, la recomendada. */
     fun severidadDe(tipo: TipoAtaque): Severidad = valores[tipo] ?: RECOMENDADA.valores.getValue(tipo)
 
+    /** Los tipos que la red tiene en alta: lo que filtra "altas revisadas en la primera hora" del Resumen (cambio 16). */
+    val tiposAltos: Set<TipoAtaque>
+        get() = TipoAtaque.EN_PANTALLA.filter { severidadDe(it) == Severidad.ALTA }.toSet()
+
     fun con(tipo: TipoAtaque, severidad: Severidad): SeveridadPorTipo =
         SeveridadPorTipo(valores + (tipo to severidad))
 
