@@ -4,10 +4,9 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
-from app.config import RAIZ
 from app.main import crear_app
 from app.modelos import MOTIVOS_POR_RESULTADO
-from tests.conftest import cabecera, parear, todas_las_alertas
+from tests.conftest import SEMILLA_PRUEBA, cabecera, parear, todas_las_alertas
 
 
 def test_sin_la_opcion_la_semilla_llega_toda_sin_revisar(cliente, auth):
@@ -22,7 +21,7 @@ def test_con_revisar_semilla_llega_revisada_una_parte_segun_el_dataset(config):
         auth = cabecera(parear(cliente))
         alertas = todas_las_alertas(cliente, auth)
     ahora = datetime.now(timezone.utc)
-    verdad = {a["id"]: a["etiquetaVerdad"] for a in json.loads((RAIZ / "alertas_semilla.json").read_text(encoding="utf-8"))["alertas"]}
+    verdad = {a["id"]: a["etiquetaVerdad"] for a in json.loads(SEMILLA_PRUEBA.read_text(encoding="utf-8"))["alertas"]}
     revisadas = [a for a in alertas if a["estadoRevision"] != "sin_revisar"]
 
     # Tres de cada cuatro de las de más de dos horas; las más nuevas quedan para revisar en la demo.

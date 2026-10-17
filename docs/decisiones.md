@@ -20,11 +20,13 @@ Registro corto de las decisiones que cambian algo respecto de la Etapa 1 o que c
 
 ## 3. Una alerta es un episodio, no un flujo de red
 
-**Decisión.** La plataforma agrupa los flujos con el mismo origen y el mismo destino, con hasta 5 minutos sin flujos nuevos, en un episodio. La alerta lleva la cantidad de flujos, el inicio, el fin, el flujo de referencia, el puerto de ese flujo, el puerto más frecuente y la cantidad de puertos distintos.
+**Decisión.** La plataforma agrupa los flujos con el mismo origen y el mismo destino, con hasta 15 minutos sin flujos nuevos, en un episodio. La alerta lleva la cantidad de flujos, el inicio, el fin, el flujo de referencia, el puerto de ese flujo, el puerto más frecuente y la cantidad de puertos distintos.
 
 **Por qué.** Un solo escaneo de puertos real son más de 160.000 flujos; como alertas individuales no se pueden revisar ni caben en los 1.000 registros de caché de RNF07. Agrupar por puerto partiría un escaneo en miles de alertas; agrupar por tipo partiría un mismo ataque si el clasificador etiqueta distinto a algunos flujos.
 
 **Qué cambia.** La entidad Alerta de la sección 14.1 del informe.
+
+**Nota (16/10).** El corte pasó de 5 a 15 minutos con los datos reales. Con 5 minutos, el tráfico periódico normal (NetBIOS, SMB) se partía en cientos de alertas (1.304 en total, 964 de un solo flujo) y el escaneo en tres; con 15 quedan 516 y cada ataque es un solo episodio. Con cortes más largos se juntan ataques distintos del mismo origen al mismo destino: el DDoS empezó 33 minutos después del escaneo, así que con 30 minutos quedan a 3 minutos de margen y con una hora el DDoS cae dentro del escaneo.
 
 ## 4. Tipo de ataque y severidad que ordena, no que filtra
 
@@ -56,7 +58,9 @@ Registro corto de las decisiones que cambian algo respecto de la Etapa 1 o que c
 
 **Por qué.** Los datos originales son de julio de 2017; sin correr las fechas, los períodos de 24 horas, 7 y 30 días de la app quedarían vacíos. El corrimiento se declara acá y en el README para que quede claro de dónde sale cada dato.
 
-**Qué flujos entran en la muestra.** De los flujos que marca el modelo de IA, la semilla incluye solo los de la partición de prueba del clasificador de tipo: el tramo final de cada ataque, por orden temporal, más las falsas alarmas de los días evaluados. Sobre los flujos con los que ese clasificador se entrenó, la predicción no sería una prueba real y no coincidiría con los resultados documentados de la plataforma; por eso cada ataque aparece en la muestra como su tramo final y no completo. Los flujos que marcan solo las reglas o los umbrales entran completos, con tipo vacío. Los episodios se arman por origen y destino, sin el tipo ni el puerto en la clave (decisión 3).
+**Qué flujos entran en la muestra.** De cada ataque entra solo el tramo de prueba del clasificador de tipo (el último 30 % por orden temporal), lo marque el método que lo marque, para que ningún episodio muestre un ataque recortado a medias; sobre el tramo de entrenamiento la predicción no sería una prueba real ni coincidiría con los resultados documentados de la plataforma. El tráfico benigno marcado de martes y viernes entra completo (el clasificador se entrenó con el benigno del lunes). El tipo de un episodio es el más frecuente entre los flujos que marcó el modelo de IA y, en empate, el de mayor severidad. Los flujos que marcan solo las reglas o los umbrales entran con tipo vacío. Los episodios se arman por origen y destino, sin el tipo ni el puerto en la clave (decisión 3).
+
+**Nota (16/10).** La semilla es la exportación real de la plataforma (516 episodios con 82.878 flujos), no un ejemplo armado a mano. La de ejemplo quedó como fixture de los tests en `tests/semilla_de_prueba.json`; la trazabilidad de la exportación está en `herramientas/semilla_real/`. Los nombres de los equipos son los del Figma de la app puestos sobre las IP reales de CICIDS2017; en el dataset, `172.16.0.1` es la interfaz interna del firewall por la que entra el atacante externo, no una PC de RRHH.
 
 ## 8. Cifrado de la base local
 
