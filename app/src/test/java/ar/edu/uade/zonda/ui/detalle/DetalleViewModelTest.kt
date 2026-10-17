@@ -9,13 +9,20 @@ import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeConectividad
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.domain.fakes.GeneradorDeIdsFijo
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
+import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
+import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.repository.RedesRepository
+import ar.edu.uade.zonda.domain.usecase.AsignarAlerta
 import ar.edu.uade.zonda.domain.usecase.DeshacerRevision
 import ar.edu.uade.zonda.domain.usecase.ObtenerDetalleAlerta
 import ar.edu.uade.zonda.domain.usecase.ResolverEnvioRevision
@@ -57,6 +64,7 @@ class DetalleViewModelTest {
     private fun viewModel(alertaId: String, alcance: CoroutineScope, redes: RedesRepository = this.redes) = DetalleViewModel(
         obtenerDetalle = ObtenerDetalleAlerta(alertas, conectividad),
         revisarAlerta = RevisarAlerta(alertas, acciones, GeneradorDeIdsFijo(), reloj = { Fixtures.AHORA }),
+        asignarAlerta = AsignarAlerta(redes, alertas, acciones, GeneradorDeIdsFijo(), reloj = { Fixtures.AHORA }),
         ventana = ventana(alcance),
         resolverEnvio = ResolverEnvioRevision(alertas, acciones),
         sincronizarAlertas = SincronizarAlertas(redes, alertas),
@@ -365,6 +373,63 @@ class DetalleViewModelTest {
         assertTrue((viewModel.aviso.value as AvisoDetalle.Error).error is ErrorZonda.NoAutorizado)
         viewModel.avisoMostrado()
         assertNull(viewModel.aviso.value)
+    }
+
+    // ---- Responsable y cálculo de la severidad (1.0.5) ----
+
+    private val taiel = Persona("d-1", "Taiel", "moto g(9) plus", Perfil.ADMINISTRADOR, null, vos = false)
+    private val laura = Persona("d-2", "Laura", "Teléfono de Laura", Perfil.ANALISTA, null, vos = false)
+
+    /** Este teléfono es el de Laura, analista. */
+    private fun soyLaura() {
+        redes.actualizar(Fixtures.red("red-1").copy(perfil = Perfil.ANALISTA, dispositivoId = "d-2"))
+        redes.personas.value = listOf(taiel, laura.copy(vos = true))
+    }
+
+    @Test
+    fun `el detalle trae la gente, el perfil, quien soy y como se calculo la severidad`() = runTest {
+        soyLaura()
+        redes.equipos.value = listOf(EquipoDeLaRed("192.168.10.50", "srv-web", Importancia.CRITICO))
+        alertas.agregar(Fixtures.alerta("a-1", severidad = Severidad.MEDIA, tipoAtaque = TipoAtaque.ESCANEO))
+
+        viewModel("a-1", backgroundScope).estado.test {
+            val estado = esperar { (it as? DetalleUiState.Contenido)?.calculo?.conImportancia == true } as DetalleUiState.Contenido
+
+            assertEquals(listOf("Laura", "Taiel"), estado.personas.map { it.nombreVisible })
+            assertEquals(Perfil.ANALISTA, estado.perfil)
+            assertEquals("d-2", estado.miId)
+            assertEquals(Severidad.MEDIA, estado.calculo?.delTipo)
+            assertEquals(Severidad.ALTA, estado.calculo?.final)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `me la asigno la deja a mi nombre al instante y la manda a la red`() = runTest {
+        soyLaura()
+        alertas.agregar(Fixtures.alerta("a-1"))
+        val viewModel = viewModel("a-1", backgroundScope)
+
+        viewModel.asignar(laura)
+        runCurrent()
+
+        assertEquals("d-2", alertas.todas.single().asignacion?.responsableId)
+        assertEquals(mapOf("a-1" to "d-2"), acciones.asignaciones)
+        assertEquals(listOf("red-1"), alertas.sincronizaciones)
+    }
+
+    @Test
+    fun `la analista no puede asignarle la alerta a otra persona`() = runTest {
+        soyLaura()
+        alertas.agregar(Fixtures.alerta("a-1"))
+        val viewModel = viewModel("a-1", backgroundScope)
+
+        viewModel.asignar(taiel)
+        runCurrent()
+
+        assertTrue((viewModel.aviso.value as AvisoDetalle.Error).error is ErrorZonda.SinPermiso)
+        assertNull(alertas.todas.single().asignacion)
+        assertTrue(acciones.asignaciones.isEmpty())
     }
 
     private companion object {
