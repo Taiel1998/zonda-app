@@ -1,9 +1,14 @@
 package ar.edu.uade.zonda.ui.resumen
 
 import android.content.res.Resources
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -12,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
@@ -32,6 +38,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** "Elegí las fechas" (cambio 19; Figma 463-2027 y 463-2466): la grilla, Desde y Hasta y los textos de las fechas. */
 @RunWith(RobolectricTestRunner::class)
@@ -79,6 +86,29 @@ class FechasResumenTest {
     }
 
     // ---- Los textos ----
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE) // Para medir el texto de verdad: sin esto, Robolectric mide un píxel por letra.
+    fun `si el chip de las fechas no entra dice lo mas corto que entra en lugar de cortarse`() {
+        // Del más largo al más corto: sin el día de la semana o con el mes una sola vez, y después sin el relojito.
+        assertEquals(
+            listOf(TextoDelChip("vie 25/09", true), TextoDelChip("25/09", true), TextoDelChip("25/09", false)),
+            RangoResumen(momento(25, 0), momento(25, 5, 59)).textosDelChip(recursos),
+        )
+        assertEquals(
+            listOf(TextoDelChip("10/10 al 11/10", false), TextoDelChip("10 al 11/10", false)),
+            RangoResumen.dias(dia(10, 10), dia(11, 10)).textosDelChip(recursos),
+        )
+        assertEquals(TextoDelChip("28/9 al 3/10", false), RangoResumen.dias(dia(28), dia(3, 10)).textosDelChip(recursos).last())
+
+        val rango = RangoResumen(momento(12, 0, mes = 10), momento(13, 5, 59, mes = 10))
+        var ancho by mutableStateOf(300.dp)
+        compose.setContent { ZondaTheme { Box(Modifier.width(ancho)) { ChipDeFechas(rango, alTocar = {}) } } }
+        compose.onNodeWithText("12/10 al 13/10").assertIsDisplayed()
+
+        ancho = 90.dp
+        compose.onNodeWithText("12 al 13/10").assertIsDisplayed()
+    }
 
     @Test
     fun `la linea dice el rango exacto, el chip los dias y la frase la hora con mas alertas`() {

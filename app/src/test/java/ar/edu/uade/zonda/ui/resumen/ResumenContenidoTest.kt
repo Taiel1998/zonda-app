@@ -193,6 +193,7 @@ class ResumenContenidoTest {
     }
 
     @Test
+    @Config(qualifiers = "w412dp-h917dp")
     fun `con unas horas de un dia el grafico va por hora y la linea dice el rango exacto`() {
         val rango = RangoResumen(LocalDate.of(2026, 10, 12).atStartOfDay(), LocalDate.of(2026, 10, 12).atTime(11, 59))
         val resumen = ResumenActividad.calcular(alertas(), rango, ahora, utc)
@@ -201,6 +202,19 @@ class ResumenContenidoTest {
         compose.onNodeWithText("lun 12/10").assertIsDisplayed()
         compose.onNodeWithText("Alertas por hora").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Oficina central · lunes 12/10 · de 00:00 a 11:59 · actualizado 12:00").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h917dp")
+    fun `si el chip de las fechas no entra al lado de Filtros dice lo mas corto en lugar de cortarse`() {
+        val rango = RangoResumen(LocalDate.of(2026, 10, 11).atStartOfDay(), LocalDate.of(2026, 10, 12).atTime(8, 59))
+        val resumen = ResumenActividad.calcular(alertas(), rango, ahora, utc, FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA)))
+        dibujar(estado(resumen).copy(fechas = rango))
+
+        compose.onNodeWithText("Filtros (1)").assertIsDisplayed()
+        // "11/10 al 12/10" con el relojito no entra: va con el mes una sola vez.
+        compose.onNodeWithText("11 al 12/10").assertIsDisplayed()
+        compose.onNodeWithText("Oficina central · del dom 11/10 00:00 al lun 12/10 08:59 · actualizado 12:00").assertIsDisplayed()
     }
 
     @Test
@@ -214,6 +228,9 @@ class ResumenContenidoTest {
         compose.onNodeWithText("vie 09/10").assertExists()
         compose.onNodeWithText("Tipo de ataque · podés elegir varios").assertExists()
         compose.onNodeWithText("Volumen inusual de conexiones").assertExists()
+        // Figma 463-1317: "Sin tipo identificado", como en la tarjeta "Por tipo de ataque".
+        compose.onNode(hasText("Sin tipo identificado") and SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)).assertExists()
+        assertTrue(compose.onAllNodesWithText("Tráfico anómalo sin tipo identificado").fetchSemanticsNodes().isEmpty())
         compose.onNodeWithText("Revisión").assertExists()
         compose.onNodeWithText("Modelo").assertExists()
         compose.onNodeWithText("Ver estas 4 alertas en la lista →").assertExists()
