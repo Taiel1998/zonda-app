@@ -13,6 +13,7 @@ import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.Tema
 import ar.edu.uade.zonda.domain.model.TipoAccion
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
@@ -249,5 +250,17 @@ class AjustesViewModelTest {
         assertEquals("red-1", viewModel.estado.value.redActiva?.id)
         assertEquals(listOf("red-1"), viewModel.estado.value.redes.map { it.red.id })
         assertEquals(AvisoAjustes.DispositivoQuitado(quedanRedes = true), viewModel.estado.value.aviso)
+    }
+
+    @Test
+    fun `el tema se lee de las preferencias y elegir otro lo guarda`() = runTest {
+        val viewModel = viewModel()
+        assertEquals(Tema.COMO_EL_TELEFONO, viewModel.estado.value.tema)
+
+        viewModel.cambiarTema(Tema.OSCURO)
+        runCurrent()
+
+        assertEquals(Tema.OSCURO, preferencias.tema.value)
+        assertEquals(Tema.OSCURO, viewModel.estado.value.tema)
     }
 }
