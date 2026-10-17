@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
@@ -76,13 +78,18 @@ private val estiloNumero
 val estiloRotuloChicoResumen
     @Composable get() = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal)
 
+/** Lo más chico que se achica el rótulo de un total que no entra en un renglón. */
+private val RotuloMinimo = 8.sp
+
 /** Regular 12 con renglones de 15: las frases y notas de las tarjetas. */
 val estiloNotaResumen
     @Composable get() = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 15.sp)
 
 /**
  * Un total (Figma 52-2629): número SemiBold 22 y rótulo Regular 11 gris sobre el fondo de su tono,
- * esquinas de 12, 12 a los costados y 11 arriba y abajo. Elegido, el borde verde.
+ * esquinas de 12, 12 a los costados y 11 arriba y abajo. Elegido, el borde verde. Si el rótulo no entra
+ * en un renglón (por ejemplo "revisadas · 100 %" en los 380 de la imagen que se comparte), la letra se
+ * achica hasta que entra, en lugar de cortar el porcentaje.
  */
 @Composable
 fun TarjetaTotal(
@@ -104,7 +111,13 @@ fun TarjetaTotal(
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(text = numero, style = estiloNumero, color = colorNumero, maxLines = 1)
-            Text(text = rotulo, style = estiloRotuloChicoResumen, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            val estiloRotulo = estiloRotuloChicoResumen
+            BasicText(
+                text = rotulo,
+                style = estiloRotulo.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(minFontSize = RotuloMinimo, maxFontSize = estiloRotulo.fontSize, stepSize = 0.25.sp),
+            )
         }
     }
 }
