@@ -101,7 +101,7 @@ fun ResumenScreen(
     val contexto = LocalContext.current
     val alcance = rememberCoroutineScope()
     val capa = rememberGraphicsLayer()
-    var imagen by remember { mutableStateOf<ImagenCompartida?>(null) }
+    var paraCompartir by remember { mutableStateOf<ResumenParaCompartir?>(null) }
     // La app elegida para compartir: el aviso "Resumen enviado por …" se da al volver de ella.
     var enviadoA by rememberSaveable { mutableStateOf<DestinoCompartir?>(null) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -122,7 +122,15 @@ fun ResumenScreen(
                     .clearAndSetSemantics {}
                     .drawWithContent { capa.record { this@drawWithContent.drawContent() } },
             ) {
-                ImagenResumen(resumen = resumen, red = estado.red, datosDe = estado.datosDe, sinConexion = estado.sinConexion, zona = zona, altas = estado.altas)
+                ImagenResumen(
+                    resumen = resumen,
+                    red = estado.red,
+                    datosDe = estado.datosDe,
+                    sinConexion = estado.sinConexion,
+                    zona = zona,
+                    altas = estado.altas,
+                    severidades = estado.severidades,
+                )
             }
         }
         ResumenContenido(
@@ -141,10 +149,10 @@ fun ResumenScreen(
                 if (actual != null) {
                     alcance.launch {
                         try {
-                            imagen = guardarImagen(
+                            paraCompartir = prepararParaCompartir(
                                 contexto = contexto,
                                 captura = capa.toImageBitmap(),
-                                nombre = nombreDeLaImagen(actual.tramo, contexto.resources),
+                                nombreBase = nombreDelArchivo(actual.tramo, contexto.resources),
                                 texto = textoParaCompartir(actual, contexto.resources),
                             )
                         } catch (e: CancellationException) {
@@ -161,20 +169,22 @@ fun ResumenScreen(
         )
     }
 
-    imagen?.let { lista ->
+    paraCompartir?.let { listo ->
         HojaCompartir(
-            imagen = lista,
-            destinos = remember { destinosDisponibles(contexto) },
-            alElegir = { destino ->
-                imagen = null
+            resumen = listo,
+            apps = remember { appsDisponibles(contexto) },
+            alElegir = { destino, formato ->
+                paraCompartir = null
                 when {
-                    !compartirCon(contexto, destino, lista) -> viewModel.compartirFallo()
+                    !compartirCon(contexto, destino, listo, formato) -> viewModel.compartirFallo()
                     // Copiar no sale de la pantalla: el aviso va enseguida (Figma 107-5349).
                     destino == DestinoCompartir.COPIAR -> viewModel.compartido(destino)
+                    // La impresión de Android dice sola cómo terminó.
+                    destino == DestinoCompartir.IMPRIMIR -> Unit
                     else -> enviadoA = destino
                 }
             },
-            alCancelar = { imagen = null },
+            alCancelar = { paraCompartir = null },
         )
     }
 }
@@ -613,11 +623,12 @@ fun TarjetaGrafico(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, f
  * dos lo estén (con un filtro sin alertas). El ⓘ abre "Qué es cada tipo".
  */
 @Composable
-private fun TarjetaTipos(
+fun TarjetaTipos(
     resumen: ResumenActividad,
     severidades: SeveridadPorTipo,
     alTocar: (ToqueResumen) -> Unit,
-    alPedirAyuda: () -> Unit,
+    /** El ⓘ abre "Qué es cada tipo"; en la imagen que se comparte no va (null). */
+    alPedirAyuda: (() -> Unit)?,
 ) {
     val maximo = resumen.porTipo.values.maxOrNull() ?: 0
     val bloques = listOf(
@@ -627,7 +638,7 @@ private fun TarjetaTipos(
     TarjetaResumen(
         titulo = stringResource(R.string.resumen_por_tipo),
         espacioTitulo = 10.dp,
-        ayuda = AyudaDeTarjeta(stringResource(R.string.tipos_titulo), alPedirAyuda),
+        ayuda = alPedirAyuda?.let { AyudaDeTarjeta(stringResource(R.string.tipos_titulo), it) },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             bloques.forEachIndexed { indice, (titulo, tipos) ->
@@ -648,9 +659,9 @@ private fun TarjetaTipos(
     }
 }
 
-/** Reales y falsos positivos de las revisadas, con la nota de abajo (Figma 52-2629). */
+/** Reales y falsos positivos de las revisadas, con la nota de abajo (Figma 52-2629); en la imagen, sin la nota. */
 @Composable
-private fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit) {
+fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, conNota: Boolean = true) {
     val maximo = maxOf(resumen.reales, resumen.falsosPositivos)
     TarjetaResumen(titulo = stringResource(R.string.resumen_reales_y_falsos)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -671,8 +682,10 @@ private fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocar: (ToqueResum
                 alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.FALSOS_POSITIVOS)) },
             )
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(text = stringResource(R.string.resumen_nota_falsos), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (conNota) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(text = stringResource(R.string.resumen_nota_falsos), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

@@ -518,8 +518,8 @@
     <string name="recorrido_8_texto">Un solo botón: elegís si fue ataque real o falso positivo, y después el motivo y un comentario. Los dos son obligatorios.</string>
     <string name="recorrido_9_titulo">Todo el Resumen se puede tocar</string>
     <string name="recorrido_9_texto">Tocá un día, un tipo de ataque o un modelo y se suma al filtro. Tocalo de nuevo para sacarlo.</string>
-    <string name="recorrido_10_titulo">7 o 30 días y compartir</string>
-    <string name="recorrido_10_texto">Cambiá el período acá arriba. Compartir resumen lo envía como imagen por WhatsApp u otra app, sin IPs ni nombres de equipos.</string>
+    <string name="recorrido_10_titulo">Fechas, filtros y compartir</string>
+    <string name="recorrido_10_texto">Elegí 7 días, 30 días o las fechas que quieras, y en Filtros mirá todo lo que elegiste. Compartir resumen lo manda como imagen o PDF.</string>
     <string name="recorrido_11_titulo">Ajustes</string>
     <string name="recorrido_11_texto">Redes, Telegram, avisos por severidad, severidad por tipo de ataque, sincronizar, borrar datos y, al final, la ayuda.</string>
 
@@ -945,17 +945,22 @@
         <item quantity="one">Mostrando %1$s: %2$d alerta.</item>
         <item quantity="other">Mostrando %1$s: %2$d alertas.</item>
     </plurals>
-    <string name="resumen_archivo">Resumen_%1$s_%2$s.png</string>
+    <string name="resumen_archivo">Resumen_%1$s_%2$s</string>
     <string name="resumen_texto_compartido">Resumen Zonda · del %1$s al %2$s: %3$s, %4$s, %5$s sin revisar.</string>
     <!-- La hoja de compartir (Figma 107-5511) y los avisos al volver (107-4941 a 107-5349) -->
     <string name="resumen_hoja_titulo">Compartir resumen</string>
-    <string name="resumen_hoja_archivo">Imagen · %1$s · sin IPs ni nombres de equipos</string>
+    <!-- Cambio 18 (1.0.4): "Imagen · PDF" en la hoja (Figma 107-5511 y 463-3243). -->
+    <string name="resumen_hoja_imagen">Imagen</string>
+    <string name="resumen_hoja_pdf">PDF</string>
+    <string name="resumen_hoja_pdf_detalle">PDF · 1 página A4</string>
+    <string name="resumen_imagen_filtros">Filtros: %1$s</string>
     <string name="resumen_hoja_compartir_con">Compartir con</string>
     <string name="resumen_destino_whatsapp">WhatsApp</string>
     <string name="resumen_destino_telegram">Telegram</string>
     <string name="resumen_destino_gmail">Gmail</string>
     <string name="resumen_destino_drive">Drive</string>
     <string name="resumen_destino_copiar">Copiar</string>
+    <string name="resumen_destino_imprimir">Imprimir</string>
     <string name="resumen_enviado_por">Resumen enviado por %1$s.</string>
     <string name="resumen_enviado_gmail">Resumen adjuntado en un correo de Gmail.</string>
     <string name="resumen_enviado_drive">Resumen guardado en Drive.</string>

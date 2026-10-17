@@ -337,8 +337,8 @@ fun lineaDelResumen(red: String?, resumen: ResumenActividad, datosDe: Instant?, 
     return partes.joinToString(" · ")
 }
 
-/** "Resumen_21-09_27-09.png" (Figma 107-5511). */
-fun nombreDeLaImagen(tramo: Tramo, recursos: Resources): String =
+/** "Resumen_21-09_27-09", sin la extensión: la imagen y el PDF se llaman igual (Figma 107-5511 y 463-3243). */
+fun nombreDelArchivo(tramo: Tramo, recursos: Resources): String =
     recursos.getString(R.string.resumen_archivo, Formato.diaYMesParaArchivo(tramo.desde), Formato.diaYMesParaArchivo(tramo.hasta))
 
 /**
