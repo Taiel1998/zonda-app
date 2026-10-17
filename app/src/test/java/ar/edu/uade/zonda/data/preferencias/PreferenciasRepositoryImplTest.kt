@@ -1,10 +1,13 @@
 package ar.edu.uade.zonda.data.preferencias
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.ModoNotificacion
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
+import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +52,52 @@ class PreferenciasRepositoryImplTest {
         val avisos = PreferenciasRepositoryImpl(almacen).observarAvisos().first()
 
         assertEquals(ModoAviso.SILENCIO, avisos.media)
+        alcance.cancel()
+    }
+
+    @Test
+    fun `las notificaciones de Zonda arrancan con los valores de fabrica y se guardan`() = runTest {
+        val alcance = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        val repo = PreferenciasRepositoryImpl(
+            PreferenceDataStoreFactory.create(scope = alcance) { File(carpeta.root, "notificaciones.preferences_pb") },
+        )
+
+        val deFabrica = repo.observarNotificaciones().first()
+        assertEquals(ModoNotificacion.SONIDO_Y_VIBRACION, deFabrica.alta)
+        assertEquals(ModoNotificacion.SOLO_VIBRACION, deFabrica.media)
+        assertEquals(ModoNotificacion.SIN_AVISO, deFabrica.baja)
+        assertTrue(deFabrica.recordatorio)
+
+        val elegidas = PreferenciasNotificaciones(ModoNotificacion.EN_SILENCIO, ModoNotificacion.SIN_AVISO, ModoNotificacion.SOLO_SONIDO, recordatorio = false)
+        repo.guardarNotificaciones(elegidas)
+
+        assertEquals(elegidas, repo.observarNotificaciones().first())
+        alcance.cancel()
+    }
+
+    @Test
+    fun `con Notificaciones del sistema apagado en la 1_0_3, todo queda en Sin aviso y el recordatorio apagado`() = runTest {
+        val alcance = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        val almacen = PreferenceDataStoreFactory.create(scope = alcance) { File(carpeta.root, "apagadas.preferences_pb") }
+        almacen.edit { it[booleanPreferencesKey("notificaciones_activas")] = false }
+        val repo = PreferenciasRepositoryImpl(almacen)
+
+        assertEquals(PreferenciasNotificaciones.NINGUNA, repo.observarNotificaciones().first())
+
+        // Al guardar lo nuevo, el interruptor viejo deja de contar.
+        repo.guardarNotificaciones(PreferenciasNotificaciones())
+        assertEquals(PreferenciasNotificaciones(), repo.observarNotificaciones().first())
+        assertFalse(almacen.data.first().contains(booleanPreferencesKey("notificaciones_activas")))
+        alcance.cancel()
+    }
+
+    @Test
+    fun `con Notificaciones del sistema prendido en la 1_0_3 quedan los valores de fabrica`() = runTest {
+        val alcance = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        val almacen = PreferenceDataStoreFactory.create(scope = alcance) { File(carpeta.root, "prendidas.preferences_pb") }
+        almacen.edit { it[booleanPreferencesKey("notificaciones_activas")] = true }
+
+        assertEquals(PreferenciasNotificaciones(), PreferenciasRepositoryImpl(almacen).observarNotificaciones().first())
         alcance.cancel()
     }
 
