@@ -5,13 +5,20 @@ import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.AvisoRecibido
+import ar.edu.uade.zonda.domain.model.CalculoSeveridad
+import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
+import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Motivo
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
+import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.cambiosDeSeveridad
 import ar.edu.uade.zonda.domain.repository.AccionesPendientesRepository
 import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.RedesRepository
+import ar.edu.uade.zonda.domain.usecase.AsignarAlerta
 import ar.edu.uade.zonda.domain.usecase.ObtenerDetalleAlerta
 import ar.edu.uade.zonda.domain.usecase.ResolverEnvioRevision
 import ar.edu.uade.zonda.domain.usecase.RevisarAlerta
@@ -50,6 +57,7 @@ import kotlinx.coroutines.launch
 class DetalleViewModel(
     private val obtenerDetalle: ObtenerDetalleAlerta,
     private val revisarAlerta: RevisarAlerta,
+    private val asignarAlerta: AsignarAlerta,
     private val ventana: VentanaDeshacer,
     private val resolverEnvio: ResolverEnvioRevision,
     private val sincronizarAlertas: SincronizarAlertas,
@@ -89,13 +97,37 @@ class DetalleViewModel(
 
     private data class Descarga(val enCurso: Boolean, val error: ErrorZonda?)
 
+    /** Lo de la red que hace falta para el responsable y el cálculo de la severidad (decisiones 40 a 42). */
+    private data class DeLaRed(
+        val personas: List<Persona> = emptyList(),
+        val severidades: SeveridadPorTipo = SeveridadPorTipo.RECOMENDADA,
+        val importancias: Map<String, Importancia> = emptyMap(),
+        val registro: List<CambioRegistro> = emptyList(),
+    )
+
+    private val deLaRed: Flow<DeLaRed> = redes.observarRedActiva().flatMapLatest { red ->
+        if (red == null) {
+            flowOf(DeLaRed())
+        } else {
+            combine(
+                redes.observarPersonas(red.id),
+                redes.observarSeveridades(red.id),
+                redes.observarEquipos(red.id),
+                redes.observarRegistro(red.id),
+            ) { personas, severidades, equipos, registro ->
+                DeLaRed(Persona.ordenar(personas), severidades, equipos.associate { it.ip to it.importancia }, registro)
+            }
+        }
+    }
+
     val estado: StateFlow<DetalleUiState> = combine(
         redes.observarRedActiva(),
         alerta,
         accion,
         conectividad.conectado,
-        combine(descargando, errorDeDescarga) { enCurso, error -> Descarga(enCurso, error) },
-    ) { red, alertaActual, accionActual, conectado, (enCurso, error) ->
+        combine(descargando, errorDeDescarga, deLaRed) { enCurso, error, datos -> Descarga(enCurso, error) to datos },
+    ) { red, alertaActual, accionActual, conectado, (descarga, datos) ->
+        val (enCurso, error) = descarga
         when {
             red == null -> DetalleUiState.SinRed
             alertaActual != null -> DetalleUiState.Contenido(
@@ -105,6 +137,11 @@ class DetalleViewModel(
                 datosDe = red.ultimaSincronizacion,
                 nombreDelTelefono = nombreDelTelefono,
                 nombreDeLaRed = red.nombre,
+                personas = datos.personas,
+                perfil = red.perfil,
+                miId = red.dispositivoId ?: datos.personas.firstOrNull { it.vos }?.id,
+                calculo = CalculoSeveridad.de(alertaActual, datos.severidades, datos.importancias),
+                cambiosDeSeveridad = cambiosDeSeveridad(alertaActual, datos.registro, datos.severidades, datos.importancias),
             )
             enCurso -> DetalleUiState.Cargando
             else -> DetalleUiState.NoDisponible(sinConexion = !conectado, error = error, aviso = avisoRecibido)
@@ -196,6 +233,17 @@ class DetalleViewModel(
             _formulario.value = null
             _cerrar.value = true
         }
+    }
+
+    // ---- Responsable (decisión 42) ----
+
+    /**
+     * Asigna la alerta a [persona], o la deja sin asignar con null: "Asignar a", "Me la asigno" y
+     * "Soltarla". Se ve al instante y sale con la cola, como las revisiones.
+     */
+    fun asignar(persona: Persona?) = conRedActiva { redId ->
+        asignarAlerta(redId, alertaId, persona)
+        enviarAhora(redId)
     }
 
     // ---- Envío que no pudo llegar ----

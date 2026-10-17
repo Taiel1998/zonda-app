@@ -1099,4 +1099,38 @@
     <string name="registro_persona_quitada">Quitó a %1$s del equipo</string>
     <string name="registro_se_quito">Quitó su teléfono del equipo</string>
     <string name="registro_motivo">“%1$s”</string>
+    <!-- Detalle: responsable y asignar (decisión 42; Figma 468-507, 468-726, 468-880 y 468-983) -->
+    <string name="detalle_responsable">Responsable</string>
+    <string name="detalle_sin_asignar">Sin asignar</string>
+    <string name="detalle_asignar">Asignar</string>
+    <string name="detalle_cambiar_responsable">Cambiar</string>
+    <string name="detalle_me_la_asigno">Me la asigno</string>
+    <string name="detalle_soltarla">Soltarla</string>
+    <string name="detalle_asignada_por">Asignada por %1$s · %2$s</string>
+    <string name="detalle_asignada_por_vos">Asignada por vos · %1$s</string>
+    <string name="detalle_te_la_asignaste">Te la asignaste · %1$s</string>
+    <string name="detalle_se_la_asigno">Se la asignó · %1$s</string>
+    <string name="asignar_titulo">Asignar a</string>
+    <string name="asignar_texto">Le llega un aviso por Telegram y la ve en Estado.</string>
+    <string name="asignar_sacar">Sacar la asignación</string>
+
+    <!-- Detalle: cómo se calculó la severidad (decisión 41; Figma 468-1181) -->
+    <string name="calculo_titulo">Cómo se calculó la severidad</string>
+    <string name="calculo_tipo">Tipo de ataque: %1$s</string>
+    <string name="calculo_equipo">Equipo destino: %1$s (%2$s)</string>
+    <string name="calculo_sube">sube un nivel</string>
+    <string name="calculo_baja">baja un nivel</string>
+    <string name="calculo_ya_era">ya era %1$s</string>
+    <string name="calculo_resultado">Resultado</string>
+
+    <!-- Historial: cambios de configuración y asignaciones (decisiones 40 y 42; Figma 468-1315) -->
+    <string name="historial_paso_de">Pasó de %1$s a %2$s</string>
+    <string name="historial_cambio">%1$s cambió %2$s</string>
+    <string name="historial_cambio_con_motivo">%1$s cambió %2$s: “%3$s”</string>
+    <string name="historial_asignada_a">Asignada a %1$s</string>
+    <string name="historial_se_la_asigno">%1$s se la asignó</string>
+    <string name="historial_la_solto">%1$s la soltó</string>
+    <string name="historial_quedo_sin_asignar">Quedó sin asignar</string>
+    <string name="historial_sin_asignar">Sin asignar</string>
+    <string name="historial_saco_la_asignacion">%1$s sacó la asignación</string>
 </resources>

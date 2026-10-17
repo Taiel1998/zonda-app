@@ -27,7 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,12 +41,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.Asignacion
 import ar.edu.uade.zonda.domain.model.AvisoRecibido
+import ar.edu.uade.zonda.domain.model.CambioDeSeveridad
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.lectura
@@ -60,6 +66,7 @@ import ar.edu.uade.zonda.ui.components.EstadoError
 import ar.edu.uade.zonda.ui.components.EstadoVacio
 import ar.edu.uade.zonda.ui.components.EtiquetaConAyuda
 import ar.edu.uade.zonda.ui.components.FilaDato
+import ar.edu.uade.zonda.ui.components.HojaInferior
 import ar.edu.uade.zonda.ui.components.IndicadorEnvio
 import ar.edu.uade.zonda.ui.components.IndicadorEstadoRevision
 import ar.edu.uade.zonda.ui.components.IndicadorSeveridad
@@ -71,6 +78,7 @@ import ar.edu.uade.zonda.ui.components.TituloSeccion
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.nombreEnFrase
+import ar.edu.uade.zonda.ui.nombreCorto
 import ar.edu.uade.zonda.ui.nombreEnHistorial
 import ar.edu.uade.zonda.ui.texto
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
@@ -104,6 +112,8 @@ class AccionesDetalle(
     val alQuedarmeConLaOtra: () -> Unit = {},
     val alReintentarEnvio: () -> Unit = {},
     val alAvisoMostrado: () -> Unit = {},
+    /** Asignar a una persona, o dejarla sin asignar con null (decisión 42). */
+    val alAsignar: (Persona?) -> Unit = {},
 )
 
 /**
@@ -122,6 +132,7 @@ fun DetalleScreen(
         DetalleViewModel(
             obtenerDetalle = contenedor.obtenerDetalleAlerta,
             revisarAlerta = contenedor.revisarAlerta,
+            asignarAlerta = contenedor.asignarAlerta,
             ventana = contenedor.ventanaDeshacer,
             resolverEnvio = contenedor.resolverEnvioRevision,
             sincronizarAlertas = contenedor.sincronizarAlertas,
@@ -167,6 +178,7 @@ fun DetalleScreen(
             alQuedarmeConLaOtra = viewModel::quedarmeConLaOtra,
             alReintentarEnvio = viewModel::reintentarEnvio,
             alAvisoMostrado = viewModel::avisoMostrado,
+            alAsignar = viewModel::asignar,
         ),
     )
 }
@@ -212,6 +224,7 @@ fun DetalleContenido(
 ) {
     val snackbar = remember { SnackbarHostState() }
     val contexto = LocalContext.current
+    var asignando by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(aviso) {
         when (aviso) {
@@ -277,13 +290,22 @@ fun DetalleContenido(
                             BannerSinConexion(datosDe = estado.datosDe, zona = zona)
                         }
                     }
-                    CuerpoDetalle(estado = estado, modo = modo, acciones = acciones, zona = zona, ahora = ahora)
+                    CuerpoDetalle(estado = estado, modo = modo, acciones = acciones, zona = zona, ahora = ahora, alAbrirAsignar = { asignando = true })
                 }
             }
         }
     }
 
     if (formulario != null && alertaVisible != null) HojaRevision(formulario = formulario, alerta = alertaVisible, acciones = acciones)
+    val conPersonas = estado as? DetalleUiState.Contenido
+    if (asignando && conPersonas != null) {
+        HojaInferior(alCerrar = { asignando = false }) {
+            ContenidoHojaAsignar(conPersonas.personas, conPersonas.alerta.asignacion?.responsableId) { persona ->
+                asignando = false
+                acciones.alAsignar(persona)
+            }
+        }
+    }
 }
 
 /** Figma 3-11: 16 de margen y 16 entre piezas. */
@@ -294,6 +316,7 @@ private fun CuerpoDetalle(
     acciones: AccionesDetalle,
     zona: ZoneId,
     ahora: Instant,
+    alAbrirAsignar: () -> Unit,
 ) {
     val alerta = estado.alerta
     val accion = estado.accion
@@ -306,6 +329,21 @@ private fun CuerpoDetalle(
         // En conflicto manda lo que quedó en el servidor, la revisión de la otra persona (Figma 51-2497).
         val estadoVisible = accion?.revisionAjena?.takeIf { modo == ModoDetalle.CONFLICTO }?.let { EstadoRevision.de(it.resultado) } ?: alerta.estadoRevision
         Encabezado(alerta = alerta, estado = estadoVisible, enCola = modo == ModoDetalle.PENDIENTE, envio = accion?.estado, zona = zona)
+        // Figma 468-1086: el cálculo arriba, solo si el equipo destino no es normal.
+        estado.calculo?.takeIf { it.conImportancia }?.let { TarjetaCalculo(it, alerta) }
+        // Figma 468-507: el responsable debajo del encabezado; una alerta revisada sin responsable no lo muestra.
+        if (estado.personas.isNotEmpty() && (alerta.asignacion != null || modo == ModoDetalle.SIN_REVISAR)) {
+            TarjetaResponsable(
+                asignacion = alerta.asignacion,
+                perfil = estado.perfil,
+                miId = estado.miId,
+                zona = zona,
+                ahora = ahora,
+                alAbrirAsignar = alAbrirAsignar,
+                alAsignarme = { estado.personas.firstOrNull { it.id == estado.miId }?.let(acciones.alAsignar) },
+                alSoltar = { acciones.alAsignar(null) },
+            )
+        }
         when (modo) {
             ModoDetalle.SIN_REVISAR -> {
                 DatosDelFlujo(alerta, zona)
@@ -323,7 +361,7 @@ private fun CuerpoDetalle(
             }
             ModoDetalle.REVISADA -> {
                 alerta.revisionActual?.let { TarjetaRevision(it, estado.nombreDelTelefono, zona) }
-                TarjetaHistorial(alerta, estado.nombreDelTelefono, zona)
+                TarjetaHistorial(alerta, estado.nombreDelTelefono, estado.cambiosDeSeveridad, zona)
                 BotonContorno(
                     texto = stringResource(R.string.detalle_cambiar_revision),
                     alTocar = acciones.alRevisar,
@@ -512,8 +550,43 @@ private data class EventoHistorial(val momento: Instant, val titulo: String, val
  * de Telegram aparece con la hora en que salió, que informa el servidor.
  */
 @Composable
-private fun TarjetaHistorial(alerta: Alerta, nombreDelTelefono: String, zona: ZoneId) {
+private fun TarjetaHistorial(alerta: Alerta, nombreDelTelefono: String, cambios: List<CambioDeSeveridad>, zona: ZoneId) {
     val eventos = mutableListOf<EventoHistorial>()
+    // Un cambio de configuración que cambió su color (Figma 468-1315): "Pasó de alta a media".
+    cambios.forEach { cambio ->
+        val registro = cambio.cambio
+        val objeto = registro.tipoDeAtaque?.let { stringResource(it.nombreCorto()).lowercase() } ?: (registro.nombre ?: registro.objeto)
+        val motivo = registro.motivo?.takeIf { it.isNotBlank() }
+        eventos += EventoHistorial(
+            momento = cambio.fecha,
+            titulo = stringResource(
+                R.string.historial_paso_de,
+                stringResource(cambio.antes.etiqueta()).lowercase(),
+                stringResource(cambio.despues.etiqueta()).lowercase(),
+            ),
+            detalle = if (motivo != null) {
+                stringResource(R.string.historial_cambio_con_motivo, registro.autor, objeto, motivo)
+            } else {
+                stringResource(R.string.historial_cambio, registro.autor, objeto)
+            },
+        )
+    }
+    // Las asignaciones (decisión 42): "Asignada a Laura · Taiel", "Laura se la asignó", "Laura la soltó".
+    var anterior: Asignacion? = null
+    alerta.asignaciones.sortedBy { it.fecha }.forEach { asignacion ->
+        val responsable = asignacion.responsable.orEmpty()
+        eventos += when {
+            asignacion.responsableId != null && asignacion.propia ->
+                EventoHistorial(asignacion.fecha, stringResource(R.string.historial_se_la_asigno, responsable), null)
+            asignacion.responsableId != null ->
+                EventoHistorial(asignacion.fecha, stringResource(R.string.historial_asignada_a, responsable), asignacion.por)
+            anterior?.responsableId == asignacion.porId ->
+                EventoHistorial(asignacion.fecha, stringResource(R.string.historial_la_solto, asignacion.por), stringResource(R.string.historial_quedo_sin_asignar))
+            else ->
+                EventoHistorial(asignacion.fecha, stringResource(R.string.historial_sin_asignar), stringResource(R.string.historial_saco_la_asignacion, asignacion.por))
+        }
+        anterior = asignacion
+    }
     alerta.historial.forEach { revision ->
         val autor = autorDe(revision, nombreDelTelefono)
         val titulo = stringResource(
@@ -697,9 +770,14 @@ private fun textoParaCompartir(alerta: Alerta, red: String, zona: ZoneId): Strin
     RutaDetalle.enlaceDelAviso(alerta),
 )
 
-/** El autor de la revisión; las de este teléfono que todavía no salieron llevan su nombre. */
-private fun autorDe(revision: Revision, nombreDelTelefono: String): String =
-    revision.autor ?: nombreDelTelefono
+/**
+ * El autor de la revisión: la persona y su teléfono ("Laura · Teléfono de Laura", decisión 39), o solo el
+ * teléfono si se pareó antes de la 1.0.5. Las de este teléfono que todavía no salieron llevan su nombre.
+ */
+private fun autorDe(revision: Revision, nombreDelTelefono: String): String {
+    val telefono = revision.autor ?: nombreDelTelefono
+    return revision.persona?.takeIf { it != telefono }?.let { "$it · $telefono" } ?: telefono
+}
 
 /** "IA", "IA y umbrales", "IA, umbrales y reglas". */
 private fun enumerar(partes: List<String>): String = when (partes.size) {

@@ -244,3 +244,23 @@ fun BotonEnlace(
         }
     }
 }
+
+/**
+ * El botón chico de la tarjeta Responsable (Figma 468-515): borde gris, esquinas de 18, 14 por 8 de margen
+ * y el texto SemiBold 13 verde ("Asignar", "Cambiar", "Me la asigno", "Soltarla").
+ */
+@Composable
+fun BotonChico(texto: String, alTocar: () -> Unit, modifier: Modifier = Modifier) {
+    SinReservaTactil {
+        OutlinedButton(
+            onClick = alTocar,
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+            modifier = modifier,
+        ) {
+            Text(text = texto, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}

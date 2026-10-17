@@ -3,8 +3,12 @@ package ar.edu.uade.zonda.ui.detalle
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.AvisoRecibido
+import ar.edu.uade.zonda.domain.model.CalculoSeveridad
+import ar.edu.uade.zonda.domain.model.CambioDeSeveridad
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Motivo
+import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import java.time.Instant
 
@@ -27,6 +31,16 @@ sealed interface DetalleUiState {
         val nombreDelTelefono: String = "",
         /** La red de la alerta: el texto que se comparte dice de qué red viene, como el aviso. */
         val nombreDeLaRed: String = "",
+        /** La gente de la red, vos primero: la hoja "Asignar a" (decisión 42). Vacía con un servidor anterior. */
+        val personas: List<Persona> = emptyList(),
+        /** El perfil de este teléfono: decide qué botón tiene la tarjeta Responsable. */
+        val perfil: Perfil = Perfil.ADMINISTRADOR,
+        /** El id de este teléfono en el servidor: "Laura (vos)", "Me la asigno" y "Soltarla". */
+        val miId: String? = null,
+        /** Cómo se calculó la severidad con la importancia del equipo destino (decisión 41). */
+        val calculo: CalculoSeveridad? = null,
+        /** Los cambios de configuración que cambiaron el color de la alerta, para el historial (decisión 40). */
+        val cambiosDeSeveridad: List<CambioDeSeveridad> = emptyList(),
     ) : DetalleUiState
 
     /**
