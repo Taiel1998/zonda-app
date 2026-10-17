@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -20,6 +21,7 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.AvisoRecibido
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
+import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
@@ -102,6 +104,41 @@ class DetalleContenidoTest {
             compartido.endsWith("https://taiel1998.github.io/a/a-1?red=red-1&severidad=alta&servicio=ssh&deteccion=2026-10-12T10%3A50%3A00Z"),
         )
         assertFalse(compartido, "192.168" in compartido || "srv-web" in compartido || "pc-09" in compartido)
+    }
+
+    @Test
+    fun `cada metodo dice con palabras cuanto se paso, sin el umbral ni los numeros con ceros`() {
+        // IA: 0,0412 / 0,0031 = 13 veces; umbrales: 65 conexiones contra 2 = 33 veces; reglas: servicio autorizado.
+        dibujar(contenido(Fixtures.alerta("a-1", metodos = setOf(MetodoDeteccion.IA, MetodoDeteccion.UMBRALES))))
+
+        compose.onNodeWithText("Conexiones en total").assertIsDisplayed()
+        compose.onNodeWithText("13 veces más de lo normal").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("33 veces más de lo normal").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Servicio autorizado").performScrollTo().assertIsDisplayed()
+        // Antes: "error 0,0412 · umbral 0,0031" y "contexto 65 · umbral 2".
+        compose.onAllNodesWithText("· umbral", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("contexto", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("0,0", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("Flujos del episodio").assertCountEquals(0)
+    }
+
+    @Test
+    fun `seis terminos tienen su signo de pregunta, que abre un globito por vez`() {
+        dibujar(contenido(Fixtures.alerta("a-1")))
+        val ayudaIa = "Aprendió cómo es el tráfico normal de tu red y marca lo que se parece poco a eso."
+        val ayudaUmbrales = "Cuentan las conexiones a un mismo servicio en un minuto y marcan si son más que en un día normal."
+
+        listOf("Conexiones en 60 s", "Conexiones en total", "Veredicto por método", "Modelo de IA", "Umbrales estadísticos", "Reglas estáticas")
+            .forEach { termino -> compose.onNodeWithContentDescription("Qué es $termino").assertHasClickAction() }
+        compose.onAllNodesWithText(ayudaIa).assertCountEquals(0)
+
+        compose.onNodeWithContentDescription("Qué es Modelo de IA").performScrollTo().performClick()
+        compose.onNodeWithText(ayudaIa).assertIsDisplayed()
+
+        // Abrir otro cierra el primero: uno por vez.
+        compose.onNodeWithContentDescription("Qué es Umbrales estadísticos").performScrollTo().performClick()
+        compose.onNodeWithText(ayudaUmbrales).assertIsDisplayed()
+        compose.onNodeWithText(ayudaIa).assertDoesNotExist()
     }
 
     @Test
