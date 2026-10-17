@@ -22,6 +22,7 @@ import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.domain.model.Tema
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 
 // Qué texto de strings.xml corresponde a cada valor del dominio. El dominio no conoce los
@@ -313,4 +314,12 @@ fun Importancia.descripcion(): Int = when (this) {
     Importancia.CRITICO -> R.string.importancia_critico_detalle
     Importancia.NORMAL -> R.string.importancia_normal_detalle
     Importancia.POCO_IMPORTANTE -> R.string.importancia_poco_importante_detalle
+}
+
+/** "Como el teléfono", "Claro" u "Oscuro" (decisión 43). */
+@StringRes
+fun Tema.etiqueta(): Int = when (this) {
+    Tema.COMO_EL_TELEFONO -> R.string.tema_como_el_telefono
+    Tema.CLARO -> R.string.tema_claro
+    Tema.OSCURO -> R.string.tema_oscuro
 }

@@ -74,10 +74,8 @@ import ar.edu.uade.zonda.ui.components.HojaTipos
 import ar.edu.uade.zonda.ui.components.TituloDeBloque
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
-import ar.edu.uade.zonda.ui.theme.CremaBarra
 import ar.edu.uade.zonda.ui.theme.Tonos
-import ar.edu.uade.zonda.ui.theme.VerdeZonda
-import ar.edu.uade.zonda.ui.theme.VerdeZondaClaro
+import ar.edu.uade.zonda.ui.theme.ZondaTheme
 import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.ZoneId
@@ -122,15 +120,18 @@ fun ResumenScreen(
                     .clearAndSetSemantics {}
                     .drawWithContent { capa.record { this@drawWithContent.drawContent() } },
             ) {
-                ImagenResumen(
-                    resumen = resumen,
-                    red = estado.red,
-                    datosDe = estado.datosDe,
-                    sinConexion = estado.sinConexion,
-                    zona = zona,
-                    altas = estado.altas,
-                    severidades = estado.severidades,
-                )
+                // La imagen y el PDF son para mandarle a otros: van siempre en claro (decisión 43).
+                ZondaTheme(oscuro = false) {
+                    ImagenResumen(
+                        resumen = resumen,
+                        red = estado.red,
+                        datosDe = estado.datosDe,
+                        sinConexion = estado.sinConexion,
+                        zona = zona,
+                        altas = estado.altas,
+                        severidades = estado.severidades,
+                    )
+                }
             }
         }
         ResumenContenido(
@@ -492,7 +493,7 @@ fun FilaDeTotales(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, mo
         TarjetaTotal(
             numero = resumen.total.toString(),
             rotulo = pluralStringResource(R.plurals.resumen_total_alertas, resumen.total),
-            fondo = CremaBarra,
+            fondo = MaterialTheme.colorScheme.surfaceContainer,
             colorNumero = MaterialTheme.colorScheme.onSurface,
             elegida = false,
             alTocar = { alTocar(ToqueResumen.Total) },
@@ -503,8 +504,8 @@ fun FilaDeTotales(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, mo
         TarjetaTotal(
             numero = resumen.revisadas.toString(),
             rotulo = pluralStringResource(R.plurals.resumen_total_revisadas, resumen.revisadas, porcentaje),
-            fondo = VerdeZondaClaro,
-            colorNumero = VerdeZonda,
+            fondo = MaterialTheme.colorScheme.secondaryContainer,
+            colorNumero = MaterialTheme.colorScheme.primary,
             elegida = revision == RevisionResumen.REVISADAS,
             alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.REVISADAS)) },
             modifier = Modifier
@@ -662,7 +663,7 @@ fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocar: (ToqueResumen) -> U
                 rotulo = stringResource(R.string.resumen_reales),
                 valor = resumen.reales,
                 maximo = maximo,
-                color = VerdeZonda,
+                color = MaterialTheme.colorScheme.primary,
                 elegida = resumen.filtro.revision == RevisionResumen.REALES,
                 alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.REALES)) },
             )

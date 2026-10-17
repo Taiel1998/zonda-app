@@ -6,13 +6,14 @@ import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.ModoAviso
-import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.ModoNotificacion
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.Tema
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
@@ -107,13 +108,19 @@ class AjustesViewModel(
         }
     }
 
-    private data class DelTelefono(val avisos: PreferenciasAvisos, val notificaciones: PreferenciasNotificaciones, val alertasGuardadas: Int)
+    private data class DelTelefono(
+        val avisos: PreferenciasAvisos,
+        val notificaciones: PreferenciasNotificaciones,
+        val alertasGuardadas: Int,
+        val tema: Tema,
+    )
 
     private val delTelefono: Flow<DelTelefono> = combine(
         preferencias.observarAvisos(),
         preferencias.observarNotificaciones(),
         alertas.observarCantidadTotal(),
-    ) { avisos, notificaciones, total -> DelTelefono(avisos, notificaciones, total) }
+        preferencias.observarTema(),
+    ) { avisos, notificaciones, total, tema -> DelTelefono(avisos, notificaciones, total, tema) }
 
     val estado: StateFlow<AjustesUiState> = combine(redesConEstado, deLaRedActiva, delTelefono, controles) { lista, activa, telefono, c ->
         AjustesUiState(
@@ -135,6 +142,7 @@ class AjustesViewModel(
             registro = activa.registro,
             motivo = c.motivo,
             faltaMotivo = c.faltaMotivo,
+            tema = telefono.tema,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AjustesUiState(nombreDelTelefono = nombreDelTelefono))
 
@@ -270,6 +278,13 @@ class AjustesViewModel(
             }
         }
         return true
+    }
+
+    // ---- Apariencia (decisión 43) ----
+
+    /** Se guarda en el teléfono y la app cambia al instante. */
+    fun cambiarTema(tema: Tema) {
+        viewModelScope.launch { preferencias.guardarTema(tema) }
     }
 
     // ---- Datos locales ----

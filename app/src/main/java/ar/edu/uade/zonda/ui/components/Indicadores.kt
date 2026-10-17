@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,17 +39,25 @@ import ar.edu.uade.zonda.ui.theme.ZondaTheme
 // Indicadores del Figma: severidad, estado de revisión, envío pendiente, método de detección y
 // veredicto. El color nunca va solo: siempre con texto (RNF09).
 
+@Composable
+@ReadOnlyComposable
 fun Severidad.tono(): Tono = when (this) {
     Severidad.ALTA -> Tonos.Alta
     Severidad.MEDIA -> Tonos.Media
     Severidad.BAJA -> Tonos.Baja
 }
 
+@Composable
+@ReadOnlyComposable
 fun Severidad.color(): Color = tono().texto
 
+@Composable
+@ReadOnlyComposable
 fun Severidad.fondo(): Color = tono().fondo
 
 /** Sin revisar en azul, revisada en verde y falso positivo en gris, como en la lista del Figma (2-3). */
+@Composable
+@ReadOnlyComposable
 fun EstadoRevision.tono(): Tono = when (this) {
     EstadoRevision.SIN_REVISAR -> Tonos.Info
     EstadoRevision.ATAQUE_REAL -> Tonos.Baja

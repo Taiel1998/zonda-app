@@ -30,8 +30,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
-import ar.edu.uade.zonda.ui.theme.TextoGlobito
 import ar.edu.uade.zonda.ui.theme.nota
+import ar.edu.uade.zonda.ui.theme.zonda
 import kotlinx.coroutines.launch
 
 /**
@@ -54,7 +54,7 @@ fun AyudaGlobito(termino: String, ayuda: String, modifier: Modifier = Modifier) 
                 caretShape = TooltipDefaults.caretShape(TAMANIO_FLECHITA),
                 shape = RoundedCornerShape(4.dp),
                 containerColor = MaterialTheme.colorScheme.inverseSurface,
-                contentColor = TextoGlobito,
+                contentColor = MaterialTheme.zonda.textoGlobito,
             ) {
                 // Material deja 4 arriba y abajo; el Figma, 6.
                 Text(text = ayuda, style = MaterialTheme.typography.nota, modifier = Modifier.padding(vertical = 2.dp))

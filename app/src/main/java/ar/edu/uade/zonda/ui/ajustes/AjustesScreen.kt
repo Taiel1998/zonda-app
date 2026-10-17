@@ -3,12 +3,14 @@ package ar.edu.uade.zonda.ui.ajustes
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -16,6 +18,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +38,7 @@ import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.Tema
 import ar.edu.uade.zonda.ui.EstadoPermiso
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.abrirAjustesDeNotificaciones
@@ -43,11 +47,15 @@ import ar.edu.uade.zonda.ui.components.BarraSuperior
 import ar.edu.uade.zonda.ui.components.BotonTonal
 import ar.edu.uade.zonda.ui.components.BotonTonalPeligro
 import ar.edu.uade.zonda.ui.components.FilaNavegable
+import ar.edu.uade.zonda.ui.components.FilaRadio
 import ar.edu.uade.zonda.ui.components.FilaTexto
 import ar.edu.uade.zonda.ui.components.HojaConfirmacion
+import ar.edu.uade.zonda.ui.components.HojaInferior
+import ar.edu.uade.zonda.ui.components.Opcion
 import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
 import ar.edu.uade.zonda.ui.components.TarjetaAdvertencia
 import ar.edu.uade.zonda.ui.components.TarjetaSeccion
+import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.navigation.AlRetocarPestania
 import ar.edu.uade.zonda.ui.navigation.Rutas
@@ -55,6 +63,7 @@ import ar.edu.uade.zonda.ui.nombreDelBot
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.rememberPermisoNotificaciones
+import ar.edu.uade.zonda.ui.theme.tituloHoja
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.Instant
 import java.time.ZoneId
@@ -113,6 +122,7 @@ fun AjustesScreen(
             alAgregarRed = alAgregarRed,
             alQuedarSinRedes = alQuedarSinRedes,
             alAvisoMostrado = viewModel::avisoMostrado,
+            alCambiarTema = viewModel::cambiarTema,
         ),
     )
 }
@@ -157,9 +167,11 @@ data class AccionesAjustes(
     val alAgregarRed: () -> Unit = {},
     val alQuedarSinRedes: () -> Unit = {},
     val alAvisoMostrado: () -> Unit = {},
+    /** Ajustes → Apariencia → Tema (decisión 43; Figma 468-3594). */
+    val alCambiarTema: (Tema) -> Unit = {},
 )
 
-private enum class HojaAjustes { BORRAR_DATOS, QUITAR_DISPOSITIVO }
+private enum class HojaAjustes { BORRAR_DATOS, QUITAR_DISPOSITIVO, TEMA }
 
 @Composable
 fun AjustesContenido(
@@ -297,6 +309,15 @@ fun AjustesContenido(
                 }
             }
 
+            // Después de Avisos: se usa menos (Figma 4-66).
+            TarjetaSeccion(titulo = stringResource(R.string.ajustes_seccion_apariencia)) {
+                FilaNavegable(
+                    titulo = stringResource(R.string.ajustes_tema),
+                    detalle = stringResource(estado.tema.etiqueta()),
+                    alTocar = { hoja = HojaAjustes.TEMA },
+                )
+            }
+
             TarjetaSeccion(titulo = stringResource(R.string.ajustes_datos_locales)) {
                 FilaTexto(
                     titulo = stringResource(R.string.ajustes_ultima_sincronizacion),
@@ -361,7 +382,38 @@ fun AjustesContenido(
                 alCerrar = { hoja = null },
             )
         }
+        HojaAjustes.TEMA -> HojaInferior(alCerrar = { hoja = null }) {
+            ContenidoHojaTema(
+                elegido = estado.tema,
+                alElegir = { tema ->
+                    hoja = null
+                    acciones.alCambiarTema(tema)
+                },
+            )
+        }
         null -> Unit
+    }
+}
+
+/**
+ * "Tema" (decisión 43; Figma 468-3594): una sola opción que se cierra al elegir, como la de los avisos.
+ * De fábrica, como el teléfono.
+ */
+@Composable
+fun ColumnScope.ContenidoHojaTema(elegido: Tema, alElegir: (Tema) -> Unit) {
+    Text(text = stringResource(R.string.ajustes_tema), style = MaterialTheme.typography.tituloHoja)
+    Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Tema.entries.forEach { tema ->
+            FilaRadio(
+                opcion = Opcion(
+                    valor = tema,
+                    titulo = stringResource(tema.etiqueta()),
+                    detalle = if (tema == Tema.COMO_EL_TELEFONO) stringResource(R.string.tema_como_el_telefono_detalle) else null,
+                ),
+                elegida = elegido == tema,
+                alElegir = { alElegir(tema) },
+            )
+        }
     }
 }
 

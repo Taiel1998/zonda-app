@@ -42,7 +42,7 @@ import ar.edu.uade.zonda.ui.components.Panel
 import ar.edu.uade.zonda.ui.components.TituloDeBloque
 import ar.edu.uade.zonda.ui.detector
 import ar.edu.uade.zonda.ui.etiqueta
-import ar.edu.uade.zonda.ui.theme.TextoNota
+import ar.edu.uade.zonda.ui.theme.zonda
 
 /**
  * Severidad de cada tipo de ataque (RF05 y RF06; Figma 66-3212). Vale para todos los teléfonos de la
@@ -136,7 +136,7 @@ fun NotaSoloLectura(texto: String, modifier: Modifier = Modifier) {
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(12.dp), modifier = modifier.fillMaxWidth()) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(imageVector = Icons.Outlined.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-            Text(text = texto, style = MaterialTheme.typography.bodySmall, color = TextoNota)
+            Text(text = texto, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.zonda.textoNota)
         }
     }
 }

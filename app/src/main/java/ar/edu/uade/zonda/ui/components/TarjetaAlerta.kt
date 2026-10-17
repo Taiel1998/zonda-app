@@ -34,10 +34,10 @@ import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.ui.ContextoTarjetas
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.etiqueta
-import ar.edu.uade.zonda.ui.theme.TextoNota
 import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.theme.rotulo
+import ar.edu.uade.zonda.ui.theme.zonda
 import java.time.ZoneId
 
 /**
@@ -95,8 +95,8 @@ private fun ChipResponsable(nombre: String) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(Icons.Outlined.Person, contentDescription = null, tint = TextoNota, modifier = Modifier.size(13.dp))
-            Text(text = nombre, style = MaterialTheme.typography.rotulo, color = TextoNota, maxLines = 1)
+            Icon(Icons.Outlined.Person, contentDescription = null, tint = MaterialTheme.zonda.textoNota, modifier = Modifier.size(13.dp))
+            Text(text = nombre, style = MaterialTheme.typography.rotulo, color = MaterialTheme.zonda.textoNota, maxLines = 1)
         }
     }
 }

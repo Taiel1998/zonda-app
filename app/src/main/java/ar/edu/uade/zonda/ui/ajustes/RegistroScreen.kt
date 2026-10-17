@@ -34,9 +34,9 @@ import ar.edu.uade.zonda.ui.components.BarraSuperior
 import ar.edu.uade.zonda.ui.components.Panel
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.nombreCorto
-import ar.edu.uade.zonda.ui.theme.TextoNota
 import ar.edu.uade.zonda.ui.theme.rotulo
 import ar.edu.uade.zonda.ui.theme.valor
+import ar.edu.uade.zonda.ui.theme.zonda
 import java.time.Instant
 import java.time.ZoneId
 
@@ -95,7 +95,7 @@ private fun FilaCambio(cambio: CambioRegistro, zona: ZoneId, ahora: Instant) {
             )
             Text(text = tituloDelCambio(cambio), style = MaterialTheme.typography.valor)
             cambio.motivo?.takeIf { it.isNotBlank() }?.let { motivo ->
-                Text(text = stringResource(R.string.registro_motivo, motivo), style = MaterialTheme.typography.bodySmall, color = TextoNota)
+                Text(text = stringResource(R.string.registro_motivo, motivo), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.zonda.textoNota)
             }
         }
     }

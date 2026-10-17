@@ -10,6 +10,7 @@ import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.Tema
 
 /** Una red con lo que muestra la pantalla Redes: sus alertas sin revisar y cuántas guarda el teléfono. */
 data class RedConEstado(
@@ -53,6 +54,8 @@ data class AjustesUiState(
     val motivo: String? = null,
     /** Se tocó "Guardar cambios" sin motivo: la hoja dice "Escribí por qué la cambiás.". */
     val faltaMotivo: Boolean = false,
+    /** Ajustes → Apariencia → Tema (decisión 43). */
+    val tema: Tema = Tema.COMO_EL_TELEFONO,
 ) {
     /** El perfil de este teléfono en la red activa: los botones de configuración son del administrador. */
     val perfil: Perfil

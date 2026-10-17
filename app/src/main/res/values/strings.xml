@@ -1168,4 +1168,11 @@
     <string name="canal_asignaciones_descripcion">Avisa cuando otra persona te asigna una alerta.</string>
     <string name="notificacion_asignada_titulo">%1$s te asignó una alerta %2$s · %3$s · %4$s</string>
     <string name="notificacion_asignada_texto">Tocá para ver el detalle en Zonda.</string>
+    <!-- Ajustes → Apariencia → Tema (decisión 43; Figma 4-66 y 468-3594) -->
+    <string name="ajustes_seccion_apariencia">Apariencia</string>
+    <string name="ajustes_tema">Tema</string>
+    <string name="tema_como_el_telefono">Como el teléfono</string>
+    <string name="tema_como_el_telefono_detalle">Cambia solo cuando el teléfono pasa a oscuro.</string>
+    <string name="tema_claro">Claro</string>
+    <string name="tema_oscuro">Oscuro</string>
 </resources>

@@ -61,9 +61,9 @@ import ar.edu.uade.zonda.ui.components.BotonContorno
 import ar.edu.uade.zonda.ui.components.BotonEnlace
 import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.components.BotonTonal
-import ar.edu.uade.zonda.ui.components.Etiqueta
 import ar.edu.uade.zonda.ui.components.EstadoError
 import ar.edu.uade.zonda.ui.components.EstadoVacio
+import ar.edu.uade.zonda.ui.components.Etiqueta
 import ar.edu.uade.zonda.ui.components.EtiquetaConAyuda
 import ar.edu.uade.zonda.ui.components.FilaDato
 import ar.edu.uade.zonda.ui.components.HojaInferior
@@ -77,13 +77,12 @@ import ar.edu.uade.zonda.ui.components.TarjetaTono
 import ar.edu.uade.zonda.ui.components.TituloSeccion
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
-import ar.edu.uade.zonda.ui.nombreEnFrase
 import ar.edu.uade.zonda.ui.nombreCorto
+import ar.edu.uade.zonda.ui.nombreEnFrase
 import ar.edu.uade.zonda.ui.nombreEnHistorial
-import ar.edu.uade.zonda.ui.texto
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
-import ar.edu.uade.zonda.ui.theme.CremaBarra
+import ar.edu.uade.zonda.ui.texto
 import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.encabezado
 import ar.edu.uade.zonda.ui.theme.nota
@@ -715,7 +714,7 @@ private fun PendienteDeDescarga(estado: DetalleUiState.NoDisponible, acciones: A
             LoQueTrajoElAviso(aviso, zona)
         }
         // Figma 51-2609: recuadro crema con el título SemiBold 14 y el texto Regular 13, los dos grises.
-        Surface(color = CremaBarra, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(text = stringResource(R.string.detalle_descarga_titulo), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(text = stringResource(R.string.detalle_descarga_texto), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
