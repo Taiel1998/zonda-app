@@ -1,6 +1,9 @@
 package ar.edu.uade.zonda.ui.resumen
 
 import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.semantics.SemanticsActions
@@ -18,6 +21,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.FiltroResumen
@@ -35,6 +39,8 @@ import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.model.ToqueResumen
 import ar.edu.uade.zonda.ui.theme.Texto
 import ar.edu.uade.zonda.ui.theme.TextoSecundario
+import ar.edu.uade.zonda.ui.theme.VerdeZonda
+import ar.edu.uade.zonda.ui.theme.VerdeZondaClaro
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
 import java.time.Duration
 import java.time.LocalDate
@@ -340,6 +346,28 @@ class ResumenContenidoTest {
 
         compose.onNodeWithText("Filtros: viernes 09/10 · fuerza bruta").assertExists()
         compose.onNodeWithText("Mostrando 0 alertas: viernes · fuerza bruta.").assertExists()
+    }
+
+    @Test
+    fun `si el rotulo de un total no entra, la letra se achica y el porcentaje no se corta`() {
+        // Visto en el moto el 17/10: en los 380 de la imagen, "revisadas · 87 %" se cortaba en el último
+        // espacio y el PDF decía "20 revisadas · 87". Acá, una tarjeta angosta con "100 %".
+        val rotulo = "revisadas · 100 %"
+        compose.setContent {
+            ZondaTheme {
+                Box(modifier = Modifier.width(96.dp)) {
+                    TarjetaTotal(numero = "20", rotulo = rotulo, fondo = VerdeZondaClaro, colorNumero = VerdeZonda, elegida = false, alTocar = {})
+                }
+            }
+        }
+
+        val resultados = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(rotulo, useUnmergedTree = true).fetchSemanticsNode()
+            .config[SemanticsActions.GetTextLayoutResult].action?.invoke(resultados)
+        val dibujado = resultados.first()
+        assertFalse(dibujado.hasVisualOverflow)
+        assertEquals(1, dibujado.lineCount)
+        assertEquals(rotulo.length, dibujado.getLineEnd(0))
     }
 
     private val paraCompartir = ResumenParaCompartir(
