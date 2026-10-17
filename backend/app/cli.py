@@ -1,9 +1,9 @@
 """Comandos de administración del servidor (informe, sección 13.4). Se corren en la computadora
 donde está la API; no hay interfaz web de administración.
 
-    zonda pair                       genera un código de pareo de un uso (10 minutos) y lo muestra como QR
+    zonda pair [--nombre N]          genera un código de pareo de administrador de un uso (10 minutos) y lo muestra como QR
     zonda revoke <id>                revoca el token de un teléfono
-    zonda dispositivos               lista los teléfonos pareados
+    zonda dispositivos               lista los teléfonos pareados, con su persona y su perfil
     zonda emitir [tipo] [servicio]   crea ya una alerta nueva de ese tipo, para la demo (sin nada, fuerza bruta por SSH)
     zonda tranquila [--nombre N]     otra persona revisa desde su teléfono las altas y medias sin revisar, para la demo
 """
@@ -13,29 +13,34 @@ import sqlite3
 import sys
 import uuid
 
-from .auth import ahora, canjear_codigo_pareo, crear_codigo_pareo, iso
+from .auth import ahora, canjear_codigo_pareo, contenido_qr, crear_codigo_pareo, iso
 from .config import RAIZ, Config
 from .db import Base
 from .emisor import emitir_una
 from .modelos import TIPOS_SEVERIDAD, RevisionEntrada
+from .personas import activos
+from .registro import anotar
 from .revisiones import aplicar_revision
 from .semilla import severidad_de
 
-# La otra persona del equipo que deja la red tranquila en la demo, con el nombre de su teléfono.
+# La otra persona del equipo que deja la red tranquila en la demo, con el nombre de su teléfono. Entra
+# como analista: revisa alertas, no cambia la configuración (decisión 39).
 NOMBRE_OTRO_TELEFONO = "Teléfono de Laura"
+PERSONA_OTRO_TELEFONO = "Laura"
 COMENTARIO_TRANQUILA = "Revisada desde otro teléfono del equipo."
 
-
-def contenido_qr(url_publica: str, codigo: str, vence) -> str:
-    """Lo que lleva el QR: la dirección, el código y cuándo vence (la app muestra "válido hasta las HH:MM")."""
-    return f"zonda:{url_publica}#{codigo};vence={iso(vence)}"
+__all__ = ["contenido_qr", "main"]
 
 
-def comando_pair(base: Base, cfg: Config) -> int:
+def comando_pair(base: Base, cfg: Config, nombre: str | None = None) -> int:
+    """El primer administrador sale de la terminal: los códigos de zonda pair son de administrador. A
+    los demás los suma un administrador desde la app (Ajustes → Personas)."""
+    persona = nombre.strip() if nombre and nombre.strip() else None
     with base.transaccion() as con:
-        codigo, vence = crear_codigo_pareo(con, cfg.minutos_codigo)
+        codigo, vence = crear_codigo_pareo(con, cfg.minutos_codigo, persona=persona, perfil="administrador")
     contenido = contenido_qr(cfg.url_publica, codigo, vence)
-    print(f"Código de pareo: {codigo}   (vence {vence.astimezone().strftime('%H:%M')}, un solo uso)")
+    para = f" para {persona}" if persona else ""
+    print(f"Código de pareo de administrador{para}: {codigo}   (vence {vence.astimezone().strftime('%H:%M')}, un solo uso)")
     print(f"Dirección de la red: {cfg.url_publica}")
     try:
         import qrcode
@@ -61,13 +66,19 @@ def comando_pair(base: Base, cfg: Config) -> int:
 
 
 def comando_revoke(base: Base, dispositivo_id: str) -> int:
+    """Desde la terminal se puede quitar a cualquiera, también al último administrador: si pasa, avisa
+    cómo sumar uno nuevo. Queda en el registro de cambios a nombre del servidor."""
     with base.transaccion() as con:
         fila = con.execute("SELECT * FROM dispositivos WHERE id = ?", (dispositivo_id,)).fetchone()
         if fila is None:
             print(f"No existe el dispositivo {dispositivo_id}")
             return 1
         con.execute("UPDATE dispositivos SET revocado_en = ? WHERE id = ?", (iso(ahora()), dispositivo_id))
+        anotar(con, "persona_quitada", None, objeto=dispositivo_id, nombre=fila["persona"] or fila["nombre"], antes=fila["perfil"])
+        quedan = activos(con)
     print(f"Token de {fila['nombre']} ({dispositivo_id}) revocado. La app va a pedir un pareo nuevo.")
+    if quedan and not any(f["perfil"] == "administrador" for f in quedan):
+        print("Ojo: no queda ningún administrador. Generá un código de administrador con zonda pair --nombre <nombre>.")
     return 0
 
 
@@ -79,7 +90,8 @@ def comando_dispositivos(base: Base) -> int:
     for f in filas:
         estado = "revocado" if f["revocado_en"] else ("vencido" if f["vence_en"] < iso(ahora()) else "activo")
         telegram = "Telegram vinculado" if f["telegram_chat_id"] else "sin Telegram"
-        print(f"{f['id']}  {f['nombre']:<24} {estado:<9} vence {f['vence_en'][:10]}  {telegram}")
+        persona = f["persona"] or "-"
+        print(f"{f['id']}  {persona:<12} {f['nombre']:<24} {f['perfil']:<13} {estado:<9} vence {f['vence_en'][:10]}  {telegram}")
     return 0
 
 
@@ -100,16 +112,20 @@ def comando_emitir(base: Base, tipo: str | None, servicio: str | None) -> int:
     return 0
 
 
-def telefono_de(con: sqlite3.Connection, cfg: Config, nombre: str) -> sqlite3.Row:
-    """El teléfono pareado con ese nombre o, si no hay ninguno activo, uno nuevo, pareado como lo hace la
-    app: con un código de un uso que se canjea en el momento. Su token no lo recibe nadie."""
+def telefono_de(con: sqlite3.Connection, cfg: Config, nombre: str, persona: str | None = None) -> sqlite3.Row:
+    """El teléfono pareado con ese nombre o, si no hay ninguno activo, uno nuevo, pareado como analista
+    como lo hace la app: con un código de un uso que se canjea en el momento. Su token no lo recibe
+    nadie. Si el teléfono es de antes de la 1.0.5 (sin persona), toma el nombre de [persona]."""
     fila = con.execute(
         "SELECT * FROM dispositivos WHERE nombre = ? AND revocado_en IS NULL AND vence_en > ? ORDER BY creado_en DESC",
         (nombre, iso(ahora())),
     ).fetchone()
     if fila is not None:
+        if fila["persona"] is None and persona:
+            con.execute("UPDATE dispositivos SET persona = ? WHERE id = ?", (persona, fila["id"]))
+            fila = con.execute("SELECT * FROM dispositivos WHERE id = ?", (fila["id"],)).fetchone()
         return fila
-    codigo, _ = crear_codigo_pareo(con, cfg.minutos_codigo)
+    codigo, _ = crear_codigo_pareo(con, cfg.minutos_codigo, persona=persona, perfil="analista")
     nuevo = canjear_codigo_pareo(con, codigo, nombre, cfg.dias_token)
     return con.execute("SELECT * FROM dispositivos WHERE id = ?", (nuevo["dispositivoId"],)).fetchone()
 
@@ -119,6 +135,7 @@ def comando_tranquila(base: Base, cfg: Config, nombre: str) -> int:
     altas y medias sin revisar. Usa la misma función que la ruta de revisión, así el historial del detalle
     muestra su teléfono y los demás se enteran al sincronizar. Las bajas no cambian el color de Estado."""
     nombre = nombre.strip() or NOMBRE_OTRO_TELEFONO
+    persona = PERSONA_OTRO_TELEFONO if nombre == NOMBRE_OTRO_TELEFONO else nombre
     with base.transaccion() as con:
         sin_revisar = con.execute("SELECT * FROM alertas WHERE estado_revision = 'sin_revisar' ORDER BY secuencia").fetchall()
         severidades = {fila["id"]: severidad_de(con, fila) for fila in sin_revisar}
@@ -126,7 +143,7 @@ def comando_tranquila(base: Base, cfg: Config, nombre: str) -> int:
         if not pendientes:
             print("No hay altas ni medias sin revisar: la red ya está tranquila.")
             return 0
-        telefono = telefono_de(con, cfg, nombre)
+        telefono = telefono_de(con, cfg, nombre, persona)
         for alerta in pendientes:
             entrada = RevisionEntrada(
                 accionId=str(uuid.uuid4()), resultado="falso_positivo", motivo="tarea_programada", comentario=COMENTARIO_TRANQUILA
@@ -145,7 +162,8 @@ def comando_tranquila(base: Base, cfg: Config, nombre: str) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="zonda", description="Administración del servidor de Zonda")
     sub = parser.add_subparsers(dest="comando", required=True)
-    sub.add_parser("pair", help="genera un código de pareo y su QR")
+    pair = sub.add_parser("pair", help="genera un código de pareo de administrador y su QR")
+    pair.add_argument("--nombre", help="el nombre de la persona que lo va a usar (Taiel, Meli)")
     revoke = sub.add_parser("revoke", help="revoca el token de un teléfono")
     revoke.add_argument("dispositivo_id")
     sub.add_parser("dispositivos", help="lista los teléfonos pareados")
@@ -160,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     base = Base(cfg.db_path)
     base.iniciar()
     if args.comando == "pair":
-        return comando_pair(base, cfg)
+        return comando_pair(base, cfg, args.nombre)
     if args.comando == "revoke":
         return comando_revoke(base, args.dispositivo_id)
     if args.comando == "emitir":

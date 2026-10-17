@@ -7,10 +7,16 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 
+from . import personas as gente
+from . import registro
+from .asignaciones import asignaciones_de, asignar, responsable_de
 from .auth import (
+    administrador_actual,
     ahora,
     buscar_dispositivo,
     canjear_codigo_pareo,
+    contenido_qr,
+    crear_codigo_pareo,
     dispositivo_actual,
     iso,
     nuevo_codigo,
@@ -22,31 +28,40 @@ from .modelos import (
     TIPOS_SEVERIDAD,
     Alerta,
     AlertaIngesta,
+    AsignacionEntrada,
     AvisosTelegram,
+    CambioRegistro,
     Catalogo,
+    CodigoPersona,
+    CodigoPersonaEntrada,
     Conflicto,
     Contadores,
+    Equipo,
     Estado,
     EstadoRevision,
     EstadoTelegram,
+    ImportanciaEntrada,
     IngestaEntrada,
     IngestaResultado,
     PaginaAlertas,
     PareoEntrada,
     PareoSalida,
+    PerfilEntrada,
+    Persona,
     Revision,
     RevisionEntrada,
     Salud,
     Severidad,
+    SeveridadesEntrada,
     Veredictos,
     VinculoEntrada,
     VinculoTelegram,
 )
 from .revisiones import aplicar_revision
-from .semilla import SQL_SEVERIDAD, severidad_de
+from .semilla import SQL_SEVERIDAD, guardar_equipo, severidad_de
 from .telegram import BotTelegram, ErrorTelegram
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 router = APIRouter()
 
@@ -76,10 +91,12 @@ def revision_dto(fila: sqlite3.Row) -> Revision:
         autor=fila["autor"],
         fecha=fila["fecha"],
         revisadaEn=fila["revisada_en"],
+        persona=fila["persona"],
     )
 
 
 def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
+    asignaciones = asignaciones_de(con, fila["id"])
     return Alerta(
         id=fila["id"],
         creadaEn=fila["creada_en"],
@@ -116,6 +133,8 @@ def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
         version=fila["version"],
         actualizadaEn=fila["actualizada_en"],
         avisoTelegram=fila["aviso_telegram_en"],
+        asignacion=responsable_de(asignaciones),
+        asignaciones=asignaciones,
     )
 
 
@@ -137,13 +156,14 @@ def salud(request: Request, authorization: Annotated[str | None, Header()] = Non
 
 @router.get("/estado", response_model=Estado)
 def estado(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> Estado:
-    """Alertas sin revisar por severidad y hora del último flujo procesado (RF01)."""
+    """Alertas sin revisar por severidad final (la del tipo, ajustada por el equipo destino) y hora del
+    último flujo procesado (RF01)."""
     base = _base(request)
     con = base.conexion()
     contadores = {"alta": 0, "media": 0, "baja": 0}
     for fila in con.execute(
-        "SELECT tipo_ataque, veredicto_reglas, veredicto_umbrales, COUNT(*) AS n FROM alertas "
-        "WHERE estado_revision = 'sin_revisar' GROUP BY tipo_ataque, veredicto_reglas, veredicto_umbrales"
+        "SELECT tipo_ataque, veredicto_reglas, veredicto_umbrales, destino_ip, COUNT(*) AS n FROM alertas "
+        "WHERE estado_revision = 'sin_revisar' GROUP BY tipo_ataque, veredicto_reglas, veredicto_umbrales, destino_ip"
     ):
         contadores[severidad_de(con, fila)] += fila["n"]
     return Estado(sinRevisar=Contadores(**contadores), ultimoFlujoProcesado=base.leer_meta("ultimo_flujo"), horaServidor=iso(ahora()))
@@ -252,19 +272,30 @@ def leer_severidades(request: Request, dispositivo: sqlite3.Row = Depends(dispos
     return {f["tipo_ataque"]: f["severidad"] for f in con.execute("SELECT * FROM severidades ORDER BY tipo_ataque")}
 
 
+def _marcar_modificadas(con: sqlite3.Connection, donde: str = "", parametros: tuple = ()) -> None:
+    """Mueve la secuencia de esas alertas (todas, sin [donde]) para que los teléfonos las vuelvan a bajar."""
+    momento = iso(ahora())
+    for fila in con.execute(f"SELECT id FROM alertas {donde} ORDER BY secuencia", parametros).fetchall():
+        con.execute("UPDATE alertas SET secuencia = ?, actualizada_en = ? WHERE id = ?", (Base.siguiente_secuencia(con), momento, fila["id"]))
+
+
 @router.put("/severidades")
-def guardar_severidades(entrada: dict[str, Severidad], request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> dict[str, str]:
-    """Severidad por tipo para toda la red (RF06). Marca todas las alertas como modificadas para que los teléfonos las vuelvan a bajar."""
-    desconocidas = set(entrada) - set(TIPOS_SEVERIDAD)
+def guardar_severidades(entrada: SeveridadesEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> dict[str, str]:
+    """Severidad por tipo para toda la red (RF06). Solo un administrador y con motivo (decisiones 39 y
+    40): cada tipo que cambia queda en el registro con ese motivo. Marca todas las alertas como
+    modificadas para que los teléfonos las vuelvan a bajar."""
+    desconocidas = set(entrada.severidades) - set(TIPOS_SEVERIDAD)
     if desconocidas:
         raise HTTPException(status_code=422, detail=f"Tipos desconocidos: {', '.join(sorted(desconocidas))}")
     base = _base(request)
     with base.transaccion() as con:
-        for tipo, severidad in entrada.items():
+        actuales = {f["tipo_ataque"]: f["severidad"] for f in con.execute("SELECT * FROM severidades")}
+        cambios = {tipo: severidad for tipo, severidad in entrada.severidades.items() if actuales.get(tipo) != severidad}
+        for tipo, severidad in cambios.items():
             con.execute("INSERT INTO severidades (tipo_ataque, severidad) VALUES (?, ?) ON CONFLICT(tipo_ataque) DO UPDATE SET severidad = excluded.severidad", (tipo, severidad))
-        momento = iso(ahora())
-        for fila in con.execute("SELECT id FROM alertas ORDER BY secuencia").fetchall():
-            con.execute("UPDATE alertas SET secuencia = ?, actualizada_en = ? WHERE id = ?", (Base.siguiente_secuencia(con), momento, fila["id"]))
+            registro.anotar(con, "severidad", administrador, objeto=tipo, antes=actuales.get(tipo), despues=severidad, motivo=entrada.motivo)
+        if cambios:
+            _marcar_modificadas(con)
         return {f["tipo_ataque"]: f["severidad"] for f in con.execute("SELECT * FROM severidades ORDER BY tipo_ataque")}
 
 
@@ -283,6 +314,8 @@ def parear(entrada: PareoEntrada, request: Request) -> PareoSalida:
         vence=datos["vence"],
         dispositivoId=datos["dispositivoId"],
         alertas30Dias=recientes,
+        perfil=datos["perfil"],
+        persona=datos["persona"],
     )
 
 
@@ -392,10 +425,99 @@ def guardar_avisos_telegram(entrada: AvisosTelegram, request: Request, dispositi
 
 @router.delete("/dispositivos/actual", status_code=204)
 def quitar_dispositivo(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> Response:
-    """Revoca el token de este teléfono; la app borra sus datos locales."""
+    """Revoca el token de este teléfono; la app borra sus datos locales. Queda en el registro de
+    cambios. 409 si es el último administrador y queda más gente (decisión 39)."""
     with _base(request).transaccion() as con:
-        con.execute("UPDATE dispositivos SET revocado_en = ? WHERE id = ?", (iso(ahora()), dispositivo["id"]))
+        gente.quitar(con, dispositivo, autor=dispositivo)
     return Response(status_code=204)
+
+
+# ---- Personas, equipos y registro de cambios (decisiones 39, 40 y 41) ----
+
+
+@router.get("/personas", response_model=list[Persona])
+def personas(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> list[Persona]:
+    """La gente de la red con su perfil, su teléfono y cuándo lo usó por última vez. La ven todos."""
+    con = _base(request).conexion()
+    return [gente.persona_dto(fila, vos=fila["id"] == dispositivo["id"]) for fila in gente.activos(con)]
+
+
+@router.post("/personas/codigo", response_model=CodigoPersona)
+def codigo_para_persona(entrada: CodigoPersonaEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> CodigoPersona:
+    """Agregar persona: un código de un uso (10 minutos) con el nombre y el perfil de quien se suma, y lo
+    que lleva su QR. Al usarlo, queda en el registro a nombre de este administrador."""
+    cfg = request.app.state.config
+    with _base(request).transaccion() as con:
+        codigo, vence = crear_codigo_pareo(con, cfg.minutos_codigo, persona=entrada.nombre, perfil=entrada.perfil, creado_por=administrador["id"])
+    return CodigoPersona(codigo=codigo, vence=iso(vence), contenido=contenido_qr(cfg.url_publica, codigo, vence), nombre=entrada.nombre, perfil=entrada.perfil)
+
+
+def _persona_activa(con: sqlite3.Connection, persona_id: str) -> sqlite3.Row:
+    fila = gente.activo(con, persona_id)
+    if fila is None:
+        raise HTTPException(status_code=404, detail="Esa persona no está en el equipo")
+    return fila
+
+
+@router.put("/personas/{persona_id}/perfil", response_model=Persona)
+def cambiar_perfil(persona_id: str, entrada: PerfilEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Persona:
+    """Hacer administrador o pasar a analista. 409 si deja al equipo sin administrador."""
+    with _base(request).transaccion() as con:
+        gente.cambiar_perfil(con, _persona_activa(con, persona_id), entrada.perfil, autor=administrador)
+        return gente.persona_dto(_persona_activa(con, persona_id), vos=persona_id == administrador["id"])
+
+
+@router.delete("/personas/{persona_id}", status_code=204)
+def quitar_persona(persona_id: str, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Response:
+    """Quitar del equipo: revoca el token de ese teléfono. 409 si deja gente sin administrador."""
+    with _base(request).transaccion() as con:
+        gente.quitar(con, _persona_activa(con, persona_id), autor=administrador)
+    return Response(status_code=204)
+
+
+def _equipo_dto(fila: sqlite3.Row) -> Equipo:
+    return Equipo(ip=fila["ip"], nombre=fila["nombre"], importancia=fila["importancia"])
+
+
+@router.get("/equipos", response_model=list[Equipo])
+def equipos(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> list[Equipo]:
+    """Los equipos de la red con nombre en el catálogo y su importancia (Ajustes → Equipos)."""
+    con = _base(request).conexion()
+    return [_equipo_dto(fila) for fila in con.execute("SELECT * FROM catalogo_equipos ORDER BY nombre, ip")]
+
+
+@router.put("/equipos/{ip}", response_model=Equipo)
+def cambiar_importancia(ip: str, entrada: ImportanciaEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Equipo:
+    """La importancia de un equipo (decisión 41), con motivo. Recategoriza sus alertas, las viejas y las
+    nuevas: se mueven para que los teléfonos las vuelvan a bajar con la severidad nueva."""
+    with _base(request).transaccion() as con:
+        fila = con.execute("SELECT * FROM catalogo_equipos WHERE ip = ?", (ip,)).fetchone()
+        if fila is None:
+            raise HTTPException(status_code=404, detail="Ese equipo no está en el catálogo")
+        if fila["importancia"] != entrada.importancia:
+            con.execute("UPDATE catalogo_equipos SET importancia = ? WHERE ip = ?", (entrada.importancia, ip))
+            registro.anotar(con, "importancia", administrador, objeto=ip, nombre=fila["nombre"], antes=fila["importancia"], despues=entrada.importancia, motivo=entrada.motivo)
+            _marcar_modificadas(con, "WHERE destino_ip = ?", (ip,))
+        return _equipo_dto(con.execute("SELECT * FROM catalogo_equipos WHERE ip = ?", (ip,)).fetchone())
+
+
+@router.get("/registro", response_model=list[CambioRegistro])
+def registro_de_cambios(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> list[CambioRegistro]:
+    """Quién cambió la configuración de la red, cuándo y por qué, de lo más nuevo a lo más viejo. Lo ve todo el equipo."""
+    return registro.leer(_base(request).conexion())
+
+
+@router.put("/alertas/{alerta_id}/asignacion", response_model=Alerta)
+def asignar_alerta(alerta_id: str, entrada: AsignacionEntrada, request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> Alerta:
+    """Asigna la alerta a una persona o la deja sin asignar (decisión 42). Idempotente por accionId. 403
+    si a un analista no le toca, 409 si un analista se asigna una que ya tiene otra persona."""
+    with _base(request).transaccion() as con:
+        fila = con.execute("SELECT * FROM alertas WHERE id = ?", (alerta_id,)).fetchone()
+        if fila is None:
+            raise HTTPException(status_code=404, detail="No existe esa alerta")
+        if con.execute("SELECT 1 FROM asignaciones WHERE accion_id = ?", (entrada.accionId,)).fetchone() is None:
+            asignar(con, fila, entrada, dispositivo)
+        return alerta_dto(con, con.execute("SELECT * FROM alertas WHERE id = ?", (alerta_id,)).fetchone())
 
 
 @router.get("/catalogo", response_model=Catalogo)
@@ -487,7 +609,7 @@ def ingesta_alertas(entrada: IngestaEntrada, request: Request, _: None = Depends
         if entrada.catalogo is not None:
             for ip, nombre in entrada.catalogo.equipos.items():
                 if nombre:
-                    con.execute("INSERT OR REPLACE INTO catalogo_equipos (ip, nombre) VALUES (?, ?)", (ip, nombre))
+                    guardar_equipo(con, ip, nombre)
             for servicio in entrada.catalogo.servicios:
                 con.execute("INSERT OR IGNORE INTO catalogo_servicios (servicio) VALUES (?)", (servicio,))
         for alerta in entrada.alertas:
