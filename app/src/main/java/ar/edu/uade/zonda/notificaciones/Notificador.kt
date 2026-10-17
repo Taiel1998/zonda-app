@@ -1,6 +1,7 @@
 package ar.edu.uade.zonda.notificaciones
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -163,11 +164,25 @@ class Notificador(private val contexto: Context) {
             .setAutoCancel(true)
             .build()
         if (publicar(gestor, etiqueta, id = idDe(red), notificacion = notificacion)) {
-            publicar(gestor, ETIQUETA_RESUMEN, ID_RESUMEN, resumen(canal))
+            publicar(gestor, ETIQUETA_RESUMEN, ID_RESUMEN, resumen(canalDelResumen(canal)))
         }
     }
 
-    /** El resumen del grupo, en el canal de la última; abre la lista de alertas. No suena por su cuenta (GROUP_ALERT_CHILDREN). */
+    /**
+     * El canal del resumen del grupo: el más fuerte entre las notificaciones de alertas que están a la
+     * vista. Android ubica el grupo en la barra según el resumen, así que en silencio una alta quedaría
+     * entre las silenciosas.
+     */
+    private fun canalDelResumen(canalNuevo: String): String {
+        val aLaVista = contexto.getSystemService(NotificationManager::class.java)?.activeNotifications.orEmpty()
+            .map { it.notification }
+            .filter { it.group == GRUPO && it.flags and Notification.FLAG_GROUP_SUMMARY == 0 }
+            .map { it.channelId }
+            .toSet() + canalNuevo
+        return MODOS_CON_CANAL.map(::canal).firstOrNull { it in aLaVista } ?: canalNuevo
+    }
+
+    /** El resumen del grupo; abre la lista de alertas. No suena por su cuenta (GROUP_ALERT_CHILDREN). */
     private fun resumen(canal: String): Notification =
         NotificationCompat.Builder(contexto, canal)
             .setSmallIcon(R.drawable.ic_notificacion)
@@ -207,7 +222,7 @@ class Notificador(private val contexto: Context) {
         /** El canal único de las altas hasta la 1.0.3; se borra al crear los de la 1.0.4. */
         const val CANAL_ANTERIOR = "alertas_altas"
 
-        /** Los modos que publican algo: cada uno con su canal. */
+        /** Los modos que publican algo, cada uno con su canal, del más fuerte al más suave. */
         val MODOS_CON_CANAL = ModoNotificacion.entries - ModoNotificacion.SIN_AVISO
 
         /** El id del canal de cada modo: "alertas_sonido_y_vibracion", "alertas_en_silencio"... */

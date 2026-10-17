@@ -152,6 +152,19 @@ class SincronizacionWorkerTest {
     }
 
     @Test
+    fun `el resumen del grupo va en el canal mas fuerte de las que estan a la vista`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1")))
+        preferencias.notificaciones.value = PreferenciasNotificaciones(media = ModoNotificacion.EN_SILENCIO)
+        alertas.resultadoSincronizacion = resultado(nuevas = 2, altasNuevas = 1, idsAltasNuevas = listOf("a-1"), medias = listOf("m-1"))
+
+        worker().doWork()
+
+        // La media en silencio se publica después de la alta: el grupo no pasa a las silenciosas.
+        val resumen = notificaciones.single { it.flags and Notification.FLAG_GROUP_SUMMARY != 0 }
+        assertEquals(canal(ModoNotificacion.SONIDO_Y_VIBRACION), resumen.channelId)
+    }
+
+    @Test
     fun `sin alertas nuevas o con todo en Sin aviso no notifica, pero sincroniza igual`() = runTest {
         alertas.resultadoSincronizacion = resultado(nuevas = 4, altasNuevas = 0)
         worker().doWork()
