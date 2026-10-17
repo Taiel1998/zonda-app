@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -46,6 +48,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -61,6 +64,7 @@ import ar.edu.uade.zonda.ui.theme.GrisDiaSinDatos
 import ar.edu.uade.zonda.ui.theme.HoraElegidaReloj
 import ar.edu.uade.zonda.ui.theme.RuedaReloj
 import ar.edu.uade.zonda.ui.theme.nota
+import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.tituloHoja
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -389,5 +393,36 @@ fun RelojDeLaHora(titulo: String, inicial: LocalTime, alAceptar: (LocalTime) -> 
                 }
             }
         }
+    }
+}
+
+/**
+ * El chip "Fechas" de la fila del período (cambio 19; Figma 463-1836). Con fechas elegidas dice los días
+ * y, si no son días enteros, el relojito. Si al lado de "Filtros (n)" no entra, dice lo más corto que
+ * entra ([textosDelChip]) en lugar de cortarse ("12/10 al 1…").
+ */
+@Composable
+fun ChipDeFechas(fechas: RangoResumen?, alTocar: () -> Unit, modifier: Modifier = Modifier) {
+    if (fechas == null) {
+        ChipConIcono(texto = stringResource(R.string.resumen_fechas), icono = R.drawable.ic_calendario, elegido = false, alTocar = alTocar, modifier = modifier)
+        return
+    }
+    val recursos = LocalContext.current.resources
+    val textos = remember(fechas, recursos) { fechas.textosDelChip(recursos) }
+    val medidor = rememberTextMeasurer()
+    val estilo = MaterialTheme.typography.opcion
+    val densidad = LocalDensity.current
+    BoxWithConstraints(modifier = modifier) {
+        val elegido = textos.firstOrNull { texto ->
+            val sinTexto = with(densidad) { anchoSinTexto(elegido = true, conIconoFinal = texto.conReloj).roundToPx() }
+            medidor.measure(texto.texto, estilo, maxLines = 1).size.width + sinTexto <= constraints.maxWidth
+        } ?: textos.last()
+        ChipConIcono(
+            texto = elegido.texto,
+            icono = R.drawable.ic_calendario,
+            elegido = true,
+            alTocar = alTocar,
+            iconoFinal = if (elegido.conReloj) R.drawable.ic_reloj else null,
+        )
     }
 }

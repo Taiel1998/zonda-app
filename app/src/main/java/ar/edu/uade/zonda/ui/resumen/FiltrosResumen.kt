@@ -30,6 +30,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.FiltroResumen
@@ -47,12 +48,19 @@ import ar.edu.uade.zonda.ui.components.HojaInferior
 import ar.edu.uade.zonda.ui.components.MarcaCasilla
 import ar.edu.uade.zonda.ui.components.PuntoDeSeveridad
 import ar.edu.uade.zonda.ui.components.TituloDeBloque
-import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.nombreEnFiltro
 import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.tituloHoja
 
 private val FormaChip = RoundedCornerShape(8.dp)
+private val IconoDelChip = 14.dp
+private val EntreIconoYTexto = 6.dp
+
+private fun bordeDelChip(elegido: Boolean): Dp = if (elegido) 12.dp else 13.dp
+
+/** Lo que ocupa [ChipConIcono] además del texto: los bordes y los íconos. */
+fun anchoSinTexto(elegido: Boolean, conIconoFinal: Boolean): Dp =
+    bordeDelChip(elegido) * 2 + IconoDelChip + EntreIconoYTexto + if (conIconoFinal) EntreIconoYTexto + IconoDelChip else 0.dp
 
 /**
  * Un chip con ícono de la fila del período (Figma 52-2629): "Fechas" y "Filtros". Como los chips de
@@ -72,15 +80,15 @@ fun ChipConIcono(
     val colores = MaterialTheme.colorScheme
     val color = if (elegido) colores.primary else colores.onSurface
     Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(EntreIconoYTexto),
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .clip(FormaChip)
             .then(if (elegido) Modifier.background(colores.secondaryContainer, FormaChip) else Modifier.border(1.dp, colores.outlineVariant, FormaChip))
             .selectable(selected = elegido, onClick = alTocar, role = Role.Button)
-            .padding(horizontal = if (elegido) 12.dp else 13.dp, vertical = if (elegido) 6.dp else 7.dp),
+            .padding(horizontal = bordeDelChip(elegido), vertical = if (elegido) 6.dp else 7.dp),
     ) {
-        Icon(painter = painterResource(icono), contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+        Icon(painter = painterResource(icono), contentDescription = null, tint = color, modifier = Modifier.size(IconoDelChip))
         Text(
             text = texto,
             style = MaterialTheme.typography.opcion,
@@ -90,7 +98,7 @@ fun ChipConIcono(
             modifier = Modifier.weight(1f, fill = false),
         )
         if (iconoFinal != null) {
-            Icon(painter = painterResource(iconoFinal), contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+            Icon(painter = painterResource(iconoFinal), contentDescription = null, tint = color, modifier = Modifier.size(IconoDelChip))
         }
     }
 }
@@ -234,7 +242,7 @@ private fun FilaCasillaTipo(tipo: TipoAtaque, severidades: SeveridadPorTipo, mar
         MarcaCasilla(marcada)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             PuntoDeSeveridad(severidades.severidadDe(tipo))
-            Text(text = stringResource(tipo.etiqueta()), style = MaterialTheme.typography.titleSmall)
+            Text(text = stringResource(tipo.enHojaDeFiltros()), style = MaterialTheme.typography.titleSmall)
         }
     }
 }

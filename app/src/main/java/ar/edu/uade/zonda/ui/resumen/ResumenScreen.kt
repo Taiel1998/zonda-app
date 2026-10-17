@@ -463,14 +463,7 @@ private fun FilaDePeriodo(
                 alTocar = { alElegir(PeriodoResumen.TREINTA_DIAS) },
                 rol = Role.RadioButton,
             )
-            ChipConIcono(
-                texto = fechas?.enChip(LocalContext.current.resources) ?: stringResource(R.string.resumen_fechas),
-                icono = R.drawable.ic_calendario,
-                elegido = fechas != null,
-                alTocar = alAbrirFechas,
-                iconoFinal = if (fechas != null && !fechas.diasEnteros) R.drawable.ic_reloj else null,
-                modifier = Modifier.weight(1f, fill = false),
-            )
+            ChipDeFechas(fechas = fechas, alTocar = alAbrirFechas, modifier = Modifier.weight(1f, fill = false))
         }
         BotonFiltros(cantidad = estado.filtro.cantidad, alTocar = alAbrirFiltros)
     }

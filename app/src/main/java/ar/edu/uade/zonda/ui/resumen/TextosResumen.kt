@@ -16,8 +16,10 @@ import ar.edu.uade.zonda.domain.model.RevisionResumen
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.model.Tramo
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.nombreCorto
 import java.time.Instant
+import java.time.YearMonth
 import java.time.ZoneId
 import java.util.Locale
 
@@ -32,6 +34,13 @@ private val LOCALE: Locale = Locale.forLanguageTag("es-AR")
  */
 @StringRes
 fun TipoAtaque.enFila(): Int = if (this == TipoAtaque.FUERZA_BRUTA) R.string.resumen_tipo_fuerza_bruta else nombreCorto()
+
+/**
+ * El nombre de cada tipo en la hoja "Filtrar el resumen" (Figma 463-1317): el de Alertas, salvo "Sin
+ * tipo identificado", que es el de la tarjeta "Por tipo de ataque".
+ */
+@StringRes
+fun TipoAtaque.enHojaDeFiltros(): Int = if (this == TipoAtaque.SIN_TIPIFICAR) nombreCorto() else etiqueta()
 
 /** Cuántas de ese tipo, dentro de la frase del gráfico: "11 de fuerza bruta", "3 probables falsas alarmas". */
 @PluralsRes
@@ -115,6 +124,25 @@ fun RangoResumen.enChip(recursos: Resources): String =
     } else {
         recursos.getString(R.string.resumen_al, Formato.diaYMes(primerDia), Formato.diaYMes(ultimoDia))
     }
+
+/** Un texto del chip "Fechas" y si lleva el relojito. */
+data class TextoDelChip(val texto: String, val conReloj: Boolean)
+
+/**
+ * Lo que puede decir el chip "Fechas", del más largo al más corto: el de [enChip], con el relojito si
+ * no son días enteros; si no entra al lado de "Filtros (n)", sin el día de la semana ("11/10") o con el
+ * mes una sola vez ("10 al 11/10"), y después sin el relojito. La línea de arriba dice el rango exacto.
+ */
+fun RangoResumen.textosDelChip(recursos: Resources): List<TextoDelChip> {
+    val corto = when {
+        dias == 1L -> Formato.diaYMes(primerDia)
+        YearMonth.from(primerDia) == YearMonth.from(ultimoDia) ->
+            recursos.getString(R.string.resumen_al, primerDia.dayOfMonth.toString(), Formato.diaYMes(ultimoDia))
+        else -> recursos.getString(R.string.resumen_al, Formato.diaYMesCorto(primerDia), Formato.diaYMesCorto(ultimoDia))
+    }
+    val conReloj = !diasEnteros
+    return listOf(TextoDelChip(enChip(recursos), conReloj), TextoDelChip(corto, conReloj), TextoDelChip(corto, false)).distinct()
+}
 
 /** "Revisadas", "Sin revisar", "Reales", "Falsos positivos": los chips de la hoja de filtros. */
 @StringRes
