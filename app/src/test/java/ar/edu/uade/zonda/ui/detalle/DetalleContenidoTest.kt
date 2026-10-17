@@ -69,13 +69,11 @@ class DetalleContenidoTest {
         alerta: ar.edu.uade.zonda.domain.model.Alerta,
         accion: ar.edu.uade.zonda.domain.model.AccionPendiente? = null,
         sinConexion: Boolean = false,
-        recienRevisada: Boolean = false,
     ) = DetalleUiState.Contenido(
         alerta,
         accion,
         sinConexion,
         datosDe = Fixtures.AHORA,
-        recienRevisada = recienRevisada,
         nombreDelTelefono = "Celular Martín",
         nombreDeLaRed = "Oficina central",
     )
@@ -155,22 +153,6 @@ class DetalleContenidoTest {
         compose.onNodeWithText("Detectada por el modelo de IA").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Cambiar revisión").performScrollTo().performClick()
         assertTrue(cambiar)
-    }
-
-    @Test
-    fun `recien revisada muestra la revision abajo, como enviada, y el aviso con Deshacer`() {
-        var deshecha = false
-        dibujar(
-            contenido(Fixtures.alerta("a-1", revision = revisionDelServidor), recienRevisada = true),
-            AccionesDetalle(alDeshacer = { deshecha = true }),
-            aviso = AvisoDetalle.RevisionGuardada(conConexion = true),
-        )
-
-        compose.onNodeWithText("“Avisé al proveedor.”").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Celular Martín · hoy 11:10 · enviada").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Revisión guardada y enviada al servidor.").assertIsDisplayed()
-        compose.onNodeWithText("Deshacer").performClick()
-        assertTrue(deshecha)
     }
 
     @Test
