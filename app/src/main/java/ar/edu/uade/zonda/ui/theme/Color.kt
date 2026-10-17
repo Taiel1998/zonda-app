@@ -79,4 +79,7 @@ object Tonos {
 
     /** Gris: "Falso positivo" y el semáforo sin datos. */
     val Neutro = Tono(texto = TextoSecundario, fondo = GrisCalido, punto = Color(0xFF8A8983))
+
+    /** Azul oscuro de un equipo crítico (decisión 41; Figma 468-3134). */
+    val Critico = Tono(texto = Color(0xFF0C447C), fondo = Color(0xFFE6F1FB), punto = Color(0xFF185FA5))
 }

@@ -121,13 +121,15 @@ fun BotonPrincipal(
     icono: ImageVector? = null,
     /** Sin el ancho completo, el botón mide lo que su texto ("Siguiente" del recorrido, Figma 107-4860). */
     anchoCompleto: Boolean = true,
+    /** La rueda en lugar del ícono mientras espera al servidor ("Generar código"). */
+    cargando: Boolean = false,
 ) {
     // Deshabilitado como el Figma ("Conectar" sin datos): gris cálido con el texto gris.
     val colores = ButtonDefaults.buttonColors(
         disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
         disabledContentColor = Tonos.Neutro.punto,
     )
-    BotonLleno(texto, alTocar, colores, if (anchoCompleto) modifier.fillMaxWidth() else modifier, habilitado, icono)
+    BotonLleno(texto, alTocar, colores, if (anchoCompleto) modifier.fillMaxWidth() else modifier, habilitado, icono, cargando = cargando)
 }
 
 /** Verde claro con texto verde: acciones secundarias ("Sincronizar ahora", "Conectar Telegram"). */

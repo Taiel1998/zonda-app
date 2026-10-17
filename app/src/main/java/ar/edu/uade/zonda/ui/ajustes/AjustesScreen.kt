@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
+import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
@@ -62,7 +64,7 @@ internal val EntreTarjetas = Arrangement.spacedBy(16.dp)
 
 /**
  * Ajustes (RF05 y RF06; Figma 4-66 y 51-1137): una lista de tarjetas que abren otras pantallas.
- * Red (Redes y Detalles técnicos), Avisos (Telegram, avisos por severidad y severidad por tipo de
+ * Red (Redes, Personas, Equipos, Registro de cambios y Detalles técnicos), Avisos (Telegram, avisos por severidad y severidad por tipo de
  * ataque; desde la 1.0.4 sin "Notificaciones del sistema", porque cada severidad tiene su interruptor),
  * Datos locales, Este dispositivo y Ayuda. Las confirmaciones son
  * hojas inferiores con el botón rojo.
@@ -70,6 +72,9 @@ internal val EntreTarjetas = Arrangement.spacedBy(16.dp)
 @Composable
 fun AjustesScreen(
     alAbrirRedes: () -> Unit,
+    alAbrirPersonas: () -> Unit,
+    alAbrirEquipos: () -> Unit,
+    alAbrirRegistro: () -> Unit,
     alAbrirDetallesTecnicos: () -> Unit,
     alAbrirAvisos: () -> Unit,
     alAbrirSeveridades: () -> Unit,
@@ -85,6 +90,9 @@ fun AjustesScreen(
         estado = estado,
         acciones = AccionesAjustes(
             alAbrirRedes = alAbrirRedes,
+            alAbrirPersonas = alAbrirPersonas,
+            alAbrirEquipos = alAbrirEquipos,
+            alAbrirRegistro = alAbrirRegistro,
             alAbrirDetallesTecnicos = alAbrirDetallesTecnicos,
             alAbrirAvisos = {
                 viewModel.empezarAEditarAvisos()
@@ -130,6 +138,10 @@ fun ajustesViewModel(dueño: ViewModelStoreOwner? = null): AjustesViewModel = vi
 /** Lo que se puede hacer desde Ajustes; separado para probar la pantalla sin ViewModel. */
 data class AccionesAjustes(
     val alAbrirRedes: () -> Unit = {},
+    /** Personas, Equipos y Registro de cambios (decisiones 39 a 41; Figma 468-2154). */
+    val alAbrirPersonas: () -> Unit = {},
+    val alAbrirEquipos: () -> Unit = {},
+    val alAbrirRegistro: () -> Unit = {},
     val alAbrirDetallesTecnicos: () -> Unit = {},
     val alAbrirAvisos: () -> Unit = {},
     val alAbrirSeveridades: () -> Unit = {},
@@ -203,6 +215,33 @@ fun AjustesContenido(
                         detalle = pluralStringResource(R.plurals.ajustes_red_detalle, estado.redes.size, direccion(red), estado.redes.size),
                         alTocar = acciones.alAbrirRedes,
                     )
+                    // Un servidor anterior a la API 0.6.0 no tiene gente ni registro: las filas no aparecen.
+                    if (estado.personas.isNotEmpty()) {
+                        FilaNavegable(
+                            titulo = stringResource(R.string.ajustes_personas),
+                            detalle = pluralStringResource(
+                                R.plurals.ajustes_personas_detalle,
+                                estado.personas.size,
+                                estado.personas.size,
+                                stringResource(if (estado.perfil.esAdministrador) R.string.ajustes_sos_administrador else R.string.ajustes_sos_analista),
+                            ),
+                            alTocar = acciones.alAbrirPersonas,
+                        )
+                    }
+                    if (estado.equipos.isNotEmpty()) {
+                        FilaNavegable(
+                            titulo = stringResource(R.string.ajustes_equipos),
+                            detalle = resumenDeEquipos(estado.equipos),
+                            alTocar = acciones.alAbrirEquipos,
+                        )
+                    }
+                    if (estado.personas.isNotEmpty()) {
+                        FilaNavegable(
+                            titulo = stringResource(R.string.ajustes_registro),
+                            detalle = stringResource(R.string.ajustes_registro_detalle),
+                            alTocar = acciones.alAbrirRegistro,
+                        )
+                    }
                     FilaNavegable(
                         titulo = stringResource(R.string.ajustes_detalles_tecnicos),
                         detalle = stringResource(R.string.ajustes_detalles_tecnicos_detalle),
@@ -236,7 +275,10 @@ fun AjustesContenido(
                 )
                 FilaNavegable(
                     titulo = stringResource(R.string.ajustes_severidad_por_tipo),
-                    detalle = stringResource(R.string.ajustes_severidad_por_tipo_detalle),
+                    // La analista las ve sin poder cambiarlas (Figma 468-2510).
+                    detalle = stringResource(
+                        if (estado.perfil.esAdministrador) R.string.ajustes_severidad_por_tipo_detalle else R.string.ajustes_severidad_la_cambia,
+                    ),
                     alTocar = acciones.alAbrirSeveridades,
                 )
                 // El permiso bloqueado se sigue avisando (Figma 4-130): sin él no sale ninguna notificación de Zonda.
@@ -336,6 +378,18 @@ fun HojaQuitarDispositivo(
         alConfirmar = alConfirmar,
         alCerrar = alCerrar,
     )
+}
+
+/** "2 críticos · 1 poco importante" o "Todos normales" (Figma 468-2163). */
+@Composable
+private fun resumenDeEquipos(equipos: List<EquipoDeLaRed>): String {
+    val criticos = equipos.count { it.importancia == Importancia.CRITICO }
+    val pocoImportantes = equipos.count { it.importancia == Importancia.POCO_IMPORTANTE }
+    if (criticos == 0 && pocoImportantes == 0) return stringResource(R.string.ajustes_equipos_todos_normales)
+    return listOfNotNull(
+        if (criticos > 0) pluralStringResource(R.plurals.ajustes_equipos_criticos, criticos, criticos) else null,
+        if (pocoImportantes > 0) pluralStringResource(R.plurals.ajustes_equipos_poco_importantes, pocoImportantes, pocoImportantes) else null,
+    ).joinToString(" · ")
 }
 
 /** La dirección de la red sin el esquema, como en el Figma: "zonda-empresa.duckdns.org". */

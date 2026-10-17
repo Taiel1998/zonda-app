@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.ui.theme.Tono
 import ar.edu.uade.zonda.ui.theme.Tonos
@@ -49,6 +50,8 @@ fun Panel(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.surface,
     colorBorde: Color = MaterialTheme.colorScheme.outlineVariant,
+    /** 10 entre piezas; las listas de personas y equipos van a 4, con las filas más altas (Figma 468-2607). */
+    espacio: Dp = 10.dp,
     contenido: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
@@ -58,7 +61,7 @@ fun Panel(
         modifier = modifier.fillMaxWidth(),
     ) {
         // 12 de margen más 1 del borde, como el Figma (borde por dentro).
-        Column(modifier = Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = contenido)
+        Column(modifier = Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(espacio), content = contenido)
     }
 }
 

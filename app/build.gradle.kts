@@ -106,6 +106,8 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.mlkit.vision)
     implementation(libs.mlkit.barcode.scanning)
+    // Dibuja el QR para sumar a una persona en el teléfono del administrador (decisión 39).
+    implementation(libs.zxing.core)
     // Sincronización en segundo plano cada 15 minutos con red (RNF08).
     implementation(libs.androidx.work.runtime)
 

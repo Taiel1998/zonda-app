@@ -1014,4 +1014,89 @@
     <string name="telegram_prueba_enviada">Aviso de prueba enviado. Fijate en el chat de %1$s.</string>
     <string name="telegram_desvinculado">Telegram desvinculado. Los avisos de esta red ya no llegan a ese chat.</string>
     <string name="telegram_no_se_abrio">No se pudo abrir Telegram. Instalalo desde la tienda de aplicaciones y probá de nuevo.</string>
+    <!-- Ajustes → Red: Personas, Equipos y Registro de cambios (decisiones 39 a 41; Figma 4-66 y 468-2454) -->
+    <string name="ajustes_personas">Personas</string>
+    <plurals name="ajustes_personas_detalle">
+        <item quantity="one">%1$d persona · %2$s</item>
+        <item quantity="other">%1$d personas · %2$s</item>
+    </plurals>
+    <string name="ajustes_sos_administrador">sos administrador</string>
+    <string name="ajustes_sos_analista">sos analista</string>
+    <string name="ajustes_equipos">Equipos</string>
+    <string name="ajustes_equipos_todos_normales">Todos normales</string>
+    <plurals name="ajustes_equipos_criticos">
+        <item quantity="one">%d crítico</item>
+        <item quantity="other">%d críticos</item>
+    </plurals>
+    <plurals name="ajustes_equipos_poco_importantes">
+        <item quantity="one">%d poco importante</item>
+        <item quantity="other">%d poco importantes</item>
+    </plurals>
+    <string name="ajustes_registro">Registro de cambios</string>
+    <string name="ajustes_registro_detalle">Quién cambió la configuración y por qué</string>
+    <string name="ajustes_severidad_la_cambia">La cambia un administrador</string>
+
+    <!-- Personas (Figma 468-2568, 468-2642 y 468-3010) -->
+    <string name="personas_titulo">Personas</string>
+    <string name="personas_intro">Quiénes usan Zonda en %1$s. Los administradores cambian la configuración de la red y suman gente.</string>
+    <string name="personas_vos">%1$s (vos)</string>
+    <string name="personas_agregar">Agregar persona</string>
+    <string name="personas_nombre">Nombre</string>
+    <string name="personas_nombre_ejemplo">Por ejemplo: Laura</string>
+    <string name="personas_falta_nombre">Escribí el nombre de la persona.</string>
+    <string name="personas_perfil">Perfil</string>
+    <string name="personas_generar_codigo">Generar código</string>
+    <string name="personas_hacer_administrador">Hacer administrador</string>
+    <string name="personas_pasar_a_analista">Pasar a analista</string>
+    <string name="personas_quitar">Quitar del equipo</string>
+    <string name="personas_quitar_titulo">¿Quitar a %1$s del equipo?</string>
+    <string name="personas_quitar_texto">Su teléfono deja de tener acceso a %1$s. Queda en el registro de cambios.</string>
+    <string name="personas_quitar_confirmar">Quitar</string>
+    <string name="personas_hoy">hoy %1$s</string>
+    <string name="personas_ayer">ayer %1$s</string>
+    <plurals name="personas_hace_dias">
+        <item quantity="one">hace %d día</item>
+        <item quantity="other">hace %d días</item>
+    </plurals>
+    <string name="personas_ahora_administrador">%1$s ahora es administrador.</string>
+    <string name="personas_ahora_analista">%1$s ahora es analista.</string>
+    <string name="personas_quitada">%1$s ya no está en el equipo.</string>
+    <string name="perfil_administrador">Administrador</string>
+    <string name="perfil_analista">Analista</string>
+    <string name="perfil_administrador_detalle">Además cambia las severidades y suma o quita gente.</string>
+    <string name="perfil_analista_detalle">Revisa las alertas y elige sus avisos.</string>
+
+    <!-- Código para sumar a una persona (Figma 468-2735) -->
+    <string name="codigo_titulo">Código para %1$s</string>
+    <string name="codigo_intro">%1$s entra como %2$s. En su teléfono, conectado a la red de la empresa: Zonda → Escanear código QR.</string>
+    <string name="codigo_vence">Sirve una sola vez · vence en %1$s</string>
+    <string name="codigo_vencido">Venció. Volvé y generá otro código.</string>
+    <string name="codigo_listo">Listo</string>
+    <string name="codigo_qr_descripcion">Código QR para sumar a %1$s</string>
+
+    <!-- Equipos y su importancia (decisión 41; Figma 468-3089 y 468-3178) -->
+    <string name="equipos_titulo">Equipos</string>
+    <string name="equipos_intro">Qué tan importante es cada equipo de la red. Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.</string>
+    <string name="equipos_vacio">Todavía no hay equipos con nombre. Los informa el servidor de tu empresa.</string>
+    <string name="equipos_nota_motivo">Al cambiarla te pide el motivo y queda en el registro de cambios.</string>
+    <string name="equipos_guardado">Importancia de %1$s guardada. Se envía a la red.</string>
+    <string name="importancia_critico">Crítico</string>
+    <string name="importancia_normal">Normal</string>
+    <string name="importancia_poco_importante">Poco importante</string>
+    <string name="importancia_critico_detalle">Sus alertas suben un nivel: una media pasa a alta.</string>
+    <string name="importancia_normal_detalle">Quedan como el tipo de ataque.</string>
+    <string name="importancia_poco_importante_detalle">Sus alertas bajan un nivel. Usalo para equipos que no guardan datos de la empresa, como una impresora o una PC de invitados.</string>
+
+    <!-- Registro de cambios (decisión 40; Figma 468-3283) -->
+    <string name="registro_titulo">Registro de cambios</string>
+    <string name="registro_intro">Quién cambió la configuración de %1$s, cuándo y por qué. Lo ve todo el equipo y no se puede borrar.</string>
+    <string name="registro_vacio">Todavía no hay cambios.</string>
+    <string name="registro_hoy">Hoy %1$s</string>
+    <string name="registro_ayer">Ayer %1$s</string>
+    <string name="registro_paso_de">%1$s pasó de %2$s a %3$s</string>
+    <string name="registro_paso_a">%1$s pasó a %2$s</string>
+    <string name="registro_persona_nueva">Sumó a %1$s al equipo como %2$s</string>
+    <string name="registro_persona_quitada">Quitó a %1$s del equipo</string>
+    <string name="registro_se_quito">Quitó su teléfono del equipo</string>
+    <string name="registro_motivo">“%1$s”</string>
 </resources>

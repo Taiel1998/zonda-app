@@ -42,11 +42,16 @@ import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.ajustes.AjustesScreen
 import ar.edu.uade.zonda.ui.ajustes.AjustesViewModel
 import ar.edu.uade.zonda.ui.ajustes.AvisosPorSeveridadScreen
+import ar.edu.uade.zonda.ui.ajustes.CodigoPersonaScreen
 import ar.edu.uade.zonda.ui.ajustes.CondicionesScreen
 import ar.edu.uade.zonda.ui.ajustes.DetallesTecnicosScreen
+import ar.edu.uade.zonda.ui.ajustes.EquiposScreen
+import ar.edu.uade.zonda.ui.ajustes.PersonasScreen
 import ar.edu.uade.zonda.ui.ajustes.RedesScreen
+import ar.edu.uade.zonda.ui.ajustes.RegistroScreen
 import ar.edu.uade.zonda.ui.ajustes.SeveridadesDeLaRedScreen
 import ar.edu.uade.zonda.ui.ajustes.ajustesViewModel
+import ar.edu.uade.zonda.ui.ajustes.personasViewModel
 import ar.edu.uade.zonda.ui.alertas.AlertasScreen
 import ar.edu.uade.zonda.ui.alertas.alertasViewModel
 import ar.edu.uade.zonda.ui.conexion.ConexionScreen
@@ -281,6 +286,9 @@ fun ZondaNavHost(
                         composable(Rutas.AJUSTES) {
                             AjustesScreen(
                                 alAbrirRedes = { navController.navigate(Rutas.REDES) },
+                                alAbrirPersonas = { navController.navigate(Rutas.PERSONAS) },
+                                alAbrirEquipos = { navController.navigate(Rutas.EQUIPOS) },
+                                alAbrirRegistro = { navController.navigate(Rutas.REGISTRO) },
                                 alAbrirDetallesTecnicos = { navController.navigate(Rutas.DETALLES_TECNICOS) },
                                 alAbrirAvisos = { navController.navigate(Rutas.AVISOS_POR_SEVERIDAD) },
                                 alAbrirSeveridades = { navController.navigate(Rutas.SEVERIDADES) },
@@ -299,6 +307,24 @@ fun ZondaNavHost(
                                 alQuedarSinRedes = irAConexionSinVolver,
                                 alVolver = { navController.popBackStack() },
                             )
+                        }
+                        composable(Rutas.PERSONAS) {
+                            PersonasScreen(
+                                viewModel = personasViewModel(),
+                                alVolver = { navController.popBackStack() },
+                                alAbrirCodigo = { navController.navigate(Rutas.CODIGO_PERSONA) },
+                            )
+                        }
+                        composable(Rutas.CODIGO_PERSONA) { entrada ->
+                            // Usa el ViewModel de Personas, que tiene el código recién generado.
+                            val dueño = remember(entrada) { navController.getBackStackEntry(Rutas.PERSONAS) }
+                            CodigoPersonaScreen(viewModel = personasViewModel(dueño), alVolver = { navController.popBackStack() })
+                        }
+                        composable(Rutas.EQUIPOS) {
+                            EquiposScreen(alVolver = { navController.popBackStack() })
+                        }
+                        composable(Rutas.REGISTRO) { entrada ->
+                            RegistroScreen(viewModel = viewModelDeAjustes(navController, entrada), alVolver = { navController.popBackStack() })
                         }
                         composable(Rutas.DETALLES_TECNICOS) {
                             DetallesTecnicosScreen(alVolver = { navController.popBackStack() })
