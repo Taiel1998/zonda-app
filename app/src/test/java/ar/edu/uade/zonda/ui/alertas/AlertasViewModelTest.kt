@@ -6,9 +6,11 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeConectividad
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
+import ar.edu.uade.zonda.domain.model.Asignacion
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroEstado
+import ar.edu.uade.zonda.domain.model.FiltroResponsable
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.Severidad
@@ -215,5 +217,25 @@ class AlertasViewModelTest {
         conectividad.estado.value = true
 
         assertEquals(listOf("red-1"), alertas.sincronizaciones)
+    }
+
+    @Test
+    fun `ver las asignadas a mi deja en la lista solo las de este telefono`() = runTest {
+        redes.agregar(Fixtures.red("red-1").copy(dispositivoId = "d-2"))
+        alertas.agregar(
+            Fixtures.alerta("mia").copy(asignacion = Asignacion("d-2", "Laura", "d-1", "Taiel", Fixtures.AHORA)),
+            Fixtures.alerta("ajena").copy(asignacion = Asignacion("d-3", "Meli", "d-1", "Taiel", Fixtures.AHORA)),
+            Fixtures.alerta("libre"),
+        )
+        val viewModel = viewModel()
+
+        viewModel.estado.test {
+            esperar { it.contenido is ContenidoAlertas.Lista }
+            viewModel.verAsignadasAMi()
+            val estado = esperar { it.filtro.responsable != null && (it.contenido as? ContenidoAlertas.Lista)?.alertas?.size == 1 }
+            assertEquals(FiltroResponsable.AsignadasAMi("d-2"), estado.filtro.responsable)
+            assertEquals(listOf("mia"), (estado.contenido as ContenidoAlertas.Lista).alertas.map { it.id })
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

@@ -147,7 +147,7 @@ class EstadoContenidoTest {
             ),
         )
 
-        compose.onNodeWithText("Mostrando solo altas sin revisar. Tocá el contador de nuevo para ver todas.").assertIsDisplayed()
+        compose.onNodeWithText("Mostrando solo altas sin revisar. Tocá de nuevo para ver todas.").assertIsDisplayed()
         compose.onNodeWithText("Solo altas sin revisar").assertIsDisplayed()
         compose.onNodeWithText("Ver todas →").assertIsDisplayed()
         compose.onNodeWithContentDescription("2 sin revisar de severidad Alta").assertIsSelected()

@@ -147,7 +147,9 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
         alertas.value = alertas.value.map { if (it.id == nueva.id) nueva else it }
     }
 
-    private fun FiltroAlertas.acepta(alerta: Alerta): Boolean =
+    private fun FiltroAlertas.acepta(alerta: Alerta): Boolean = (responsable?.acepta(alerta) ?: true) && aceptaSinResponsable(alerta)
+
+    private fun FiltroAlertas.aceptaSinResponsable(alerta: Alerta): Boolean =
         (estado.estados?.contains(alerta.estadoRevision) ?: true) &&
             (severidades.isEmpty() || alerta.severidad in severidades) &&
             aceptaServicio(alerta.servicio) &&
