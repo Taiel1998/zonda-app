@@ -694,8 +694,19 @@
     <string name="redes_menu">Opciones de %1$s</string>
 
     <!-- Avisos por severidad (Figma 51-1688) -->
-    <string name="avisos_sonido_titulo">Sonido de los avisos</string>
-    <string name="avisos_sonido_zonda">Las notificaciones de Zonda usan el sonido del sistema. \"Notificaciones del sistema\" abre esa configuración.</string>
+    <!-- 1.0.4: la tarjeta "Notificaciones de Zonda" y su hoja (Figma 51-1688 y 463-70) -->
+    <string name="notificaciones_zonda_titulo">Notificaciones de Zonda</string>
+    <string name="notificaciones_zonda_texto">Te avisan de las alertas que no te llegaron por Telegram. Pueden tardar hasta 15 minutos.</string>
+    <string name="notificaciones_zonda_recordatorio">Recordatorio de altas</string>
+    <string name="notificaciones_zonda_recordatorio_detalle">Si una alta sigue sin revisar a los 15 minutos, te avisamos de nuevo.</string>
+    <string name="notificaciones_zonda_hoja_alta">¿Cómo te avisa Zonda las altas?</string>
+    <string name="notificaciones_zonda_hoja_media">¿Cómo te avisa Zonda las medias?</string>
+    <string name="notificaciones_zonda_hoja_baja">¿Cómo te avisa Zonda las bajas?</string>
+    <string name="notificacion_modo_sonido_y_vibracion">Sonido y vibración</string>
+    <string name="notificacion_modo_solo_sonido">Solo sonido</string>
+    <string name="notificacion_modo_solo_vibracion">Solo vibración</string>
+    <string name="notificacion_modo_en_silencio">En silencio</string>
+    <string name="notificacion_modo_en_silencio_detalle">Queda en la barra de notificaciones, sin sonar ni vibrar.</string>
     <string name="avisos_cambiar_severidad">Cambiar la severidad de cada tipo de ataque</string>
 
     <!-- Detalles técnicos (Figma 66-3316 y 66-3400) -->

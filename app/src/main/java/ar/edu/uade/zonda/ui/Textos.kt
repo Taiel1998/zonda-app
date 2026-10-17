@@ -12,6 +12,7 @@ import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.ModoAviso
+import ar.edu.uade.zonda.domain.model.ModoNotificacion
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
@@ -187,6 +188,24 @@ fun ModoAviso.comoAvisa(): Int = when (this) {
     ModoAviso.SONIDO -> R.string.telegram_con_sonido
     ModoAviso.SILENCIO -> R.string.telegram_en_silencio
     ModoAviso.SIN_AVISO -> R.string.telegram_sin_aviso
+}
+
+/** Cómo avisa Zonda una severidad (1.0.4; Figma 51-1688): "Sonido y vibración", "Solo vibración", "Sin aviso". */
+@StringRes
+fun ModoNotificacion.etiqueta(): Int = when (this) {
+    ModoNotificacion.SONIDO_Y_VIBRACION -> R.string.notificacion_modo_sonido_y_vibracion
+    ModoNotificacion.SOLO_SONIDO -> R.string.notificacion_modo_solo_sonido
+    ModoNotificacion.SOLO_VIBRACION -> R.string.notificacion_modo_solo_vibracion
+    ModoNotificacion.EN_SILENCIO -> R.string.notificacion_modo_en_silencio
+    ModoNotificacion.SIN_AVISO -> R.string.modo_sin_aviso
+}
+
+/** "¿Cómo te avisa Zonda las altas?" (Figma 463-70): distinto del de Telegram, que está en la misma pantalla. */
+@StringRes
+fun Severidad.tituloHojaNotificaciones(): Int = when (this) {
+    Severidad.ALTA -> R.string.notificaciones_zonda_hoja_alta
+    Severidad.MEDIA -> R.string.notificaciones_zonda_hoja_media
+    Severidad.BAJA -> R.string.notificaciones_zonda_hoja_baja
 }
 
 /** "¿Cómo te avisamos las altas?": el título de la hoja que elige cómo avisa una severidad (cambio 6). */
