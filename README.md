@@ -4,7 +4,7 @@ App Android de alertas de anomalías de red para PyMEs. Es el cliente móvil de 
 
 Trabajo Práctico Obligatorio de Desarrollo de Aplicaciones I (UADE, 2.º cuatrimestre 2026). Integrantes: Melinda Sellés, Rodrigo Nicolás Larrart y Taiel Vinograd.
 
-**Estado (16/10/2026):** versión 1.0.3, con los siete requisitos funcionales implementados, probados en emuladores con Android 8 y Android 16 y ensayados en un teléfono real con Telegram y HTTPS. Antes de la entrega faltan el ensayo con el hotspot, la prueba con usuarios externos (semana del 26/10) y reemplazar las alertas de ejemplo por la exportación real de la plataforma.
+**Estado (16/10/2026):** versión 1.0.4, con los siete requisitos funcionales implementados, probados en emuladores con Android 8 y Android 16 y ensayados en un teléfono real con Telegram y HTTPS. Antes de la entrega faltan el ensayo con el hotspot, la prueba con usuarios externos (semana del 26/10) y reemplazar las alertas de ejemplo por la exportación real de la plataforma.
 
 ## Capturas
 
@@ -30,7 +30,7 @@ El escenario principal es el del informe de la Etapa 1: Martín, administrador d
 | RF04. Revisión | Ataque real o falso positivo, con motivo y comentario obligatorios, 5 segundos para deshacer, sin conexión (se envía al volver la red), historial, cambiar la revisión y conflicto si otra persona la revisó antes | Hecho | Revisar, en el detalle |
 | RF05. Primer inicio y pareo | Bienvenida con las condiciones de uso, tutorial que se puede omitir, avisos por severidad, severidad de cada tipo de ataque, pareo con QR o a mano, Telegram (se puede posponer) y un recorrido de once pasos | Hecho | La primera vez que se abre la app |
 | RF06. Varias redes y severidad | Parear más de una red y elegir la activa, con los datos de cada una por separado; severidad de cada tipo de ataque; Quitar este dispositivo | Hecho | Ajustes |
-| RF07. Resumen | 7 o 30 días: alertas por día y por tipo, reales y falsos positivos, las dos métricas de éxito, cobertura y precisión de cada método. Tocar una cifra recalcula todo. Se comparte como imagen sin IP ni nombres de equipos | Hecho | Ícono de barras en Estado |
+| RF07. Resumen | 7 días, 30 días o las fechas y horas que se elijan: alertas por hora, día o semana y por tipo, reales y falsos positivos, las dos métricas de éxito, cobertura y precisión de cada método. Los filtros se suman (días, tipos, revisión y modelo) y sus alertas se ven en una lista. Se comparte como imagen o como PDF de una hoja A4, sin IP ni nombres de equipos | Hecho | Ícono de barras en Estado |
 
 ### Requisitos no funcionales
 
@@ -72,7 +72,7 @@ ar.edu.uade.zonda
 ├── domain/              modelos, reglas y casos de uso en Kotlin puro (sin Android)
 ├── data/                Room, Retrofit, Keystore, DataStore, mappers, repositorios y el sincronizador
 ├── sync/                el worker de sincronización en segundo plano y la conectividad
-├── notificaciones/      la notificación local de alertas altas nuevas
+├── notificaciones/      las notificaciones locales: alertas nuevas por severidad, recordatorio y revisiones
 └── ui/                  pantallas en Compose, ViewModels, navegación, tema y componentes
 ```
 
@@ -217,7 +217,7 @@ Están en [docs/decisiones.md](docs/decisiones.md), cada una con su porqué y la
 - **Emuladores:** cada fase se probó en un emulador con Android 16 contra la API local. La versión 1.0.0 firmada se probó en Android 16 y en Android 8.0 contra la API publicada con HTTPS: pareo (TLS 1.3 y TLS 1.2), enlace del aviso verificado, revisión, sin conexión, Resumen y red tranquila.
 - **HTTPS:** `probar_tls.ps1` contra la API publicada, con las siete pruebas en PASA; por la IP en lugar del nombre, la app no manda nada.
 - **Rendimiento:** Estado con 500 alertas en la prueba con Room, y la app con 1.008 alertas en el emulador.
-- **Teléfono real:** el 14/10 se ensayó el guion de la demo en un Android 11 con Telegram y HTTPS, en el Wi-Fi de una casa. La flecha de volver de un detalle abierto desde el aviso de Telegram no andaba y dejaba la pantalla congelada: la 1.0.1 lo corrige (decisión 29), probado en el emulador abriendo el enlace desde otra app, como lo hace Telegram. El 15/10 se probó la 1.0.1 en ese teléfono, que usa la navegación de tres botones de Android: el aviso con "Deshacer" del detalle quedaba debajo de la barra de navegación. La 1.0.2 lo corrige (decisión 30), probado en el emulador con tres botones. La 1.0.3 resuelve lo demás que salió del ensayo: el mismo aviso abre el detalle cada vez que se toca (decisión 31), Zonda no repite lo que ya avisó Telegram, Estado avisa las revisiones que no se aplicaron, la precisión no nombra un ganador y lo que la IA no detectó tiene un tipo por detector (decisión 32). El 16/10 se instaló la 1.0.3 encima de la 1.0.2 en el mismo teléfono: siguió pareada, el segundo toque del mismo aviso de Telegram abrió el detalle y las pantallas nuevas se vieron como en el emulador.
+- **Teléfono real:** el 14/10 se ensayó el guion de la demo en un Android 11 con Telegram y HTTPS, en el Wi-Fi de una casa. La flecha de volver de un detalle abierto desde el aviso de Telegram no andaba y dejaba la pantalla congelada: la 1.0.1 lo corrige (decisión 29), probado en el emulador abriendo el enlace desde otra app, como lo hace Telegram. El 15/10 se probó la 1.0.1 en ese teléfono, que usa la navegación de tres botones de Android: el aviso con "Deshacer" del detalle quedaba debajo de la barra de navegación. La 1.0.2 lo corrige (decisión 30), probado en el emulador con tres botones. La 1.0.3 resuelve lo demás que salió del ensayo: el mismo aviso abre el detalle cada vez que se toca (decisión 31), Zonda no repite lo que ya avisó Telegram, Estado avisa las revisiones que no se aplicaron, la precisión no nombra un ganador y lo que la IA no detectó tiene un tipo por detector (decisión 32). El 16/10 se instaló la 1.0.3 encima de la 1.0.2 en el mismo teléfono: siguió pareada, el segundo toque del mismo aviso de Telegram abrió el detalle y las pantallas nuevas se vieron como en el emulador. La 1.0.4 suma las notificaciones de Zonda por severidad, los filtros que se suman, las fechas y horas del Resumen y el PDF (decisiones 33 a 36); se probó en el emulador y falta probarla en el teléfono.
 - **Falta:** el ensayo con el hotspot y la prueba con usuarios externos.
 
 ## Limitaciones conocidas
@@ -227,7 +227,7 @@ Están en [docs/decisiones.md](docs/decisiones.md), cada una con su porqué y la
 - **Riesgo de la red.** Algunos routers bloquean los nombres públicos que apuntan a una IP privada; por eso la demo usa el hotspot de un teléfono. Fuera de la oficina, la API se alcanza solo por la VPN de la empresa.
 - **El aviso depende de Telegram.** Sin internet no llega; la notificación propia de la app aparece cuando sincroniza, cada 15 minutos o más (Android puede demorarla). Si el navegador interno de Telegram abre la página en lugar de la app, la página ofrece "Abrir en Zonda".
 - **Sin fijación de certificado** (decisión 5): se confía en las autoridades del sistema.
-- **Las notificaciones de Zonda son para lo urgente:** las altas que no avisó Telegram, el recordatorio de las altas sin revisar y las revisiones que no se aplicaron, en dos canales. El sonido de Telegram se configura desde el chat del bot.
+- **Las notificaciones de Zonda avisan lo que no avisó Telegram,** con el modo elegido para cada severidad (de fábrica, las altas con sonido y vibración, las medias solo con vibración y las bajas sin aviso), además del recordatorio de las altas sin revisar y de las revisiones que no se aplicaron. Cada modo es un canal de Android, porque el sonido de un canal no se cambia después de crearlo. El sonido de Telegram se configura desde el chat del bot.
 - **Recall y F1** no se calculan en la app: necesitan datos etiquetados y se miden fuera de ella.
 - **Solo Android.** No hay versión para iOS.
 - **APK sin achicar:** el release no usa R8 y pesa unos 49 MB (decisión 28).
