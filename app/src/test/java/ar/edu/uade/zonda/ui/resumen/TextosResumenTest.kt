@@ -162,7 +162,7 @@ class TextosResumenTest {
         val lista = listOf(alertaDel("2026-09-25", "v-1"), alertaDel("2026-09-26", "s-1"))
         val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc)
 
-        assertEquals("Resumen_21-09_27-09.png", nombreDeLaImagen(resumen.tramo, recursos))
+        assertEquals("Resumen_21-09_27-09", nombreDelArchivo(resumen.tramo, recursos))
         assertEquals("Resumen Zonda · del 21/09 al 27/09: 2 alertas, 0 revisadas, 2 sin revisar.", textoParaCompartir(resumen, recursos))
     }
 

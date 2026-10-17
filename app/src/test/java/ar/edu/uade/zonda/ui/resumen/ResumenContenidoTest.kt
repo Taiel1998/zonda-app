@@ -296,38 +296,87 @@ class ResumenContenidoTest {
             .flatMap { nodo -> nodo.config[SemanticsProperties.Text].map { it.text } }
         assertTrue(textos.contains("Resumen semanal"))
         assertTrue(textos.contains("Generado con Zonda · no incluye IPs ni nombres de equipos"))
+        // Cambio 18: suma "Por tipo de ataque" y "Reales y falsos positivos", sin la precisión ni los ⓘ.
+        assertTrue(textos.contains("Por tipo de ataque"))
+        assertTrue(textos.contains("Reales y falsos positivos (de las revisadas)"))
+        assertFalse(textos.contains("Precisión de cada modelo (de las revisadas)"))
+        assertFalse(textos.contains("Un falso positivo con motivo sirve para ajustar la detección."))
+        assertTrue(compose.onAllNodes(hasContentDescription("Qué es cada tipo")).fetchSemanticsNodes().isEmpty())
         // Las alertas de prueba van de pc-09 (192.168.10.9) a srv-web (192.168.10.50) (RNF02).
         assertFalse(textos.any { it.contains("192.168") || it.contains("pc-09") || it.contains("srv-web") })
     }
 
     @Test
-    fun `la hoja de compartir muestra el archivo y solo las apps que hay`() {
-        val elegidos = mutableListOf<DestinoCompartir>()
-        val imagen = ImagenCompartida(
-            nombre = "Resumen_06-10_12-10.png",
-            uri = Uri.parse("content://ar.edu.uade.zonda.archivos/compartir/Resumen_06-10_12-10.png"),
-            bytes = 48_500,
-            vistaPrevia = ImageBitmap(10, 10),
-            texto = "Resumen Zonda",
-        )
+    fun `con filtros la imagen dice cuales debajo de la linea de la red, Figma 463-3007`() {
+        val viernes = Franja.dia(LocalDate.of(2026, 10, 9))
         compose.setContent {
             ZondaTheme {
-                ContenidoHojaCompartir(
-                    imagen = imagen,
-                    destinos = listOf(DestinoCompartir.GMAIL, DestinoCompartir.COPIAR),
-                    alElegir = { elegidos += it },
-                    alCancelar = {},
+                ImagenResumen(
+                    resumen = resumen(FiltroResumen(barras = setOf(viernes), tipos = setOf(TipoAtaque.FUERZA_BRUTA))),
+                    red = "Oficina central",
+                    datosDe = ahora,
+                    sinConexion = false,
+                    zona = utc,
                 )
             }
         }
 
+        compose.onNodeWithText("Filtros: viernes 09/10 · fuerza bruta").assertExists()
+        compose.onNodeWithText("Mostrando 0 alertas: viernes · fuerza bruta.").assertExists()
+    }
+
+    private val paraCompartir = ResumenParaCompartir(
+        nombreBase = "Resumen_06-10_12-10",
+        imagen = Uri.parse("content://ar.edu.uade.zonda.archivos/compartir/Resumen_06-10_12-10.png"),
+        pdf = Uri.parse("content://ar.edu.uade.zonda.archivos/compartir/Resumen_06-10_12-10.pdf"),
+        archivoPdf = java.io.File("Resumen_06-10_12-10.pdf"),
+        vistaPrevia = ImageBitmap(10, 10),
+        texto = "Resumen Zonda",
+    )
+
+    private fun dibujarHojaCompartir(elegidos: MutableList<Pair<DestinoCompartir, FormatoResumen>>) {
+        compose.setContent {
+            ZondaTheme {
+                ContenidoHojaCompartir(
+                    resumen = paraCompartir,
+                    apps = listOf(DestinoCompartir.GMAIL),
+                    alElegir = { destino, formato -> elegidos += destino to formato },
+                    alCancelar = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `la hoja de compartir empieza en Imagen, con el archivo y solo las apps que hay y Copiar`() {
+        val elegidos = mutableListOf<Pair<DestinoCompartir, FormatoResumen>>()
+        dibujarHojaCompartir(elegidos)
+
+        compose.onNode(hasText("Imagen") and SemanticsMatcher.expectValue(SemanticsProperties.Selected, true)).assertExists()
         compose.onNodeWithText("Resumen_06-10_12-10.png").assertIsDisplayed()
-        compose.onNodeWithText("Imagen · 48 KB · sin IPs ni nombres de equipos").assertIsDisplayed()
+        // Sin el tamaño ni "sin IPs ni nombres de equipos" (cambio 18): lo dice el pie de la imagen.
+        assertTrue(compose.onAllNodesWithText("sin IPs", substring = true).fetchSemanticsNodes().isEmpty())
         compose.onNodeWithText("Gmail").assertIsDisplayed()
         assertTrue(compose.onAllNodesWithText("WhatsApp").fetchSemanticsNodes().isEmpty())
         compose.onNodeWithText("Copiar").performClick()
 
-        assertEquals(listOf(DestinoCompartir.COPIAR), elegidos)
+        assertEquals(listOf(DestinoCompartir.COPIAR to FormatoResumen.IMAGEN), elegidos)
+    }
+
+    @Test
+    fun `con PDF el archivo es el pdf de una hoja A4 y Copiar pasa a ser Imprimir, Figma 463-3243`() {
+        val elegidos = mutableListOf<Pair<DestinoCompartir, FormatoResumen>>()
+        dibujarHojaCompartir(elegidos)
+
+        compose.onNodeWithText("PDF").performClick()
+
+        compose.onNodeWithText("Resumen_06-10_12-10.pdf").assertIsDisplayed()
+        compose.onNodeWithText("PDF · 1 página A4").assertIsDisplayed()
+        assertTrue(compose.onAllNodesWithText("Copiar").fetchSemanticsNodes().isEmpty())
+        compose.onNodeWithText("Gmail").performClick()
+        compose.onNodeWithText("Imprimir").performClick()
+
+        assertEquals(listOf(DestinoCompartir.GMAIL to FormatoResumen.PDF, DestinoCompartir.IMPRIMIR to FormatoResumen.PDF), elegidos)
     }
 
     @Test
