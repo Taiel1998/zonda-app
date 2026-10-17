@@ -55,8 +55,9 @@ def test_cli_pair_revoke_y_dispositivos(cliente, config, monkeypatch, capsys):
 
     assert cli(["pair"]) == 0
     salida = capsys.readouterr().out
-    assert "Código de pareo:" in salida and "https://prueba.duckdns.org" in salida
-    codigo = salida.split("Código de pareo:")[1].split()[0]
+    # Los códigos de la terminal son de administrador (decisión 39).
+    assert "Código de pareo de administrador:" in salida and "https://prueba.duckdns.org" in salida
+    codigo = salida.split("Código de pareo de administrador:")[1].split()[0]
 
     respuesta = cliente.post("/pareo", json={"codigo": codigo, "nombreDispositivo": "Desde la CLI"})
     assert respuesta.status_code == 200
@@ -64,7 +65,7 @@ def test_cli_pair_revoke_y_dispositivos(cliente, config, monkeypatch, capsys):
 
     assert cli(["dispositivos"]) == 0
     listado = capsys.readouterr().out
-    assert "Desde la CLI" in listado and "activo" in listado
+    assert "Desde la CLI" in listado and "activo" in listado and "administrador" in listado
 
     assert cli(["revoke", dispositivo_id]) == 0
     assert cliente.get("/estado", headers={"Authorization": f"Bearer {respuesta.json()['token']}"}).status_code == 401
