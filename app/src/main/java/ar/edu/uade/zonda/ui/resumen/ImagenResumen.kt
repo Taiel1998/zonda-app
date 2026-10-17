@@ -68,7 +68,11 @@ fun ImagenResumen(
             )
             Text(
                 text = stringResource(
-                    if (resumen.periodo == PeriodoResumen.SIETE_DIAS) R.string.resumen_imagen_semanal else R.string.resumen_imagen_mensual,
+                    when (resumen.periodo) {
+                        PeriodoResumen.SIETE_DIAS -> R.string.resumen_imagen_semanal
+                        PeriodoResumen.TREINTA_DIAS -> R.string.resumen_imagen_mensual
+                        null -> R.string.resumen_imagen_fechas
+                    },
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -76,7 +80,7 @@ fun ImagenResumen(
         }
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = lineaDelResumen(red, resumen.tramo, datosDe, sinConexion, recursos, zona),
+            text = lineaDelResumen(red, resumen, datosDe, sinConexion, recursos, zona),
             style = MaterialTheme.typography.nota,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

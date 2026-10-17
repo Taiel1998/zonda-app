@@ -43,6 +43,14 @@ val GrisAviso = Color(0xFF2C2C2A)
 val FondoEscaner = Color(0xFF1E1E1C)
 val TextoEscaner = Color(0xFFE4E2DA)
 
+/** Los días que el teléfono no guarda en "Elegí las fechas" (cambio 19; Figma 463-2027). */
+val GrisDiaSinDatos = Color(0xFFC9C7BF)
+
+// El reloj de "Desde" y "Hasta" (cambio 19; Figma 463-2466): el TimePicker de Material 3 con los colores de Zonda.
+val FondoReloj = Color(0xFFF4F1EA)
+val RuedaReloj = Color(0xFFE8E5DD)
+val HoraElegidaReloj = Color(0xFFC9EBDD)
+
 /**
  * Los colores de un tono: el del texto, el del fondo, el del punto que lo acompaña y el de lo que va
  * escrito sobre el punto (el número del semáforo, cambio 11).

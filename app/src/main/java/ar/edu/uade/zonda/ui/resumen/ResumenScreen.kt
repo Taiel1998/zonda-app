@@ -52,9 +52,11 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.EscalaBarra
 import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.RevisionResumen
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
@@ -127,6 +129,7 @@ fun ResumenScreen(
             estado = estado,
             alVolver = alVolver,
             alElegirPeriodo = viewModel::elegirPeriodo,
+            alElegirFechas = viewModel::elegirFechas,
             alTocar = viewModel::tocar,
             alAplicarFiltro = viewModel::aplicarFiltro,
             alVerAlertas = { filtro ->
@@ -202,6 +205,7 @@ fun ResumenContenido(
     alCompartir: () -> Unit,
     alAplicarFiltro: (FiltroResumen) -> Unit = {},
     alVerAlertas: (FiltroResumen) -> Unit = {},
+    alElegirFechas: (RangoResumen) -> Unit = {},
     alAvisoMostrado: () -> Unit = {},
     zona: ZoneId = ZoneId.systemDefault(),
 ) {
@@ -218,6 +222,7 @@ fun ResumenContenido(
     val hayResumen = estado.resumen != null
     var ayuda by rememberSaveable { mutableStateOf<AyudaResumen?>(null) }
     var filtrando by rememberSaveable { mutableStateOf(false) }
+    var eligiendoFechas by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -272,12 +277,20 @@ fun ResumenContenido(
                     titulo = stringResource(R.string.vacio_sin_red_titulo),
                     detalle = stringResource(R.string.vacio_sin_red_detalle),
                 )
-                is ContenidoResumen.Vacio -> CuerpoVacio(estado, contenido.resumen, alElegirPeriodo, alAbrirFiltros = { filtrando = true }, zona)
+                is ContenidoResumen.Vacio -> CuerpoVacio(
+                    estado = estado,
+                    resumen = contenido.resumen,
+                    alElegirPeriodo = alElegirPeriodo,
+                    alAbrirFechas = { eligiendoFechas = true },
+                    alAbrirFiltros = { filtrando = true },
+                    zona = zona,
+                )
                 is ContenidoResumen.Datos -> CuerpoDelResumen(
                     estado = estado,
                     resumen = contenido.resumen,
                     alElegirPeriodo = alElegirPeriodo,
                     alTocar = alTocar,
+                    alAbrirFechas = { eligiendoFechas = true },
                     alAbrirFiltros = { filtrando = true },
                     alPedirAyuda = { ayuda = it },
                     zona = zona,
@@ -312,6 +325,19 @@ fun ResumenContenido(
                 alCerrar = { filtrando = false },
             )
         }
+        // "Elegí las fechas" (cambio 19) cuenta con todas las alertas guardadas y los demás filtros.
+        if (eligiendoFechas) {
+            HojaFechas(
+                rango = resumenActual.rango,
+                hoy = resumenActual.hoy,
+                cuantas = { rango -> resumenActual.cuantasEn(rango, zona) },
+                alMostrar = { rango ->
+                    eligiendoFechas = false
+                    alElegirFechas(rango)
+                },
+                alCancelar = { eligiendoFechas = false },
+            )
+        }
     }
 }
 
@@ -322,6 +348,7 @@ private fun CuerpoDelResumen(
     resumen: ResumenActividad,
     alElegirPeriodo: (PeriodoResumen) -> Unit,
     alTocar: (ToqueResumen) -> Unit,
+    alAbrirFechas: () -> Unit,
     alAbrirFiltros: () -> Unit,
     alPedirAyuda: (AyudaResumen) -> Unit,
     zona: ZoneId,
@@ -335,7 +362,7 @@ private fun CuerpoDelResumen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        FilaDePeriodo(periodo = estado.periodo, cantidadDeFiltros = estado.filtro.cantidad, alElegir = alElegirPeriodo, alAbrirFiltros = alAbrirFiltros)
+        FilaDePeriodo(estado, alElegir = alElegirPeriodo, alAbrirFechas = alAbrirFechas, alAbrirFiltros = alAbrirFiltros)
         LineaDelResumen(estado, resumen, zona)
         FilaDeTotales(resumen, alTocar, modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.CIFRAS_RESUMEN))
         FilaDeMetricas(resumen, altas, alTocar)
@@ -352,6 +379,7 @@ private fun CuerpoVacio(
     estado: ResumenUiState,
     resumen: ResumenActividad,
     alElegirPeriodo: (PeriodoResumen) -> Unit,
+    alAbrirFechas: () -> Unit,
     alAbrirFiltros: () -> Unit,
     zona: ZoneId,
 ) {
@@ -361,13 +389,24 @@ private fun CuerpoVacio(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        FilaDePeriodo(periodo = estado.periodo, cantidadDeFiltros = estado.filtro.cantidad, alElegir = alElegirPeriodo, alAbrirFiltros = alAbrirFiltros)
+        FilaDePeriodo(estado, alElegir = alElegirPeriodo, alAbrirFechas = alAbrirFechas, alAbrirFiltros = alAbrirFiltros)
         Spacer(modifier = Modifier.height(16.dp))
         LineaDelResumen(estado, resumen, zona)
-        val siete = resumen.periodo == PeriodoResumen.SIETE_DIAS
         EstadoVacio(
-            titulo = stringResource(if (siete) R.string.resumen_vacio_titulo_7 else R.string.resumen_vacio_titulo_30),
-            detalle = stringResource(if (siete) R.string.resumen_vacio_detalle_7 else R.string.resumen_vacio_detalle_30),
+            titulo = stringResource(
+                when (resumen.periodo) {
+                    PeriodoResumen.SIETE_DIAS -> R.string.resumen_vacio_titulo_7
+                    PeriodoResumen.TREINTA_DIAS -> R.string.resumen_vacio_titulo_30
+                    null -> R.string.resumen_vacio_titulo_fechas
+                },
+            ),
+            detalle = stringResource(
+                when (resumen.periodo) {
+                    PeriodoResumen.SIETE_DIAS -> R.string.resumen_vacio_detalle_7
+                    PeriodoResumen.TREINTA_DIAS -> R.string.resumen_vacio_detalle_30
+                    null -> R.string.resumen_vacio_detalle_fechas
+                },
+            ),
             colorCirculo = Tonos.Baja.fondo,
             tamanioCirculo = 56.dp,
             icono = Icons.Filled.Check,
@@ -378,16 +417,18 @@ private fun CuerpoVacio(
 }
 
 /**
- * 7 días, 30 días y, a la derecha, el botón "Filtros" con cuántos hay puestos (cambio 16; Figma
- * 52-2629 y 463-1145). El recorrido resalta toda la fila (paso 10).
+ * 7 días, 30 días, "Fechas" y, a la derecha, el botón "Filtros" con cuántos hay puestos (cambios 16 y
+ * 19; Figma 52-2629, 463-1145 y 463-1836). Con fechas elegidas, el chip dice los días y suma el
+ * relojito si no son días enteros. El recorrido resalta toda la fila (paso 10).
  */
 @Composable
 private fun FilaDePeriodo(
-    periodo: PeriodoResumen,
-    cantidadDeFiltros: Int,
+    estado: ResumenUiState,
     alElegir: (PeriodoResumen) -> Unit,
+    alAbrirFechas: () -> Unit,
     alAbrirFiltros: () -> Unit,
 ) {
+    val fechas = estado.fechas
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -395,27 +436,40 @@ private fun FilaDePeriodo(
             .fillMaxWidth()
             .objetivoDelRecorrido(ObjetivoRecorrido.PERIODO_RESUMEN),
     ) {
-        ChipOpcion(
-            texto = stringResource(R.string.resumen_7_dias),
-            elegido = periodo == PeriodoResumen.SIETE_DIAS,
-            alTocar = { alElegir(PeriodoResumen.SIETE_DIAS) },
-            rol = Role.RadioButton,
-        )
-        ChipOpcion(
-            texto = stringResource(R.string.resumen_30_dias),
-            elegido = periodo == PeriodoResumen.TREINTA_DIAS,
-            alTocar = { alElegir(PeriodoResumen.TREINTA_DIAS) },
-            rol = Role.RadioButton,
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        BotonFiltros(cantidad = cantidadDeFiltros, alTocar = alAbrirFiltros)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f),
+        ) {
+            ChipOpcion(
+                texto = stringResource(R.string.resumen_7_dias),
+                elegido = fechas == null && estado.periodo == PeriodoResumen.SIETE_DIAS,
+                alTocar = { alElegir(PeriodoResumen.SIETE_DIAS) },
+                rol = Role.RadioButton,
+            )
+            ChipOpcion(
+                texto = stringResource(R.string.resumen_30_dias),
+                elegido = fechas == null && estado.periodo == PeriodoResumen.TREINTA_DIAS,
+                alTocar = { alElegir(PeriodoResumen.TREINTA_DIAS) },
+                rol = Role.RadioButton,
+            )
+            ChipConIcono(
+                texto = fechas?.enChip(LocalContext.current.resources) ?: stringResource(R.string.resumen_fechas),
+                icono = R.drawable.ic_calendario,
+                elegido = fechas != null,
+                alTocar = alAbrirFechas,
+                iconoFinal = if (fechas != null && !fechas.diasEnteros) R.drawable.ic_reloj else null,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
+        BotonFiltros(cantidad = estado.filtro.cantidad, alTocar = alAbrirFiltros)
     }
 }
 
 @Composable
 private fun LineaDelResumen(estado: ResumenUiState, resumen: ResumenActividad, zona: ZoneId) {
     Text(
-        text = lineaDelResumen(estado.red, resumen.tramo, estado.datosDe, estado.sinConexion, LocalContext.current.resources, zona),
+        text = lineaDelResumen(estado.red, resumen, estado.datosDe, estado.sinConexion, LocalContext.current.resources, zona),
         style = MaterialTheme.typography.nota,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -517,19 +571,28 @@ fun FilaDeMetricas(resumen: ResumenActividad, altas: Set<TipoAtaque>, alTocar: (
  */
 @Composable
 fun TarjetaGrafico(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, frase: String?, modifier: Modifier = Modifier) {
-    val siete = resumen.periodo == PeriodoResumen.SIETE_DIAS
     val elegidas = resumen.filtro.barras
+    val pocas = resumen.barras.size <= 7
+    // Con un día entero por hora son 24 barras: el número de la hora va cada 3 (cambio 19).
+    val cadaCuantas = if (resumen.escala == EscalaBarra.HORA && resumen.barras.size > BARRAS_APRETADAS) 3 else 1
     TarjetaResumen(
-        titulo = stringResource(if (siete) R.string.resumen_alertas_por_dia else R.string.resumen_alertas_por_semana),
+        titulo = stringResource(
+            when (resumen.escala) {
+                EscalaBarra.HORA -> R.string.resumen_alertas_por_hora
+                EscalaBarra.DIA -> R.string.resumen_alertas_por_dia
+                EscalaBarra.SEMANA -> R.string.resumen_alertas_por_semana
+            },
+        ),
         espacioTitulo = 10.dp,
         modifier = modifier,
     ) {
         GraficoDeBarras(
             barras = resumen.barras.mapIndexed { indice, barra ->
                 BarraGrafico(
-                    etiqueta = barra.franja.etiquetaGrafico(),
+                    etiqueta = if (indice % cadaCuantas == 0) barra.franja.etiquetaGrafico(pocosDias = pocas) else "",
                     cantidad = barra.cantidad,
-                    resaltada = siete && indice == resumen.barras.lastIndex,
+                    // La de hoy va en el verde base (Figma 52-2629).
+                    resaltada = barra.franja.escala == EscalaBarra.DIA && barra.franja.primerDia == resumen.hoy,
                     elegida = barra.franja in elegidas,
                     atenuada = elegidas.isNotEmpty() && barra.franja !in elegidas,
                 )

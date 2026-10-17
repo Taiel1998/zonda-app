@@ -4,7 +4,9 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /** Una cifra "x de y", por ejemplo 27 alertas reales de 33 revisadas. [valor] es la fracción, o null si no hay base. */
 data class Proporcion(val parte: Int, val total: Int) {
@@ -21,7 +23,7 @@ data class Tramo(val desde: LocalDate, val hasta: LocalDate) {
 }
 
 /**
- * Los dos períodos del Resumen (Figma 52-2629 y 100-7024). Se cuentan por días del calendario del
+ * Los dos atajos del Resumen (Figma 52-2629 y 100-7024). Se cuentan por días del calendario del
  * teléfono, así cada barra es un día entero: 7 días son hoy y los 6 anteriores ("del 21/09 al 27/09",
  * de lunes a domingo en el Figma); 30 días arranca 30 días atrás, que es todo lo que guarda el teléfono
  * ("del 28/08 al 27/09").
@@ -32,28 +34,101 @@ enum class PeriodoResumen(private val diasAtras: Long) {
 
     fun tramo(hoy: LocalDate): Tramo = Tramo(hoy.minusDays(diasAtras), hoy)
 
+    /** Los mismos días, de las 00:00 del primero a las 23:59 de hoy. */
+    fun rango(hoy: LocalDate): RangoResumen = RangoResumen.dias(hoy.minusDays(diasAtras), hoy)
+
     /**
      * Las barras del gráfico. En 7 días, una por día. En 30 días, cuatro: las tres semanas que terminan
      * hoy y una primera con lo que queda del período (Figma 100-7024: 28/8, 7/9, 14/9 y 21/9).
      */
-    fun barras(hoy: LocalDate): List<Franja> = when (this) {
-        SIETE_DIAS -> (6L downTo 0L).map { atras -> Franja.dia(hoy.minusDays(atras)) }
-        TREINTA_DIAS -> listOf(
-            Franja.semana(tramo(hoy).desde, hoy.minusDays(21)),
-            Franja.semana(hoy.minusDays(20), hoy.minusDays(14)),
-            Franja.semana(hoy.minusDays(13), hoy.minusDays(7)),
-            Franja.semana(hoy.minusDays(6), hoy),
-        )
+    fun barras(hoy: LocalDate): List<Franja> = rango(hoy).barras()
+
+    companion object {
+        /** Todo lo que guarda el teléfono: los días que se pueden elegir en "Elegí las fechas". */
+        fun guardados(hoy: LocalDate): Tramo = TREINTA_DIAS.tramo(hoy)
     }
 }
 
-/** De qué es cada barra del gráfico del Resumen: un día o una semana (cambio 16). */
-enum class EscalaBarra { DIA, SEMANA }
+/**
+ * Lo que abarca el Resumen (cambio 19): desde un día y una hora hasta otro día y otra hora, los dos al
+ * minuto. "Hasta" incluye ese minuto: de 00:00 a 23:59 es el día entero. Los atajos de 7 y 30 días son
+ * rangos de días enteros que terminan hoy.
+ */
+data class RangoResumen(val desde: LocalDateTime, val hasta: LocalDateTime) {
+
+    /** El minuto siguiente a [hasta]: lo primero que ya no cuenta. */
+    val fin: LocalDateTime
+        get() = hasta.plusMinutes(1)
+
+    val primerDia: LocalDate
+        get() = desde.toLocalDate()
+
+    val ultimoDia: LocalDate
+        get() = hasta.toLocalDate()
+
+    /** Cuántos días del calendario toca, contando el primero y el último. */
+    val dias: Long
+        get() = ChronoUnit.DAYS.between(primerDia, ultimoDia) + 1
+
+    /** De las 00:00 del primer día a las 23:59 del último: el chip "Fechas" no lleva el relojito. */
+    val diasEnteros: Boolean
+        get() = desde.toLocalTime() == LocalTime.MIDNIGHT && hasta.toLocalTime() == FIN_DEL_DIA
+
+    /** "Hasta" no puede quedar antes que "Desde" (en el mismo día, la hora). */
+    val valido: Boolean
+        get() = !hasta.isBefore(desde)
+
+    operator fun contains(momento: LocalDateTime): Boolean = !momento.isBefore(desde) && momento.isBefore(fin)
+
+    /**
+     * Cómo se agrupa el gráfico (cambio 19): si dura un día o menos, por hora; hasta 14 días, por día;
+     * más largo, por semana.
+     */
+    val escala: EscalaBarra
+        get() = when {
+            !Duration.between(desde, fin).minus(Duration.ofDays(1)).isPositive -> EscalaBarra.HORA
+            dias <= DIAS_POR_DIA -> EscalaBarra.DIA
+            else -> EscalaBarra.SEMANA
+        }
+
+    /**
+     * Las barras del gráfico, de la primera a la última. Por hora, una por cada hora que toca el rango;
+     * por día, una por día; por semana, semanas de 7 días que terminan en el último día, y la primera
+     * se queda con lo que sobra, como en 30 días.
+     */
+    fun barras(): List<Franja> = when (escala) {
+        EscalaBarra.HORA -> generateSequence(desde.truncatedTo(ChronoUnit.HOURS)) { it.plusHours(1) }
+            .takeWhile { it.isBefore(fin) }
+            .map { Franja.hora(it) }
+            .toList()
+        EscalaBarra.DIA -> (0 until dias).map { Franja.dia(primerDia.plusDays(it)) }
+        EscalaBarra.SEMANA -> {
+            val semanas = (dias / 7).toInt()
+            val completas = (semanas - 2 downTo 0).map { atras ->
+                Franja.semana(ultimoDia.minusDays(7L * atras + 6), ultimoDia.minusDays(7L * atras))
+            }
+            listOf(Franja.semana(primerDia, ultimoDia.minusDays(7L * (semanas - 1)))) + completas
+        }
+    }
+
+    companion object {
+        val FIN_DEL_DIA: LocalTime = LocalTime.of(23, 59)
+
+        /** Hasta tantos días, el gráfico va por día; con más, por semana. */
+        const val DIAS_POR_DIA = 14L
+
+        /** Días enteros: de las 00:00 de [desde] a las 23:59 de [hasta]. */
+        fun dias(desde: LocalDate, hasta: LocalDate) = RangoResumen(desde.atStartOfDay(), hasta.atTime(FIN_DEL_DIA))
+    }
+}
+
+/** De qué es cada barra del gráfico del Resumen: una hora, un día o una semana (cambios 16 y 19). */
+enum class EscalaBarra { HORA, DIA, SEMANA }
 
 /**
- * Una barra del gráfico: desde (incluido) hasta (sin incluir), en la hora del teléfono. Un día va de
- * las 00:00 a las 00:00 del siguiente; una semana, de las 00:00 de su primer día a las 00:00 del día
- * después del último.
+ * Una barra del gráfico: desde (incluido) hasta (sin incluir), en la hora del teléfono. Una hora va de
+ * las 22:00 a las 23:00; un día, de las 00:00 a las 00:00 del siguiente; una semana, de las 00:00 de su
+ * primer día a las 00:00 del día después del último.
  */
 data class Franja(val desde: LocalDateTime, val hasta: LocalDateTime, val escala: EscalaBarra) {
 
@@ -64,6 +139,8 @@ data class Franja(val desde: LocalDateTime, val hasta: LocalDateTime, val escala
         get() = desde.toLocalDate()
 
     companion object {
+        fun hora(desde: LocalDateTime) = Franja(desde, desde.plusHours(1), EscalaBarra.HORA)
+
         fun dia(dia: LocalDate) = Franja(dia.atStartOfDay(), dia.plusDays(1).atStartOfDay(), EscalaBarra.DIA)
 
         fun semana(desde: LocalDate, hasta: LocalDate) = Franja(desde.atStartOfDay(), hasta.plusDays(1).atStartOfDay(), EscalaBarra.SEMANA)
@@ -185,12 +262,13 @@ data class Destacado(
 )
 
 /**
- * Resumen de actividad de 7 o 30 días (RF07). Se calcula en el teléfono a partir de las alertas
- * guardadas, por eso funciona sin conexión (RNF01).
+ * Resumen de actividad de 7 días, 30 días o las fechas elegidas (RF07, cambio 19). Se calcula en el
+ * teléfono a partir de las alertas guardadas, por eso funciona sin conexión (RNF01).
  */
 data class ResumenActividad(
-    val periodo: PeriodoResumen,
-    /** Del primer día del período a hoy ("del 21/09 al 27/09"). */
+    /** El atajo elegido, o null con fechas que no son ni 7 ni 30 días. */
+    val periodo: PeriodoResumen?,
+    /** Del primer al último día ("del 21/09 al 27/09"). */
     val tramo: Tramo,
     /** Los filtros con los que se calculó todo; vacío si son todas las alertas del período. */
     val filtro: FiltroResumen,
@@ -201,7 +279,7 @@ data class ResumenActividad(
     val sinRevisar: Int,
     val reales: Int,
     val falsosPositivos: Int,
-    /** Una barra por día (7 días) o por semana (30 días), con las que quedaron en cero. */
+    /** Una barra por hora, por día o por semana ([RangoResumen.escala]), con las que quedaron en cero. */
     val barras: List<BarraActividad>,
     /**
      * Cada tipo de ataque, en el orden de la pantalla de severidades y aunque esté en cero (cambio 14):
@@ -224,7 +302,25 @@ data class ResumenActividad(
     val alertas: List<Alerta> = emptyList(),
     /** Todas las del período, sin filtros: la hoja de filtros cuenta con ellas cuántas quedarían. */
     val delPeriodo: List<Alerta> = emptyList(),
+    /** Lo que abarca, con las horas (cambio 19). */
+    val rango: RangoResumen = RangoResumen.dias(tramo.desde, tramo.hasta),
+    /** El día del teléfono al calcular: su barra va en el verde base. */
+    val hoy: LocalDate = tramo.hasta,
+    /** Todas las alertas guardadas: "Elegí las fechas" cuenta con ellas cuántas quedarían con otras fechas. */
+    val todas: List<Alerta> = emptyList(),
 ) {
+    /** Por hora, por día o por semana. */
+    val escala: EscalaBarra
+        get() = rango.escala
+
+    /**
+     * Cuántas alertas quedarían con [otro] rango y los mismos filtros, menos los días elegidos, que eran
+     * de las fechas de antes (cambio 19): lo que dice "Mostrar N alertas" de "Elegí las fechas".
+     */
+    fun cuantasEn(otro: RangoResumen, zona: ZoneId): Int {
+        val sinBarras = filtro.sinBarras()
+        return todas.count { it.momento(zona) in otro && sinBarras.incluye(it, zona) }
+    }
 
     companion object {
 
@@ -234,21 +330,31 @@ data class ResumenActividad(
          */
         const val REVISIONES_PARA_COMPARAR = 30
 
-        /**
-         * Calcula el resumen del [periodo] que termina hoy. Solo cuentan las alertas que empezaron dentro
-         * del período; el que llama puede pasar más y acá se descartan. Con [filtro], todas las cifras se
-         * calculan solo sobre las alertas que lo pasan.
-         */
+        /** Calcula el resumen del [periodo] que termina hoy. */
         fun calcular(
             alertas: List<Alerta>,
             periodo: PeriodoResumen,
             ahora: Instant,
             zona: ZoneId,
             filtro: FiltroResumen = FiltroResumen(),
+        ): ResumenActividad = calcular(alertas, periodo.rango(ahora.atZone(zona).toLocalDate()), ahora, zona, filtro, periodo)
+
+        /**
+         * Calcula el resumen de [rango]. Solo cuentan las alertas que empezaron dentro; el que llama puede
+         * pasar más y acá se descartan. Con [filtro], todas las cifras se calculan solo sobre las alertas
+         * que lo pasan. [periodo] es el atajo que corresponde, si hay uno.
+         */
+        fun calcular(
+            alertas: List<Alerta>,
+            rango: RangoResumen,
+            ahora: Instant,
+            zona: ZoneId,
+            filtro: FiltroResumen = FiltroResumen(),
+            periodo: PeriodoResumen? = null,
         ): ResumenActividad {
             val hoy = ahora.atZone(zona).toLocalDate()
-            val tramo = periodo.tramo(hoy)
-            val delPeriodo = alertas.filter { it.dia(zona) in tramo }.sortedByDescending { it.inicio }
+            val tramo = Tramo(rango.primerDia, rango.ultimoDia)
+            val delPeriodo = alertas.filter { it.momento(zona) in rango }.sortedByDescending { it.inicio }
             val lista = if (filtro.vacio) delPeriodo else delPeriodo.filter { filtro.incluye(it, zona) }
             val revisadas = lista.filter { !it.sinRevisar }
 
@@ -281,7 +387,7 @@ data class ResumenActividad(
                 )
             }
 
-            val barras = periodo.barras(hoy).map { franja -> BarraActividad(franja, lista.count { it.momento(zona) in franja }) }
+            val barras = rango.barras().map { franja -> BarraActividad(franja, lista.count { it.momento(zona) in franja }) }
 
             return ResumenActividad(
                 periodo = periodo,
@@ -302,6 +408,9 @@ data class ResumenActividad(
                 destacado = destacado(lista, barras, zona),
                 alertas = lista,
                 delPeriodo = delPeriodo,
+                rango = rango,
+                hoy = hoy,
+                todas = alertas,
             )
         }
 
@@ -331,9 +440,6 @@ data class ResumenActividad(
 }
 
 private val UNA_HORA: Duration = Duration.ofHours(1)
-
-/** El día del calendario en que empezó la alerta, en la zona del teléfono. */
-private fun Alerta.dia(zona: ZoneId): LocalDate = inicio.atZone(zona).toLocalDate()
 
 /** El día y la hora en que empezó la alerta, en la zona del teléfono. */
 private fun Alerta.momento(zona: ZoneId): LocalDateTime = inicio.atZone(zona).toLocalDateTime()

@@ -29,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.FiltroResumen
@@ -80,7 +81,14 @@ fun ChipConIcono(
             .padding(horizontal = if (elegido) 12.dp else 13.dp, vertical = if (elegido) 6.dp else 7.dp),
     ) {
         Icon(painter = painterResource(icono), contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
-        Text(text = texto, style = MaterialTheme.typography.opcion, color = color, maxLines = 1)
+        Text(
+            text = texto,
+            style = MaterialTheme.typography.opcion,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
         if (iconoFinal != null) {
             Icon(painter = painterResource(iconoFinal), contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
         }

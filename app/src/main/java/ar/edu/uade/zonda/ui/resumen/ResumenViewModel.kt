@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.ToqueResumen
@@ -35,14 +36,21 @@ class ResumenViewModel(
     conectividad: Conectividad,
 ) : ViewModel() {
 
-    /** El período y los filtros van juntos: al cambiar el período, los filtros cambian en el mismo paso. */
-    private data class Consulta(val periodo: PeriodoResumen = PeriodoResumen.SIETE_DIAS, val filtro: FiltroResumen = FiltroResumen())
+    /**
+     * El período, las fechas elegidas y los filtros van juntos: al cambiar el período o las fechas, los
+     * filtros cambian en el mismo paso. Con [fechas], el período no cuenta.
+     */
+    private data class Consulta(
+        val periodo: PeriodoResumen = PeriodoResumen.SIETE_DIAS,
+        val fechas: RangoResumen? = null,
+        val filtro: FiltroResumen = FiltroResumen(),
+    )
 
     private val consulta = MutableStateFlow(Consulta())
     private val aviso = MutableStateFlow<AvisoResumen?>(null)
 
     private val contenido: Flow<ContenidoResumen> = consulta
-        .flatMapLatest { observarResumen(it.periodo, it.filtro) }
+        .flatMapLatest { observarResumen(it.periodo, it.fechas, it.filtro) }
         .map { resumen ->
             when {
                 resumen == null -> ContenidoResumen.SinRed
@@ -71,6 +79,7 @@ class ResumenViewModel(
         ResumenUiState(
             contenido = contenido,
             periodo = consulta.periodo,
+            fechas = consulta.fechas,
             filtro = consulta.filtro,
             red = red?.nombre,
             datosDe = red?.ultimaSincronizacion,
@@ -86,7 +95,20 @@ class ResumenViewModel(
      */
     fun elegirPeriodo(nuevo: PeriodoResumen) {
         consulta.update { actual ->
-            if (actual.periodo == nuevo) actual else Consulta(nuevo, actual.filtro.sinBarras())
+            if (actual.periodo == nuevo && actual.fechas == null) actual else Consulta(nuevo, fechas = null, filtro = actual.filtro.sinBarras())
+        }
+    }
+
+    /**
+     * "Mostrar" de "Elegí las fechas" (cambio 19). Si son justo los días de 7 o 30 días, se marca ese
+     * atajo. Las barras elegidas eran de las fechas de antes: se sacan y quedan los demás filtros.
+     */
+    fun elegirFechas(rango: RangoResumen) {
+        val hoy = observarResumen.hoy()
+        val atajo = PeriodoResumen.entries.firstOrNull { it.rango(hoy) == rango }
+        consulta.update { actual ->
+            val nueva = Consulta(atajo ?: actual.periodo, fechas = if (atajo == null) rango else null, filtro = actual.filtro.sinBarras())
+            if (nueva.periodo == actual.periodo && nueva.fechas == actual.fechas) actual else nueva
         }
     }
 

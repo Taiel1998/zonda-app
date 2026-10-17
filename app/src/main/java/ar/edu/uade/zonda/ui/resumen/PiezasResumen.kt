@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
@@ -209,6 +210,9 @@ data class BarraGrafico(
 private val AltoMaximoBarra = 90.dp
 private val AnchoBarra = 28.dp
 
+/** Con más barras que esto (un día por hora), van más juntas y con la letra más chica (cambio 19). */
+const val BARRAS_APRETADAS = 12
+
 /**
  * Alertas por día o por semana (Figma 52-2629, 100-7024 y 463-1145): una columna por barra, todas del
  * mismo ancho con 8 entre ellas, con el número arriba (Medium 11), la barra de 28 de ancho (alto
@@ -223,7 +227,16 @@ fun GraficoDeBarras(
     modifier: Modifier = Modifier,
 ) {
     val maximo = barras.maxOfOrNull { it.cantidad }?.coerceAtLeast(1) ?: 1
-    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
+    // Hasta 7 barras, como el Figma; hasta 14 días, un poco más juntas; un día por hora, bien juntas.
+    val apretadas = barras.size > BARRAS_APRETADAS
+    val espacio = when {
+        apretadas -> 2.dp
+        barras.size > 7 -> 4.dp
+        else -> 8.dp
+    }
+    val numero = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium).let { if (apretadas) it.copy(fontSize = 9.sp) else it }
+    val etiqueta = if (apretadas) estiloRotuloChicoResumen.copy(fontSize = 9.sp) else estiloRotuloChicoResumen
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(espacio), verticalAlignment = Alignment.Bottom) {
         barras.forEachIndexed { indice, barra ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -236,22 +249,25 @@ fun GraficoDeBarras(
             ) {
                 Text(
                     text = barra.cantidad.toString(),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    style = numero,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
+                    softWrap = false,
                 )
                 val alto = AltoMaximoBarra * (barra.cantidad.toFloat() / maximo)
                 Box(
                     modifier = Modifier
-                        .width(AnchoBarra)
+                        .fillMaxWidth()
+                        .widthIn(max = AnchoBarra)
                         .height(if (barra.cantidad == 0) 2.dp else alto.coerceAtLeast(2.dp))
                         .background(color = if (barra.resaltada) VerdeZonda else VerdeBarra, shape = RoundedCornerShape(3.dp)),
                 )
                 Text(
                     text = barra.etiqueta,
-                    style = estiloRotuloChicoResumen,
+                    style = etiqueta,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    softWrap = false,
                 )
             }
         }

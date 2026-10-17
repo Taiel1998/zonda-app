@@ -10,6 +10,7 @@ import ar.edu.uade.zonda.domain.model.Franja
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.Proporcion
+import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.RevisionResumen
 import ar.edu.uade.zonda.domain.model.TipoAtaque
@@ -52,29 +53,68 @@ fun MetodoDeteccion.enPrecision(): Int = when (this) {
     MetodoDeteccion.REGLAS -> R.string.resumen_metodo_reglas
 }
 
-/** Debajo de cada barra del gráfico: el día en 7 días ("vie") o el comienzo de la semana en 30 días ("28/8"). */
-fun Franja.etiquetaGrafico(): String = when (escala) {
-    EscalaBarra.DIA -> Formato.diaDeLaSemanaCorto(primerDia)
+/**
+ * Debajo de cada barra del gráfico: la hora ("2", Figma 463-1836), el día ("vie"; con más de 7 días, el
+ * número del día) o el comienzo de la semana ("28/8").
+ */
+fun Franja.etiquetaGrafico(pocosDias: Boolean = true): String = when (escala) {
+    EscalaBarra.HORA -> desde.hour.toString()
+    EscalaBarra.DIA -> if (pocosDias) Formato.diaDeLaSemanaCorto(primerDia) else primerDia.dayOfMonth.toString()
     EscalaBarra.SEMANA -> Formato.diaYMesCorto(primerDia)
 }
 
-/** Dentro de una frase con varios filtros: "viernes", "semana del 28/8" (Figma 463-1145). */
+/** Dentro de una frase con varios filtros: "las 2 h", "viernes", "semana del 28/8" (Figma 463-1145). */
 fun Franja.enFrase(recursos: Resources): String = when (escala) {
+    EscalaBarra.HORA -> recursos.getString(R.string.resumen_las_horas, desde.hour)
     EscalaBarra.DIA -> Formato.diaDeLaSemana(primerDia)
     EscalaBarra.SEMANA -> recursos.getString(R.string.resumen_semana_del, Formato.diaYMesCorto(primerDia)).replaceFirstChar { it.lowercase(LOCALE) }
 }
 
 /** Con la fecha, en la lista y en la imagen: "viernes 25/09", "semana del 28/8" (Figma 463-1669 y 463-3007). */
 fun Franja.conFecha(recursos: Resources): String = when (escala) {
+    EscalaBarra.HORA -> recursos.getString(R.string.resumen_las_horas_del, desde.hour, Formato.diaDeLaSemana(primerDia) + " " + Formato.diaYMes(primerDia))
     EscalaBarra.DIA -> Formato.diaDeLaSemana(primerDia) + " " + Formato.diaYMes(primerDia)
     EscalaBarra.SEMANA -> enFrase(recursos)
 }
 
-/** El chip de la hoja de filtros: "vie 25/09", "semana del 28/8" (Figma 463-1317). */
+/** El chip de la hoja de filtros: "2 h", "vie 25/09", "semana del 28/8" (Figma 463-1317). */
 fun Franja.enHoja(recursos: Resources): String = when (escala) {
+    EscalaBarra.HORA -> recursos.getString(R.string.resumen_hora_chip, desde.hour)
     EscalaBarra.DIA -> Formato.diaDeLaSemanaCorto(primerDia) + " " + Formato.diaYMes(primerDia)
     EscalaBarra.SEMANA -> enFrase(recursos)
 }
+
+/** "viernes 25/09": un día con su nombre y su fecha. */
+private fun diaConFecha(dia: java.time.LocalDate): String = Formato.diaDeLaSemana(dia) + " " + Formato.diaYMes(dia)
+
+/** "sáb 10/10 22:00": un momento con el día corto. */
+private fun momentoCorto(momento: java.time.LocalDateTime): String =
+    Formato.diaDeLaSemanaCorto(momento.toLocalDate()) + " " + Formato.diaYMes(momento.toLocalDate()) + " " + Formato.horaDelDia(momento.toLocalTime())
+
+/**
+ * Lo que abarca el Resumen en la línea de arriba (cambio 19): los atajos y los días enteros, "del 21/09
+ * al 27/09"; un día solo, "viernes 25/09"; un día con horas, "viernes 25/09 · de 00:00 a 05:59" (Figma
+ * 463-1836); y días distintos con horas, "del sáb 10/10 22:00 al dom 11/10 06:00".
+ */
+fun RangoResumen.enLinea(recursos: Resources, esAtajo: Boolean = false): String = when {
+    esAtajo || (diasEnteros && dias > 1) -> recursos.getString(R.string.resumen_del_al, Formato.diaYMes(primerDia), Formato.diaYMes(ultimoDia))
+    diasEnteros -> diaConFecha(primerDia)
+    dias == 1L -> recursos.getString(
+        R.string.resumen_dia_de_a,
+        diaConFecha(primerDia),
+        Formato.horaDelDia(desde.toLocalTime()),
+        Formato.horaDelDia(hasta.toLocalTime()),
+    )
+    else -> recursos.getString(R.string.resumen_del_al, momentoCorto(desde), momentoCorto(hasta))
+}
+
+/** El chip "Fechas" con fechas elegidas (cambio 19; Figma 463-1836): "dom 11/10" o "10/10 al 11/10". */
+fun RangoResumen.enChip(recursos: Resources): String =
+    if (dias == 1L) {
+        Formato.diaDeLaSemanaCorto(primerDia) + " " + Formato.diaYMes(primerDia)
+    } else {
+        recursos.getString(R.string.resumen_al, Formato.diaYMes(primerDia), Formato.diaYMes(ultimoDia))
+    }
 
 /** "Revisadas", "Sin revisar", "Reales", "Falsos positivos": los chips de la hoja de filtros. */
 @StringRes
@@ -162,15 +202,25 @@ fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources, altas: Set<T
     }
     val destacado = resumen.destacado ?: return null
     val barra = destacado.barra
-    return when (resumen.periodo) {
-        PeriodoResumen.SIETE_DIAS -> recursos.getQuantityString(
+    val delTipo = recursos.getQuantityString(destacado.tipo.enFrase(), destacado.delTipo, destacado.delTipo)
+    return when (barra.franja.escala) {
+        // Figma 463-1836: "A las 2 h hubo más alertas: 5, con 4 de fuerza bruta."
+        EscalaBarra.HORA -> recursos.getQuantityString(
+            R.plurals.resumen_destacado_hora,
+            barra.cantidad,
+            barra.franja.desde.hour,
+            barra.cantidad,
+            delTipo,
+        )
+        EscalaBarra.DIA -> recursos.getQuantityString(
             if (destacado.mismoDestino) R.plurals.resumen_destacado_dia_servidor else R.plurals.resumen_destacado_dia,
             barra.cantidad,
-            Formato.diaDeLaSemana(barra.franja.primerDia),
+            // Con más de 7 días, el nombre del día se repite: va con la fecha.
+            if (resumen.rango.dias > 7) barra.franja.conFecha(recursos) else Formato.diaDeLaSemana(barra.franja.primerDia),
             barra.cantidad,
-            recursos.getQuantityString(destacado.tipo.enFrase(), destacado.delTipo, destacado.delTipo),
+            delTipo,
         )
-        PeriodoResumen.TREINTA_DIAS -> recursos.getQuantityString(
+        EscalaBarra.SEMANA -> recursos.getQuantityString(
             R.plurals.resumen_destacado_semana,
             barra.cantidad,
             Formato.diaYMesCorto(barra.franja.primerDia),
@@ -215,7 +265,13 @@ fun ejemploDePrecision(resumen: ResumenActividad, recursos: Resources): String? 
 fun recuadroDePrecision(resumen: ResumenActividad, recursos: Resources, altas: Set<TipoAtaque> = emptySet()): String {
     val filtro = resumen.filtro
     if (filtro.vacio) {
-        return recursos.getString(if (resumen.periodo == PeriodoResumen.SIETE_DIAS) R.string.precision_sin_filtro_7 else R.string.precision_sin_filtro_30)
+        return recursos.getString(
+            when (resumen.periodo) {
+                PeriodoResumen.SIETE_DIAS -> R.string.precision_sin_filtro_7
+                PeriodoResumen.TREINTA_DIAS -> R.string.precision_sin_filtro_30
+                null -> R.string.precision_sin_filtro_fechas
+            },
+        )
     }
     filtro.metodo?.let { metodo ->
         return recursos.getString(
@@ -231,7 +287,11 @@ fun recuadroDePrecision(resumen: ResumenActividad, recursos: Resources, altas: S
     filtro.barras.singleOrNull()?.let { barra ->
         // "Estás viendo el viernes 25/09", "Estás viendo la semana del 28/8".
         return recursos.getString(
-            if (barra.escala == EscalaBarra.DIA) R.string.precision_filtro_dia else R.string.precision_filtro_semana,
+            when (barra.escala) {
+                EscalaBarra.HORA -> R.string.precision_filtro_hora
+                EscalaBarra.DIA -> R.string.precision_filtro_dia
+                EscalaBarra.SEMANA -> R.string.precision_filtro_semana
+            },
             barra.conFecha(recursos),
         )
     }
@@ -255,19 +315,20 @@ fun recuadroDePrecision(resumen: ResumenActividad, recursos: Resources, altas: S
 fun lineaDeLaLista(resumen: ResumenActividad, recursos: Resources, altas: Set<TipoAtaque>): String {
     val grupos = resumen.filtro.grupos(recursos, altas, conFecha = true).toMutableList()
     if (resumen.filtro.barras.isEmpty()) {
-        grupos.add(0, recursos.getString(R.string.resumen_del_al, Formato.diaYMes(resumen.tramo.desde), Formato.diaYMes(resumen.tramo.hasta)))
+        grupos.add(0, resumen.rango.enLinea(recursos, esAtajo = resumen.periodo != null))
     }
     return recursos.getString(R.string.resumen_lista_del_resumen, grupos.joinToString(" · "))
 }
 
 /**
- * La línea de arriba: "Oficina central · del 21/09 al 27/09 · actualizado 02:14"; sin conexión
- * termina en "datos de las 02:14" (Figma 52-2807).
+ * La línea de arriba: "Oficina central · del 21/09 al 27/09 · actualizado 02:14", con el rango exacto
+ * si hay fechas elegidas ("viernes 25/09 · de 00:00 a 05:59"); sin conexión termina en "datos de las
+ * 02:14" (Figma 52-2807 y 463-1836).
  */
-fun lineaDelResumen(red: String?, tramo: Tramo, datosDe: Instant?, sinConexion: Boolean, recursos: Resources, zona: ZoneId): String {
+fun lineaDelResumen(red: String?, resumen: ResumenActividad, datosDe: Instant?, sinConexion: Boolean, recursos: Resources, zona: ZoneId): String {
     val partes = mutableListOf<String>()
     red?.let { partes += it }
-    partes += recursos.getString(R.string.resumen_del_al, Formato.diaYMes(tramo.desde), Formato.diaYMes(tramo.hasta))
+    partes += resumen.rango.enLinea(recursos, esAtajo = resumen.periodo != null)
     partes += when {
         datosDe == null -> recursos.getString(R.string.alertas_sin_sincronizar)
         sinConexion -> recursos.getString(R.string.alertas_datos_de, Formato.hora(datosDe, zona))

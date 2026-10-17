@@ -771,6 +771,30 @@
     <string name="resumen_sin_altas">ninguna alta con más de 1 h</string>
     <string name="resumen_alertas_por_dia">Alertas por día</string>
     <string name="resumen_alertas_por_semana">Alertas por semana</string>
+    <!-- Cambio 19 (1.0.4): si lo elegido dura un día o menos, el gráfico va por hora (Figma 463-1836). -->
+    <string name="resumen_alertas_por_hora">Alertas por hora</string>
+    <plurals name="resumen_destacado_hora">
+        <item quantity="one">A las %1$d h hubo más alertas: %2$d, con %3$s.</item>
+        <item quantity="other">A las %1$d h hubo más alertas: %2$d, con %3$s.</item>
+    </plurals>
+    <string name="resumen_las_horas">las %1$d h</string>
+    <string name="resumen_las_horas_del">las %1$d h del %2$s</string>
+    <string name="resumen_hora_chip">%1$d h</string>
+    <string name="resumen_dia_de_a">%1$s · de %2$s a %3$s</string>
+    <string name="resumen_al">%1$s al %2$s</string>
+    <!-- El chip "Fechas" y la hoja "Elegí las fechas" (Figma 52-2629, 463-2027 y 463-2466) -->
+    <string name="resumen_fechas">Fechas</string>
+    <string name="resumen_fechas_titulo">Elegí las fechas</string>
+    <string name="resumen_fechas_desde">Desde</string>
+    <string name="resumen_fechas_hasta">Hasta</string>
+    <string name="resumen_fechas_cambiar_hora">Cambiar la hora</string>
+    <string name="resumen_fechas_guardados">El teléfono guarda los últimos 30 días: del %1$s al %2$s.</string>
+    <string name="resumen_fechas_error">La hora de \"Hasta\" tiene que ser después de la de \"Desde\".</string>
+    <string name="resumen_fechas_hora_inicio">Hora de inicio</string>
+    <string name="resumen_fechas_hora_fin">Hora de fin</string>
+    <string name="resumen_fechas_escribir_hora">Escribir la hora</string>
+    <string name="resumen_fechas_hora_en_reloj">Elegir la hora en el reloj</string>
+    <string name="accion_aceptar">Aceptar</string>
     <plurals name="resumen_destacado_dia">
         <item quantity="one">El %1$s concentra %2$d alerta: %3$s.</item>
         <item quantity="other">El %1$s concentra %2$d alertas: %3$s.</item>
@@ -895,6 +919,8 @@
     <string name="precision_filtro_umbrales">Estás viendo los umbrales estadísticos: cada fila cuenta las alertas que marcaron los umbrales junto con ese modelo.</string>
     <string name="precision_filtro_reglas">Estás viendo las reglas estáticas: cada fila cuenta las alertas que marcaron las reglas junto con ese modelo.</string>
     <string name="precision_filtro_dia">Estás viendo el %1$s: la precisión cuenta solo las alertas revisadas de ese día.</string>
+    <string name="precision_sin_filtro_fechas">Sin filtro: la precisión cuenta todas las alertas revisadas de las fechas elegidas.</string>
+    <string name="precision_filtro_hora">Estás viendo %1$s: la precisión cuenta solo las alertas revisadas de esa hora.</string>
     <string name="precision_filtro_semana">Estás viendo la %1$s: la precisión cuenta solo las alertas revisadas de esa semana.</string>
     <string name="precision_filtro_tipo">Estás viendo %1$s: la precisión cuenta solo las alertas revisadas de ese tipo.</string>
     <string name="precision_filtro_revisadas">Estás viendo las revisadas: la precisión cuenta las mismas alertas que sin filtro.</string>
@@ -908,9 +934,12 @@
     <string name="resumen_vacio_titulo_30">Sin alertas en los últimos 30 días</string>
     <string name="resumen_vacio_detalle_7">El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
     <string name="resumen_vacio_detalle_30">El sensor siguió activo todo el mes. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
+    <string name="resumen_vacio_titulo_fechas">Sin alertas en estas fechas</string>
+    <string name="resumen_vacio_detalle_fechas">El sensor siguió activo. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
     <!-- La imagen que se comparte (Figma 107-4862): solo cantidades, sin IP ni nombres de equipos (RNF02) -->
     <string name="resumen_imagen_semanal">Resumen semanal</string>
     <string name="resumen_imagen_mensual">Resumen mensual</string>
+    <string name="resumen_imagen_fechas">Resumen</string>
     <string name="resumen_imagen_pie">Generado con Zonda · no incluye IPs ni nombres de equipos</string>
     <plurals name="resumen_mostrando_imagen">
         <item quantity="one">Mostrando %1$s: %2$d alerta.</item>

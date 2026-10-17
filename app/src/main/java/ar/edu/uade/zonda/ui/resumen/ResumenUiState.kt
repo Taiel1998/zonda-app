@@ -2,6 +2,7 @@ package ar.edu.uade.zonda.ui.resumen
 
 import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
@@ -41,7 +42,10 @@ sealed interface AvisoResumen {
  */
 data class ResumenUiState(
     val contenido: ContenidoResumen = ContenidoResumen.Cargando,
+    /** El atajo elegido; no cuenta si hay [fechas]. */
     val periodo: PeriodoResumen = PeriodoResumen.SIETE_DIAS,
+    /** Las fechas elegidas en "Elegí las fechas" (cambio 19), o null con 7 o 30 días. */
+    val fechas: RangoResumen? = null,
     /** Los filtros puestos (cambio 16); vacío si el Resumen muestra todas las alertas del período. */
     val filtro: FiltroResumen = FiltroResumen(),
     /** Nombre de la red activa ("Oficina central"). */
