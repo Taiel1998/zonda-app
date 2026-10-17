@@ -6,6 +6,7 @@ import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Revision
+import ar.edu.uade.zonda.domain.model.Severidad
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
@@ -18,16 +19,24 @@ data class ResultadoSincronizacion(
     val accionesEnviadas: Int,
     val accionesConError: Int,
     val hora: Instant,
-    /** Ids de las altas nuevas: con una sola, la notificación abre su detalle. */
-    val idsAltasNuevas: List<String> = emptyList(),
-    /** De esas altas, las que ya tenían aviso de Telegram al bajarlas: Zonda no las repite (cambio 13). */
-    val idsAltasNuevasConAvisoTelegram: Set<String> = emptySet(),
+    /**
+     * Las alertas que llegaron nuevas, de cualquier severidad, con si ya tenían aviso de Telegram al
+     * bajarlas: Zonda avisa las que Telegram no avisó (cambio 13 y 1.0.4).
+     */
+    val alertasNuevas: List<AlertaNueva> = emptyList(),
     /**
      * Alertas cuya revisión de este teléfono no se aplicó en esta sincronización porque otra persona la
      * revisó antes (409). Pasa una sola vez por revisión: el envío queda en conflicto y no se reintenta.
      */
     val conflictosNuevos: List<String> = emptyList(),
-)
+) {
+    /** Las altas nuevas: no entran en el recordatorio de esta misma vuelta. */
+    val idsAltasNuevas: List<String>
+        get() = alertasNuevas.filter { it.severidad == Severidad.ALTA }.map { it.id }
+}
+
+/** Una alerta que llegó nueva al sincronizar: su severidad y si el bot ya la avisó por Telegram. */
+data class AlertaNueva(val id: String, val severidad: Severidad, val conAvisoTelegram: Boolean = false)
 
 /**
  * Acceso a las alertas de cada red. La base local es la fuente de verdad: todo lo que se observa

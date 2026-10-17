@@ -24,6 +24,15 @@
         <item quantity="one">%d alerta nueva de severidad alta</item>
         <item quantity="other">%d alertas nuevas de severidad alta</item>
     </plurals>
+    <!-- 1.0.4: Zonda avisa también las medias y las bajas que Telegram no avisó, si no están en "Sin aviso". -->
+    <plurals name="notificacion_medias">
+        <item quantity="one">%d alerta nueva de severidad media</item>
+        <item quantity="other">%d alertas nuevas de severidad media</item>
+    </plurals>
+    <plurals name="notificacion_bajas">
+        <item quantity="one">%d alerta nueva de severidad baja</item>
+        <item quantity="other">%d alertas nuevas de severidad baja</item>
+    </plurals>
     <!-- Cambio 7 (1.0.3): solo si el conflicto aparece al sincronizar en segundo plano, una vez por revisión. -->
     <string name="notificacion_no_aplicada">Una revisión tuya no se aplicó. Otra persona revisó esa alerta antes. Tocá para elegir cuál queda.</string>
     <plurals name="notificacion_no_aplicadas">
@@ -596,9 +605,15 @@
         <item quantity="other">Llegaron %d alertas nuevas.</item>
     </plurals>
 
-    <!-- Notificación local de altas nuevas: un solo canal (informe, sección 6) -->
-    <string name="canal_alertas">Alertas altas</string>
-    <string name="canal_alertas_descripcion">Avisa cuando la sincronización trae alertas altas nuevas.</string>
+    <!-- Notificaciones de Zonda (1.0.4): un canal de Android por modo, porque el sonido de un canal no se cambia después de crearlo. -->
+    <string name="canal_sonido_y_vibracion">Alertas con sonido y vibración</string>
+    <string name="canal_sonido_y_vibracion_descripcion">Las severidades que elegiste avisar con sonido y vibración en Avisos por severidad.</string>
+    <string name="canal_solo_sonido">Alertas solo con sonido</string>
+    <string name="canal_solo_sonido_descripcion">Las severidades que elegiste avisar solo con sonido en Avisos por severidad.</string>
+    <string name="canal_solo_vibracion">Alertas solo con vibración</string>
+    <string name="canal_solo_vibracion_descripcion">Las severidades que elegiste avisar solo con vibración en Avisos por severidad.</string>
+    <string name="canal_en_silencio">Alertas en silencio</string>
+    <string name="canal_en_silencio_descripcion">Las severidades que elegiste avisar en silencio: quedan en la barra de notificaciones.</string>
     <string name="canal_revisiones">Revisiones</string>
     <string name="canal_revisiones_descripcion">Avisa si una revisión tuya no se aplicó porque otra persona revisó esa alerta antes.</string>
     <string name="telegram_bot">@zonda_alertas_bot</string>
@@ -618,15 +633,13 @@
     <string name="ajustes_telegram_sin_conectar_texto">Los avisos inmediatos no te van a llegar hasta que vincules Telegram. Es un solo paso.</string>
     <string name="ajustes_conectar_telegram">Conectar Telegram</string>
     <string name="ajustes_avisos_por_severidad">Avisos por severidad</string>
+    <string name="ajustes_avisos_por_severidad_detalle">Por Telegram y con notificaciones de Zonda</string>
     <string name="aviso_frase_sonido">con sonido</string>
     <string name="aviso_frase_silencio">en silencio</string>
     <string name="aviso_frase_sin_aviso">sin aviso</string>
     <string name="aviso_resumen_ajustes">%1$s. Se cambia desde Ajustes.</string>
     <string name="ajustes_severidad_por_tipo">Severidad por tipo de ataque</string>
     <string name="ajustes_severidad_por_tipo_detalle">Qué ataques son altos, medios o bajos</string>
-    <string name="ajustes_notificaciones_sistema">Notificaciones del sistema</string>
-    <string name="ajustes_notificaciones_permitidas">Permitidas · avisan cuando la sincronización trae alertas altas nuevas</string>
-    <string name="ajustes_notificaciones_desactivadas">Desactivadas · solo te avisa Telegram</string>
     <string name="ajustes_notificaciones_bloqueadas_titulo">Notificaciones desactivadas</string>
     <string name="ajustes_notificaciones_bloqueadas_texto">Sin este permiso no vas a ver los avisos de Zonda en el teléfono, aunque Telegram los reciba.</string>
     <string name="ajustes_notificaciones_bloqueadas_nota">Lleva directo a las notificaciones de Zonda en el sistema</string>
