@@ -40,6 +40,9 @@ object Rutas {
 
     /** El Resumen de 7 o 30 días (RF07), desde el ícono de barras de Estado. */
     const val RESUMEN = "resumen"
+
+    /** "Ver estas alertas" del Resumen (cambio 16): la lista encima del Resumen, con sus filtros. */
+    const val ALERTAS_DEL_RESUMEN = "resumen/alertas"
 }
 
 /**
