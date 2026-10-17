@@ -25,6 +25,7 @@ import ar.edu.uade.zonda.domain.model.Franja
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.RevisionResumen
@@ -84,7 +85,7 @@ class ResumenContenidoTest {
 
     private fun estado(resumen: ResumenActividad, sinConexion: Boolean = false) = ResumenUiState(
         contenido = if (resumen.totalDelPeriodo == 0) ContenidoResumen.Vacio(resumen) else ContenidoResumen.Datos(resumen),
-        periodo = resumen.periodo,
+        periodo = resumen.periodo ?: PeriodoResumen.SIETE_DIAS,
         filtro = resumen.filtro,
         red = "Oficina central",
         datosDe = ahora,
@@ -182,6 +183,24 @@ class ResumenContenidoTest {
 
         compose.onNodeWithText("Filtros (1)").assertIsDisplayed()
         compose.onNodeWithText("Mostrando fuerza bruta: 2 alertas. Tocá de nuevo para sacarlo.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `el chip Fechas abre la hoja y con fechas elegidas dice los dias y el relojito`() {
+        dibujar(estado(resumen()))
+        compose.onNodeWithText("Fechas").performClick()
+        compose.onNodeWithText("Elegí las fechas").assertIsDisplayed()
+    }
+
+    @Test
+    fun `con unas horas de un dia el grafico va por hora y la linea dice el rango exacto`() {
+        val rango = RangoResumen(LocalDate.of(2026, 10, 12).atStartOfDay(), LocalDate.of(2026, 10, 12).atTime(11, 59))
+        val resumen = ResumenActividad.calcular(alertas(), rango, ahora, utc)
+        dibujar(estado(resumen).copy(fechas = rango))
+
+        compose.onNodeWithText("lun 12/10").assertIsDisplayed()
+        compose.onNodeWithText("Alertas por hora").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Oficina central · lunes 12/10 · de 00:00 a 11:59 · actualizado 12:00").assertIsDisplayed()
     }
 
     @Test

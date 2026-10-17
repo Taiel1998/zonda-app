@@ -6,10 +6,12 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeConectividad
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
+import ar.edu.uade.zonda.domain.model.EscalaBarra
 import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.Franja
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.RevisionResumen
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
@@ -199,6 +201,39 @@ class ResumenViewModelTest {
             viewModel.elegirPeriodo(PeriodoResumen.TREINTA_DIAS)
             val sinDia = esperar { it.periodo == PeriodoResumen.TREINTA_DIAS }
             assertEquals(FiltroResumen(revision = RevisionResumen.REVISADAS), sinDia.filtro)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `elegir fechas cambia lo que abarca y saca los dias elegidos, y si son 7 dias marca ese atajo`() = runTest {
+        conRedYAlertas()
+        val viewModel = viewModel()
+        val hoy = LocalDate.of(2026, 10, 12)
+
+        viewModel.estado.test {
+            esperar { it.datos != null }
+            viewModel.tocar(ToqueResumen.Barra(Franja.dia(hoy)))
+            viewModel.tocar(ToqueResumen.Tipo(TipoAtaque.ESCANEO))
+            esperar { it.filtro.cantidad == 2 }
+
+            // Hoy de 00:00 a 11:59: va por hora.
+            val manana = RangoResumen(hoy.atStartOfDay(), hoy.atTime(11, 59))
+            viewModel.elegirFechas(manana)
+            val conFechas = esperar { it.datos?.resumen?.rango == manana }
+            assertEquals(manana, conFechas.fechas)
+            assertEquals(FiltroResumen(tipos = setOf(TipoAtaque.ESCANEO)), conFechas.filtro)
+            assertEquals(EscalaBarra.HORA, conFechas.datos!!.resumen.escala)
+
+            viewModel.elegirFechas(PeriodoResumen.SIETE_DIAS.rango(hoy))
+            val siete = esperar { it.fechas == null && it.datos?.resumen?.periodo == PeriodoResumen.SIETE_DIAS }
+            assertEquals(PeriodoResumen.SIETE_DIAS, siete.periodo)
+
+            viewModel.elegirFechas(manana)
+            esperar { it.fechas == manana }
+            viewModel.elegirPeriodo(PeriodoResumen.SIETE_DIAS)
+            val deNuevo = esperar { it.fechas == null && it.datos?.resumen?.periodo == PeriodoResumen.SIETE_DIAS }
+            assertEquals(null, deNuevo.fechas)
             cancelAndIgnoreRemainingEvents()
         }
     }
