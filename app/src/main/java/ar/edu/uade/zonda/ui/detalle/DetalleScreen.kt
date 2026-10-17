@@ -48,6 +48,7 @@ import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Revision
+import ar.edu.uade.zonda.domain.model.lectura
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.AvisoInferior
 import ar.edu.uade.zonda.ui.components.BannerSinConexion
@@ -59,6 +60,7 @@ import ar.edu.uade.zonda.ui.components.BotonTonal
 import ar.edu.uade.zonda.ui.components.Etiqueta
 import ar.edu.uade.zonda.ui.components.EstadoError
 import ar.edu.uade.zonda.ui.components.EstadoVacio
+import ar.edu.uade.zonda.ui.components.EtiquetaConAyuda
 import ar.edu.uade.zonda.ui.components.FilaDato
 import ar.edu.uade.zonda.ui.components.IndicadorEnvio
 import ar.edu.uade.zonda.ui.components.IndicadorEstadoRevision
@@ -72,6 +74,7 @@ import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.nombreEnFrase
 import ar.edu.uade.zonda.ui.nombreEnHistorial
+import ar.edu.uade.zonda.ui.texto
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.theme.CremaBarra
@@ -431,54 +434,60 @@ private fun DatosDelFlujo(alerta: Alerta, zona: ZoneId) {
         FilaDato(stringResource(R.string.detalle_servicio), Formato.servicioProtocoloYPuerto(alerta.servicio, alerta.protocolo, alerta.puerto))
         FilaDato(stringResource(R.string.detalle_inicio), Formato.horaConSegundos(alerta.inicio, zona))
         FilaDato(stringResource(R.string.detalle_duracion), Formato.duracion(alerta.duracion))
-        FilaDato(stringResource(R.string.detalle_conexiones_60s), alerta.veredictos.umbrales.contexto60s.toString())
-        // Flujos y puertos distintos no están en el Figma: quedan por el cambio 1 del LEEME.
-        FilaDato(stringResource(R.string.detalle_flujos), alerta.cantidadFlujos.toString())
+        FilaDato(
+            etiqueta = stringResource(R.string.detalle_conexiones_60s),
+            valor = alerta.veredictos.umbrales.contexto60s.toString(),
+            ayuda = stringResource(R.string.ayuda_conexiones_60s),
+        )
+        // Un flujo es una conexión: "Conexiones en total" se entiende solo y el "?" cuenta qué es el episodio.
+        FilaDato(
+            etiqueta = stringResource(R.string.detalle_conexiones_total),
+            valor = alerta.cantidadFlujos.toString(),
+            ayuda = stringResource(R.string.ayuda_conexiones_total),
+        )
         if (alerta.puertosDistintos > 1) {
             FilaDato(stringResource(R.string.detalle_puertos_distintos), alerta.puertosDistintos.toString())
         }
     }
 }
 
-/** Figma 3-41: cada método con el dato que justifica su veredicto. */
+/**
+ * Figma 468-686: cada método dice con palabras cuánto se pasó de lo normal, en la misma escala para la
+ * IA y los umbrales, sin el umbral ni los números con ceros (decisión 37). El título y cada método
+ * llevan su "?".
+ */
 @Composable
 private fun Veredictos(alerta: Alerta) {
     Panel {
-        TituloSeccion(stringResource(R.string.detalle_veredictos))
-        val ia = alerta.veredictos.ia
+        TituloSeccion(stringResource(R.string.detalle_veredictos), ayuda = stringResource(R.string.ayuda_veredictos))
+        val veredictos = alerta.veredictos
         FilaVeredicto(
             titulo = stringResource(R.string.detalle_modelo_ia),
-            detalle = stringResource(R.string.detalle_ia_detalle, Formato.numero(ia.errorReconstruccion), Formato.numero(ia.umbral)),
-            anomalo = ia.anomalo,
+            ayuda = stringResource(R.string.ayuda_modelo_ia),
+            detalle = veredictos.ia.lectura.texto(),
+            anomalo = veredictos.ia.anomalo,
         )
-        val umbrales = alerta.veredictos.umbrales
         FilaVeredicto(
             titulo = stringResource(R.string.detalle_umbrales),
-            detalle = listOfNotNull(
-                stringResource(R.string.detalle_umbrales_detalle, umbrales.contexto60s, umbrales.umbralServicio),
-                if (umbrales.servicioSinLineaBase) stringResource(R.string.detalle_umbrales_sin_linea_base) else null,
-            ).joinToString(" · "),
-            anomalo = umbrales.anomalo,
+            ayuda = stringResource(R.string.ayuda_umbrales),
+            detalle = veredictos.umbrales.lectura.texto(),
+            anomalo = veredictos.umbrales.anomalo,
         )
-        val reglas = alerta.veredictos.reglas
         FilaVeredicto(
             titulo = stringResource(R.string.detalle_reglas),
-            detalle = if (reglas.enCatalogo) {
-                stringResource(R.string.detalle_reglas_en_catalogo)
-            } else {
-                stringResource(R.string.detalle_reglas_fuera_de_catalogo, reglas.parDestino)
-            },
-            anomalo = reglas.anomalo,
+            ayuda = stringResource(R.string.ayuda_reglas),
+            detalle = veredictos.reglas.lectura.texto(),
+            anomalo = veredictos.reglas.anomalo,
         )
     }
 }
 
-/** Figma 3-43: nombre en Medium 14 y el dato en Regular 12 gris, con la etiqueta a la derecha. */
+/** Figma 468-691: nombre en Medium 14 con su "?" y lo que dice en Regular 12 gris, con la etiqueta a la derecha. */
 @Composable
-private fun FilaVeredicto(titulo: String, detalle: String, anomalo: Boolean) {
+private fun FilaVeredicto(titulo: String, ayuda: String, detalle: String, anomalo: Boolean) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(text = titulo, style = MaterialTheme.typography.valor)
+            EtiquetaConAyuda(texto = titulo, ayuda = ayuda, estilo = MaterialTheme.typography.valor)
             Text(text = detalle, style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IndicadorVeredicto(anomalo = anomalo)

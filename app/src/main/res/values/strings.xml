@@ -216,17 +216,27 @@
     <string name="detalle_inicio">Inicio</string>
     <string name="detalle_duracion">Duración</string>
     <string name="detalle_conexiones_60s">Conexiones en 60 s</string>
-    <string name="detalle_flujos">Flujos del episodio</string>
+    <string name="detalle_conexiones_total">Conexiones en total</string>
     <string name="detalle_puertos_distintos">Puertos distintos</string>
     <string name="detalle_veredictos">Veredicto por método</string>
     <string name="detalle_modelo_ia">Modelo de IA</string>
-    <string name="detalle_ia_detalle">error %1$s · umbral %2$s</string>
     <string name="detalle_umbrales">Umbrales estadísticos</string>
-    <string name="detalle_umbrales_detalle">contexto %1$d · umbral %2$d</string>
-    <string name="detalle_umbrales_sin_linea_base">servicio sin línea base</string>
     <string name="detalle_reglas">Reglas estáticas</string>
-    <string name="detalle_reglas_en_catalogo">servicio en catálogo</string>
-    <string name="detalle_reglas_fuera_de_catalogo">fuera del catálogo: %1$s</string>
+    <!-- Cuánto se pasó cada método, con palabras y en la misma escala (correcciones 5 y 6, decisión 37) -->
+    <string name="veredicto_veces_mas">%1$d veces más de lo normal</string>
+    <string name="veredicto_un_poco_mas">Un poco más de lo normal</string>
+    <string name="veredicto_dentro_de_lo_normal">Dentro de lo normal</string>
+    <string name="veredicto_servicio_nuevo">Servicio nuevo en la red</string>
+    <string name="veredicto_servicio_autorizado">Servicio autorizado</string>
+    <string name="veredicto_servicio_no_autorizado">Servicio no autorizado</string>
+    <!-- El "?" de seis términos del detalle y su globito (Figma 468-627): una frase, sin números -->
+    <string name="ayuda_que_es">Qué es %1$s</string>
+    <string name="ayuda_conexiones_60s">Cuántas veces el equipo de origen se conectó a este servicio en un minuto.</string>
+    <string name="ayuda_conexiones_total">Todas las conexiones entre estos dos equipos, desde la primera hasta que pasaron 5 minutos sin ninguna.</string>
+    <string name="ayuda_veredictos">Tres métodos miran el mismo tráfico; alcanza con que uno lo marque para que haya alerta.</string>
+    <string name="ayuda_modelo_ia">Aprendió cómo es el tráfico normal de tu red y marca lo que se parece poco a eso.</string>
+    <string name="ayuda_umbrales">Cuentan las conexiones a un mismo servicio en un minuto y marcan si son más que en un día normal.</string>
+    <string name="ayuda_reglas">Marcan las conexiones a servicios que no están en la lista de autorizados de tu empresa.</string>
     <string name="detalle_revision">Revisión</string>
     <string name="detalle_resultado">Resultado</string>
     <string name="detalle_motivo">Motivo</string>

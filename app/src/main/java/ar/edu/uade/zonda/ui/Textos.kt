@@ -10,6 +10,7 @@ import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroEstado
+import ar.edu.uade.zonda.domain.model.LecturaVeredicto
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.ModoNotificacion
@@ -85,6 +86,17 @@ fun Periodo.tituloEnHoja(): Int = when (this) {
     Periodo.ULTIMOS_7_DIAS -> R.string.filtro_periodo_7d_titulo
     Periodo.ULTIMOS_30_DIAS -> R.string.filtro_periodo_30d_titulo
     Periodo.TODO -> R.string.filtro_periodo
+}
+
+/** Lo que dice el detalle de cada método (decisión 37): "12 veces más de lo normal", "Servicio autorizado". */
+@Composable
+fun LecturaVeredicto.texto(): String = when (this) {
+    is LecturaVeredicto.VecesMas -> stringResource(R.string.veredicto_veces_mas, veces)
+    LecturaVeredicto.UnPocoMas -> stringResource(R.string.veredicto_un_poco_mas)
+    LecturaVeredicto.DentroDeLoNormal -> stringResource(R.string.veredicto_dentro_de_lo_normal)
+    LecturaVeredicto.ServicioNuevo -> stringResource(R.string.veredicto_servicio_nuevo)
+    LecturaVeredicto.ServicioAutorizado -> stringResource(R.string.veredicto_servicio_autorizado)
+    LecturaVeredicto.ServicioNoAutorizado -> stringResource(R.string.veredicto_servicio_no_autorizado)
 }
 
 /** Cómo se nombra en el historial del detalle: "Detectada por el modelo de IA y los umbrales". */

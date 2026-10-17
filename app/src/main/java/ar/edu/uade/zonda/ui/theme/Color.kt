@@ -36,8 +36,11 @@ val TextoSecundario = Color(0xFF5F5E5A)
 val RojoPeligro = Color(0xFFA32D2D)
 val RojoPeligroFondo = Color(0xFFFCEBEB)
 
-/** Fondo del aviso inferior (snackbar). */
+/** Fondo del aviso inferior (snackbar) y del globito de ayuda. */
 val GrisAviso = Color(0xFF2C2C2A)
+
+/** La letra del globito de ayuda del detalle, sobre [GrisAviso] (Figma 468-723). */
+val TextoGlobito = Color(0xFFF4F1EA)
 
 /** Fondo del escáner del QR y texto claro sobre él (Figma 35-464 y 49-284). */
 val FondoEscaner = Color(0xFF1E1E1C)
