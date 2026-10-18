@@ -22,7 +22,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 
 1. La notebook se conecta al hotspot del teléfono, y no al revés: con el hotspot de Windows prendido, el nombre apuntaría a otra IP.
 2. Cerrar los emuladores de Android que haya abiertos en la notebook. En el ensayo quedó uno prendido con una versión vieja de Zonda: intentó sincronizar, el servidor lo rechazó (401) y la ventana de `demo.cmd` se llenó de esos pedidos.
-3. Borrar `backend\zonda.db`: la API vuelve a cargar la semilla con las fechas de hoy y sin teléfonos pareados.
+3. Con `demo.cmd` cerrado, borrar `backend\zonda.db` junto con `zonda.db-wal` y `zonda.db-shm`, si están: un `-wal` que queda suelto se mezcla con la base nueva. La API vuelve a cargar la semilla con las fechas de hoy y sin teléfonos pareados.
 4. En `backend`, `.\demo.cmd`. Tiene que terminar con "Listo: https://…/salud responde con HTTPS." y "El nombre apunta a esta notebook".
 5. En otra terminal, también en `backend`: `powershell -ExecutionPolicy Bypass -File scripts\probar_tls.ps1`. Tienen que salir las siete en PASA.
 6. En el teléfono, Ajustes de Android → Apps → Zonda → Almacenamiento → Borrar datos, para mostrar el primer inicio desde cero.
@@ -61,7 +61,7 @@ Lo recorrimos entero el 14/10/2026 en el emulador, con el APK de release firmado
 
 ### Paso 5. Telegram (45 segundos)
 
-**Muestra.** "Recibí los avisos por Telegram": tocar "Abrir Telegram". Se abre el chat del bot: tocar "Iniciar" y volver a Zonda, que muestra "Telegram conectado". "Continuar".
+**Muestra.** "Recibí los avisos por Telegram": tocar "Abrir Telegram". Si Android pregunta con qué abrir el enlace, elegir Telegram y "Solo una vez". Se abre el chat del bot: si es la primera vez, tocar "Iniciar"; si el chat ya existía, como en el teléfono de la demo, Telegram manda el inicio solo y el botón no aparece. Volver a Zonda, que muestra "Telegram conectado". "Continuar".
 
 **Dice.** "Por Telegram viajan solo la severidad, el servicio y la hora. Las direcciones IP y los nombres de los equipos se ven solo en la app, por el canal cifrado."
 
