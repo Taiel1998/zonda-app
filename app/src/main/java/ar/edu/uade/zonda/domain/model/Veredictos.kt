@@ -89,10 +89,11 @@ val VeredictoIa.lectura: LecturaVeredicto
 
 /** Los umbrales: las conexiones en 60 s divididas el máximo de la línea base (58 / 2 = 29 veces). */
 val VeredictoUmbrales.lectura: LecturaVeredicto
-    get() = if (servicioSinLineaBase) {
-        LecturaVeredicto.ServicioNuevo
-    } else {
-        LecturaVeredicto.de(anomalo, contexto60s.toDouble(), umbralServicio.toDouble())
+    get() = when {
+        // Sin marcarla, "Dentro de lo normal" aunque el servicio sea nuevo: el texto no contradice la etiqueta.
+        !anomalo -> LecturaVeredicto.DentroDeLoNormal
+        servicioSinLineaBase -> LecturaVeredicto.ServicioNuevo
+        else -> LecturaVeredicto.de(anomalo, contexto60s.toDouble(), umbralServicio.toDouble())
     }
 
 /** Las reglas: si el servicio está en la lista de autorizados de la empresa. */
