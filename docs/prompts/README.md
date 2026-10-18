@@ -38,3 +38,4 @@ Un archivo por sesión de trabajo o por fase, con la fecha, qué se pidió, qué
 | 15/10/2026 | `2026-10-15-version-1.0.2.md` | Versión 1.0.2: el aviso del detalle arriba de la barra de tres botones |
 | 15 y 16/10/2026 | `2026-10-16-version-1.0.3.md` | Versión 1.0.3: lo que salió del ensayo en el teléfono |
 | 16/10/2026 | `2026-10-16-version-1.0.4.md` | Versión 1.0.4: notificaciones de Zonda por severidad y el Resumen con filtros, fechas y PDF |
+| 17/10/2026 | `2026-10-17-version-1.0.5.md` | Versión 1.0.5: las correcciones del profesor (perfiles, asignar, importancia de cada equipo, registro de cambios, veredicto con palabras y modo oscuro) |

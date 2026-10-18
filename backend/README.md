@@ -52,19 +52,22 @@ Al arrancar con la base vacía, la API carga `alertas_semilla.json` y **corre to
 No hay interfaz web de administración; se usan comandos en la computadora de la API:
 
 ```powershell
-.\zonda.cmd pair              # código de pareo de un uso (vence a los 10 minutos), con el QR en pantalla y en PNG
-.\zonda.cmd dispositivos      # teléfonos pareados, con estado y vencimiento del token
+.\zonda.cmd pair              # código de pareo de administrador, de un uso (vence a los 10 minutos), con el QR en pantalla y en PNG
+.\zonda.cmd pair --nombre Taiel  # lo mismo, con el nombre de la persona que lo va a usar
+.\zonda.cmd dispositivos      # teléfonos pareados, con su persona, su perfil, estado y vencimiento del token
 .\zonda.cmd revoke d-xxxxxxxx # revoca el token de un teléfono (la app pide un pareo nuevo)
 .\zonda.cmd emitir            # crea ya una alerta alta de fuerza bruta por SSH, para la demo
 .\zonda.cmd emitir escaneo    # una de otro tipo; con el servicio: .\zonda.cmd emitir fuerza_bruta ftp
 .\zonda.cmd tranquila         # otra persona revisa desde su teléfono las altas y medias sin revisar, para la demo
 ```
 
+Los códigos de `zonda pair` son de administrador: el primero sale de la terminal y los demás los suma un administrador desde la app (Ajustes → Personas → Agregar persona, que pide un código a `POST /personas/codigo` y muestra el mismo QR en su pantalla; decisión 39). `zonda revoke` quita a cualquiera, también al último administrador, y en ese caso avisa que hay que generar otro código con `zonda pair`.
+
 El QR contiene `zonda:<ZONDA_URL_PUBLICA>#<código>;vence=<fecha ISO>`, por ejemplo `zonda:https://zonda-empresa.duckdns.org#K7M2-QX9P;vence=2026-10-12T02:19:00+00:00`. En Linux o macOS: `python -m app.cli pair`.
 
 `zonda emitir [tipo] [servicio]` crea una alerta nueva en el momento: copia una existente de ese tipo con la hora de ahora, con la misma función que el emisor de `ZONDA_EMITIR_CADA`, pero sin azar. El emisor copia cualquiera y, con la semilla real, casi ninguna sale alta (solo 2 de las 516); en la demo hace falta una alta cuando la pedimos (paso 7 del guion). Si hay un teléfono con Telegram vinculado, el aviso sale en unos 5 segundos, y la app la trae en la sincronización siguiente. Los tipos son los de la tabla de severidades: `fuerza_bruta`, `escaneo`, `ddos`, `probable_falsa_alarma`, `sin_tipificar`, `servicio_no_autorizado` (las que la IA no vio y marcaron las reglas) y `volumen_inusual` (las que marcaron los umbrales). Sin argumentos es fuerza bruta por SSH; con un tipo y sin servicio, cualquiera de ese tipo. Si no hay ninguna alerta para copiar, lo dice y termina con error. Como los otros comandos, escribe directo en la base de la API (`ZONDA_DB_PATH` o `backend/zonda.db`); para recibir alertas desde la plataforma de detección está `POST /ingesta/alertas` (prueba de punta a punta).
 
-`zonda tranquila [--nombre "Teléfono de Laura"]` hace de otra persona del equipo que revisa desde su teléfono todas las altas y medias sin revisar, como falso positivo con el motivo tarea programada. Es el final de la demo (paso 11 del guion): al sincronizar, el teléfono de la demo las trae revisadas y Estado pasa a verde. Las bajas no se tocan, porque no cambian el color. La revisión se guarda con la misma función que `POST /alertas/{id}/revision` (`app/revisiones.py`): queda en el historial con el nombre de ese teléfono, sube la versión y cambia la secuencia del cursor. Si después alguien manda una revisión de lo que vio antes, la API responde el `409` de siempre, con la revisión de la otra persona. El teléfono se parea solo la primera vez, con un código de un uso que se canjea en el momento, y después se vuelve a usar: aparece en `zonda dispositivos` y se puede revocar como cualquier otro. Si no queda ninguna alta ni media sin revisar, lo dice y no cambia nada. Escribe en la misma base que la API, así que anda con la API levantada o sin ella.
+`zonda tranquila [--nombre "Teléfono de Laura"]` hace de otra persona del equipo que revisa desde su teléfono todas las altas y medias sin revisar, como falso positivo con el motivo tarea programada. Es el final de la demo (paso 11 del guion): al sincronizar, el teléfono de la demo las trae revisadas y Estado pasa a verde. Las bajas no se tocan, porque no cambian el color. La revisión se guarda con la misma función que `POST /alertas/{id}/revision` (`app/revisiones.py`): queda en el historial con el nombre de ese teléfono, sube la versión y cambia la secuencia del cursor. Si después alguien manda una revisión de lo que vio antes, la API responde el `409` de siempre, con la revisión de la otra persona. El teléfono se parea solo la primera vez, como analista (decisión 39), con un código de un uso que se canjea en el momento, y después se vuelve a usar: aparece en `zonda dispositivos` y se puede revocar como cualquier otro. Si no queda ninguna alta ni media sin revisar, lo dice y no cambia nada. Escribe en la misma base que la API, así que anda con la API levantada o sin ella.
 
 ## Contrato
 
@@ -77,8 +80,17 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
 | `GET /alertas?desde=&severidad=&servicio=&destino=&metodo=&estado=` | cursor → `alertas` nuevas o modificadas, `cursorSiguiente`, `hayMas`; sin cursor trae solo los últimos 30 días y suma `total` | 401, 410 cursor de otra instalación |
 | `GET /alertas/{id}` | id → la alerta con sus veredictos e `historial` | 401, 404 |
 | `POST /alertas/{id}/revision` | `{accionId, resultado, motivo, comentario, versionVista, forzar, revisadaEn}` → la alerta actualizada | 401, 404, 409 con `revisionAjena` y la alerta, 422 motivo que no corresponde o comentario vacío |
-| `GET /severidades`, `PUT /severidades` | `{tipo: severidad}`, con los tipos de `tipoAtaque` más `servicio_no_autorizado` y `volumen_inusual` → la tabla completa; el PUT marca todas las alertas como modificadas | 401, 422 tipo desconocido |
-| `POST /pareo` | `{codigo, nombreDispositivo}` → `{token, red, emitido, vence, dispositivoId, alertas30Dias}` | 400 inválido, 410 vencido o usado |
+| `GET /severidades` | token → `{tipo: severidad}`, con los tipos de `tipoAtaque` más `servicio_no_autorizado` y `volumen_inusual` | 401 |
+| `PUT /severidades` | `{severidades: {tipo: severidad}, motivo}` → la tabla completa. Solo un administrador y con motivo: cada tipo que cambia queda en el registro de cambios; marca todas las alertas como modificadas | 401, 403 analista, 422 tipo desconocido o sin motivo |
+| `POST /pareo` | `{codigo, nombreDispositivo}` → `{token, red, emitido, vence, dispositivoId, alertas30Dias, perfil, persona}`; el perfil y el nombre son los del código | 400 inválido, 410 vencido o usado |
+| `GET /personas` | token → la gente de la red: `[{id, nombre, telefono, perfil, ultimoUso, vos}]` | 401 |
+| `POST /personas/codigo` | `{nombre, perfil}` → `{codigo, vence, contenido, nombre, perfil}`: un código de un uso para esa persona y lo que lleva su QR | 401, 403 analista, 422 sin nombre |
+| `PUT /personas/{id}/perfil` | `{perfil}` → la persona | 401, 403 analista, 404, 409 si deja al equipo sin administrador |
+| `DELETE /personas/{id}` | token → 204; revoca el token de ese teléfono | 401, 403 analista, 404, 409 si deja gente sin administrador |
+| `GET /equipos` | token → `[{ip, nombre, importancia}]`, los equipos con nombre en el catálogo | 401 |
+| `PUT /equipos/{ip}` | `{importancia, motivo}` → el equipo; queda en el registro y sus alertas vuelven a bajar con la severidad nueva | 401, 403 analista, 404 fuera del catálogo, 422 sin motivo |
+| `GET /registro` | token → `[{id, fecha, tipo, autorId, autor, objeto, nombre, antes, despues, motivo}]`, de lo más nuevo a lo más viejo | 401 |
+| `PUT /alertas/{id}/asignacion` | `{accionId, responsableId}` (null deja la alerta sin asignar) → la alerta; idempotente por `accionId` | 401, 403 lo que el perfil no permite, 404, 409 un analista se asigna una que ya tiene otra persona, 422 persona fuera del equipo |
 | `GET /telegram` | token → `{vinculado, bot, vinculadoEn, avisos}` de este teléfono | 401 |
 | `POST /telegram/vinculo` | `{avisos}` opcional → `{codigo, enlaceBot, vence}`; guarda los avisos | 401, 503 sin bot |
 | `DELETE /telegram/vinculo` | token → 204; el chat deja de recibir los avisos y el bot se despide | 401 |
@@ -104,13 +116,17 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
     "reglas": false, "parDestino": "192.168.10.50:21", "parEnCatalogo": true
   },
   "estadoRevision": "sin_revisar", "historial": [], "version": 1, "actualizadaEn": "2026-10-11T14:25:10+00:00",
-  "avisoTelegram": null
+  "avisoTelegram": null,
+  "asignacion": {"responsableId": "d-2", "responsable": "Laura", "porId": "d-1", "por": "Taiel", "fecha": "2026-10-11T14:30:00+00:00"},
+  "asignaciones": [{"responsableId": "d-2", "responsable": "Laura", "porId": "d-1", "por": "Taiel", "fecha": "2026-10-11T14:30:00+00:00"}]
 }
 ```
 
 - `protocolo`: el transporte del episodio, `tcp` o `udp`. El detalle lo muestra junto al puerto ("SSH · TCP/22").
 - `tipoAtaque`: `fuerza_bruta`, `escaneo`, `ddos`, `probable_falsa_alarma`, `sin_tipificar` o `null` (la detectaron solo las reglas o los umbrales).
 - `severidad` sale del tipo según la tabla de la red (`PUT /severidades`). Con `tipoAtaque` en `null`, sale del detector que la marcó: `servicio_no_autorizado` si fueron las reglas, `volumen_inusual` si fueron los umbrales y, si fueron los dos, la más alta de las dos (decisión 32). Por defecto: fuerza bruta y sin tipificar en alta; escaneo, denegación de servicio, servicio no autorizado y volumen inusual en media; probable falsa alarma en baja. Ninguna alerta se oculta: el tipo ordena. Una base anterior a la 1.0.3 pasa lo que tenía en `solo_reglas_o_umbrales` a las dos claves nuevas al iniciar.
+- Desde la API 0.6.0 la severidad también depende del equipo destino (decisión 41): un nivel más si es crítico y uno menos si es poco importante, con tope en alta y piso en baja (`ajustar` en `app/semilla.py`, con la misma tabla que la app). Todos los equipos arrancan normales, así que hasta que alguien marca uno la severidad es la del tipo. Todo usa la severidad final: `/estado`, los filtros, los avisos de Telegram y el Resumen.
+- `asignacion`: el responsable de ahora, o `null` si nadie la tiene; `asignaciones`: todos los cambios, para el historial del detalle (decisión 42).
 - `avisoTelegram`: cuándo salió el primer aviso de Telegram de la alerta, o `null`. Cuando sale, la alerta cuenta como modificada y los teléfonos la vuelven a bajar; el historial del detalle lo muestra.
 - `estadoRevision`: `sin_revisar`, `ataque_real`, `falso_positivo`. `resultado` y `motivo` de la revisión: ataque real admite `escalado_al_proveedor`, `bloqueado_manualmente`, `contrasena_cambiada`, `investigando`; falso positivo admite `tarea_programada`, `backup`, `equipo_nuevo`, `usuario_autorizado`, `otro`. El comentario es obligatorio. Las revisiones guardadas con los motivos anteriores se pasan a los nuevos al arrancar.
 
@@ -122,7 +138,17 @@ Cada cambio en una alerta (alta nueva, revisión, cambio de severidades) le asig
 
 `accionId` es el identificador único que genera el teléfono por cada acción: si la misma acción se reenvía, la API devuelve la alerta sin aplicarla dos veces. `versionVista` es la versión de la alerta que la persona vio al revisar; si otra persona la revisó después (la versión del servidor es mayor), la API responde `409` con esa revisión y la app pregunta si aplica la propia igual (`forzar: true`).
 
-Cada revisión del `historial` trae dos horas: `revisadaEn`, cuándo se revisó en el teléfono (la manda la app), y `fecha`, cuándo llegó al servidor. Sin conexión, la revisión queda en el teléfono y sale después, así que las dos pueden diferir; el historial del detalle muestra las dos. Si la app no manda `revisadaEn`, vale la hora de llegada, y una hora posterior a la llegada (reloj adelantado) también se toma como la de llegada. Las revisiones guardadas antes de este campo lo traen en `null`.
+Cada revisión del `historial` trae el teléfono (`autor`) y, desde la 1.0.5, la persona (`persona`, "Laura"); la app muestra "Laura · Teléfono de Laura". Trae también dos horas: `revisadaEn`, cuándo se revisó en el teléfono (la manda la app), y `fecha`, cuándo llegó al servidor. Sin conexión, la revisión queda en el teléfono y sale después, así que las dos pueden diferir; el historial del detalle muestra las dos. Si la app no manda `revisadaEn`, vale la hora de llegada, y una hora posterior a la llegada (reloj adelantado) también se toma como la de llegada. Las revisiones guardadas antes de este campo lo traen en `null`.
+
+### Perfiles, registro de cambios e importancia (decisiones 39 a 41)
+
+Cada teléfono pareado es una persona con su nombre y su perfil. El analista revisa alertas y elige sus avisos; el administrador, además, cambia las severidades y la importancia de los equipos, asigna alertas a cualquiera y suma o quita gente. Lo controla la API: lo que no le toca a un analista responde `403`, y la app además esconde los botones. Siempre queda al menos un administrador: cambiar el perfil o quitar a alguien que deje gente sin administrador responde `409`. Los teléfonos pareados antes de la API 0.6.0 quedan como administradores, porque antes todos podían cambiar las severidades.
+
+El registro de cambios (`app/registro.py`) anota los cambios de severidad y de importancia, con su motivo obligatorio, y los de la gente (sumar, cambiar el perfil, quitar), sin motivo. Lo guarda la API y desde la app no se puede borrar ni editar.
+
+### Asignaciones (decisión 42)
+
+`PUT /alertas/{id}/asignacion` guarda quién, a quién y cuándo, y mueve la secuencia de la alerta para que todos los teléfonos la vuelvan a bajar. El administrador asigna a cualquiera o saca la asignación; el analista se asigna una sin asignar y suelta la suya, y no le puede sacar una alerta a otra persona. Si dos asignan a la vez, queda la última que llega. Asignar no cambia la versión de la alerta, así que no genera el `409` de las revisiones: cualquiera la puede revisar. Si la persona a la que se la asignaron tiene Telegram vinculado, el bot le avisa ("Taiel te asignó una alerta ALTA · SSH · 09:51", con el botón al detalle); asignarse una uno mismo no avisa.
 
 ## Bot de Telegram
 
