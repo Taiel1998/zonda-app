@@ -103,7 +103,8 @@ fun CodigoPersonaContenido(codigo: CodigoPersona?, alVolver: () -> Unit, reloj: 
                     text = if (queda.isNegative || queda.isZero) {
                         stringResource(R.string.codigo_vencido)
                     } else {
-                        stringResource(R.string.codigo_vence, "%d:%02d".format(queda.toMinutes(), queda.toSecondsPart()))
+                        // seconds % 60 y no toSecondsPart(), que recién está desde Android 12 (API 31).
+                        stringResource(R.string.codigo_vence, "%d:%02d".format(queda.toMinutes(), queda.seconds % 60))
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
