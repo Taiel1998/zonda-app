@@ -30,7 +30,8 @@ import pyarrow.parquet as pq
 #              5 minutos sin flujos nuevos (decision 3 de la app).
 #
 # No usa torch ni modifica artefactos existentes: solo lee data/ y escribe en semilla/.
-# Uso (desde ~/pfi): ~/pfi-env/bin/python exportar_semilla_real.py
+# Uso (en zeek-lab, desde la carpeta de la plataforma y con su entorno de Python):
+#   python exportar_semilla_real.py
 # Salidas: semilla/alertas_semilla.json y semilla/semilla_flujos.parquet (los flujos marcados, para
 # poder rearmar los episodios sin volver a correr nada).
 # -----------------------------------------------------------------------------------------------
