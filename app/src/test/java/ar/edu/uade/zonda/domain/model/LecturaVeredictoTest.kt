@@ -45,6 +45,8 @@ class LecturaVeredictoTest {
         assertEquals(LecturaVeredicto.VecesMas(33), VeredictoUmbrales(anomalo = true, contexto60s = 65, umbralServicio = 2, servicioSinLineaBase = false).lectura)
         assertEquals(LecturaVeredicto.UnPocoMas, VeredictoUmbrales(anomalo = true, contexto60s = 3, umbralServicio = 2, servicioSinLineaBase = false).lectura)
         assertEquals(LecturaVeredicto.ServicioNuevo, VeredictoUmbrales(anomalo = true, contexto60s = 40, umbralServicio = 1, servicioSinLineaBase = true).lectura)
+        // Un servicio nuevo con una sola conexión no pasa el límite: NORMAL, y el texto lo dice igual.
+        assertEquals(LecturaVeredicto.DentroDeLoNormal, VeredictoUmbrales(anomalo = false, contexto60s = 1, umbralServicio = 1, servicioSinLineaBase = true).lectura)
     }
 
     @Test
