@@ -95,13 +95,31 @@ class AsignadasYSemaforoTest {
     }
 
     @Test
-    fun `con varias de distintas personas dice quienes y las propias no se nombran`() {
+    fun `con varias de distintas personas dice quienes y vos al final si te asignaste alguna`() {
         val otra = Fixtures.alerta("a-3").copy(asignacion = Asignacion("d-2", "Laura", "d-3", "Meli", Fixtures.AHORA))
         val propia = Fixtures.alerta("a-4").copy(asignacion = Asignacion("d-2", "Laura", "d-2", "Laura", Fixtures.AHORA))
         dibujarEstado(estado(listOf(deTaiel, otra, propia)))
 
         compose.onNodeWithText("3 alertas asignadas a vos").assertIsDisplayed()
-        compose.onNodeWithText("Te las asignaron Taiel y Meli.").assertIsDisplayed()
+        compose.onNodeWithText("Te las asignaron Taiel, Meli y vos.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `una propia y otra de Taiel no dicen que las dos son de Taiel`() {
+        // El caso del moto (17/10): decía "Te las asignó Sofia." aunque una te la habías asignado vos.
+        val propia = Fixtures.alerta("a-4").copy(asignacion = Asignacion("d-2", "Laura", "d-2", "Laura", Fixtures.AHORA))
+        dibujarEstado(estado(listOf(deTaiel, propia)))
+
+        compose.onNodeWithText("2 alertas asignadas a vos").assertIsDisplayed()
+        compose.onNodeWithText("Te las asignaron Taiel y vos.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `dos de la misma persona dicen solo su nombre`() {
+        val otraDeTaiel = Fixtures.alerta("a-3").copy(asignacion = Asignacion("d-2", "Laura", "d-1", "Taiel", Fixtures.AHORA))
+        dibujarEstado(estado(listOf(deTaiel, otraDeTaiel)))
+
+        compose.onNodeWithText("Te las asignó Taiel.").assertIsDisplayed()
     }
 
     @Test
