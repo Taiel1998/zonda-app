@@ -71,6 +71,12 @@ android {
         // Robolectric necesita los recursos de Android para correr Room en memoria en la JVM.
         unitTests.isIncludeAndroidResources = true
     }
+    lint {
+        // Una llamada que necesita un Android más nuevo que minSdk frena el APK de release (el lint de
+        // assembleRelease) en lugar de cerrar la app en esos teléfonos. Las pruebas corren en la JVM y el
+        // emulador tiene Android 16, así que ninguno de los dos lo ve: pasó con la 1.0.5 en el moto (Android 11).
+        fatal += "NewApi"
+    }
 }
 
 dependencies {
