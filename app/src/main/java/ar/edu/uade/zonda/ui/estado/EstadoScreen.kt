@@ -472,17 +472,22 @@ private fun AvisoAzul(titulo: String, texto: String, alVer: () -> Unit) {
 
 /**
  * El aviso azul de las alertas asignadas a vos sin revisar (decisión 42; Figma 468-2144): "1 alerta
- * asignada a vos" / "Te la asignó Taiel." y "Ver", que abre Alertas con "Asignadas a mí".
+ * asignada a vos" / "Te la asignó Taiel." y "Ver", que abre Alertas con "Asignadas a mí". Con varias
+ * nombra a quienes las asignaron, y "vos" al final si también te asignaste alguna: "Te las asignaron
+ * Sofia y vos." (sin el "vos" parecía que Sofia te había asignado todas).
  */
 @Composable
 private fun AvisoAsignadas(asignadas: List<Alerta>, miId: String?, alVer: () -> Unit) {
     val cantidad = asignadas.size
-    val porOtros = asignadas.mapNotNull { it.asignacion }.filter { it.porId != miId }.map { it.por }.distinct()
+    val asignaciones = asignadas.mapNotNull { it.asignacion }
+    val porOtros = asignaciones.filter { it.porId != miId }.map { it.por }.distinct()
+    val vos = stringResource(R.string.estado_asignadas_vos)
+    val quienes = if (asignaciones.any { it.porId == miId }) porOtros + vos else porOtros
     val texto = when {
         porOtros.isEmpty() -> stringResource(if (cantidad == 1) R.string.estado_te_la_asignaste else R.string.estado_te_las_asignaste)
         cantidad == 1 -> stringResource(R.string.estado_asignada_por, porOtros.single())
-        porOtros.size == 1 -> stringResource(R.string.estado_asignadas_por, porOtros.single())
-        else -> stringResource(R.string.estado_asignadas_por_varios, porOtros.dropLast(1).joinToString(", ") + " y " + porOtros.last())
+        quienes.size == 1 -> stringResource(R.string.estado_asignadas_por, quienes.single())
+        else -> stringResource(R.string.estado_asignadas_por_varios, quienes.dropLast(1).joinToString(", ") + " y " + quienes.last())
     }
     AvisoAzul(
         titulo = pluralStringResource(R.plurals.estado_asignadas_titulo, cantidad, cantidad),

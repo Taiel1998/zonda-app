@@ -1141,6 +1141,8 @@
     <string name="estado_asignada_por">Te la asignó %1$s.</string>
     <string name="estado_asignadas_por">Te las asignó %1$s.</string>
     <string name="estado_asignadas_por_varios">Te las asignaron %1$s.</string>
+    <!-- Último de la lista cuando además te asignaste alguna: "Te las asignaron Sofia y vos." -->
+    <string name="estado_asignadas_vos">vos</string>
     <string name="estado_te_la_asignaste">Te la asignaste.</string>
     <string name="estado_te_las_asignaste">Te las asignaste.</string>
     <string name="semaforo_ver_altas">Ver las alertas altas sin revisar</string>
