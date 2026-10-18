@@ -12,6 +12,7 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakePreferenciasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
+import ar.edu.uade.zonda.domain.model.AsignacionNueva
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.ModoAviso
@@ -326,5 +327,33 @@ class SincronizacionWorkerTest {
         assertEquals(NotificationManager.IMPORTANCE_LOW, enSilencio.importance)
         assertEquals("Alertas en silencio", enSilencio.name)
         assertNotNull(gestor.getNotificationChannel(Notificador.CANAL_REVISIONES))
+    }
+
+    @Test
+    fun `sin Telegram avisa cada alerta que otra persona te asigno y abre su detalle`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1")))
+        alertas.resultadoSincronizacion = resultado(nuevas = 0, altasNuevas = 0).copy(
+            asignacionesNuevas = listOf(AsignacionNueva("a-3", "Taiel", Severidad.ALTA, "ssh", Fixtures.AHORA)),
+        )
+
+        worker().doWork()
+
+        val aviso = notificaciones.single()
+        assertEquals(Notificador.CANAL_ASIGNACIONES, aviso.channelId)
+        assertEquals("Taiel te asignó una alerta ALTA · SSH · ${Formato.hora(Fixtures.AHORA)}", aviso.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals("Tocá para ver el detalle en Zonda.", textoDe(aviso))
+        assertEquals(EnlacesInternos.detalle("red-1", "a-3"), destinoDe(aviso))
+    }
+
+    @Test
+    fun `con Telegram la asignacion la avisa el bot y Zonda no`() = runTest {
+        redes = FakeRedesRepository(listOf(Fixtures.red("red-1").copy(telegramVinculado = true)))
+        alertas.resultadoSincronizacion = resultado(nuevas = 0, altasNuevas = 0).copy(
+            asignacionesNuevas = listOf(AsignacionNueva("a-3", "Taiel", Severidad.ALTA, "ssh", Fixtures.AHORA)),
+        )
+
+        worker().doWork()
+
+        assertTrue(notificaciones.isEmpty())
     }
 }

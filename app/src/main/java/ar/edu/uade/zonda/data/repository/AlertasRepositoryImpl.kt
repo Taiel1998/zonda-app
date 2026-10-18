@@ -7,6 +7,7 @@ import ar.edu.uade.zonda.data.mapper.aEntidad
 import ar.edu.uade.zonda.data.sync.SinSincronizador
 import ar.edu.uade.zonda.data.sync.Sincronizador
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.Asignacion
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
@@ -54,8 +55,11 @@ class AlertasRepositoryImpl(
             metodo = filtro.metodo?.name,
         ).map { filas ->
             val alertas = filas.map(AlertaConDetalles::aDominio)
-            // El envío sale de la acción pendiente de cada alerta, que ya viene en la fila (cambio 7).
-            if (filtro.soloNoAplicadas) alertas.filter { it.envio == EstadoEnvio.CONFLICTO } else alertas
+            // El envío sale de la acción pendiente de cada alerta, que ya viene en la fila (cambio 7), y el
+            // responsable, de la asignación de la alerta (decisión 42).
+            alertas
+                .filter { !filtro.soloNoAplicadas || it.envio == EstadoEnvio.CONFLICTO }
+                .filter { filtro.responsable?.acepta(it) ?: true }
         }
 
     override fun observarOpcionesDeFiltro(redId: String): Flow<OpcionesDeFiltro> =
@@ -94,6 +98,12 @@ class AlertasRepositoryImpl(
         dao.restaurarEstadoDelServidor(alertaId)
     }
 
+    override suspend fun aplicarAsignacionLocal(redId: String, alertaId: String, asignacion: Asignacion) {
+        val actual = dao.obtener(alertaId)
+        if (actual == null || actual.alerta.redId != redId) throw ErrorZonda.NoEncontrado()
+        dao.aplicarAsignacionLocal(asignacion.aEntidad(alertaId, OrigenRevision.ESTE_TELEFONO))
+    }
+
     override suspend fun descargarDetalle(redId: String, alertaId: String): Alerta =
         sincronizador.descargarDetalle(redId, alertaId)
 
@@ -115,7 +125,8 @@ class AlertasRepositoryImpl(
                 .filter { it.origen == OrigenRevision.SERVIDOR }
                 .map { it.aEntidad(alerta.id) }
         }
-        dao.guardarDelServidor(alertas.map { it.aEntidad() }, revisiones)
+        val asignaciones = alertas.associate { alerta -> alerta.id to alerta.asignaciones.map { it.aEntidad(alerta.id, OrigenRevision.SERVIDOR) } }
+        dao.guardarDelServidor(alertas.map { it.aEntidad() }, revisiones, asignaciones)
     }
 
     /** Borra las alertas anteriores a una fecha (caché de 30 días, RNF03). Devuelve cuántas borró. */

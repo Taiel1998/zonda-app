@@ -39,13 +39,16 @@ def test_zonda_tranquila_revisa_desde_otro_telefono_las_altas_y_medias_sin_revis
     for alerta in cambiadas:
         assert (alerta["estadoRevision"], alerta["version"]) == ("falso_positivo", 2)
         [hecha] = alerta["historial"]
-        assert (hecha["autor"], hecha["resultado"], hecha["motivo"]) == ("Teléfono de Laura", "falso_positivo", "tarea_programada")
+        assert (hecha["persona"], hecha["autor"], hecha["resultado"], hecha["motivo"]) == ("Laura", "Teléfono de Laura", "falso_positivo", "tarea_programada")
         assert hecha["comentario"] == "Revisada desde otro teléfono del equipo."
 
     # Es un teléfono pareado más, que se puede revocar como cualquier otro.
     assert zonda(["dispositivos"]) == 0
     [fila] = [linea for linea in capsys.readouterr().out.splitlines() if "Teléfono de Laura" in linea]
     assert " activo " in fila
+    # Laura entra como analista (decisión 39): revisa alertas, no cambia la configuración.
+    laura = next(p for p in cliente.get("/personas", headers=auth).json() if p["telefono"] == "Teléfono de Laura")
+    assert (laura["nombre"], laura["perfil"]) == ("Laura", "analista")
 
 
 def test_no_toca_las_ya_revisadas_y_vuelve_a_usar_el_mismo_telefono(cliente, auth, zonda, capsys):

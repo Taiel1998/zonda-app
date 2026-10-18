@@ -1,10 +1,16 @@
 package ar.edu.uade.zonda.domain.fakes
 
+import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.Catalogo
+import ar.edu.uade.zonda.domain.model.CodigoPersona
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoTelegram
+import ar.edu.uade.zonda.domain.model.Importancia
+import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.RedPareada
@@ -15,6 +21,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import java.time.Instant
 
 /** Redes en memoria para las pruebas. */
 class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository {
@@ -152,4 +159,46 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
     }
 
     override fun observarCatalogo(redId: String): Flow<Catalogo> = catalogos.map { it[redId] ?: Catalogo.VACIO }
+
+    // ---- Personas, equipos y registro (decisiones 39 a 41) ----
+
+    val personas = MutableStateFlow<List<Persona>>(emptyList())
+    val equipos = MutableStateFlow<List<EquipoDeLaRed>>(emptyList())
+    val registro = MutableStateFlow<List<CambioRegistro>>(emptyList())
+    val codigosPedidos = mutableListOf<Pair<String, Perfil>>()
+    val perfilesCambiados = mutableListOf<Pair<String, Perfil>>()
+    val personasQuitadas = mutableListOf<String>()
+    var errorPersonas: ErrorZonda? = null
+
+    override fun observarPersonas(redId: String): Flow<List<Persona>> = personas
+
+    override fun observarEquipos(redId: String): Flow<List<EquipoDeLaRed>> = equipos
+
+    override fun observarRegistro(redId: String): Flow<List<CambioRegistro>> = registro
+
+    override suspend fun crearCodigoPersona(redId: String, nombre: String, perfil: Perfil): CodigoPersona {
+        errorPersonas?.let { throw it }
+        codigosPedidos += nombre to perfil
+        return CodigoPersona("K7M2-QX9P", Instant.parse("2026-10-12T12:10:00Z"), "zonda:https://zonda-equipo.duckdns.org#K7M2-QX9P;vence=2026-10-12T12:10:00+00:00", nombre, perfil)
+    }
+
+    override suspend fun cambiarPerfil(redId: String, personaId: String, perfil: Perfil) {
+        errorPersonas?.let { throw it }
+        perfilesCambiados += personaId to perfil
+        personas.value = personas.value.map { if (it.id == personaId) it.copy(perfil = perfil) else it }
+    }
+
+    override suspend fun quitarPersona(redId: String, personaId: String) {
+        errorPersonas?.let { throw it }
+        personasQuitadas += personaId
+        personas.value = personas.value.filter { it.id != personaId }
+    }
+
+    override suspend fun actualizarPersonasYRegistro(redId: String) {
+        errorPersonas?.let { throw it }
+    }
+
+    override suspend fun guardarImportanciaLocal(redId: String, ip: String, importancia: Importancia) {
+        equipos.value = equipos.value.map { if (it.ip == ip) it.copy(importancia = importancia) else it }
+    }
 }

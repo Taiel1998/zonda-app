@@ -3,12 +3,14 @@ package ar.edu.uade.zonda.ui.ajustes
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -16,6 +18,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,9 +35,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
+import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Red
-import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
-import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
+import ar.edu.uade.zonda.domain.model.Tema
 import ar.edu.uade.zonda.ui.EstadoPermiso
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.abrirAjustesDeNotificaciones
@@ -43,14 +47,23 @@ import ar.edu.uade.zonda.ui.components.BarraSuperior
 import ar.edu.uade.zonda.ui.components.BotonTonal
 import ar.edu.uade.zonda.ui.components.BotonTonalPeligro
 import ar.edu.uade.zonda.ui.components.FilaNavegable
+import ar.edu.uade.zonda.ui.components.FilaRadio
 import ar.edu.uade.zonda.ui.components.FilaTexto
 import ar.edu.uade.zonda.ui.components.HojaConfirmacion
+import ar.edu.uade.zonda.ui.components.HojaInferior
+import ar.edu.uade.zonda.ui.components.Opcion
 import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
 import ar.edu.uade.zonda.ui.components.TarjetaAdvertencia
 import ar.edu.uade.zonda.ui.components.TarjetaSeccion
+import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
+import ar.edu.uade.zonda.ui.navigation.AlRetocarPestania
+import ar.edu.uade.zonda.ui.navigation.Rutas
 import ar.edu.uade.zonda.ui.nombreDelBot
+import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
+import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.rememberPermisoNotificaciones
+import ar.edu.uade.zonda.ui.theme.tituloHoja
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.Instant
 import java.time.ZoneId
@@ -62,7 +75,7 @@ internal val EntreTarjetas = Arrangement.spacedBy(16.dp)
 
 /**
  * Ajustes (RF05 y RF06; Figma 4-66 y 51-1137): una lista de tarjetas que abren otras pantallas.
- * Red (Redes y Detalles técnicos), Avisos (Telegram, avisos por severidad y severidad por tipo de
+ * Red (Redes, Personas, Equipos, Registro de cambios y Detalles técnicos), Avisos (Telegram, avisos por severidad y severidad por tipo de
  * ataque; desde la 1.0.4 sin "Notificaciones del sistema", porque cada severidad tiene su interruptor),
  * Datos locales, Este dispositivo y Ayuda. Las confirmaciones son
  * hojas inferiores con el botón rojo.
@@ -70,6 +83,9 @@ internal val EntreTarjetas = Arrangement.spacedBy(16.dp)
 @Composable
 fun AjustesScreen(
     alAbrirRedes: () -> Unit,
+    alAbrirPersonas: () -> Unit,
+    alAbrirEquipos: () -> Unit,
+    alAbrirRegistro: () -> Unit,
     alAbrirDetallesTecnicos: () -> Unit,
     alAbrirAvisos: () -> Unit,
     alAbrirSeveridades: () -> Unit,
@@ -85,6 +101,9 @@ fun AjustesScreen(
         estado = estado,
         acciones = AccionesAjustes(
             alAbrirRedes = alAbrirRedes,
+            alAbrirPersonas = alAbrirPersonas,
+            alAbrirEquipos = alAbrirEquipos,
+            alAbrirRegistro = alAbrirRegistro,
             alAbrirDetallesTecnicos = alAbrirDetallesTecnicos,
             alAbrirAvisos = {
                 viewModel.empezarAEditarAvisos()
@@ -103,6 +122,7 @@ fun AjustesScreen(
             alAgregarRed = alAgregarRed,
             alQuedarSinRedes = alQuedarSinRedes,
             alAvisoMostrado = viewModel::avisoMostrado,
+            alCambiarTema = viewModel::cambiarTema,
         ),
     )
 }
@@ -130,6 +150,10 @@ fun ajustesViewModel(dueño: ViewModelStoreOwner? = null): AjustesViewModel = vi
 /** Lo que se puede hacer desde Ajustes; separado para probar la pantalla sin ViewModel. */
 data class AccionesAjustes(
     val alAbrirRedes: () -> Unit = {},
+    /** Personas, Equipos y Registro de cambios (decisiones 39 a 41; Figma 468-2154). */
+    val alAbrirPersonas: () -> Unit = {},
+    val alAbrirEquipos: () -> Unit = {},
+    val alAbrirRegistro: () -> Unit = {},
     val alAbrirDetallesTecnicos: () -> Unit = {},
     val alAbrirAvisos: () -> Unit = {},
     val alAbrirSeveridades: () -> Unit = {},
@@ -143,9 +167,11 @@ data class AccionesAjustes(
     val alAgregarRed: () -> Unit = {},
     val alQuedarSinRedes: () -> Unit = {},
     val alAvisoMostrado: () -> Unit = {},
+    /** Ajustes → Apariencia → Tema (decisión 43; Figma 468-3594). */
+    val alCambiarTema: (Tema) -> Unit = {},
 )
 
-private enum class HojaAjustes { BORRAR_DATOS, QUITAR_DISPOSITIVO }
+private enum class HojaAjustes { BORRAR_DATOS, QUITAR_DISPOSITIVO, TEMA }
 
 @Composable
 fun AjustesContenido(
@@ -181,11 +207,13 @@ fun AjustesContenido(
         topBar = { BarraSuperior(titulo = stringResource(R.string.destino_ajustes)) },
         snackbarHost = { SnackbarHost(snackbar) { AvisoInferior(it) } },
     ) { relleno ->
+        val desplazamiento = rememberScrollState()
+        AlRetocarPestania(Rutas.AJUSTES) { desplazamiento.animateScrollTo(0) }
         Column(
             modifier = Modifier
                 .padding(relleno)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(desplazamiento)
                 .padding(MargenAjustes),
             verticalArrangement = EntreTarjetas,
         ) {
@@ -203,6 +231,33 @@ fun AjustesContenido(
                         detalle = pluralStringResource(R.plurals.ajustes_red_detalle, estado.redes.size, direccion(red), estado.redes.size),
                         alTocar = acciones.alAbrirRedes,
                     )
+                    // Un servidor anterior a la API 0.6.0 no tiene gente ni registro: las filas no aparecen.
+                    if (estado.personas.isNotEmpty()) {
+                        FilaNavegable(
+                            titulo = stringResource(R.string.ajustes_personas),
+                            detalle = pluralStringResource(
+                                R.plurals.ajustes_personas_detalle,
+                                estado.personas.size,
+                                estado.personas.size,
+                                stringResource(if (estado.perfil.esAdministrador) R.string.ajustes_sos_administrador else R.string.ajustes_sos_analista),
+                            ),
+                            alTocar = acciones.alAbrirPersonas,
+                        )
+                    }
+                    if (estado.equipos.isNotEmpty()) {
+                        FilaNavegable(
+                            titulo = stringResource(R.string.ajustes_equipos),
+                            detalle = resumenDeEquipos(estado.equipos),
+                            alTocar = acciones.alAbrirEquipos,
+                        )
+                    }
+                    if (estado.personas.isNotEmpty()) {
+                        FilaNavegable(
+                            titulo = stringResource(R.string.ajustes_registro),
+                            detalle = stringResource(R.string.ajustes_registro_detalle),
+                            alTocar = acciones.alAbrirRegistro,
+                        )
+                    }
                     FilaNavegable(
                         titulo = stringResource(R.string.ajustes_detalles_tecnicos),
                         detalle = stringResource(R.string.ajustes_detalles_tecnicos_detalle),
@@ -236,7 +291,10 @@ fun AjustesContenido(
                 )
                 FilaNavegable(
                     titulo = stringResource(R.string.ajustes_severidad_por_tipo),
-                    detalle = stringResource(R.string.ajustes_severidad_por_tipo_detalle),
+                    // La analista las ve sin poder cambiarlas (Figma 468-2510).
+                    detalle = stringResource(
+                        if (estado.perfil.esAdministrador) R.string.ajustes_severidad_por_tipo_detalle else R.string.ajustes_severidad_la_cambia,
+                    ),
                     alTocar = acciones.alAbrirSeveridades,
                 )
                 // El permiso bloqueado se sigue avisando (Figma 4-130): sin él no sale ninguna notificación de Zonda.
@@ -249,6 +307,15 @@ fun AjustesContenido(
                         nota = stringResource(R.string.ajustes_notificaciones_bloqueadas_nota),
                     )
                 }
+            }
+
+            // Después de Avisos: se usa menos (Figma 4-66).
+            TarjetaSeccion(titulo = stringResource(R.string.ajustes_seccion_apariencia)) {
+                FilaNavegable(
+                    titulo = stringResource(R.string.ajustes_tema),
+                    detalle = stringResource(estado.tema.etiqueta()),
+                    alTocar = { hoja = HojaAjustes.TEMA },
+                )
             }
 
             TarjetaSeccion(titulo = stringResource(R.string.ajustes_datos_locales)) {
@@ -315,7 +382,38 @@ fun AjustesContenido(
                 alCerrar = { hoja = null },
             )
         }
+        HojaAjustes.TEMA -> HojaInferior(alCerrar = { hoja = null }) {
+            ContenidoHojaTema(
+                elegido = estado.tema,
+                alElegir = { tema ->
+                    hoja = null
+                    acciones.alCambiarTema(tema)
+                },
+            )
+        }
         null -> Unit
+    }
+}
+
+/**
+ * "Tema" (decisión 43; Figma 468-3594): una sola opción que se cierra al elegir, como la de los avisos.
+ * De fábrica, como el teléfono.
+ */
+@Composable
+fun ColumnScope.ContenidoHojaTema(elegido: Tema, alElegir: (Tema) -> Unit) {
+    Text(text = stringResource(R.string.ajustes_tema), style = MaterialTheme.typography.tituloHoja)
+    Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Tema.entries.forEach { tema ->
+            FilaRadio(
+                opcion = Opcion(
+                    valor = tema,
+                    titulo = stringResource(tema.etiqueta()),
+                    detalle = if (tema == Tema.COMO_EL_TELEFONO) stringResource(R.string.tema_como_el_telefono_detalle) else null,
+                ),
+                elegida = elegido == tema,
+                alElegir = { alElegir(tema) },
+            )
+        }
     }
 }
 
@@ -336,6 +434,18 @@ fun HojaQuitarDispositivo(
         alConfirmar = alConfirmar,
         alCerrar = alCerrar,
     )
+}
+
+/** "2 críticos · 1 poco importante" o "Todos normales" (Figma 468-2163). */
+@Composable
+private fun resumenDeEquipos(equipos: List<EquipoDeLaRed>): String {
+    val criticos = equipos.count { it.importancia == Importancia.CRITICO }
+    val pocoImportantes = equipos.count { it.importancia == Importancia.POCO_IMPORTANTE }
+    if (criticos == 0 && pocoImportantes == 0) return stringResource(R.string.ajustes_equipos_todos_normales)
+    return listOfNotNull(
+        if (criticos > 0) pluralStringResource(R.plurals.ajustes_equipos_criticos, criticos, criticos) else null,
+        if (pocoImportantes > 0) pluralStringResource(R.plurals.ajustes_equipos_poco_importantes, pocoImportantes, pocoImportantes) else null,
+    ).joinToString(" · ")
 }
 
 /** La dirección de la red sin el esquema, como en el Figma: "zonda-empresa.duckdns.org". */

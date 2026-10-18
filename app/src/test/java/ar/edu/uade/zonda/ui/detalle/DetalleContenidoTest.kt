@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -20,6 +21,7 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.AvisoRecibido
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
+import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
@@ -67,13 +69,11 @@ class DetalleContenidoTest {
         alerta: ar.edu.uade.zonda.domain.model.Alerta,
         accion: ar.edu.uade.zonda.domain.model.AccionPendiente? = null,
         sinConexion: Boolean = false,
-        recienRevisada: Boolean = false,
     ) = DetalleUiState.Contenido(
         alerta,
         accion,
         sinConexion,
         datosDe = Fixtures.AHORA,
-        recienRevisada = recienRevisada,
         nombreDelTelefono = "Celular Martín",
         nombreDeLaRed = "Oficina central",
     )
@@ -105,6 +105,41 @@ class DetalleContenidoTest {
     }
 
     @Test
+    fun `cada metodo dice con palabras cuanto se paso, sin el umbral ni los numeros con ceros`() {
+        // IA: 0,0412 / 0,0031 = 13 veces; umbrales: 65 conexiones contra 2 = 33 veces; reglas: servicio autorizado.
+        dibujar(contenido(Fixtures.alerta("a-1", metodos = setOf(MetodoDeteccion.IA, MetodoDeteccion.UMBRALES))))
+
+        compose.onNodeWithText("Conexiones en total").assertIsDisplayed()
+        compose.onNodeWithText("13 veces más de lo normal").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("33 veces más de lo normal").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Servicio autorizado").performScrollTo().assertIsDisplayed()
+        // Antes: "error 0,0412 · umbral 0,0031" y "contexto 65 · umbral 2".
+        compose.onAllNodesWithText("· umbral", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("contexto", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("0,0", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("Flujos del episodio").assertCountEquals(0)
+    }
+
+    @Test
+    fun `seis terminos tienen su signo de pregunta, que abre un globito por vez`() {
+        dibujar(contenido(Fixtures.alerta("a-1")))
+        val ayudaIa = "Aprendió cómo es el tráfico normal de tu red y marca lo que se parece poco a eso."
+        val ayudaUmbrales = "Cuentan las conexiones a un mismo servicio en un minuto y marcan si son más que en un día normal."
+
+        listOf("Conexiones en 60 s", "Conexiones en total", "Veredicto por método", "Modelo de IA", "Umbrales estadísticos", "Reglas estáticas")
+            .forEach { termino -> compose.onNodeWithContentDescription("Qué es $termino").assertHasClickAction() }
+        compose.onAllNodesWithText(ayudaIa).assertCountEquals(0)
+
+        compose.onNodeWithContentDescription("Qué es Modelo de IA").performScrollTo().performClick()
+        compose.onNodeWithText(ayudaIa).assertIsDisplayed()
+
+        // Abrir otro cierra el primero: uno por vez.
+        compose.onNodeWithContentDescription("Qué es Umbrales estadísticos").performScrollTo().performClick()
+        compose.onNodeWithText(ayudaUmbrales).assertIsDisplayed()
+        compose.onNodeWithText(ayudaIa).assertDoesNotExist()
+    }
+
+    @Test
     fun `revisada muestra arriba la revision y el historial con las dos horas`() {
         var cambiar = false
         dibujar(contenido(Fixtures.alerta("a-1", revision = revisionDelServidor)), AccionesDetalle(alRevisar = { cambiar = true }))
@@ -118,22 +153,6 @@ class DetalleContenidoTest {
         compose.onNodeWithText("Detectada por el modelo de IA").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Cambiar revisión").performScrollTo().performClick()
         assertTrue(cambiar)
-    }
-
-    @Test
-    fun `recien revisada muestra la revision abajo, como enviada, y el aviso con Deshacer`() {
-        var deshecha = false
-        dibujar(
-            contenido(Fixtures.alerta("a-1", revision = revisionDelServidor), recienRevisada = true),
-            AccionesDetalle(alDeshacer = { deshecha = true }),
-            aviso = AvisoDetalle.RevisionGuardada(conConexion = true),
-        )
-
-        compose.onNodeWithText("“Avisé al proveedor.”").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Celular Martín · hoy 11:10 · enviada").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Revisión guardada y enviada al servidor.").assertIsDisplayed()
-        compose.onNodeWithText("Deshacer").performClick()
-        assertTrue(deshecha)
     }
 
     @Test

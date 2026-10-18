@@ -98,3 +98,20 @@ data class Catalogo(
         val VACIO = Catalogo(emptyMap(), emptyList())
     }
 }
+
+/**
+ * El tema de la app (corrección 8, decisión 43), elegido en Ajustes → Apariencia → Tema. De fábrica sigue
+ * al teléfono. Se guarda en el teléfono, no en el servidor.
+ */
+enum class Tema {
+    COMO_EL_TELEFONO,
+    CLARO,
+    OSCURO;
+
+    /** Si la app va en oscuro, con [telefonoOscuro] el modo del teléfono: lo elegido manda sobre el teléfono. */
+    fun esOscuro(telefonoOscuro: Boolean): Boolean = when (this) {
+        COMO_EL_TELEFONO -> telefonoOscuro
+        CLARO -> false
+        OSCURO -> true
+    }
+}

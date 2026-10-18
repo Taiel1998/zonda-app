@@ -121,13 +121,15 @@ fun BotonPrincipal(
     icono: ImageVector? = null,
     /** Sin el ancho completo, el botón mide lo que su texto ("Siguiente" del recorrido, Figma 107-4860). */
     anchoCompleto: Boolean = true,
+    /** La rueda en lugar del ícono mientras espera al servidor ("Generar código"). */
+    cargando: Boolean = false,
 ) {
     // Deshabilitado como el Figma ("Conectar" sin datos): gris cálido con el texto gris.
     val colores = ButtonDefaults.buttonColors(
         disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
         disabledContentColor = Tonos.Neutro.punto,
     )
-    BotonLleno(texto, alTocar, colores, if (anchoCompleto) modifier.fillMaxWidth() else modifier, habilitado, icono)
+    BotonLleno(texto, alTocar, colores, if (anchoCompleto) modifier.fillMaxWidth() else modifier, habilitado, icono, cargando = cargando)
 }
 
 /** Verde claro con texto verde: acciones secundarias ("Sincronizar ahora", "Conectar Telegram"). */
@@ -239,6 +241,26 @@ fun BotonEnlace(
     SinReservaTactil {
         TextButton(onClick = alTocar, shape = FormaBoton, contentPadding = relleno, modifier = modifier) {
             Text(text = texto, style = MaterialTheme.typography.labelLarge, color = colorTexto)
+        }
+    }
+}
+
+/**
+ * El botón chico de la tarjeta Responsable (Figma 468-515): borde gris, esquinas de 18, 14 por 8 de margen
+ * y el texto SemiBold 13 verde ("Asignar", "Cambiar", "Me la asigno", "Soltarla").
+ */
+@Composable
+fun BotonChico(texto: String, alTocar: () -> Unit, modifier: Modifier = Modifier) {
+    SinReservaTactil {
+        OutlinedButton(
+            onClick = alTocar,
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+            modifier = modifier,
+        ) {
+            Text(text = texto, style = MaterialTheme.typography.labelMedium)
         }
     }
 }

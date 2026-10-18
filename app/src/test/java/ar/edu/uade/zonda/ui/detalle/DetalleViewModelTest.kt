@@ -9,13 +9,20 @@ import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeConectividad
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
 import ar.edu.uade.zonda.domain.fakes.GeneradorDeIdsFijo
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
+import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
+import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.repository.RedesRepository
+import ar.edu.uade.zonda.domain.usecase.AsignarAlerta
 import ar.edu.uade.zonda.domain.usecase.DeshacerRevision
 import ar.edu.uade.zonda.domain.usecase.ObtenerDetalleAlerta
 import ar.edu.uade.zonda.domain.usecase.ResolverEnvioRevision
@@ -47,11 +54,18 @@ class DetalleViewModelTest {
     private val acciones = FakeAccionesPendientesRepository()
     private val conectividad = FakeConectividad()
 
+    private var ventanaDeLaApp: VentanaDeshacer? = null
+
+    /** La ventana de Deshacer es una para toda la app: la comparten los detalles de cada prueba. */
+    private fun ventana(alcance: CoroutineScope): VentanaDeshacer = ventanaDeLaApp
+        ?: VentanaDeshacer(DeshacerRevision(alertas, acciones), SincronizarAlertas(redes, alertas), conectividad, alcance).also { ventanaDeLaApp = it }
+
     /** [alcance] es el alcance de la app: en las pruebas, el de fondo del test, con tiempo virtual. */
     private fun viewModel(alertaId: String, alcance: CoroutineScope, redes: RedesRepository = this.redes) = DetalleViewModel(
         obtenerDetalle = ObtenerDetalleAlerta(alertas, conectividad),
         revisarAlerta = RevisarAlerta(alertas, acciones, GeneradorDeIdsFijo(), reloj = { Fixtures.AHORA }),
-        deshacerRevision = DeshacerRevision(alertas, acciones),
+        asignarAlerta = AsignarAlerta(redes, alertas, acciones, GeneradorDeIdsFijo(), reloj = { Fixtures.AHORA }),
+        ventana = ventana(alcance),
         resolverEnvio = ResolverEnvioRevision(alertas, acciones),
         sincronizarAlertas = SincronizarAlertas(redes, alertas),
         redes = redes,
@@ -60,6 +74,15 @@ class DetalleViewModelTest {
         alcanceDeEnvio = alcance,
         alertaId = alertaId,
     )
+
+    /** Revisa a-1 como falso positivo por una tarea programada y confirma. */
+    private fun revisarYConfirmar(viewModel: DetalleViewModel) {
+        viewModel.abrirRevision()
+        viewModel.elegirResultado(ResultadoRevision.FALSO_POSITIVO)
+        viewModel.elegirMotivo(Motivo.TAREA_PROGRAMADA, "Es la copia nocturna que corre todos los domingos.")
+        viewModel.cambiarComentario("Era el respaldo de las 2.")
+        viewModel.confirmarRevision()
+    }
 
     private suspend fun ReceiveTurbine<DetalleUiState>.esperar(condicion: (DetalleUiState) -> Boolean): DetalleUiState {
         var estado = awaitItem()
@@ -182,10 +205,17 @@ class DetalleViewModelTest {
         assertEquals("Avisé al proveedor y bloqueé el acceso", viewModel.formulario.value?.comentario)
         assertTrue(viewModel.formulario.value!!.puedeConfirmar)
 
+        assertFalse(viewModel.cerrar.value)
         viewModel.confirmarRevision()
 
+        // Queda guardada al instante, el detalle se cierra y la lista dice "Revisaste pc-09 → srv-web." (corrección 7).
         assertNull(viewModel.formulario.value)
-        assertEquals(AvisoDetalle.RevisionGuardada(conConexion = true), viewModel.aviso.value)
+        assertTrue(viewModel.cerrar.value)
+        val abierta = ventana(backgroundScope).abierta.value!!
+        assertEquals("pc-09 → srv-web", abierta.alerta)
+        assertEquals("a-1", abierta.alertaId)
+        assertTrue(abierta.conConexion)
+        assertEquals(Motivo.BLOQUEADO_MANUALMENTE, abierta.formulario.motivo)
         val alerta = alertas.observarAlerta("red-1", "a-1").first()!!
         assertEquals(EstadoRevision.ATAQUE_REAL, alerta.estadoRevision)
         assertEquals(Motivo.BLOQUEADO_MANUALMENTE, alerta.revisionActual?.motivo)
@@ -193,53 +223,41 @@ class DetalleViewModelTest {
         assertEquals(1, acciones.todas.size)
         assertTrue("todavía se puede deshacer", alertas.sincronizaciones.isEmpty())
 
+        // Sale a los cinco segundos aunque el detalle ya no esté.
+        viewModel.viewModelScope.cancel()
         advanceTimeBy(ESPERA + 1)
 
-        assertNull(viewModel.aviso.value)
+        assertNull(ventana(backgroundScope).abierta.value)
         assertEquals(listOf("red-1"), alertas.sincronizaciones)
     }
 
     @Test
-    fun `deshacer dentro de los cinco segundos descarta la revision y no envia nada`() = runTest {
+    fun `deshacer descarta la revision y el detalle vuelve a abrir la hoja en el paso 2 como estaba`() = runTest {
         alertas.agregar(Fixtures.alerta("a-1"))
-        val viewModel = viewModel("a-1", backgroundScope)
-        viewModel.abrirRevision()
-        viewModel.elegirResultado(ResultadoRevision.FALSO_POSITIVO)
-        viewModel.elegirMotivo(Motivo.TAREA_PROGRAMADA, "Era el respaldo.")
-        viewModel.confirmarRevision()
+        alertas.agregar(Fixtures.alerta("a-2"))
+        val detalle = viewModel("a-1", backgroundScope)
+        revisarYConfirmar(detalle)
+        runCurrent()
+        val elegido = ventana(backgroundScope).abierta.value!!.formulario
 
         advanceTimeBy(ESPERA - 1_000)
-        viewModel.deshacer()
+        val deshecha = ventana(backgroundScope).deshacer()
         advanceTimeBy(ESPERA * 2)
 
-        assertNull(viewModel.aviso.value)
+        assertEquals("a-1", deshecha?.alertaId)
         assertTrue(acciones.todas.isEmpty())
         assertEquals(EstadoRevision.SIN_REVISAR, alertas.observarAlerta("red-1", "a-1").first()!!.estadoRevision)
         assertTrue(alertas.sincronizaciones.isEmpty())
-    }
 
-    @Test
-    fun `la revision recien hecha se marca para mostrarla abajo y deshacer lo saca aunque la pantalla se cierre`() = runTest {
-        alertas.agregar(Fixtures.alerta("a-1"))
-        val viewModel = viewModel("a-1", backgroundScope)
-
-        viewModel.estado.test {
-            assertFalse((esperar { it is DetalleUiState.Contenido } as DetalleUiState.Contenido).recienRevisada)
-            viewModel.abrirRevision()
-            viewModel.elegirResultado(ResultadoRevision.ATAQUE_REAL)
-            viewModel.elegirMotivo(Motivo.INVESTIGANDO, "Estoy revisando los registros del servidor; sigo mañana.")
-            viewModel.confirmarRevision()
-            esperar { (it as? DetalleUiState.Contenido)?.recienRevisada == true }
-
-            viewModel.deshacer()
-            esperar { (it as? DetalleUiState.Contenido)?.recienRevisada == false }
-            cancelAndIgnoreRemainingEvents()
-        }
-        // El descarte corre en el alcance de la app: termina aunque el detalle ya se haya cerrado.
-        viewModel.viewModelScope.cancel()
-        advanceTimeBy(ESPERA * 2)
-        assertTrue(acciones.todas.isEmpty())
-        assertEquals(EstadoRevision.SIN_REVISAR, alertas.observarAlerta("red-1", "a-1").first()!!.estadoRevision)
+        // Otra alerta no se lleva la hoja; el detalle de a-1, sí, una sola vez.
+        assertNull(viewModel("a-2", backgroundScope).formulario.value)
+        val otraVez = viewModel("a-1", backgroundScope).formulario.value!!
+        assertEquals(PasoRevision.MOTIVO, otraVez.paso)
+        assertEquals(ResultadoRevision.FALSO_POSITIVO, otraVez.resultado)
+        assertEquals(Motivo.TAREA_PROGRAMADA, otraVez.motivo)
+        assertEquals("Era el respaldo de las 2.", otraVez.comentario)
+        assertEquals(elegido.copy(paso = PasoRevision.MOTIVO), otraVez)
+        assertNull(viewModel("a-1", backgroundScope).formulario.value)
     }
 
     @Test
@@ -252,7 +270,7 @@ class DetalleViewModelTest {
         viewModel.elegirMotivo(Motivo.INVESTIGANDO, "Estoy revisando los registros del servidor; sigo mañana.")
 
         viewModel.confirmarRevision()
-        assertEquals(AvisoDetalle.RevisionGuardada(conConexion = false), viewModel.aviso.value)
+        assertFalse(ventana(backgroundScope).abierta.value!!.conConexion)
         advanceTimeBy(ESPERA + 1)
         assertTrue(alertas.sincronizaciones.isEmpty())
         assertEquals(EstadoEnvio.PENDIENTE, acciones.todas.single().estado)
@@ -357,7 +375,64 @@ class DetalleViewModelTest {
         assertNull(viewModel.aviso.value)
     }
 
+    // ---- Responsable y cálculo de la severidad (1.0.5) ----
+
+    private val taiel = Persona("d-1", "Taiel", "moto g(9) plus", Perfil.ADMINISTRADOR, null, vos = false)
+    private val laura = Persona("d-2", "Laura", "Teléfono de Laura", Perfil.ANALISTA, null, vos = false)
+
+    /** Este teléfono es el de Laura, analista. */
+    private fun soyLaura() {
+        redes.actualizar(Fixtures.red("red-1").copy(perfil = Perfil.ANALISTA, dispositivoId = "d-2"))
+        redes.personas.value = listOf(taiel, laura.copy(vos = true))
+    }
+
+    @Test
+    fun `el detalle trae la gente, el perfil, quien soy y como se calculo la severidad`() = runTest {
+        soyLaura()
+        redes.equipos.value = listOf(EquipoDeLaRed("192.168.10.50", "srv-web", Importancia.CRITICO))
+        alertas.agregar(Fixtures.alerta("a-1", severidad = Severidad.MEDIA, tipoAtaque = TipoAtaque.ESCANEO))
+
+        viewModel("a-1", backgroundScope).estado.test {
+            val estado = esperar { (it as? DetalleUiState.Contenido)?.calculo?.conImportancia == true } as DetalleUiState.Contenido
+
+            assertEquals(listOf("Laura", "Taiel"), estado.personas.map { it.nombreVisible })
+            assertEquals(Perfil.ANALISTA, estado.perfil)
+            assertEquals("d-2", estado.miId)
+            assertEquals(Severidad.MEDIA, estado.calculo?.delTipo)
+            assertEquals(Severidad.ALTA, estado.calculo?.final)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `me la asigno la deja a mi nombre al instante y la manda a la red`() = runTest {
+        soyLaura()
+        alertas.agregar(Fixtures.alerta("a-1"))
+        val viewModel = viewModel("a-1", backgroundScope)
+
+        viewModel.asignar(laura)
+        runCurrent()
+
+        assertEquals("d-2", alertas.todas.single().asignacion?.responsableId)
+        assertEquals(mapOf("a-1" to "d-2"), acciones.asignaciones)
+        assertEquals(listOf("red-1"), alertas.sincronizaciones)
+    }
+
+    @Test
+    fun `la analista no puede asignarle la alerta a otra persona`() = runTest {
+        soyLaura()
+        alertas.agregar(Fixtures.alerta("a-1"))
+        val viewModel = viewModel("a-1", backgroundScope)
+
+        viewModel.asignar(taiel)
+        runCurrent()
+
+        assertTrue((viewModel.aviso.value as AvisoDetalle.Error).error is ErrorZonda.SinPermiso)
+        assertNull(alertas.todas.single().asignacion)
+        assertTrue(acciones.asignaciones.isEmpty())
+    }
+
     private companion object {
-        const val ESPERA = DetalleViewModel.ESPERA_DESHACER_MS
+        const val ESPERA = VentanaDeshacer.ESPERA_DESHACER_MS
     }
 }

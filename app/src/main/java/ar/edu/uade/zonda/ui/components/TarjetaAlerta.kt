@@ -6,27 +6,46 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.CalculoSeveridad
+import ar.edu.uade.zonda.domain.model.Importancia
+import ar.edu.uade.zonda.ui.ContextoTarjetas
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.etiqueta
+import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.nota
+import ar.edu.uade.zonda.ui.theme.rotulo
+import ar.edu.uade.zonda.ui.theme.zonda
 import java.time.ZoneId
 
 /**
  * Tarjeta de la lista de alertas (RF02; Figma, página Componentes): severidad y estado de
  * revisión arriba, con la hora y el día a la derecha y el reloj de "pendiente" si la revisión
- * todavía no viajó; origen → destino en el medio; servicio, puerto y métodos abajo.
+ * todavía no viajó; origen → destino en el medio; servicio, puerto y métodos abajo. Desde la 1.0.5
+ * (Figma 468-1454), el chip del responsable a la derecha de los métodos y, si el equipo destino no es
+ * normal, la línea que dice cómo cambió la severidad.
  */
 @Composable
 fun TarjetaAlerta(
@@ -34,6 +53,7 @@ fun TarjetaAlerta(
     alTocar: (alertaId: String) -> Unit,
     modifier: Modifier = Modifier,
     zona: ZoneId = ZoneId.systemDefault(),
+    contexto: ContextoTarjetas = ContextoTarjetas(),
 ) {
     // Figma 35-363: borde gris por dentro, esquinas de 12, 12 de margen más el borde y 8 entre filas.
     OutlinedCard(
@@ -55,8 +75,57 @@ fun TarjetaAlerta(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 alerta.metodos.sorted().forEach { metodo -> EtiquetaMetodo(metodo) }
+                val responsable = alerta.asignacion?.takeIf { it.responsableId != null }
+                if (responsable != null) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    ChipResponsable(if (contexto.esMia(alerta)) stringResource(R.string.tarjeta_vos) else responsable.responsable.orEmpty())
+                }
             }
+            contexto.calculo(alerta)?.let { LineaImportancia(it) }
         }
+    }
+}
+
+/** El chip del responsable (Figma 468-2150): gris cálido, esquinas de 4, la persona de 13 y el nombre Medium 12. */
+@Composable
+private fun ChipResponsable(nombre: String) {
+    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(Icons.Outlined.Person, contentDescription = null, tint = MaterialTheme.zonda.textoNota, modifier = Modifier.size(13.dp))
+            Text(text = nombre, style = MaterialTheme.typography.rotulo, color = MaterialTheme.zonda.textoNota, maxLines = 1)
+        }
+    }
+}
+
+/**
+ * La línea de la importancia (Figma 468-1595): "Subió de media a alta: srv-facturacion es crítico." en
+ * azul con la flecha hacia arriba, "Bajó de media a baja: impresora-2 es poco importante." en gris con la
+ * flecha hacia abajo, o "srv-sueldos es crítico (ya era alta)." en los topes.
+ */
+@Composable
+private fun LineaImportancia(calculo: CalculoSeveridad) {
+    val critico = calculo.importancia == Importancia.CRITICO
+    val color = if (critico) Tonos.Critico.texto else MaterialTheme.colorScheme.onSurfaceVariant
+    val importancia = stringResource(calculo.importancia.etiqueta()).lowercase()
+    val delTipo = stringResource(calculo.delTipo.etiqueta()).lowercase()
+    val final = stringResource(calculo.final.etiqueta()).lowercase()
+    val texto = when {
+        calculo.cambio > 0 -> stringResource(R.string.tarjeta_subio, delTipo, final, calculo.equipo, importancia)
+        calculo.cambio < 0 -> stringResource(R.string.tarjeta_bajo, delTipo, final, calculo.equipo, importancia)
+        else -> stringResource(R.string.tarjeta_ya_era, calculo.equipo, importancia, delTipo)
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(
+            imageVector = if (critico) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(14.dp),
+        )
+        Text(text = texto, style = MaterialTheme.typography.nota, color = color)
     }
 }
 

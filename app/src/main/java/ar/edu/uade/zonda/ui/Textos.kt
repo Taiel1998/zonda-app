@@ -10,15 +10,19 @@ import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroEstado
+import ar.edu.uade.zonda.domain.model.Importancia
+import ar.edu.uade.zonda.domain.model.LecturaVeredicto
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.ModoNotificacion
 import ar.edu.uade.zonda.domain.model.Motivo
+import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.domain.model.Tema
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 
 // Qué texto de strings.xml corresponde a cada valor del dominio. El dominio no conoce los
@@ -85,6 +89,17 @@ fun Periodo.tituloEnHoja(): Int = when (this) {
     Periodo.ULTIMOS_7_DIAS -> R.string.filtro_periodo_7d_titulo
     Periodo.ULTIMOS_30_DIAS -> R.string.filtro_periodo_30d_titulo
     Periodo.TODO -> R.string.filtro_periodo
+}
+
+/** Lo que dice el detalle de cada método (decisión 37): "12 veces más de lo normal", "Servicio autorizado". */
+@Composable
+fun LecturaVeredicto.texto(): String = when (this) {
+    is LecturaVeredicto.VecesMas -> stringResource(R.string.veredicto_veces_mas, veces)
+    LecturaVeredicto.UnPocoMas -> stringResource(R.string.veredicto_un_poco_mas)
+    LecturaVeredicto.DentroDeLoNormal -> stringResource(R.string.veredicto_dentro_de_lo_normal)
+    LecturaVeredicto.ServicioNuevo -> stringResource(R.string.veredicto_servicio_nuevo)
+    LecturaVeredicto.ServicioAutorizado -> stringResource(R.string.veredicto_servicio_autorizado)
+    LecturaVeredicto.ServicioNoAutorizado -> stringResource(R.string.veredicto_servicio_no_autorizado)
 }
 
 /** Cómo se nombra en el historial del detalle: "Detectada por el modelo de IA y los umbrales". */
@@ -266,4 +281,45 @@ fun ErrorZonda.mensaje(): Int = when (this) {
     is ErrorZonda.Validacion -> R.string.error_validacion
     is ErrorZonda.TelegramNoDisponible -> R.string.error_telegram_no_disponible
     is ErrorZonda.TelegramSinVincular -> R.string.error_telegram_sin_vincular
+    is ErrorZonda.SinPermiso -> R.string.error_sin_permiso
+    is ErrorZonda.UltimoAdministrador -> R.string.error_ultimo_administrador
+    is ErrorZonda.YaAsignada -> R.string.error_ya_asignada
+}
+
+/** "Administrador" o "Analista" (decisión 39). */
+@StringRes
+fun Perfil.etiqueta(): Int = when (this) {
+    Perfil.ADMINISTRADOR -> R.string.perfil_administrador
+    Perfil.ANALISTA -> R.string.perfil_analista
+}
+
+/** Lo que puede hacer cada perfil, en la hoja "Agregar persona" (Figma 468-2642). */
+@StringRes
+fun Perfil.descripcion(): Int = when (this) {
+    Perfil.ADMINISTRADOR -> R.string.perfil_administrador_detalle
+    Perfil.ANALISTA -> R.string.perfil_analista_detalle
+}
+
+/** "Crítico", "Normal" o "Poco importante" (decisión 41). */
+@StringRes
+fun Importancia.etiqueta(): Int = when (this) {
+    Importancia.CRITICO -> R.string.importancia_critico
+    Importancia.NORMAL -> R.string.importancia_normal
+    Importancia.POCO_IMPORTANTE -> R.string.importancia_poco_importante
+}
+
+/** Qué hace cada importancia con las alertas del equipo, en su hoja (Figma 468-3178). */
+@StringRes
+fun Importancia.descripcion(): Int = when (this) {
+    Importancia.CRITICO -> R.string.importancia_critico_detalle
+    Importancia.NORMAL -> R.string.importancia_normal_detalle
+    Importancia.POCO_IMPORTANTE -> R.string.importancia_poco_importante_detalle
+}
+
+/** "Como el teléfono", "Claro" u "Oscuro" (decisión 43). */
+@StringRes
+fun Tema.etiqueta(): Int = when (this) {
+    Tema.COMO_EL_TELEFONO -> R.string.tema_como_el_telefono
+    Tema.CLARO -> R.string.tema_claro
+    Tema.OSCURO -> R.string.tema_oscuro
 }

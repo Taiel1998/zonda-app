@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.FiltroResponsable
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
@@ -12,6 +13,8 @@ import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.ObservarAlertas
 import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
+import ar.edu.uade.zonda.ui.ContextoTarjetas
+import ar.edu.uade.zonda.ui.observarContextoTarjetas
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,7 +66,16 @@ class AlertasViewModel(
         if (red == null) flowOf(0) else alertas.observarCantidad(red.id)
     }
 
-    private data class Datos(val red: Red?, val alertas: List<Alerta>, val opciones: OpcionesDeFiltro, val guardadas: Int, val leida: Boolean)
+    private data class Datos(
+        val red: Red?,
+        val alertas: List<Alerta>,
+        val opciones: OpcionesDeFiltro,
+        val guardadas: Int,
+        val leida: Boolean,
+        val contexto: ContextoTarjetas = ContextoTarjetas(),
+    )
+
+    private val contexto: Flow<ContextoTarjetas> = redes.observarContextoTarjetas()
 
     private data class Controles(
         val filtro: FiltroAlertas,
@@ -74,9 +86,12 @@ class AlertasViewModel(
     )
 
     val estado: StateFlow<AlertasUiState> = combine(
-        combine(redes.observarRedActiva(), lista, opciones, guardadas, primeraLectura) { red, alertas, opciones, guardadas, leida ->
-            Datos(red, alertas, opciones, guardadas, leida)
-        },
+        combine(
+            combine(redes.observarRedActiva(), lista, opciones, guardadas, primeraLectura) { red, alertas, opciones, guardadas, leida ->
+                Datos(red, alertas, opciones, guardadas, leida)
+            },
+            contexto,
+        ) { datos, contexto -> datos.copy(contexto = contexto) },
         combine(filtro, conectividad.conectado, sincronizando, aviso, ultimoError) { filtro, conectado, sincronizando, aviso, error ->
             Controles(filtro, conectado, sincronizando, aviso, error)
         },
@@ -96,6 +111,7 @@ class AlertasViewModel(
             accesoVencido = datos.red?.accesoVencido == true,
             sincronizando = controles.sincronizando,
             aviso = controles.aviso,
+            contexto = datos.contexto,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AlertasUiState())
 
@@ -114,6 +130,17 @@ class AlertasViewModel(
 
     fun aplicarFiltro(nuevo: FiltroAlertas) {
         filtro.value = nuevo
+    }
+
+    /**
+     * "Ver" del aviso de Estado (decisión 42; Figma 468-1603): todas las alertas asignadas a este
+     * teléfono. Sin el id del teléfono (servidor anterior a la 1.0.5) no hay asignaciones: no cambia nada.
+     */
+    fun verAsignadasAMi() {
+        viewModelScope.launch {
+            val miId = contexto.first().miId ?: return@launch
+            filtro.value = FiltroAlertas(responsable = FiltroResponsable.AsignadasAMi(miId))
+        }
     }
 
     /** "Limpiar filtros": la lista vuelve a mostrar todo lo guardado. */

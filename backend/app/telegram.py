@@ -128,6 +128,20 @@ def texto_del_aviso(severidad: str, servicio: str, deteccion: datetime, red: str
     return f"<b>{html.escape(titulo)}</b>\nTocá para ver el detalle en Zonda.\nRed: {html.escape(red)}"
 
 
+def texto_de_asignacion(por: str, severidad: str, servicio: str, deteccion: datetime, zona: tzinfo | None = None, hoy: date | None = None) -> str:
+    """El aviso a quien le asignan una alerta (decisión 42), con la misma hora que el aviso de la alerta:
+
+        Taiel te asignó una alerta ALTA · SSH · 09:51
+        Tocá para ver el detalle en Zonda.
+    """
+    local = deteccion.astimezone(zona)
+    hora = local.strftime("%H:%M")
+    if local.date() != (hoy or datetime.now(zona).date()):
+        hora = local.strftime("%d/%m %H:%M")
+    titulo = f"{por} te asignó una alerta {ETIQUETA_SEVERIDAD[severidad]} · {servicio.upper()} · {hora}"
+    return f"<b>{html.escape(titulo)}</b>\nTocá para ver el detalle en Zonda."
+
+
 def _utc(momento: datetime) -> str:
     return momento.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -150,6 +164,16 @@ class Pendiente:
     alerta_id: str
     chat_id: str
     modo: str
+    texto: str
+    enlace: str
+
+
+@dataclass
+class AvisoDeAsignacion:
+    """Un aviso que falta mandar: la alerta que otra persona le asignó a alguien con Telegram."""
+
+    asignacion_id: int
+    chat_id: str
     texto: str
     enlace: str
 
@@ -273,8 +297,8 @@ class BotTelegram:
         con = self.base.conexion()
         filas = con.execute(
             """
-            SELECT a.id, a.inicio, a.servicio, a.tipo_ataque, a.veredicto_reglas, a.veredicto_umbrales, d.telegram_chat_id AS chat_id,
-                   d.aviso_alta, d.aviso_media, d.aviso_baja
+            SELECT a.id, a.inicio, a.servicio, a.tipo_ataque, a.veredicto_reglas, a.veredicto_umbrales, a.destino_ip,
+                   d.telegram_chat_id AS chat_id, d.aviso_alta, d.aviso_media, d.aviso_baja
             FROM alertas a
             JOIN dispositivos d
               ON d.telegram_chat_id IS NOT NULL AND d.revocado_en IS NULL AND d.vence_en > ?
@@ -301,6 +325,60 @@ class BotTelegram:
                     modo=fila[f"aviso_{severidad}"],
                     texto=texto_del_aviso(severidad, fila["servicio"], deteccion, self.cfg.red_nombre, self.zona),
                     enlace=enlace_del_aviso(self.cfg.enlace_aviso, fila["id"], self.cfg.red_id, severidad, fila["servicio"], deteccion, ahora()),
+                )
+            )
+        return pendientes
+
+    async def avisar_asignaciones(self) -> int:
+        """Avisa a cada persona con Telegram las alertas que otra persona le asignó (decisión 42). Asignarse
+        una uno mismo no avisa. Devuelve cuántos mandó; lo que no sale se reintenta en la vuelta siguiente."""
+        enviados = 0
+        for pendiente in self._asignaciones_pendientes():
+            try:
+                await self.cliente.enviar(pendiente.chat_id, pendiente.texto, boton=(BOTON_DETALLE, pendiente.enlace))
+            except ErrorTelegram as error:
+                if error.chat_perdido:
+                    self.desvincular_chat(pendiente.chat_id)
+                    continue
+                if error.reintentar_en:
+                    await asyncio.sleep(error.reintentar_en)
+                raise
+            with self.base.transaccion() as con:
+                con.execute("UPDATE asignaciones SET aviso_telegram_en = ? WHERE id = ?", (iso(ahora()), pendiente.asignacion_id))
+            enviados += 1
+            if self.pausa:
+                await asyncio.sleep(self.pausa)
+        return enviados
+
+    def _asignaciones_pendientes(self) -> list[AvisoDeAsignacion]:
+        """Las asignaciones vigentes que hizo otra persona, después de que el chat se vinculó, sin su aviso."""
+        con = self.base.conexion()
+        filas = con.execute(
+            """
+            SELECT s.id AS asignacion_id, s.alerta_id, s.por, d.telegram_chat_id AS chat_id,
+                   a.inicio, a.servicio, a.tipo_ataque, a.veredicto_reglas, a.veredicto_umbrales, a.destino_ip
+            FROM asignaciones s
+            JOIN dispositivos d
+              ON d.id = s.responsable_id AND d.telegram_chat_id IS NOT NULL AND d.revocado_en IS NULL AND d.vence_en > ?
+             AND s.fecha >= d.telegram_vinculado_en
+            JOIN alertas a ON a.id = s.alerta_id
+            WHERE s.aviso_telegram_en IS NULL AND s.responsable_id != s.por_id
+              AND s.id = (SELECT MAX(x.id) FROM asignaciones x WHERE x.alerta_id = s.alerta_id)
+            ORDER BY s.id
+            LIMIT ?
+            """,
+            (iso(ahora()), TANDA),
+        ).fetchall()
+        pendientes: list[AvisoDeAsignacion] = []
+        for fila in filas:
+            severidad = severidad_de(con, fila)
+            deteccion = datetime.fromisoformat(fila["inicio"])
+            pendientes.append(
+                AvisoDeAsignacion(
+                    asignacion_id=fila["asignacion_id"],
+                    chat_id=fila["chat_id"],
+                    texto=texto_de_asignacion(fila["por"], severidad, fila["servicio"], deteccion, self.zona),
+                    enlace=enlace_del_aviso(self.cfg.enlace_aviso, fila["alerta_id"], self.cfg.red_id, severidad, fila["servicio"], deteccion, ahora()),
                 )
             )
         return pendientes
@@ -357,6 +435,7 @@ class BotTelegram:
         while True:
             try:
                 await self.avisar_nuevas()
+                await self.avisar_asignaciones()
             except ErrorTelegram as error:
                 registro.warning("Hay avisos sin mandar, se reintenta: %s", error)
             except sqlite3.Error:

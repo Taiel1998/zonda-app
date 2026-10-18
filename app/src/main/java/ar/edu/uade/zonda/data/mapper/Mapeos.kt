@@ -3,16 +3,26 @@ package ar.edu.uade.zonda.data.mapper
 import ar.edu.uade.zonda.data.local.entidades.AccionPendienteEntity
 import ar.edu.uade.zonda.data.local.entidades.AlertaConDetalles
 import ar.edu.uade.zonda.data.local.entidades.AlertaEntity
+import ar.edu.uade.zonda.data.local.entidades.AsignacionEntity
+import ar.edu.uade.zonda.data.local.entidades.CambioRegistroEntity
+import ar.edu.uade.zonda.data.local.entidades.CatalogoEquipoEntity
+import ar.edu.uade.zonda.data.local.entidades.PersonaEntity
 import ar.edu.uade.zonda.data.local.entidades.RedEntity
 import ar.edu.uade.zonda.data.local.entidades.RevisionEntity
 import ar.edu.uade.zonda.data.local.entidades.SeveridadEntity
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.Asignacion
+import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.Equipo
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
+import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
+import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Revision
@@ -20,6 +30,7 @@ import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAccion
 import ar.edu.uade.zonda.domain.model.TipoAtaque
+import ar.edu.uade.zonda.domain.model.TipoCambio
 import ar.edu.uade.zonda.domain.model.VeredictoIa
 import ar.edu.uade.zonda.domain.model.VeredictoReglas
 import ar.edu.uade.zonda.domain.model.VeredictoUmbrales
@@ -45,6 +56,8 @@ fun RedEntity.aDominio(): Red = Red(
     accesoEmitido = accesoEmitidoEn?.aInstant(),
     accesoVence = accesoVenceEn?.aInstant(),
     telegramBot = telegramBot,
+    perfil = Perfil.entries.firstOrNull { it.name == perfil } ?: Perfil.ADMINISTRADOR,
+    dispositivoId = dispositivoId,
 )
 
 fun Red.aEntidad(creadaEn: Instant): RedEntity = RedEntity(
@@ -60,6 +73,8 @@ fun Red.aEntidad(creadaEn: Instant): RedEntity = RedEntity(
     accesoEmitidoEn = accesoEmitido?.aMilis(),
     accesoVenceEn = accesoVence?.aMilis(),
     telegramBot = telegramBot,
+    perfil = perfil.name,
+    dispositivoId = dispositivoId,
 )
 
 fun RevisionEntity.aDominio(): Revision = Revision(
@@ -70,6 +85,7 @@ fun RevisionEntity.aDominio(): Revision = Revision(
     fecha = fecha.aInstant(),
     origen = OrigenRevision.valueOf(origen),
     revisadaEn = revisadaEn?.aInstant(),
+    persona = persona,
 )
 
 fun Revision.aEntidad(alertaId: String): RevisionEntity = RevisionEntity(
@@ -81,6 +97,26 @@ fun Revision.aEntidad(alertaId: String): RevisionEntity = RevisionEntity(
     fecha = fecha.aMilis(),
     origen = origen.name,
     revisadaEn = revisadaEn?.aMilis(),
+    persona = persona,
+)
+
+fun AsignacionEntity.aDominio(): Asignacion = Asignacion(
+    responsableId = responsableId,
+    responsable = responsable,
+    porId = porId,
+    por = por,
+    fecha = fecha.aInstant(),
+)
+
+/** Una asignación para el historial: [origen] dice si ya la confirmó el servidor (`SERVIDOR`) o es de este teléfono. */
+fun Asignacion.aEntidad(alertaId: String, origen: OrigenRevision): AsignacionEntity = AsignacionEntity(
+    alertaId = alertaId,
+    responsableId = responsableId,
+    responsable = responsable,
+    porId = porId,
+    por = por,
+    fecha = fecha.aMilis(),
+    origen = origen.name,
 )
 
 fun AlertaConDetalles.aDominio(): Alerta {
@@ -117,6 +153,16 @@ fun AlertaConDetalles.aDominio(): Alerta {
         version = alerta.version,
         actualizadaEn = alerta.actualizadaEn.aInstant(),
         avisoTelegram = alerta.avisoTelegramEn?.aInstant(),
+        asignacion = alerta.responsableId?.let { id ->
+            Asignacion(
+                responsableId = id,
+                responsable = alerta.responsable,
+                porId = alerta.asignadaPorId.orEmpty(),
+                por = alerta.asignadaPor.orEmpty(),
+                fecha = (alerta.asignadaEn ?: alerta.actualizadaEn).aInstant(),
+            )
+        },
+        asignaciones = asignaciones.sortedWith(compareBy({ it.fecha }, { it.id })).map { it.aDominio() },
     )
 }
 
@@ -154,6 +200,11 @@ fun Alerta.aEntidad(): AlertaEntity = AlertaEntity(
     version = version,
     actualizadaEn = actualizadaEn.aMilis(),
     avisoTelegramEn = avisoTelegram?.aMilis(),
+    responsableId = asignacion?.responsableId,
+    responsable = asignacion?.responsable,
+    asignadaPorId = asignacion?.porId,
+    asignadaPor = asignacion?.por,
+    asignadaEn = asignacion?.fecha?.aMilis(),
 )
 
 fun AccionPendienteEntity.aDominio(): AccionPendiente = AccionPendiente(
@@ -192,6 +243,9 @@ fun AccionPendienteEntity.aDominio(): AccionPendiente = AccionPendiente(
     } else {
         null
     },
+    motivo = motivoCambio,
+    equipoIp = equipoIp,
+    importancia = importancia?.let { valor -> Importancia.entries.firstOrNull { it.name == valor } },
 )
 
 fun AccionPendiente.aEntidad(): AccionPendienteEntity = AccionPendienteEntity(
@@ -215,6 +269,64 @@ fun AccionPendiente.aEntidad(): AccionPendienteEntity = AccionPendienteEntity(
     ajenaAutor = revisionAjena?.autor,
     ajenaFecha = revisionAjena?.fecha?.aMilis(),
     ajenaRevisadaEn = revisionAjena?.revisadaEn?.aMilis(),
+    motivoCambio = motivo,
+    equipoIp = equipoIp,
+    importancia = importancia?.name,
+)
+
+fun PersonaEntity.aDominio(): Persona = Persona(
+    id = id,
+    nombre = nombre,
+    telefono = telefono,
+    perfil = Perfil.entries.firstOrNull { it.name == perfil } ?: Perfil.ANALISTA,
+    ultimoUso = ultimoUso?.aInstant(),
+    vos = vos,
+)
+
+fun Persona.aEntidad(redId: String, orden: Int): PersonaEntity = PersonaEntity(
+    redId = redId,
+    id = id,
+    nombre = nombre,
+    telefono = telefono,
+    perfil = perfil.name,
+    ultimoUso = ultimoUso?.aMilis(),
+    vos = vos,
+    orden = orden,
+)
+
+fun CatalogoEquipoEntity.aDominio(): EquipoDeLaRed = EquipoDeLaRed(
+    ip = ip,
+    nombre = nombre,
+    importancia = Importancia.entries.firstOrNull { it.name == importancia } ?: Importancia.NORMAL,
+)
+
+fun EquipoDeLaRed.aEntidad(redId: String): CatalogoEquipoEntity = CatalogoEquipoEntity(redId, ip, nombre, importancia.name)
+
+fun CambioRegistroEntity.aDominio(): CambioRegistro = CambioRegistro(
+    id = id,
+    fecha = fecha.aInstant(),
+    tipo = TipoCambio.valueOf(tipo),
+    autorId = autorId,
+    autor = autor,
+    objeto = objeto,
+    nombre = nombre,
+    antes = antes,
+    despues = despues,
+    motivo = motivo,
+)
+
+fun CambioRegistro.aEntidad(redId: String): CambioRegistroEntity = CambioRegistroEntity(
+    redId = redId,
+    id = id,
+    fecha = fecha.aMilis(),
+    tipo = tipo.name,
+    autorId = autorId,
+    autor = autor,
+    objeto = objeto,
+    nombre = nombre,
+    antes = antes,
+    despues = despues,
+    motivo = motivo,
 )
 
 /** Sin filas guardadas rige la severidad recomendada. */

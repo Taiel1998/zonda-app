@@ -1,7 +1,14 @@
 package ar.edu.uade.zonda.ui
 
 import android.view.View
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -22,9 +29,11 @@ import ar.edu.uade.zonda.ui.ajustes.AvisoAjustes
 import ar.edu.uade.zonda.ui.ajustes.RedConEstado
 import ar.edu.uade.zonda.ui.ajustes.RedesContenido
 import ar.edu.uade.zonda.ui.detalle.AccionesDetalle
-import ar.edu.uade.zonda.ui.detalle.AvisoDetalle
+import ar.edu.uade.zonda.ui.detalle.AvisoRevisaste
 import ar.edu.uade.zonda.ui.detalle.DetalleContenido
 import ar.edu.uade.zonda.ui.detalle.DetalleUiState
+import ar.edu.uade.zonda.ui.detalle.FormularioRevision
+import ar.edu.uade.zonda.ui.detalle.RevisionPorDeshacer
 import ar.edu.uade.zonda.ui.resumen.AvisoResumen
 import ar.edu.uade.zonda.ui.resumen.ContenidoResumen
 import ar.edu.uade.zonda.ui.resumen.ResumenContenido
@@ -92,29 +101,27 @@ class AvisoSobreLaBarraTest {
         assertTrue("\"$texto\" termina en ${nodo.bottom} y la barra empieza en $barra", nodo.bottom <= barra)
     }
 
-    private fun detalle(alerta: Alerta, recienRevisada: Boolean = false) = DetalleUiState.Contenido(
+    private fun detalle(alerta: Alerta) = DetalleUiState.Contenido(
         alerta,
         accion = null,
         sinConexion = false,
         datosDe = Fixtures.AHORA,
-        recienRevisada = recienRevisada,
         nombreDelTelefono = "Celular Martín",
         nombreDeLaRed = "Oficina central",
     )
 
     @Test
-    fun `el aviso con Deshacer del detalle queda arriba de la barra`() {
+    fun `el aviso Revisaste con Deshacer de la lista del Resumen queda arriba de la barra`() {
+        // Como en ZondaNavHost: sin la barra de pestañas, el aviso de la app deja el lugar de la de Android.
+        val revision = RevisionPorDeshacer("red-1", "a-1", "pc-09 → srv-web", FormularioRevision(), conConexion = true)
         dibujarConLaBarra {
-            DetalleContenido(
-                estado = detalle(Fixtures.alerta("a-1", revision = Fixtures.revision()), recienRevisada = true),
-                acciones = AccionesDetalle(),
-                aviso = AvisoDetalle.RevisionGuardada(conConexion = true),
-                zona = utc,
-                ahora = Fixtures.AHORA,
-            )
+            Scaffold(
+                contentWindowInsets = WindowInsets(0),
+                snackbarHost = { AvisoRevisaste(revision = revision, alDeshacer = {}, modifier = Modifier.navigationBarsPadding()) },
+            ) { relleno -> Box(modifier = Modifier.padding(relleno).fillMaxSize()) }
         }
 
-        quedaArribaDeLaBarra("Revisión guardada y enviada al servidor.")
+        quedaArribaDeLaBarra("Revisaste pc-09 → srv-web.")
         quedaArribaDeLaBarra("Deshacer")
     }
 

@@ -1,6 +1,8 @@
 package ar.edu.uade.zonda.domain.repository
 
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.AsignacionNueva
+import ar.edu.uade.zonda.domain.model.Asignacion
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
@@ -29,6 +31,11 @@ data class ResultadoSincronizacion(
      * revisó antes (409). Pasa una sola vez por revisión: el envío queda en conflicto y no se reintenta.
      */
     val conflictosNuevos: List<String> = emptyList(),
+    /**
+     * Las alertas que otra persona le asignó a este teléfono desde la sincronización anterior (decisión
+     * 42): si la red no tiene Telegram, Zonda las avisa con una notificación.
+     */
+    val asignacionesNuevas: List<AsignacionNueva> = emptyList(),
 ) {
     /** Las altas nuevas: no entran en el recordatorio de esta misma vuelta. */
     val idsAltasNuevas: List<String>
@@ -68,6 +75,9 @@ interface AlertasRepository {
 
     /** Deshacer: vuelve la alerta al último estado que llegó del servidor. */
     suspend fun restaurarEstadoDelServidor(redId: String, alertaId: String)
+
+    /** Guarda el responsable nuevo en el teléfono (decisión 42). El envío al servidor va por la cola de asignaciones. */
+    suspend fun aplicarAsignacionLocal(redId: String, alertaId: String, asignacion: Asignacion)
 
     /** Pide el detalle al servidor (`GET /alertas/{id}`) y lo guarda. Lanza [ar.edu.uade.zonda.domain.model.ErrorZonda]. */
     suspend fun descargarDetalle(redId: String, alertaId: String): Alerta

@@ -16,7 +16,6 @@ object Rutas {
     const val BIENVENIDA = "bienvenida"
     const val TUTORIAL = "tutorial"
     const val AVISOS = "avisos"
-    const val SEVERIDADES_INICIALES = "severidades_iniciales"
     const val CONEXION_INICIAL = "conexion_inicial"
 
     /** Conectar Telegram después de la red conectada, con "Ahora no" (Figma 50-942 y 50-1003). */
@@ -37,6 +36,16 @@ object Rutas {
 
     /** Severidad por tipo de ataque de la red activa, desde Ajustes o desde Avisos por severidad (RF06). */
     const val SEVERIDADES = "severidades"
+
+    /** La gente de la red (decisión 39; Figma 468-2568) y el código para sumar a alguien (468-2735). */
+    const val PERSONAS = "personas"
+    const val CODIGO_PERSONA = "personas/codigo"
+
+    /** La importancia de cada equipo (decisión 41; Figma 468-3089). */
+    const val EQUIPOS = "equipos"
+
+    /** El registro de cambios de la configuración (decisión 40; Figma 468-3283). */
+    const val REGISTRO = "registro"
 
     /** El Resumen de 7 o 30 días (RF07), desde el ícono de barras de Estado. */
     const val RESUMEN = "resumen"

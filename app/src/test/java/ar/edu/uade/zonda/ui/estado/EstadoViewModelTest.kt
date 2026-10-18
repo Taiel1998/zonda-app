@@ -7,6 +7,7 @@ import ar.edu.uade.zonda.domain.fakes.FakeAccionesPendientesRepository
 import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeConectividad
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
+import ar.edu.uade.zonda.domain.model.Asignacion
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
@@ -351,6 +352,25 @@ class EstadoViewModelTest {
             // "Aplicar la mía" la vuelve a encolar como pendiente: el aviso se va.
             acciones.encolar(Fixtures.accion(id = "accion-1", alertaId = "alta-vieja", estado = EstadoEnvio.PENDIENTE))
             assertEquals(emptyList<String>(), esperar { it.revisionesNoAplicadas.isEmpty() }.revisionesNoAplicadas)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `las sin revisar asignadas a este telefono arman el aviso azul`() = runTest {
+        redes.agregar(Fixtures.red("red-1").copy(dispositivoId = "d-2"))
+        alertas.agregar(
+            Fixtures.alerta("mia").copy(asignacion = Asignacion("d-2", "Laura", "d-1", "Taiel", Fixtures.AHORA)),
+            Fixtures.alerta("de-meli").copy(asignacion = Asignacion("d-3", "Meli", "d-1", "Taiel", Fixtures.AHORA)),
+            Fixtures.alerta("libre"),
+            Fixtures.alerta("mia-revisada", revision = Fixtures.revision(origen = OrigenRevision.SERVIDOR))
+                .copy(asignacion = Asignacion("d-2", "Laura", "d-1", "Taiel", Fixtures.AHORA)),
+        )
+
+        viewModel().estado.test {
+            val estado = esperar { it.asignadasAMi.isNotEmpty() }
+            assertEquals(listOf("mia"), estado.asignadasAMi.map { it.id })
+            assertEquals("d-2", estado.contexto.miId)
             cancelAndIgnoreRemainingEvents()
         }
     }

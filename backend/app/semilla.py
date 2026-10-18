@@ -27,10 +27,11 @@ SEVERIDAD_RECOMENDADA = {
 }
 
 ORDEN_SEVERIDAD = {"baja": 0, "media": 1, "alta": 2}
+NIVELES = ["baja", "media", "alta"]
 
-# La severidad de cada alerta en SQL, igual que severidad_de, para filtrar sin dejar páginas con huecos.
-# Las claves del tipo vacío salen de los veredictos; sin ninguno marcado van las dos, como en claves_de.
-SQL_SEVERIDAD = f"""(CASE WHEN alertas.tipo_ataque IS NOT NULL
+# La severidad del tipo de cada alerta en SQL, igual que severidad_del_tipo. Las claves del tipo vacío
+# salen de los veredictos; sin ninguno marcado van las dos, como en claves_de.
+SQL_SEVERIDAD_DEL_TIPO = f"""(CASE WHEN alertas.tipo_ataque IS NOT NULL
     THEN (SELECT s.severidad FROM severidades s WHERE s.tipo_ataque = alertas.tipo_ataque)
     ELSE (SELECT s.severidad FROM severidades s
           WHERE s.tipo_ataque IN (
@@ -38,6 +39,38 @@ SQL_SEVERIDAD = f"""(CASE WHEN alertas.tipo_ataque IS NOT NULL
               CASE WHEN alertas.veredicto_umbrales = 1 OR alertas.veredicto_reglas = 0 THEN '{CLAVE_UMBRALES}' END)
           ORDER BY CASE s.severidad WHEN 'alta' THEN 2 WHEN 'media' THEN 1 ELSE 0 END DESC LIMIT 1)
 END)"""
+
+# La severidad final en SQL, igual que severidad_de: la del tipo, un nivel más o menos según la
+# importancia del equipo destino (decisión 41). Así el filtro de /alertas no deja páginas con huecos.
+SQL_SEVERIDAD = f"""(CASE (SELECT e.importancia FROM catalogo_equipos e WHERE e.ip = alertas.destino_ip)
+    WHEN 'critico' THEN (CASE {SQL_SEVERIDAD_DEL_TIPO} WHEN 'baja' THEN 'media' ELSE 'alta' END)
+    WHEN 'poco_importante' THEN (CASE {SQL_SEVERIDAD_DEL_TIPO} WHEN 'alta' THEN 'media' ELSE 'baja' END)
+    ELSE {SQL_SEVERIDAD_DEL_TIPO}
+END)"""
+
+
+def ajustar(severidad: str, importancia: str | None) -> str:
+    """La severidad final (decisión 41): la del tipo de ataque, un nivel más si el equipo destino es
+    crítico y uno menos si es poco importante, con tope en alta y piso en baja. Pesan lo mismo: un solo
+    escalón, así una probable falsa alarma a un servidor crítico no sale en rojo.
+
+        tipo   crítico  normal  poco importante
+        alta   alta     alta    media
+        media  alta     media   baja
+        baja   media    baja    baja
+    """
+    nivel = NIVELES.index(severidad)
+    if importancia == "critico":
+        nivel = min(nivel + 1, len(NIVELES) - 1)
+    elif importancia == "poco_importante":
+        nivel = max(nivel - 1, 0)
+    return NIVELES[nivel]
+
+
+def importancia_de(con: sqlite3.Connection, ip: str) -> str:
+    """La importancia de un equipo; los que no están en el catálogo son normales."""
+    fila = con.execute("SELECT importancia FROM catalogo_equipos WHERE ip = ?", (ip,)).fetchone()
+    return fila["importancia"] if fila else "normal"
 
 
 def claves_de(tipo_ataque: str | None, reglas: bool, umbrales: bool) -> list[str]:
@@ -50,14 +83,20 @@ def claves_de(tipo_ataque: str | None, reglas: bool, umbrales: bool) -> list[str
     return claves or [CLAVE_REGLAS, CLAVE_UMBRALES]
 
 
-def severidad_de(con: sqlite3.Connection, alerta: sqlite3.Row) -> str:
-    """La severidad sale del tipo, según la tabla de la red (RF06). El tipo ordena, no filtra. Si la
-    vieron las reglas y los umbrales sin la IA, le toca la más alta de las dos filas (cambio 9)."""
+def severidad_del_tipo(con: sqlite3.Connection, alerta: sqlite3.Row) -> str:
+    """La severidad del tipo, según la tabla de la red (RF06). El tipo ordena, no filtra. Si la vieron
+    las reglas y los umbrales sin la IA, le toca la más alta de las dos filas (cambio 9)."""
     severidades = []
     for clave in claves_de(alerta["tipo_ataque"], bool(alerta["veredicto_reglas"]), bool(alerta["veredicto_umbrales"])):
         fila = con.execute("SELECT severidad FROM severidades WHERE tipo_ataque = ?", (clave,)).fetchone()
         severidades.append(fila["severidad"] if fila else SEVERIDAD_RECOMENDADA[clave])
     return max(severidades, key=ORDEN_SEVERIDAD.__getitem__)
+
+
+def severidad_de(con: sqlite3.Connection, alerta: sqlite3.Row) -> str:
+    """La severidad final de una alerta: la de su tipo, ajustada por la importancia del equipo destino
+    (decisión 41). La usan el detalle, la lista, Estado, los avisos de Telegram y zonda.cmd."""
+    return ajustar(severidad_del_tipo(con, alerta), importancia_de(con, alerta["destino_ip"]))
 
 
 def poner_al_dia_severidades(con: sqlite3.Connection) -> None:
@@ -71,6 +110,14 @@ def poner_al_dia_severidades(con: sqlite3.Connection) -> None:
         con.execute("DELETE FROM severidades WHERE tipo_ataque = ?", (CLAVE_SIN_TIPO_ANTERIOR,))
     for tipo in TIPOS_SEVERIDAD:
         con.execute("INSERT OR IGNORE INTO severidades (tipo_ataque, severidad) VALUES (?, ?)", (tipo, SEVERIDAD_RECOMENDADA[tipo]))
+
+
+def guardar_equipo(con: sqlite3.Connection, ip: str, nombre: str) -> None:
+    """El nombre de un equipo del catálogo; si ya estaba, conserva la importancia que le dio un administrador."""
+    con.execute(
+        "INSERT INTO catalogo_equipos (ip, nombre) VALUES (?, ?) ON CONFLICT(ip) DO UPDATE SET nombre = excluded.nombre",
+        (ip, nombre),
+    )
 
 
 def _fecha(texto: str) -> datetime:
@@ -108,7 +155,7 @@ def cargar_si_vacia(
     # Catálogo: nombres de equipos y servicios que la app muestra y usa en los filtros.
     for ip, nombre in semilla.get("catalogo", {}).get("equipos", {}).items():
         if nombre:
-            con.execute("INSERT OR REPLACE INTO catalogo_equipos (ip, nombre) VALUES (?, ?)", (ip, nombre))
+            guardar_equipo(con, ip, nombre)
     for servicio in semilla.get("catalogo", {}).get("servicios", []):
         con.execute("INSERT OR IGNORE INTO catalogo_servicios (servicio) VALUES (?)", (servicio,))
 

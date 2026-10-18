@@ -2,4 +2,6 @@
 <resources>
     <!-- Verde del borde del logo, detrás del ícono adaptativo. -->
     <color name="ic_launcher_fondo">#028262</color>
+    <!-- El fondo de la ventana en oscuro, antes de que dibuje Compose (decisión 43). -->
+    <color name="fondo_oscuro">#1B1B19</color>
 </resources>

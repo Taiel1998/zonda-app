@@ -15,8 +15,10 @@ CREATE TABLE IF NOT EXISTS meta (
     valor TEXT NOT NULL
 );
 
+-- Cada teléfono pareado es una persona del equipo, con su nombre y su perfil (decisión 39).
 CREATE TABLE IF NOT EXISTS dispositivos (
     id TEXT PRIMARY KEY,
+    -- El nombre del teléfono ("moto g(9) plus").
     nombre TEXT NOT NULL,
     token_hash TEXT NOT NULL UNIQUE,
     creado_en TEXT NOT NULL,
@@ -28,7 +30,13 @@ CREATE TABLE IF NOT EXISTS dispositivos (
     -- Cómo avisa Telegram cada severidad en este teléfono: sonido, vibracion o sin_aviso (Figma 51-1688).
     aviso_alta TEXT NOT NULL DEFAULT 'sonido',
     aviso_media TEXT NOT NULL DEFAULT 'vibracion',
-    aviso_baja TEXT NOT NULL DEFAULT 'sin_aviso'
+    aviso_baja TEXT NOT NULL DEFAULT 'sin_aviso',
+    -- administrador o analista. Los pareados antes de la 1.0.5 quedan como administradores.
+    perfil TEXT NOT NULL DEFAULT 'administrador',
+    -- El nombre de la persona ("Laura"); null en los pareados antes de la 1.0.5.
+    persona TEXT,
+    -- Cuándo usó la app por última vez (Ajustes → Personas).
+    ultimo_uso TEXT
 );
 
 CREATE TABLE IF NOT EXISTS codigos_pareo (
@@ -36,7 +44,12 @@ CREATE TABLE IF NOT EXISTS codigos_pareo (
     creado_en TEXT NOT NULL,
     vence_en TEXT NOT NULL,
     usado_en TEXT,
-    dispositivo_id TEXT
+    dispositivo_id TEXT,
+    -- A quién y con qué perfil suma el código. Los de la terminal (zonda pair) son de administrador.
+    persona TEXT,
+    perfil TEXT NOT NULL DEFAULT 'administrador',
+    -- El administrador que lo generó desde la app; null si salió de la terminal.
+    creado_por TEXT
 );
 
 CREATE TABLE IF NOT EXISTS codigos_telegram (
@@ -104,7 +117,9 @@ CREATE TABLE IF NOT EXISTS revisiones (
     -- Cuándo se revisó en el teléfono; fecha es cuándo llegó al servidor (decisión 21).
     revisada_en TEXT,
     dispositivo_id TEXT NOT NULL,
-    version_resultante INTEGER NOT NULL
+    version_resultante INTEGER NOT NULL,
+    -- El nombre de la persona que la revisó ("Laura"); autor es el de su teléfono.
+    persona TEXT
 );
 CREATE INDEX IF NOT EXISTS revisiones_alerta ON revisiones (alerta_id);
 
@@ -115,8 +130,45 @@ CREATE TABLE IF NOT EXISTS severidades (
 
 CREATE TABLE IF NOT EXISTS catalogo_equipos (
     ip TEXT PRIMARY KEY,
-    nombre TEXT NOT NULL
+    nombre TEXT NOT NULL,
+    -- critico, normal o poco_importante: sube o baja un nivel la severidad de sus alertas (decisión 41).
+    importancia TEXT NOT NULL DEFAULT 'normal'
 );
+
+-- Quién cambió la configuración de la red, cuándo y por qué (decisión 40). Nadie lo edita ni lo borra
+-- desde la app: solo se agregan filas.
+CREATE TABLE IF NOT EXISTS registro_cambios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha TEXT NOT NULL,
+    -- severidad, importancia, persona_nueva, perfil o persona_quitada.
+    tipo TEXT NOT NULL,
+    -- El teléfono que hizo el cambio; null si fue desde la terminal del servidor.
+    autor_id TEXT,
+    autor TEXT NOT NULL,
+    -- Lo que cambió: el tipo de ataque, la IP del equipo o el teléfono de la persona.
+    objeto TEXT NOT NULL,
+    nombre TEXT,
+    antes TEXT,
+    despues TEXT,
+    motivo TEXT
+);
+
+-- A quién está asignada cada alerta, como una línea de tiempo: la última fila manda (decisión 42).
+CREATE TABLE IF NOT EXISTS asignaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    alerta_id TEXT NOT NULL REFERENCES alertas (id) ON DELETE CASCADE,
+    -- Como las revisiones: la misma acción reenviada desde la cola no se aplica dos veces.
+    accion_id TEXT NOT NULL UNIQUE,
+    -- null: quedó sin asignar.
+    responsable_id TEXT,
+    responsable TEXT,
+    por_id TEXT NOT NULL,
+    por TEXT NOT NULL,
+    fecha TEXT NOT NULL,
+    -- Cuándo salió el aviso de Telegram a quien se la asignaron.
+    aviso_telegram_en TEXT
+);
+CREATE INDEX IF NOT EXISTS asignaciones_alerta ON asignaciones (alerta_id);
 
 CREATE TABLE IF NOT EXISTS catalogo_servicios (
     servicio TEXT PRIMARY KEY
@@ -150,8 +202,10 @@ class Base:
     @staticmethod
     def _actualizar(con: sqlite3.Connection) -> None:
         """Pone al día una base creada con una versión anterior: el protocolo, la hora de revisión en el
-        teléfono, los motivos nuevos, lo que guarda el bot de Telegram y las severidades del tipo vacío
-        (cambio 9)."""
+        teléfono, los motivos nuevos, lo que guarda el bot de Telegram, las severidades del tipo vacío
+        (cambio 9) y, desde la 1.0.5, la persona y el perfil de cada teléfono y la importancia de cada
+        equipo. Los teléfonos ya pareados quedan como administradores: hasta la 1.0.4 todos podían
+        cambiar las severidades."""
         from .modelos import MOTIVOS_ANTERIORES
         from .semilla import poner_al_dia_severidades
 
@@ -160,14 +214,28 @@ class Base:
             con.execute("ALTER TABLE alertas ADD COLUMN protocolo TEXT NOT NULL DEFAULT 'tcp'")
         if "aviso_telegram_en" not in columnas:
             con.execute("ALTER TABLE alertas ADD COLUMN aviso_telegram_en TEXT")
-        if "revisada_en" not in {fila[1] for fila in con.execute("PRAGMA table_info(revisiones)")}:
+        columnas = {fila[1] for fila in con.execute("PRAGMA table_info(revisiones)")}
+        if "revisada_en" not in columnas:
             con.execute("ALTER TABLE revisiones ADD COLUMN revisada_en TEXT")
+        if "persona" not in columnas:
+            con.execute("ALTER TABLE revisiones ADD COLUMN persona TEXT")
         columnas = {fila[1] for fila in con.execute("PRAGMA table_info(dispositivos)")}
         if "telegram_vinculado_en" not in columnas:
             con.execute("ALTER TABLE dispositivos ADD COLUMN telegram_vinculado_en TEXT")
             con.execute("ALTER TABLE dispositivos ADD COLUMN aviso_alta TEXT NOT NULL DEFAULT 'sonido'")
             con.execute("ALTER TABLE dispositivos ADD COLUMN aviso_media TEXT NOT NULL DEFAULT 'vibracion'")
             con.execute("ALTER TABLE dispositivos ADD COLUMN aviso_baja TEXT NOT NULL DEFAULT 'sin_aviso'")
+        if "perfil" not in columnas:
+            con.execute("ALTER TABLE dispositivos ADD COLUMN perfil TEXT NOT NULL DEFAULT 'administrador'")
+            con.execute("ALTER TABLE dispositivos ADD COLUMN persona TEXT")
+            con.execute("ALTER TABLE dispositivos ADD COLUMN ultimo_uso TEXT")
+            con.execute("UPDATE dispositivos SET ultimo_uso = creado_en")
+        if "perfil" not in {fila[1] for fila in con.execute("PRAGMA table_info(codigos_pareo)")}:
+            con.execute("ALTER TABLE codigos_pareo ADD COLUMN persona TEXT")
+            con.execute("ALTER TABLE codigos_pareo ADD COLUMN perfil TEXT NOT NULL DEFAULT 'administrador'")
+            con.execute("ALTER TABLE codigos_pareo ADD COLUMN creado_por TEXT")
+        if "importancia" not in {fila[1] for fila in con.execute("PRAGMA table_info(catalogo_equipos)")}:
+            con.execute("ALTER TABLE catalogo_equipos ADD COLUMN importancia TEXT NOT NULL DEFAULT 'normal'")
         for viejo, nuevo in MOTIVOS_ANTERIORES.items():
             con.execute("UPDATE revisiones SET motivo = ? WHERE motivo = ?", (nuevo, viejo))
         poner_al_dia_severidades(con)

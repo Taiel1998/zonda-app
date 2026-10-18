@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -41,19 +42,27 @@ import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.ajustes.AjustesScreen
 import ar.edu.uade.zonda.ui.ajustes.AjustesViewModel
 import ar.edu.uade.zonda.ui.ajustes.AvisosPorSeveridadScreen
+import ar.edu.uade.zonda.ui.ajustes.CodigoPersonaScreen
 import ar.edu.uade.zonda.ui.ajustes.CondicionesScreen
 import ar.edu.uade.zonda.ui.ajustes.DetallesTecnicosScreen
+import ar.edu.uade.zonda.ui.ajustes.EquiposScreen
+import ar.edu.uade.zonda.ui.ajustes.PersonasScreen
 import ar.edu.uade.zonda.ui.ajustes.RedesScreen
+import ar.edu.uade.zonda.ui.ajustes.RegistroScreen
+import ar.edu.uade.zonda.ui.ajustes.SeveridadesDeLaRedScreen
 import ar.edu.uade.zonda.ui.ajustes.ajustesViewModel
+import ar.edu.uade.zonda.ui.ajustes.personasViewModel
 import ar.edu.uade.zonda.ui.alertas.AlertasScreen
 import ar.edu.uade.zonda.ui.alertas.alertasViewModel
 import ar.edu.uade.zonda.ui.conexion.ConexionScreen
+import ar.edu.uade.zonda.ui.contenedorDeZonda
+import ar.edu.uade.zonda.ui.detalle.AvisoRevisasteEnLasListas
 import ar.edu.uade.zonda.ui.detalle.RutaDetalle
+import ar.edu.uade.zonda.ui.detalle.VentanaDeshacer
 import ar.edu.uade.zonda.ui.detalle.detalleAlerta
 import ar.edu.uade.zonda.ui.estado.EstadoScreen
 import ar.edu.uade.zonda.ui.inicio.ArranqueViewModel
 import ar.edu.uade.zonda.ui.inicio.DestinoInicial
-import ar.edu.uade.zonda.ui.primerinicio.SeveridadesScreen
 import ar.edu.uade.zonda.ui.primerinicio.TutorialScreen
 import ar.edu.uade.zonda.ui.primerinicio.primerInicio
 import ar.edu.uade.zonda.ui.recorrido.CapaRecorrido
@@ -69,6 +78,7 @@ import ar.edu.uade.zonda.ui.resumen.resumenViewModel
 import ar.edu.uade.zonda.ui.telegram.TelegramScreen
 import ar.edu.uade.zonda.ui.theme.etiquetaBarra
 import ar.edu.uade.zonda.ui.viewModelDeZonda
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 /**
  * Grafo de navegación de la app (informe, sección 11.11; plan, sección 4.4).
@@ -89,6 +99,7 @@ fun ZondaNavHost(
     navController: NavHostController = rememberNavController(),
     arranque: ArranqueViewModel = viewModelDeZonda { ArranqueViewModel(it.redes, it.preferencias) },
     recorrido: RecorridoViewModel = viewModelDeZonda { RecorridoViewModel(it.preferencias, it.redes, it.alertas) },
+    ventanaDeshacer: VentanaDeshacer = contenedorDeZonda().ventanaDeshacer,
 ) {
     val destinoInicial by arranque.destinoInicial.collectAsStateWithLifecycle()
     val inicio = destinoInicial
@@ -141,10 +152,21 @@ fun ZondaNavHost(
     // Un solo Scaffold con la barra inferior. No suma insets: cada pantalla maneja los suyos con su
     // barra superior, y las pestañas no vuelven a sumar el de abajo (lo cubre la barra inferior).
     // El recorrido va encima de todo, también de la barra inferior (Figma 107-3321 a 107-4731).
-    CompositionLocalProvider(LocalRegistroRecorrido provides registroRecorrido) {
+    // Tocar la pestaña en la que ya estás vuelve su lista arriba, como en las apps grandes.
+    val pestaniaRetocada = remember { MutableSharedFlow<String>(extraBufferCapacity = 1) }
+    CompositionLocalProvider(LocalRegistroRecorrido provides registroRecorrido, LocalPestaniaRetocada provides pestaniaRetocada) {
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 contentWindowInsets = WindowInsets(0),
+                // "Revisaste ..." con Deshacer en la lista a la que volvió el detalle (decisión 38): arriba de
+                // la barra de pestañas o, en la lista del Resumen, de la barra de navegación de Android.
+                snackbarHost = {
+                    AvisoRevisasteEnLasListas(
+                        ventana = ventanaDeshacer,
+                        navController = navController,
+                        modifier = if (enPestania) Modifier else Modifier.navigationBarsPadding(),
+                    )
+                },
                 bottomBar = {
                     if (enPestania) {
                         Column {
@@ -154,7 +176,9 @@ fun ZondaNavHost(
                                     val elegida = rutaActual == destino.ruta
                                     NavigationBarItem(
                                         selected = elegida,
-                                        onClick = { navController.irAPestania(destino.ruta) },
+                                        onClick = {
+                                            if (elegida) pestaniaRetocada.tryEmit(destino.ruta) else navController.irAPestania(destino.ruta)
+                                        },
                                         modifier = if (destino.ruta == Rutas.ALERTAS) Modifier.objetivoDelRecorrido(ObjetivoRecorrido.PESTANIA_ALERTAS) else Modifier,
                                         icon = { Icon(destino.icono, contentDescription = null) },
                                         // Figma: la pestaña elegida en SemiBold 12 y las otras en Medium 12.
@@ -203,6 +227,11 @@ fun ZondaNavHost(
                                     navController.irAPestania(Rutas.ALERTAS)
                                     navController.currentBackStackEntry?.savedStateHandle?.set(VER_NO_APLICADAS, true)
                                 },
+                                alVerAsignadas = {
+                                    // "Ver" del aviso de alertas asignadas: Alertas con "Asignadas a mí" (decisión 42).
+                                    navController.irAPestania(Rutas.ALERTAS)
+                                    navController.currentBackStackEntry?.savedStateHandle?.set(VER_ASIGNADAS, true)
+                                },
                                 alConectar = { navController.navigate(Rutas.CONEXION) },
                             )
                         }
@@ -250,6 +279,13 @@ fun ZondaNavHost(
                                     entrada.savedStateHandle[VER_TODAS] = false
                                 }
                             }
+                            val verAsignadas by entrada.savedStateHandle.getStateFlow(VER_ASIGNADAS, false).collectAsStateWithLifecycle()
+                            LaunchedEffect(verAsignadas) {
+                                if (verAsignadas) {
+                                    viewModel.verAsignadasAMi()
+                                    entrada.savedStateHandle[VER_ASIGNADAS] = false
+                                }
+                            }
                             val verNoAplicadas by entrada.savedStateHandle.getStateFlow(VER_NO_APLICADAS, false).collectAsStateWithLifecycle()
                             LaunchedEffect(verNoAplicadas) {
                                 if (verNoAplicadas) {
@@ -267,6 +303,9 @@ fun ZondaNavHost(
                         composable(Rutas.AJUSTES) {
                             AjustesScreen(
                                 alAbrirRedes = { navController.navigate(Rutas.REDES) },
+                                alAbrirPersonas = { navController.navigate(Rutas.PERSONAS) },
+                                alAbrirEquipos = { navController.navigate(Rutas.EQUIPOS) },
+                                alAbrirRegistro = { navController.navigate(Rutas.REGISTRO) },
                                 alAbrirDetallesTecnicos = { navController.navigate(Rutas.DETALLES_TECNICOS) },
                                 alAbrirAvisos = { navController.navigate(Rutas.AVISOS_POR_SEVERIDAD) },
                                 alAbrirSeveridades = { navController.navigate(Rutas.SEVERIDADES) },
@@ -286,6 +325,24 @@ fun ZondaNavHost(
                                 alVolver = { navController.popBackStack() },
                             )
                         }
+                        composable(Rutas.PERSONAS) {
+                            PersonasScreen(
+                                viewModel = personasViewModel(),
+                                alVolver = { navController.popBackStack() },
+                                alAbrirCodigo = { navController.navigate(Rutas.CODIGO_PERSONA) },
+                            )
+                        }
+                        composable(Rutas.CODIGO_PERSONA) { entrada ->
+                            // Usa el ViewModel de Personas, que tiene el código recién generado.
+                            val dueño = remember(entrada) { navController.getBackStackEntry(Rutas.PERSONAS) }
+                            CodigoPersonaScreen(viewModel = personasViewModel(dueño), alVolver = { navController.popBackStack() })
+                        }
+                        composable(Rutas.EQUIPOS) {
+                            EquiposScreen(alVolver = { navController.popBackStack() })
+                        }
+                        composable(Rutas.REGISTRO) { entrada ->
+                            RegistroScreen(viewModel = viewModelDeAjustes(navController, entrada), alVolver = { navController.popBackStack() })
+                        }
                         composable(Rutas.DETALLES_TECNICOS) {
                             DetallesTecnicosScreen(alVolver = { navController.popBackStack() })
                         }
@@ -300,23 +357,7 @@ fun ZondaNavHost(
                             )
                         }
                         composable(Rutas.SEVERIDADES) { entrada ->
-                            val viewModel = viewModelDeAjustes(navController, entrada)
-                            val estado by viewModel.estado.collectAsStateWithLifecycle()
-                            SeveridadesScreen(
-                                severidades = estado.borradorSeveridades ?: estado.severidades,
-                                alCambiar = viewModel::cambiarSeveridadDelBorrador,
-                                textoBoton = stringResource(R.string.ajustes_guardar_severidades),
-                                titulo = stringResource(R.string.ajustes_severidad_por_tipo),
-                                intro = stringResource(R.string.ajustes_severidades_intro),
-                                alGuardar = {
-                                    viewModel.guardarSeveridades()
-                                    navController.popBackStack()
-                                },
-                                alVolver = {
-                                    viewModel.descartarBorrador()
-                                    navController.popBackStack()
-                                },
-                            )
+                            SeveridadesDeLaRedScreen(viewModel = viewModelDeAjustes(navController, entrada), alVolver = { navController.popBackStack() })
                         }
                         // Desde Ajustes: "Omitir" vuelve y "Configurar mis avisos" abre los avisos por severidad.
                         composable(Rutas.INTRODUCCION) {
@@ -374,6 +415,9 @@ private const val VER_TODAS = "ver_todas"
 
 /** "Ver" del aviso de Estado con varias revisiones no aplicadas: Alertas muestra solo esas (cambio 7). */
 private const val VER_NO_APLICADAS = "ver_no_aplicadas"
+
+/** "Ver" del aviso de alertas asignadas de Estado: Alertas con "Asignadas a mí" (decisión 42). */
+private const val VER_ASIGNADAS = "ver_asignadas"
 
 /**
  * El filtro de un enlace interno (`estado=sin_revisar&severidad=alta`, o `envio=conflicto` para las

@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import ar.edu.uade.zonda.MainActivity
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.AsignacionNueva
 import ar.edu.uade.zonda.domain.model.AvisosDeZonda
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.ModoNotificacion
@@ -22,6 +23,7 @@ import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.navigation.EnlacesInternos
 import ar.edu.uade.zonda.ui.theme.VerdeZonda
 import java.time.ZoneId
@@ -51,7 +53,12 @@ class Notificador(private val contexto: Context) {
             .setName(contexto.getString(R.string.canal_revisiones))
             .setDescription(contexto.getString(R.string.canal_revisiones_descripcion))
             .build()
-        gestor.createNotificationChannelsCompat(porModo + revisiones)
+        // Decisión 42: las alertas que otra persona te asigna, en su canal, que se puede silenciar solo.
+        val asignaciones = NotificationChannelCompat.Builder(CANAL_ASIGNACIONES, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+            .setName(contexto.getString(R.string.canal_asignaciones))
+            .setDescription(contexto.getString(R.string.canal_asignaciones_descripcion))
+            .build()
+        gestor.createNotificationChannelsCompat(porModo + revisiones + asignaciones)
         // Hasta la 1.0.3 había un solo canal para las altas; ahora cada una va en el canal de su modo.
         gestor.deleteNotificationChannel(CANAL_ANTERIOR)
     }
@@ -140,6 +147,37 @@ class Notificador(private val contexto: Context) {
             .setAutoCancel(true)
             .build()
         publicar(gestor, ETIQUETA_REVISIONES, idDe(red), notificacion)
+    }
+
+    /**
+     * Las alertas que otra persona le asignó a este teléfono, si la red no tiene Telegram (decisión 42):
+     * "Taiel te asignó una alerta ALTA · SSH · 09:51" / "Tocá para ver el detalle en Zonda.", una por
+     * alerta, que abre su detalle. Con Telegram ya avisa el bot. Llega con la sincronización de fondo,
+     * hasta 15 minutos después.
+     */
+    fun avisarAsignaciones(red: Red, asignaciones: List<AsignacionNueva>, zona: ZoneId = ZoneId.systemDefault()) {
+        if (asignaciones.isEmpty()) return
+        val gestor = NotificationManagerCompat.from(contexto)
+        if (!gestor.areNotificationsEnabled()) return
+        asignaciones.forEach { asignacion ->
+            val titulo = contexto.getString(
+                R.string.notificacion_asignada_titulo,
+                asignacion.por,
+                contexto.getString(asignacion.severidad.etiqueta()).uppercase(),
+                asignacion.servicio.uppercase(),
+                Formato.hora(asignacion.inicio, zona),
+            )
+            val notificacion = NotificationCompat.Builder(contexto, CANAL_ASIGNACIONES)
+                .setSmallIcon(R.drawable.ic_notificacion)
+                .setColor(VerdeZonda.toArgb())
+                .setContentTitle(titulo)
+                .setContentText(contexto.getString(R.string.notificacion_asignada_texto))
+                .setStyle(NotificationCompat.BigTextStyle().bigText(contexto.getString(R.string.notificacion_asignada_texto)))
+                .setContentIntent(abrir(EnlacesInternos.detalle(red.id, asignacion.alertaId)))
+                .setAutoCancel(true)
+                .build()
+            publicar(gestor, ETIQUETA_ASIGNACION, asignacion.alertaId.hashCode(), notificacion)
+        }
     }
 
     /** Abre el detalle si es una sola alerta, o Alertas de esa red filtrada en esa severidad y "Sin revisar". */
@@ -245,5 +283,11 @@ class Notificador(private val contexto: Context) {
         const val ETIQUETA_RECORDATORIO = "recordatorio"
 
         const val ETIQUETA_REVISIONES = "revisiones"
+
+        /** Las alertas que otra persona te asignó (decisión 42). */
+        const val CANAL_ASIGNACIONES = "asignaciones"
+
+        /** Una notificación por alerta asignada, con el id de la alerta. */
+        const val ETIQUETA_ASIGNACION = "asignacion"
     }
 }

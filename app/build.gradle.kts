@@ -31,8 +31,8 @@ android {
         // Android 8.0 (API 26) o superior, según RNF11.
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.0.4"
+        versionCode = 6
+        versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,6 +71,12 @@ android {
         // Robolectric necesita los recursos de Android para correr Room en memoria en la JVM.
         unitTests.isIncludeAndroidResources = true
     }
+    lint {
+        // Una llamada que necesita un Android más nuevo que minSdk frena el APK de release (el lint de
+        // assembleRelease) en lugar de cerrar la app en esos teléfonos. Las pruebas corren en la JVM y el
+        // emulador tiene Android 16, así que ninguno de los dos lo ve: pasó con la 1.0.5 en el moto (Android 11).
+        fatal += "NewApi"
+    }
 }
 
 dependencies {
@@ -106,6 +112,8 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.mlkit.vision)
     implementation(libs.mlkit.barcode.scanning)
+    // Dibuja el QR para sumar a una persona en el teléfono del administrador (decisión 39).
+    implementation(libs.zxing.core)
     // Sincronización en segundo plano cada 15 minutos con red (RNF08).
     implementation(libs.androidx.work.runtime)
 

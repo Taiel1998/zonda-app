@@ -59,13 +59,10 @@ import ar.edu.uade.zonda.domain.model.Tramo
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.components.HojaInferior
-import ar.edu.uade.zonda.ui.theme.FondoReloj
-import ar.edu.uade.zonda.ui.theme.GrisDiaSinDatos
-import ar.edu.uade.zonda.ui.theme.HoraElegidaReloj
-import ar.edu.uade.zonda.ui.theme.RuedaReloj
 import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.tituloHoja
+import ar.edu.uade.zonda.ui.theme.zonda
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -322,7 +319,7 @@ private fun CeldaDelDia(dia: LocalDate, guardados: Tramo, elegido: RangoResumen,
                 text = dia.dayOfMonth.toString(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = when {
-                    !guardado -> GrisDiaSinDatos
+                    !guardado -> MaterialTheme.zonda.diaSinDatos
                     enMedio -> colores.primary
                     else -> colores.onSurface
                 },
@@ -345,23 +342,23 @@ fun RelojDeLaHora(titulo: String, inicial: LocalTime, alAceptar: (LocalTime) -> 
     var escribiendo by rememberSaveable { mutableStateOf(false) }
     val colores = MaterialTheme.colorScheme
     val coloresReloj = TimePickerDefaults.colors(
-        clockDialColor = RuedaReloj,
+        clockDialColor = MaterialTheme.zonda.ruedaReloj,
         clockDialSelectedContentColor = colores.onPrimary,
         clockDialUnselectedContentColor = colores.onSurface,
         selectorColor = colores.primary,
-        containerColor = FondoReloj,
+        containerColor = MaterialTheme.zonda.fondoReloj,
         periodSelectorBorderColor = colores.outline,
-        periodSelectorSelectedContainerColor = HoraElegidaReloj,
-        periodSelectorUnselectedContainerColor = FondoReloj,
+        periodSelectorSelectedContainerColor = MaterialTheme.zonda.horaElegidaReloj,
+        periodSelectorUnselectedContainerColor = MaterialTheme.zonda.fondoReloj,
         periodSelectorSelectedContentColor = colores.primary,
         periodSelectorUnselectedContentColor = colores.onSurfaceVariant,
-        timeSelectorSelectedContainerColor = HoraElegidaReloj,
-        timeSelectorUnselectedContainerColor = RuedaReloj,
+        timeSelectorSelectedContainerColor = MaterialTheme.zonda.horaElegidaReloj,
+        timeSelectorUnselectedContainerColor = MaterialTheme.zonda.ruedaReloj,
         timeSelectorSelectedContentColor = colores.primary,
         timeSelectorUnselectedContentColor = colores.onSurface,
     )
     Dialog(onDismissRequest = alCancelar, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(shape = RoundedCornerShape(28.dp), color = FondoReloj, modifier = Modifier.padding(horizontal = 24.dp)) {
+        Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.zonda.fondoReloj, modifier = Modifier.padding(horizontal = 24.dp)) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),

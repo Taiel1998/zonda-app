@@ -13,9 +13,10 @@ import retrofit2.HttpException
 /**
  * Para qué se está llamando a la API. Cambia el significado de algunos códigos: en el pareo un 400 es
  * "código inválido" y un 410 "código vencido o usado"; en la sincronización un 410 es "cursor
- * inválido"; en Telegram un 409 es "no está vinculado" y un 503 "el servidor no tiene el bot".
+ * inválido"; en Telegram un 409 es "no está vinculado" y un 503 "el servidor no tiene el bot"; en
+ * Personas un 409 es "tiene que quedar un administrador" y al asignar, "ya la tiene otra persona".
  */
-enum class OperacionHttp { GENERAL, PAREO, SINCRONIZACION, TELEGRAM }
+enum class OperacionHttp { GENERAL, PAREO, SINCRONIZACION, TELEGRAM, PERSONAS, ASIGNACION }
 
 /**
  * Ejecuta una llamada a la API y traduce lo que puede salir mal a [ErrorZonda], que es lo único que
@@ -47,11 +48,14 @@ suspend fun <T> conErroresTraducidos(operacion: OperacionHttp = OperacionHttp.GE
 fun traducirHttp(error: HttpException, operacion: OperacionHttp): ErrorZonda = when (error.code()) {
     400 -> if (operacion == OperacionHttp.PAREO) ErrorZonda.CodigoInvalido() else ErrorZonda.ErrorDelServidor(400, error)
     401 -> ErrorZonda.NoAutorizado()
+    // Lo que se quiso cambiar lo cambia un administrador (decisión 39).
+    403 -> ErrorZonda.SinPermiso()
     404 -> ErrorZonda.NoEncontrado()
-    409 -> if (operacion == OperacionHttp.TELEGRAM) {
-        ErrorZonda.TelegramSinVincular()
-    } else {
-        revisionAjenaDe(error)?.let { ErrorZonda.Conflicto(it) } ?: ErrorZonda.ErrorDelServidor(409, error)
+    409 -> when (operacion) {
+        OperacionHttp.TELEGRAM -> ErrorZonda.TelegramSinVincular()
+        OperacionHttp.PERSONAS -> ErrorZonda.UltimoAdministrador()
+        OperacionHttp.ASIGNACION -> ErrorZonda.YaAsignada()
+        else -> revisionAjenaDe(error)?.let { ErrorZonda.Conflicto(it) } ?: ErrorZonda.ErrorDelServidor(409, error)
     }
     410 -> if (operacion == OperacionHttp.PAREO) ErrorZonda.CodigoVencido() else ErrorZonda.CursorInvalido()
     503 -> if (operacion == OperacionHttp.TELEGRAM) ErrorZonda.TelegramNoDisponible() else ErrorZonda.ErrorDelServidor(503, error)

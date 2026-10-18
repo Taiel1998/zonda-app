@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroEstado
+import ar.edu.uade.zonda.domain.model.FiltroResponsable
 import ar.edu.uade.zonda.domain.model.FiltroServicio
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.Formato
@@ -51,6 +53,8 @@ import ar.edu.uade.zonda.ui.components.EstadoVacio
 import ar.edu.uade.zonda.ui.components.TarjetaAlerta
 import ar.edu.uade.zonda.ui.enResumen
 import ar.edu.uade.zonda.ui.mensaje
+import ar.edu.uade.zonda.ui.navigation.AlRetocarPestania
+import ar.edu.uade.zonda.ui.navigation.Rutas
 import ar.edu.uade.zonda.ui.nombreEnFiltro
 import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
@@ -158,6 +162,8 @@ fun AlertasContenido(
                 FiltrosAlertas(
                     filtro = estado.filtro,
                     opciones = estado.opciones,
+                    personas = estado.contexto.personas,
+                    miId = estado.contexto.miId,
                     alCambiar = alCambiarFiltro,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -206,7 +212,10 @@ fun AlertasContenido(
                         onRefresh = alSincronizar,
                         modifier = Modifier.fillMaxSize(),
                     ) {
+                        val lista = rememberLazyListState()
+                        AlRetocarPestania(Rutas.ALERTAS) { lista.animateScrollToItem(0) }
                         LazyColumn(
+                            state = lista,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -216,6 +225,7 @@ fun AlertasContenido(
                                     alerta = alerta,
                                     alTocar = alAbrirDetalle,
                                     zona = zona,
+                                    contexto = estado.contexto,
                                     modifier = if (indice == 0) Modifier.objetivoDelRecorrido(ObjetivoRecorrido.PRIMERA_TARJETA) else Modifier,
                                 )
                             }
@@ -249,8 +259,18 @@ private fun resumen(lista: ContenidoAlertas.Lista, estado: AlertasUiState, zona:
         FiltroEstado.FALSOS_POSITIVOS -> partes += pluralStringResource(R.plurals.resumen_falsos_positivos, total, total)
         FiltroEstado.TODAS -> {
             partes += pluralStringResource(R.plurals.alertas_cantidad, total, total)
-            partes += stringResource(R.string.alertas_sin_revisar, lista.sinRevisar)
+            // Con el responsable, la línea dice de quién son (Figma 468-1621: "2 alertas · asignadas a mí").
+            if (filtro.responsable == null) partes += stringResource(R.string.alertas_sin_revisar, lista.sinRevisar)
         }
+    }
+    when (val responsable = filtro.responsable) {
+        is FiltroResponsable.AsignadasAMi -> partes += stringResource(R.string.resumen_asignadas_a_mi)
+        FiltroResponsable.SinAsignar -> partes += stringResource(R.string.resumen_sin_asignar)
+        is FiltroResponsable.De -> partes += stringResource(
+            R.string.resumen_asignadas_a,
+            estado.contexto.personas.firstOrNull { it.id == responsable.personaId }?.nombreVisible.orEmpty(),
+        )
+        null -> Unit
     }
     if (severidades.isNotEmpty() && filtro.estado != FiltroEstado.SIN_REVISAR) partes += adjetivos(severidades, cantidad = 2)
     when (val servicio = filtro.servicio) {

@@ -19,6 +19,10 @@ import ar.edu.uade.zonda.di.AppContainer
  * (cada detalle, por ejemplo) tiene el suyo y sobrevive a la rotación. Con [dueño] se comparte un
  * ViewModel entre varias pantallas: el primer inicio usa el del grafo anidado.
  */
+/** El [AppContainer] de la app, para lo que no es un ViewModel (la ventana de Deshacer, por ejemplo). */
+@Composable
+fun contenedorDeZonda(): AppContainer = (LocalContext.current.applicationContext as ZondaApp).container
+
 @Composable
 inline fun <reified VM : ViewModel> viewModelDeZonda(
     dueño: ViewModelStoreOwner? = null,

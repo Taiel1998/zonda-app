@@ -1,6 +1,7 @@
 package ar.edu.uade.zonda.data.sync
 
 import ar.edu.uade.zonda.data.local.ZondaDatabase
+import ar.edu.uade.zonda.data.local.entidades.AsignacionPendienteEntity
 import ar.edu.uade.zonda.data.local.entidades.CatalogoEquipoEntity
 import ar.edu.uade.zonda.data.local.entidades.CatalogoServicioEntity
 import ar.edu.uade.zonda.data.mapper.aDominio
@@ -9,14 +10,20 @@ import ar.edu.uade.zonda.data.mapper.aEntidad
 import ar.edu.uade.zonda.data.mapper.aEntidades
 import ar.edu.uade.zonda.data.mapper.aRevisionEntrada
 import ar.edu.uade.zonda.data.mapper.aSeveridadPorTipo
+import ar.edu.uade.zonda.data.mapper.enLaApi
+import ar.edu.uade.zonda.data.remote.AsignacionEntradaDto
+import ar.edu.uade.zonda.data.remote.ImportanciaEntradaDto
 import ar.edu.uade.zonda.data.remote.OperacionHttp
 import ar.edu.uade.zonda.data.remote.ProveedorDeApi
+import ar.edu.uade.zonda.data.remote.SeveridadesEntradaDto
 import ar.edu.uade.zonda.data.remote.ZondaApi
 import ar.edu.uade.zonda.data.remote.conErroresTraducidos
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
+import ar.edu.uade.zonda.domain.model.AsignacionNueva
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
+import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
@@ -87,7 +94,11 @@ class SincronizadorHttp(
         val api = apis.para(red)
 
         val envio = enviarCola(redId, api)
-        val descarga = descargar(redId, red.cursor, api)
+        enviarAsignaciones(redId, api)
+        // Primero la gente: dice el perfil de este teléfono y su id, que hace falta para saber qué le asignaron.
+        actualizarPersonasYRegistro(redId, api)
+        val miId = redesDao.obtener(redId)?.dispositivoId
+        val descarga = descargar(redId, red.cursor, api, miId)
         actualizarCatalogoYSeveridades(redId, api)
         actualizarTelegram(redId, api)
         alertasDao.purgarAnterioresA(redId, reloj().minus(Duration.ofDays(diasDeCache)).toEpochMilli())
@@ -104,6 +115,7 @@ class SincronizadorHttp(
             hora = hora,
             alertasNuevas = descarga.alertasNuevas,
             conflictosNuevos = envio.conflictos,
+            asignacionesNuevas = descarga.asignacionesNuevas,
         )
     }
 
@@ -171,11 +183,63 @@ class SincronizadorHttp(
             }
             TipoAccion.CAMBIAR_SEVERIDADES -> {
                 val severidades = accion.severidades ?: throw ErrorZonda.Validacion("severidades", "La acción no tiene severidades")
-                val respuesta = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.guardarSeveridades(severidades.aDto()) }
+                // Con el motivo, que el servidor exige y anota en el registro de cambios (decisión 40).
+                val entrada = SeveridadesEntradaDto(severidades.aDto(), accion.motivo.orEmpty())
+                val respuesta = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.guardarSeveridades(entrada) }
                 redesDao.guardarSeveridades(redId, convertir { respuesta.aSeveridadPorTipo() }.aEntidades(redId))
                 accionesDao.borrar(accion.id)
             }
+            TipoAccion.CAMBIAR_IMPORTANCIA -> {
+                val ip = accion.equipoIp ?: throw ErrorZonda.Validacion("equipoIp", "La acción no indica el equipo")
+                val importancia = accion.importancia ?: throw ErrorZonda.Validacion("importancia", "La acción no tiene la importancia")
+                val entrada = ImportanciaEntradaDto(importancia.enLaApi(), accion.motivo.orEmpty())
+                val equipo = convertir { conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.cambiarImportancia(ip, entrada) }.aDominio() }
+                redesDao.guardarEquipos(listOf(equipo.aEntidad(redId)))
+                accionesDao.borrar(accion.id)
+            }
         }
+    }
+
+    // ---- 1 b. Asignaciones pendientes (decisión 42) ----
+
+    /**
+     * Cada asignación hecha en el teléfono, la última de cada alerta. Si el servidor la rechaza (a esta
+     * persona no le toca, otra persona ya la tiene, la alerta o la persona ya no están), la alerta vuelve al
+     * responsable que dice el servidor: no tiene sentido reintentarla. Sin conexión espera.
+     */
+    private suspend fun enviarAsignaciones(redId: String, api: ZondaApi) {
+        for (fila in accionesDao.asignacionesParaEnviar(redId)) {
+            accionesDao.actualizarEnvioAsignacion(fila.alertaId, EstadoEnvio.ENVIANDO.name, fila.intentos, fila.ultimoError)
+            try {
+                val dto = conErroresTraducidos(OperacionHttp.ASIGNACION) { api.asignar(fila.alertaId, AsignacionEntradaDto(fila.accionId, fila.responsableId)) }
+                val alerta = convertir { dto.aDominio(redId) }
+                alertasDao.confirmarAsignacionDelServidor(alerta.aEntidad(), revisionesDelServidor(alerta), asignacionesDe(alerta))
+                accionesDao.borrarAsignacion(fila.alertaId)
+            } catch (e: ErrorZonda.SinConexion) {
+                devolverAPendiente(fila)
+                throw e
+            } catch (e: ErrorZonda.ServidorNoVerificado) {
+                devolverAPendiente(fila)
+                throw e
+            } catch (e: ErrorZonda.NoAutorizado) {
+                devolverAPendiente(fila)
+                throw e
+            } catch (e: ErrorZonda) {
+                val intentos = fila.intentos + 1
+                val rechazada = e is ErrorZonda.SinPermiso || e is ErrorZonda.YaAsignada || e is ErrorZonda.NoEncontrado ||
+                    (e is ErrorZonda.ErrorDelServidor && e.codigo != null && e.codigo in 400..499)
+                if (rechazada || intentos >= AccionPendiente.MAXIMO_INTENTOS) {
+                    accionesDao.borrarAsignacion(fila.alertaId)
+                    alertasDao.restaurarAsignacionDelServidor(fila.alertaId)
+                } else {
+                    accionesDao.actualizarEnvioAsignacion(fila.alertaId, EstadoEnvio.PENDIENTE.name, intentos, e.message)
+                }
+            }
+        }
+    }
+
+    private suspend fun devolverAPendiente(fila: AsignacionPendienteEntity) {
+        accionesDao.actualizarEnvioAsignacion(fila.alertaId, EstadoEnvio.PENDIENTE.name, fila.intentos, fila.ultimoError)
     }
 
     private suspend fun devolverAPendiente(accion: AccionPendiente) {
@@ -201,23 +265,25 @@ class SincronizadorHttp(
         val modificadas: Int,
         val altasNuevas: Int,
         val alertasNuevas: List<AlertaNueva>,
+        val asignacionesNuevas: List<AsignacionNueva>,
     )
 
-    private suspend fun descargar(redId: String, cursorInicial: String?, api: ZondaApi): ResultadoDescarga =
+    private suspend fun descargar(redId: String, cursorInicial: String?, api: ZondaApi, miId: String?): ResultadoDescarga =
         try {
-            descargarDesde(redId, cursorInicial, api)
+            descargarDesde(redId, cursorInicial, api, miId)
         } catch (e: ErrorZonda.CursorInvalido) {
             if (cursorInicial == null) throw e
             // El servidor se reinstaló: sincronización completa. Las alertas y las acciones pendientes quedan.
-            descargarDesde(redId, cursorInicial = null, api)
+            descargarDesde(redId, cursorInicial = null, api, miId)
         }
 
-    private suspend fun descargarDesde(redId: String, cursorInicial: String?, api: ZondaApi): ResultadoDescarga {
+    private suspend fun descargarDesde(redId: String, cursorInicial: String?, api: ZondaApi, miId: String?): ResultadoDescarga {
         var cursor = cursorInicial
         var nuevas = 0
         var modificadas = 0
         var altasNuevas = 0
         val alertasNuevas = mutableListOf<AlertaNueva>()
+        val asignacionesNuevas = mutableListOf<AsignacionNueva>()
         var paginas = 0
         // Desde cero se baja todo lo de los últimos 30 días: la pantalla Estado muestra cuántas van.
         val desdeCero = cursorInicial == null
@@ -242,6 +308,7 @@ class SincronizadorHttp(
                         alertasNuevas += AlertaNueva(alerta.id, alerta.severidad, conAvisoTelegram = alerta.avisoTelegram != null)
                     }
                 }
+                if (miId != null) asignacionesNuevas += asignadasPorOtro(alertas, miId)
                 guardar(alertas)
             }
             cursor = pagina.cursorSiguiente
@@ -251,7 +318,26 @@ class SincronizadorHttp(
             paginas++
             if (!pagina.hayMas || paginas >= MAXIMO_PAGINAS) break
         }
-        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, alertasNuevas)
+        return ResultadoDescarga(cursor, nuevas, modificadas, altasNuevas, alertasNuevas, asignacionesNuevas)
+    }
+
+    /**
+     * Las alertas que otra persona le asignó a este teléfono y que el teléfono todavía no sabía: su última
+     * asignación es para [miId], la hizo otra persona y es posterior a la última que conocía. Asignarse
+     * una uno mismo no avisa (decisión 42).
+     */
+    private suspend fun asignadasPorOtro(alertas: List<Alerta>, miId: String): List<AsignacionNueva> {
+        val paraMi = alertas.filter { alerta -> alerta.asignacion?.let { it.responsableId == miId && it.porId != miId } == true }
+        if (paraMi.isEmpty()) return emptyList()
+        val conocidas = paraMi.map { it.id }.chunked(500)
+            .flatMap { alertasDao.ultimasAsignacionesDelServidor(it) }
+            .associate { it.alertaId to it.fecha }
+        return paraMi.mapNotNull { alerta ->
+            val asignacion = alerta.asignacion ?: return@mapNotNull null
+            val anterior = conocidas[alerta.id]
+            if (anterior != null && anterior >= asignacion.fecha.toEpochMilli()) return@mapNotNull null
+            AsignacionNueva(alerta.id, asignacion.por, alerta.severidad, alerta.servicio, alerta.inicio)
+        }
     }
 
     /** SQLite admite hasta 999 parámetros por consulta. */
@@ -259,11 +345,17 @@ class SincronizadorHttp(
         ids.chunked(500).flatMap { alertasDao.idsExistentes(redId, it) }.toSet()
 
     private suspend fun guardar(alertas: List<Alerta>) {
-        val revisiones = alertas.associate { alerta ->
-            alerta.id to alerta.historial.filter { it.origen == OrigenRevision.SERVIDOR }.map { it.aEntidad(alerta.id) }
-        }
-        alertasDao.guardarDelServidor(alertas.map { it.aEntidad() }, revisiones)
+        alertasDao.guardarDelServidor(
+            alertas.map { it.aEntidad() },
+            alertas.associate { it.id to revisionesDelServidor(it) },
+            alertas.associate { it.id to asignacionesDe(it) },
+        )
     }
+
+    private fun revisionesDelServidor(alerta: Alerta) =
+        alerta.historial.filter { it.origen == OrigenRevision.SERVIDOR }.map { it.aEntidad(alerta.id) }
+
+    private fun asignacionesDe(alerta: Alerta) = alerta.asignaciones.map { it.aEntidad(alerta.id, OrigenRevision.SERVIDOR) }
 
     // ---- 3. Catálogo y severidades ----
 
@@ -271,17 +363,53 @@ class SincronizadorHttp(
     private suspend fun actualizarCatalogoYSeveridades(redId: String, api: ZondaApi) {
         try {
             val catalogo = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.catalogo() }.aDominio()
+            // El catálogo rehace la tabla: cada equipo conserva su importancia hasta que lleguen las del servidor.
+            val importancias = redesDao.equiposDe(redId).associate { it.ip to it.importancia }
             redesDao.guardarCatalogo(
                 redId = redId,
-                equipos = catalogo.equipos.map { (ip, nombre) -> CatalogoEquipoEntity(redId, ip, nombre) },
+                equipos = catalogo.equipos.map { (ip, nombre) ->
+                    CatalogoEquipoEntity(redId, ip, nombre, importancias[ip] ?: Importancia.NORMAL.name)
+                },
                 servicios = catalogo.servicios.map { CatalogoServicioEntity(redId, it) },
             )
-            val hayCambioPendiente = accionesDao.listarParaEnviar(redId).any { it.tipo == TipoAccion.CAMBIAR_SEVERIDADES.name }
+            val pendientes = accionesDao.listarParaEnviar(redId)
+            val hayCambioPendiente = pendientes.any { it.tipo == TipoAccion.CAMBIAR_SEVERIDADES.name }
             if (!hayCambioPendiente) {
                 // Otra persona pudo cambiar las severidades desde su teléfono: rige lo que tiene el servidor.
                 val severidades = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.severidades() }
                 redesDao.guardarSeveridades(redId, convertir { severidades.aSeveridadPorTipo() }.aEntidades(redId))
             }
+            actualizarEquipos(redId, api, pendientes.filter { it.tipo == TipoAccion.CAMBIAR_IMPORTANCIA.name }.mapNotNull { it.equipoIp }.toSet())
+        } catch (e: ErrorZonda.NoAutorizado) {
+            throw e
+        } catch (e: ErrorZonda) {
+            // Se reintenta en la sincronización siguiente.
+        }
+    }
+
+    /**
+     * La importancia de cada equipo (decisión 41). La de un equipo con un cambio todavía sin enviar queda
+     * como la eligió esta persona. Un servidor anterior a la API 0.6.0 no tiene la ruta: todos normales.
+     */
+    private suspend fun actualizarEquipos(redId: String, api: ZondaApi, conCambioPendiente: Set<String>) {
+        val equipos = try {
+            conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.equipos() }
+        } catch (e: ErrorZonda.NoEncontrado) {
+            return
+        }
+        val locales = redesDao.equiposDe(redId).associate { it.ip to it.importancia }
+        redesDao.guardarEquipos(
+            convertir { equipos.map { it.aDominio() } }.map { equipo ->
+                val entidad = equipo.aEntidad(redId)
+                if (equipo.ip in conCambioPendiente) entidad.copy(importancia = locales[equipo.ip] ?: entidad.importancia) else entidad
+            },
+        )
+    }
+
+    /** La gente y el registro de cambios: datos secundarios, como el catálogo. Un 401 sí se propaga. */
+    private suspend fun actualizarPersonasYRegistro(redId: String, api: ZondaApi) {
+        try {
+            traerPersonasYRegistro(redId, api, redesDao)
         } catch (e: ErrorZonda.NoAutorizado) {
             throw e
         } catch (e: ErrorZonda) {

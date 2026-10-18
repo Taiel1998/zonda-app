@@ -15,6 +15,13 @@ TipoAtaque = Literal["fuerza_bruta", "escaneo", "ddos", "probable_falsa_alarma",
 Severidad = Literal["alta", "media", "baja"]
 EstadoRevision = Literal["sin_revisar", "ataque_real", "falso_positivo"]
 Resultado = Literal["ataque_real", "falso_positivo"]
+# Dos perfiles (decisión 39): el analista revisa alertas y elige sus avisos; el administrador, además,
+# cambia la configuración de la red y suma o quita gente.
+Perfil = Literal["administrador", "analista"]
+# Qué tan importante es un equipo de la red (decisión 41): sube o baja un nivel la severidad de sus alertas.
+Importancia = Literal["critico", "normal", "poco_importante"]
+# Lo que anota el registro de cambios (decisión 40).
+TipoCambio = Literal["severidad", "importancia", "persona_nueva", "perfil", "persona_quitada"]
 # Los motivos del Figma (pantallas "revisar: ataque real" y "revisar: falso positivo").
 Motivo = Literal[
     "escalado_al_proveedor",
@@ -69,11 +76,24 @@ class Revision(BaseModel):
     resultado: Resultado
     motivo: Motivo
     comentario: str
+    # El teléfono que la revisó ("Teléfono de Laura").
     autor: str
     # Cuándo llegó al servidor.
     fecha: str
     # Cuándo se revisó en el teléfono; null en las revisiones anteriores a este campo.
     revisadaEn: str | None = None
+    # La persona de ese teléfono ("Laura"); null en los teléfonos pareados antes de la 1.0.5.
+    persona: str | None = None
+
+
+class Asignacion(BaseModel):
+    """Un cambio de responsable de una alerta: a quién (null si quedó sin asignar), quién y cuándo."""
+
+    responsableId: str | None
+    responsable: str | None
+    porId: str
+    por: str
+    fecha: str
 
 
 class Alerta(BaseModel):
@@ -103,6 +123,10 @@ class Alerta(BaseModel):
     actualizadaEn: str
     # Cuándo salió el primer aviso de Telegram de esta alerta; null si no salió ninguno.
     avisoTelegram: str | None = None
+    # El responsable de ahora; null si está sin asignar (decisión 42).
+    asignacion: Asignacion | None = None
+    # Cada cambio de responsable, del primero al último, para el historial del detalle.
+    asignaciones: list[Asignacion] = Field(default_factory=list)
 
 
 class PaginaAlertas(BaseModel):
@@ -185,6 +209,108 @@ class PareoSalida(BaseModel):
     dispositivoId: str
     # Alertas de los últimos 30 días que la app va a descargar ("Red conectada", Figma 35-692).
     alertas30Dias: int = 0
+    # Con qué perfil y nombre entró la persona (los del código que escaneó).
+    perfil: Perfil = "administrador"
+    persona: str | None = None
+
+
+def _texto_obligatorio(valor: str, falta: str) -> str:
+    if not valor.strip():
+        raise ValueError(falta)
+    return valor.strip()
+
+
+class Persona(BaseModel):
+    """Una persona del equipo: su teléfono pareado, con su nombre y su perfil (Ajustes → Personas)."""
+
+    id: str
+    # null en los teléfonos pareados antes de la 1.0.5: la app muestra el del teléfono.
+    nombre: str | None
+    telefono: str
+    perfil: Perfil
+    ultimoUso: str | None
+    # Si es el teléfono que pregunta.
+    vos: bool
+
+
+class CodigoPersonaEntrada(BaseModel):
+    """Agregar persona: el nombre y el perfil de quien se suma (Figma 468-2642)."""
+
+    nombre: str = Field(min_length=1, max_length=40)
+    perfil: Perfil = "analista"
+
+    @field_validator("nombre")
+    @classmethod
+    def nombre_con_texto(cls, valor: str) -> str:
+        return _texto_obligatorio(valor, "Escribí el nombre de la persona")
+
+
+class CodigoPersona(BaseModel):
+    """El código de un uso para esa persona y lo que lleva su QR (Figma 468-2735)."""
+
+    codigo: str
+    vence: str
+    # Lo mismo que el QR de zonda pair: zonda:<dirección>#<código>;vence=<fecha>.
+    contenido: str
+    nombre: str
+    perfil: Perfil
+
+
+class PerfilEntrada(BaseModel):
+    perfil: Perfil
+
+
+class Equipo(BaseModel):
+    """Un equipo de la red con nombre en el catálogo y su importancia (Ajustes → Equipos)."""
+
+    ip: str
+    nombre: str
+    importancia: Importancia
+
+
+class ImportanciaEntrada(BaseModel):
+    importancia: Importancia
+    # Obligatorio, como el de las severidades: queda en el registro de cambios (decisión 40).
+    motivo: str = Field(max_length=500)
+
+    @field_validator("motivo")
+    @classmethod
+    def motivo_con_texto(cls, valor: str) -> str:
+        return _texto_obligatorio(valor, "Escribí por qué la cambiás")
+
+
+class SeveridadesEntrada(BaseModel):
+    """Las severidades que cambian y un solo motivo para todos los cambios de ese Guardar."""
+
+    severidades: dict[str, Severidad]
+    motivo: str = Field(max_length=500)
+
+    @field_validator("motivo")
+    @classmethod
+    def motivo_con_texto(cls, valor: str) -> str:
+        return _texto_obligatorio(valor, "Escribí por qué la cambiás")
+
+
+class CambioRegistro(BaseModel):
+    """Una línea del registro de cambios. La app arma la frase: "Fuerza bruta pasó de alta a media"."""
+
+    id: int
+    fecha: str
+    tipo: TipoCambio
+    # null si el cambio salió de la terminal del servidor.
+    autorId: str | None
+    autor: str
+    objeto: str
+    nombre: str | None
+    antes: str | None
+    despues: str | None
+    motivo: str | None
+
+
+class AsignacionEntrada(BaseModel):
+    accionId: str = Field(min_length=8, max_length=64)
+    # A quién se asigna; null para dejarla sin asignar.
+    responsableId: str | None = None
 
 
 class VinculoTelegram(BaseModel):

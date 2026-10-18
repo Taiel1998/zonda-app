@@ -2,6 +2,7 @@ package ar.edu.uade.zonda.domain.repository
 
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
+import ar.edu.uade.zonda.domain.model.Tema
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 
@@ -34,6 +35,11 @@ interface PreferenciasRepository {
     suspend fun recordatoriosHasta(redId: String): Instant?
 
     suspend fun guardarRecordatoriosHasta(redId: String, hasta: Instant)
+
+    /** El tema elegido en Ajustes; de fábrica, como el teléfono (decisión 43). */
+    fun observarTema(): Flow<Tema>
+
+    suspend fun guardarTema(tema: Tema)
 }
 
 /** Si el teléfono tiene conexión. Decide si una acción se envía en el momento o se encola. */

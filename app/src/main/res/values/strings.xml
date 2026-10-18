@@ -202,6 +202,21 @@
     <string name="error_telegram_no_disponible">El servidor de esta red todavía no tiene el bot de Telegram. Avisale al administrador.</string>
     <string name="error_telegram_sin_vincular">Telegram ya no está vinculado. Conectalo de nuevo.</string>
     <string name="error_generico">Algo salió mal.</string>
+    <!-- Severidades de la analista (corrección 2; Figma 468-3353) -->
+    <string name="severidades_las_cambia">Las cambia un administrador: %1$s. Valen para todo el equipo.</string>
+    <string name="severidades_las_cambia_sin_nombres">Las cambia un administrador. Valen para todo el equipo.</string>
+    <!-- "¿Por qué la cambiás?" al cambiar severidades o la importancia de un equipo (corrección 3; Figma 468-3463) -->
+    <string name="motivo_titulo">¿Por qué la cambiás?</string>
+    <string name="motivo_campo">Motivo (obligatorio)</string>
+    <string name="motivo_ejemplo">Por ejemplo: el backup nocturno usa SSH y daba falsas alarmas.</string>
+    <string name="motivo_ayuda">Queda en el registro de cambios con tu nombre y la hora.</string>
+    <string name="motivo_falta">Escribí por qué la cambiás.</string>
+    <string name="motivo_guardar">Guardar cambios</string>
+    <string name="motivo_pasa_a">pasa a</string>
+    <!-- Perfiles y asignaciones (decisiones 39 y 42) -->
+    <string name="error_sin_permiso">Eso lo cambia un administrador.</string>
+    <string name="error_ultimo_administrador">Tiene que quedar al menos un administrador en el equipo.</string>
+    <string name="error_ya_asignada">Otra persona ya se la asignó.</string>
 
     <!-- Detalle -->
     <string name="detalle_titulo">Alerta</string>
@@ -216,22 +231,31 @@
     <string name="detalle_inicio">Inicio</string>
     <string name="detalle_duracion">Duración</string>
     <string name="detalle_conexiones_60s">Conexiones en 60 s</string>
-    <string name="detalle_flujos">Flujos del episodio</string>
+    <string name="detalle_conexiones_total">Conexiones en total</string>
     <string name="detalle_puertos_distintos">Puertos distintos</string>
     <string name="detalle_veredictos">Veredicto por método</string>
     <string name="detalle_modelo_ia">Modelo de IA</string>
-    <string name="detalle_ia_detalle">error %1$s · umbral %2$s</string>
     <string name="detalle_umbrales">Umbrales estadísticos</string>
-    <string name="detalle_umbrales_detalle">contexto %1$d · umbral %2$d</string>
-    <string name="detalle_umbrales_sin_linea_base">servicio sin línea base</string>
     <string name="detalle_reglas">Reglas estáticas</string>
-    <string name="detalle_reglas_en_catalogo">servicio en catálogo</string>
-    <string name="detalle_reglas_fuera_de_catalogo">fuera del catálogo: %1$s</string>
+    <!-- Cuánto se pasó cada método, con palabras y en la misma escala (correcciones 5 y 6, decisión 37) -->
+    <string name="veredicto_veces_mas">%1$d veces más de lo normal</string>
+    <string name="veredicto_un_poco_mas">Un poco más de lo normal</string>
+    <string name="veredicto_dentro_de_lo_normal">Dentro de lo normal</string>
+    <string name="veredicto_servicio_nuevo">Servicio nuevo en la red</string>
+    <string name="veredicto_servicio_autorizado">Servicio autorizado</string>
+    <string name="veredicto_servicio_no_autorizado">Servicio no autorizado</string>
+    <!-- El "?" de seis términos del detalle y su globito (Figma 468-627): una frase, sin números -->
+    <string name="ayuda_que_es">Qué es %1$s</string>
+    <string name="ayuda_conexiones_60s">Cuántas veces el equipo de origen se conectó a este servicio en un minuto.</string>
+    <string name="ayuda_conexiones_total">Todas las conexiones entre estos dos equipos, desde la primera hasta que pasaron 5 minutos sin ninguna.</string>
+    <string name="ayuda_veredictos">Tres métodos miran el mismo tráfico; alcanza con que uno lo marque para que haya alerta.</string>
+    <string name="ayuda_modelo_ia">Aprendió cómo es el tráfico normal de tu red y marca lo que se parece poco a eso.</string>
+    <string name="ayuda_umbrales">Cuentan las conexiones a un mismo servicio en un minuto y marcan si son más que en un día normal.</string>
+    <string name="ayuda_reglas">Marcan las conexiones a servicios que no están en la lista de autorizados de tu empresa.</string>
     <string name="detalle_revision">Revisión</string>
     <string name="detalle_resultado">Resultado</string>
     <string name="detalle_motivo">Motivo</string>
     <string name="detalle_este_telefono">Este teléfono</string>
-    <string name="detalle_enviada">enviada</string>
     <string name="detalle_pendiente_de_envio">pendiente de envío</string>
     <string name="detalle_historial">Historial</string>
     <string name="detalle_revisar_explicacion">Al revisar vas a indicar si fue un ataque real o un falso positivo, con su motivo y un comentario.</string>
@@ -294,9 +318,9 @@
     <string name="comentario_usuario_autorizado">Es un acceso autorizado del administrador.</string>
     <string name="comentario_otro">Prueba de conectividad que hizo el proveedor.</string>
 
-    <!-- Aviso con Deshacer, conflicto y envío fallido -->
-    <string name="aviso_revision_guardada">Revisión guardada y enviada al servidor.</string>
-    <string name="aviso_revision_guardada_sin_conexion">Revisión guardada. Se enviará cuando haya conexión.</string>
+    <!-- Aviso con Deshacer en la lista a la que vuelve el detalle (corrección 7; Figma 468-1320), conflicto y envío fallido -->
+    <string name="aviso_revisaste">Revisaste %1$s.</string>
+    <string name="aviso_revisaste_sin_conexion">Revisaste %1$s. Se envía cuando haya conexión.</string>
     <string name="aviso_deshacer">Deshacer</string>
     <!-- Revisada desde otro teléfono (Figma 51-2497) -->
     <string name="conflicto_titulo">Revisada desde otro teléfono</string>
@@ -409,7 +433,6 @@
     <string name="notificaciones_rechazadas">Sin permiso, Zonda no puede mostrar notificaciones. La app sigue funcionando; podés activarlas desde los ajustes del sistema.</string>
     <string name="severidades_intro">Último paso: elegí qué tan grave es cada tipo de ataque. Eso define el color del semáforo y cómo te avisa cada alerta. Ya vienen los valores recomendados; los podés cambiar después en Ajustes.</string>
     <string name="severidades_nota">Los cambios valen para todos los teléfonos pareados a esta red.</string>
-    <string name="severidades_guardar">Guardar y conectar con la red</string>
 
     <!-- Conexión (pareo) -->
     <string name="conexion_titulo">Conectar con la red</string>
@@ -567,9 +590,9 @@
     <!-- Pantalla Estado (RF01; Figma 1-3, 1-178, 1-222 y 99-122 a 99-442). Los que no están en el Figma
          (lista vacía, notas de Alta y Media, sin datos con la red pareada y alertas nuevas) son para que Meli los revise. -->
     <string name="estado_ayuda_contadores">Alertas sin revisar, por severidad. Tocá una para filtrar la lista.</string>
-    <string name="estado_ayuda_altas">Mostrando solo altas sin revisar. Tocá el contador de nuevo para ver todas.</string>
-    <string name="estado_ayuda_medias">Mostrando solo medias sin revisar. Tocá el contador de nuevo para ver todas.</string>
-    <string name="estado_ayuda_bajas">Mostrando solo bajas sin revisar. Tocá el contador de nuevo para ver todas.</string>
+    <string name="estado_ayuda_altas">Mostrando solo altas sin revisar. Tocá de nuevo para ver todas.</string>
+    <string name="estado_ayuda_medias">Mostrando solo medias sin revisar. Tocá de nuevo para ver todas.</string>
+    <string name="estado_ayuda_bajas">Mostrando solo bajas sin revisar. Tocá de nuevo para ver todas.</string>
     <string name="estado_lista_sin_revisar">Sin revisar</string>
     <string name="estado_lista_altas">Solo altas sin revisar</string>
     <string name="estado_lista_medias">Solo medias sin revisar</string>
@@ -991,4 +1014,167 @@
     <string name="telegram_prueba_enviada">Aviso de prueba enviado. Fijate en el chat de %1$s.</string>
     <string name="telegram_desvinculado">Telegram desvinculado. Los avisos de esta red ya no llegan a ese chat.</string>
     <string name="telegram_no_se_abrio">No se pudo abrir Telegram. Instalalo desde la tienda de aplicaciones y probá de nuevo.</string>
+    <!-- Ajustes → Red: Personas, Equipos y Registro de cambios (decisiones 39 a 41; Figma 4-66 y 468-2454) -->
+    <string name="ajustes_personas">Personas</string>
+    <plurals name="ajustes_personas_detalle">
+        <item quantity="one">%1$d persona · %2$s</item>
+        <item quantity="other">%1$d personas · %2$s</item>
+    </plurals>
+    <string name="ajustes_sos_administrador">sos administrador</string>
+    <string name="ajustes_sos_analista">sos analista</string>
+    <string name="ajustes_equipos">Equipos</string>
+    <string name="ajustes_equipos_todos_normales">Todos normales</string>
+    <plurals name="ajustes_equipos_criticos">
+        <item quantity="one">%d crítico</item>
+        <item quantity="other">%d críticos</item>
+    </plurals>
+    <plurals name="ajustes_equipos_poco_importantes">
+        <item quantity="one">%d poco importante</item>
+        <item quantity="other">%d poco importantes</item>
+    </plurals>
+    <string name="ajustes_registro">Registro de cambios</string>
+    <string name="ajustes_registro_detalle">Quién cambió la configuración y por qué</string>
+    <string name="ajustes_severidad_la_cambia">La cambia un administrador</string>
+
+    <!-- Personas (Figma 468-2568, 468-2642 y 468-3010) -->
+    <string name="personas_titulo">Personas</string>
+    <string name="personas_intro">Quiénes usan Zonda en %1$s. Los administradores cambian la configuración de la red y suman gente.</string>
+    <string name="personas_vos">%1$s (vos)</string>
+    <string name="personas_agregar">Agregar persona</string>
+    <string name="personas_nombre">Nombre</string>
+    <string name="personas_nombre_ejemplo">Por ejemplo: Laura</string>
+    <string name="personas_falta_nombre">Escribí el nombre de la persona.</string>
+    <string name="personas_perfil">Perfil</string>
+    <string name="personas_generar_codigo">Generar código</string>
+    <string name="personas_hacer_administrador">Hacer administrador</string>
+    <string name="personas_pasar_a_analista">Pasar a analista</string>
+    <string name="personas_quitar">Quitar del equipo</string>
+    <string name="personas_quitar_titulo">¿Quitar a %1$s del equipo?</string>
+    <string name="personas_quitar_texto">Su teléfono deja de tener acceso a %1$s. Queda en el registro de cambios.</string>
+    <string name="personas_quitar_confirmar">Quitar</string>
+    <string name="personas_hoy">hoy %1$s</string>
+    <string name="personas_ayer">ayer %1$s</string>
+    <plurals name="personas_hace_dias">
+        <item quantity="one">hace %d día</item>
+        <item quantity="other">hace %d días</item>
+    </plurals>
+    <string name="personas_ahora_administrador">%1$s ahora es administrador.</string>
+    <string name="personas_ahora_analista">%1$s ahora es analista.</string>
+    <string name="personas_quitada">%1$s ya no está en el equipo.</string>
+    <string name="perfil_administrador">Administrador</string>
+    <string name="perfil_analista">Analista</string>
+    <string name="perfil_administrador_detalle">Además cambia las severidades y suma o quita gente.</string>
+    <string name="perfil_analista_detalle">Revisa las alertas y elige sus avisos.</string>
+
+    <!-- Código para sumar a una persona (Figma 468-2735) -->
+    <string name="codigo_titulo">Código para %1$s</string>
+    <string name="codigo_intro">%1$s entra como %2$s. En su teléfono, conectado a la red de la empresa: Zonda → Escanear código QR.</string>
+    <string name="codigo_vence">Sirve una sola vez · vence en %1$s</string>
+    <string name="codigo_vencido">Venció. Volvé y generá otro código.</string>
+    <string name="codigo_listo">Listo</string>
+    <string name="codigo_qr_descripcion">Código QR para sumar a %1$s</string>
+
+    <!-- Equipos y su importancia (decisión 41; Figma 468-3089 y 468-3178) -->
+    <string name="equipos_titulo">Equipos</string>
+    <string name="equipos_intro">Qué tan importante es cada equipo de la red. Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.</string>
+    <string name="equipos_vacio">Todavía no hay equipos con nombre. Los informa el servidor de tu empresa.</string>
+    <string name="equipos_nota_motivo">Al cambiarla te pide el motivo y queda en el registro de cambios.</string>
+    <string name="equipos_guardado">Importancia de %1$s guardada. Se envía a la red.</string>
+    <string name="importancia_critico">Crítico</string>
+    <string name="importancia_normal">Normal</string>
+    <string name="importancia_poco_importante">Poco importante</string>
+    <string name="importancia_critico_detalle">Sus alertas suben un nivel: una media pasa a alta.</string>
+    <string name="importancia_normal_detalle">Quedan como el tipo de ataque.</string>
+    <string name="importancia_poco_importante_detalle">Sus alertas bajan un nivel. Usalo para equipos que no guardan datos de la empresa, como una impresora o una PC de invitados.</string>
+
+    <!-- Registro de cambios (decisión 40; Figma 468-3283) -->
+    <string name="registro_titulo">Registro de cambios</string>
+    <string name="registro_intro">Quién cambió la configuración de %1$s, cuándo y por qué. Lo ve todo el equipo y no se puede borrar.</string>
+    <string name="registro_vacio">Todavía no hay cambios.</string>
+    <string name="registro_hoy">Hoy %1$s</string>
+    <string name="registro_ayer">Ayer %1$s</string>
+    <string name="registro_paso_de">%1$s pasó de %2$s a %3$s</string>
+    <string name="registro_paso_a">%1$s pasó a %2$s</string>
+    <string name="registro_persona_nueva">Sumó a %1$s al equipo como %2$s</string>
+    <string name="registro_persona_quitada">Quitó a %1$s del equipo</string>
+    <string name="registro_se_quito">Quitó su teléfono del equipo</string>
+    <string name="registro_motivo">“%1$s”</string>
+    <!-- Detalle: responsable y asignar (decisión 42; Figma 468-507, 468-726, 468-880 y 468-983) -->
+    <string name="detalle_responsable">Responsable</string>
+    <string name="detalle_sin_asignar">Sin asignar</string>
+    <string name="detalle_asignar">Asignar</string>
+    <string name="detalle_cambiar_responsable">Cambiar</string>
+    <string name="detalle_me_la_asigno">Me la asigno</string>
+    <string name="detalle_soltarla">Soltarla</string>
+    <string name="detalle_asignada_por">Asignada por %1$s · %2$s</string>
+    <string name="detalle_asignada_por_vos">Asignada por vos · %1$s</string>
+    <string name="detalle_te_la_asignaste">Te la asignaste · %1$s</string>
+    <string name="detalle_se_la_asigno">Se la asignó · %1$s</string>
+    <string name="asignar_titulo">Asignar a</string>
+    <string name="asignar_texto">Le llega un aviso por Telegram y la ve en Estado.</string>
+    <string name="asignar_sacar">Sacar la asignación</string>
+
+    <!-- Detalle: cómo se calculó la severidad (decisión 41; Figma 468-1181) -->
+    <string name="calculo_titulo">Cómo se calculó la severidad</string>
+    <string name="calculo_tipo">Tipo de ataque: %1$s</string>
+    <string name="calculo_equipo">Equipo destino: %1$s (%2$s)</string>
+    <string name="calculo_sube">sube un nivel</string>
+    <string name="calculo_baja">baja un nivel</string>
+    <string name="calculo_ya_era">ya era %1$s</string>
+    <string name="calculo_resultado">Resultado</string>
+
+    <!-- Historial: cambios de configuración y asignaciones (decisiones 40 y 42; Figma 468-1315) -->
+    <string name="historial_paso_de">Pasó de %1$s a %2$s</string>
+    <string name="historial_cambio">%1$s cambió %2$s</string>
+    <string name="historial_cambio_con_motivo">%1$s cambió %2$s: “%3$s”</string>
+    <string name="historial_asignada_a">Asignada a %1$s</string>
+    <string name="historial_se_la_asigno">%1$s se la asignó</string>
+    <string name="historial_la_solto">%1$s la soltó</string>
+    <string name="historial_quedo_sin_asignar">Quedó sin asignar</string>
+    <string name="historial_sin_asignar">Sin asignar</string>
+    <string name="historial_saco_la_asignacion">%1$s sacó la asignación</string>
+    <!-- Estado: alertas asignadas a vos y el semáforo que filtra (decisiones 42 y 44; Figma 468-2018) -->
+    <plurals name="estado_asignadas_titulo">
+        <item quantity="one">%d alerta asignada a vos</item>
+        <item quantity="other">%d alertas asignadas a vos</item>
+    </plurals>
+    <string name="estado_asignada_por">Te la asignó %1$s.</string>
+    <string name="estado_asignadas_por">Te las asignó %1$s.</string>
+    <string name="estado_asignadas_por_varios">Te las asignaron %1$s.</string>
+    <!-- Último de la lista cuando además te asignaste alguna: "Te las asignaron Sofia y vos." -->
+    <string name="estado_asignadas_vos">vos</string>
+    <string name="estado_te_la_asignaste">Te la asignaste.</string>
+    <string name="estado_te_las_asignaste">Te las asignaste.</string>
+    <string name="semaforo_ver_altas">Ver las alertas altas sin revisar</string>
+    <string name="semaforo_ver_medias">Ver las alertas medias sin revisar</string>
+    <string name="semaforo_ver_bajas">Ver las alertas bajas sin revisar</string>
+    <string name="semaforo_ver_todas">Ver todas las alertas sin revisar</string>
+
+    <!-- Tarjeta de alerta: responsable e importancia del equipo destino (Figma 468-1454) -->
+    <string name="tarjeta_vos">Vos</string>
+    <string name="tarjeta_subio">Subió de %1$s a %2$s: %3$s es %4$s.</string>
+    <string name="tarjeta_bajo">Bajó de %1$s a %2$s: %3$s es %4$s.</string>
+    <string name="tarjeta_ya_era">%1$s es %2$s (ya era %3$s).</string>
+
+    <!-- Alertas: el filtro Responsable (Figma 468-1603 y 468-1744) -->
+    <string name="filtro_responsable">Responsable</string>
+    <string name="filtro_cualquiera">Cualquiera</string>
+    <string name="filtro_asignadas_a_mi">Asignadas a mí</string>
+    <string name="filtro_sin_asignar">Sin asignar</string>
+    <string name="resumen_asignadas_a_mi">asignadas a mí</string>
+    <string name="resumen_sin_asignar">sin asignar</string>
+    <string name="resumen_asignadas_a">asignadas a %1$s</string>
+
+    <!-- Aviso de Zonda cuando otra persona te asigna una alerta y la red no tiene Telegram (decisión 42) -->
+    <string name="canal_asignaciones">Asignaciones</string>
+    <string name="canal_asignaciones_descripcion">Avisa cuando otra persona te asigna una alerta.</string>
+    <string name="notificacion_asignada_titulo">%1$s te asignó una alerta %2$s · %3$s · %4$s</string>
+    <string name="notificacion_asignada_texto">Tocá para ver el detalle en Zonda.</string>
+    <!-- Ajustes → Apariencia → Tema (decisión 43; Figma 4-66 y 468-3594) -->
+    <string name="ajustes_seccion_apariencia">Apariencia</string>
+    <string name="ajustes_tema">Tema</string>
+    <string name="tema_como_el_telefono">Como el teléfono</string>
+    <string name="tema_como_el_telefono_detalle">Cambia solo cuando el teléfono pasa a oscuro.</string>
+    <string name="tema_claro">Claro</string>
+    <string name="tema_oscuro">Oscuro</string>
 </resources>

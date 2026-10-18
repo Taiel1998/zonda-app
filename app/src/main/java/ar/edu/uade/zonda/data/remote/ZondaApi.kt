@@ -39,8 +39,9 @@ interface ZondaApi {
     @GET("severidades")
     suspend fun severidades(): Map<String, String>
 
+    /** Solo un administrador y con motivo (API 0.6.0; decisiones 39 y 40). */
     @PUT("severidades")
-    suspend fun guardarSeveridades(@Body severidades: Map<String, String>): Map<String, String>
+    suspend fun guardarSeveridades(@Body entrada: SeveridadesEntradaDto): Map<String, String>
 
     @GET("catalogo")
     suspend fun catalogo(): CatalogoDto
@@ -68,4 +69,31 @@ interface ZondaApi {
     /** Responde 204 sin cuerpo, por eso devuelve la respuesta cruda. */
     @DELETE("dispositivos/actual")
     suspend fun quitarDispositivo(): Response<Unit>
+
+    // ---- Personas, equipos, registro y asignaciones (API 0.6.0; decisiones 39 a 42) ----
+
+    @GET("personas")
+    suspend fun personas(): List<PersonaDto>
+
+    @POST("personas/codigo")
+    suspend fun codigoParaPersona(@Body entrada: CodigoPersonaEntradaDto): CodigoPersonaDto
+
+    @PUT("personas/{id}/perfil")
+    suspend fun cambiarPerfil(@Path("id") id: String, @Body entrada: PerfilEntradaDto): PersonaDto
+
+    /** Responde 204 sin cuerpo. */
+    @DELETE("personas/{id}")
+    suspend fun quitarPersona(@Path("id") id: String): Response<Unit>
+
+    @GET("equipos")
+    suspend fun equipos(): List<EquipoDto>
+
+    @PUT("equipos/{ip}")
+    suspend fun cambiarImportancia(@Path("ip") ip: String, @Body entrada: ImportanciaEntradaDto): EquipoDto
+
+    @GET("registro")
+    suspend fun registro(): List<CambioRegistroDto>
+
+    @PUT("alertas/{id}/asignacion")
+    suspend fun asignar(@Path("id") id: String, @Body entrada: AsignacionEntradaDto): AlertaDto
 }

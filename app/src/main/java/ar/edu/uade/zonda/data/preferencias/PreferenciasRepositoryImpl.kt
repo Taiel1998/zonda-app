@@ -12,6 +12,7 @@ import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.ModoNotificacion
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
+import ar.edu.uade.zonda.domain.model.Tema
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -93,6 +94,14 @@ class PreferenciasRepositoryImpl(
     }
 
     /** Una clave por red: "recordatorios_hasta_<id de la red>". */
+    override fun observarTema(): Flow<Tema> = dataStore.data.map { preferencias ->
+        Tema.entries.firstOrNull { it.name == preferencias[TEMA] } ?: Tema.COMO_EL_TELEFONO
+    }
+
+    override suspend fun guardarTema(tema: Tema) {
+        dataStore.edit { it[TEMA] = tema.name }
+    }
+
     private fun recordatoriosDe(redId: String) = longPreferencesKey("recordatorios_hasta_$redId")
 
     /** Hasta la 1.0.2 el mensaje sin sonido se guardaba como "VIBRACION" (cambio 6): se lee como [ModoAviso.SILENCIO]. */
@@ -114,5 +123,6 @@ class PreferenciasRepositoryImpl(
         val NOTIFICACION_MEDIA = stringPreferencesKey("notificacion_media")
         val NOTIFICACION_BAJA = stringPreferencesKey("notificacion_baja")
         val RECORDATORIO_ALTAS = booleanPreferencesKey("recordatorio_altas")
+        val TEMA = stringPreferencesKey("tema")
     }
 }

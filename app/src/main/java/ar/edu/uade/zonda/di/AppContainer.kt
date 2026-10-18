@@ -21,10 +21,13 @@ import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.GeneradorDeIds
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
 import ar.edu.uade.zonda.domain.repository.RedesRepository
+import ar.edu.uade.zonda.domain.usecase.AsignarAlerta
 import ar.edu.uade.zonda.domain.usecase.BorrarDatosLocales
+import ar.edu.uade.zonda.domain.usecase.CambiarImportancia
 import ar.edu.uade.zonda.domain.usecase.CambiarSeveridades
 import ar.edu.uade.zonda.domain.usecase.DeshacerRevision
 import ar.edu.uade.zonda.domain.usecase.EnviarAvisosTelegram
+import ar.edu.uade.zonda.domain.usecase.GestionarPersonas
 import ar.edu.uade.zonda.domain.usecase.ObservarAlertas
 import ar.edu.uade.zonda.domain.usecase.ObservarResumen
 import ar.edu.uade.zonda.domain.usecase.ObtenerDetalleAlerta
@@ -37,6 +40,7 @@ import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import ar.edu.uade.zonda.domain.usecase.VincularTelegram
 import ar.edu.uade.zonda.notificaciones.Notificador
 import ar.edu.uade.zonda.sync.ConectividadAndroid
+import ar.edu.uade.zonda.ui.detalle.VentanaDeshacer
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -112,4 +116,13 @@ class AppContainer(context: Context) {
     val borrarDatosLocales: BorrarDatosLocales by lazy { BorrarDatosLocales(redes, alertas, accionesPendientes) }
     val vincularTelegram: VincularTelegram by lazy { VincularTelegram(redes, preferencias) }
     val enviarAvisosTelegram: EnviarAvisosTelegram by lazy { EnviarAvisosTelegram(redes) }
+    val cambiarImportancia: CambiarImportancia by lazy { CambiarImportancia(redes, accionesPendientes, generadorDeIds) }
+    val asignarAlerta: AsignarAlerta by lazy { AsignarAlerta(redes, alertas, accionesPendientes, generadorDeIds) }
+    val gestionarPersonas: GestionarPersonas by lazy { GestionarPersonas(redes) }
+
+    /**
+     * La ventana de Deshacer de las revisiones (decisión 38): una para toda la app, porque al confirmar
+     * el detalle se cierra y el "Revisaste ..." con Deshacer lo muestra la lista a la que se volvió.
+     */
+    val ventanaDeshacer: VentanaDeshacer by lazy { VentanaDeshacer(deshacerRevision, sincronizarAlertas, conectividad, alcanceDeLaApp) }
 }

@@ -18,9 +18,10 @@ def aplicar_revision(con: sqlite3.Connection, alerta: sqlite3.Row, entrada: Revi
     la idempotencia por accionId y el conflicto los resuelve antes quien la llama."""
     momento = ahora()
     nueva_version = alerta["version"] + 1
+    # El autor es el teléfono y la persona, su nombre: el detalle muestra "Laura · Teléfono de Laura" (decisión 39).
     con.execute(
-        "INSERT INTO revisiones (alerta_id, accion_id, resultado, motivo, comentario, autor, fecha, revisada_en, dispositivo_id, version_resultante) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (alerta["id"], entrada.accionId, entrada.resultado, entrada.motivo, entrada.comentario.strip(), dispositivo["nombre"], iso(momento), revisada_en(entrada.revisadaEn, momento), dispositivo["id"], nueva_version),
+        "INSERT INTO revisiones (alerta_id, accion_id, resultado, motivo, comentario, autor, fecha, revisada_en, dispositivo_id, version_resultante, persona) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (alerta["id"], entrada.accionId, entrada.resultado, entrada.motivo, entrada.comentario.strip(), dispositivo["nombre"], iso(momento), revisada_en(entrada.revisadaEn, momento), dispositivo["id"], nueva_version, dispositivo["persona"]),
     )
     con.execute(
         "UPDATE alertas SET estado_revision = ?, version = ?, actualizada_en = ?, secuencia = ? WHERE id = ?",

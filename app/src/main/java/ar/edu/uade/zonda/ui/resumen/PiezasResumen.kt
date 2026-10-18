@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
@@ -50,12 +50,10 @@ import androidx.compose.ui.unit.sp
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.components.BotonAyuda
 import ar.edu.uade.zonda.ui.components.PuntoDeSeveridad
-import ar.edu.uade.zonda.ui.theme.CremaBarra
-import ar.edu.uade.zonda.ui.theme.GrisCalido
 import ar.edu.uade.zonda.ui.theme.Tonos
-import ar.edu.uade.zonda.ui.theme.VerdeZonda
 import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.rotulo
+import ar.edu.uade.zonda.ui.theme.zonda
 
 // Las piezas del Resumen (Figma 52-2629 y las variantes 100-7158 a 100-11534), medidas sobre el
 // prototipo: tarjetas de totales, métricas, tarjetas con borde, el gráfico de barras y las filas con
@@ -104,7 +102,7 @@ fun TarjetaTotal(
     Surface(
         color = fondo,
         shape = FormaTarjeta,
-        border = if (elegida) BorderStroke(BordeElegido, VerdeZonda) else null,
+        border = if (elegida) BorderStroke(BordeElegido, MaterialTheme.colorScheme.primary) else null,
         modifier = modifier
             .clip(FormaTarjeta)
             .selectable(selected = elegida, onClick = alTocar, role = Role.Button),
@@ -138,12 +136,12 @@ fun TarjetaMetrica(
     Column(
         modifier = modifier
             .clip(FormaTarjeta)
-            .then(if (elegida) Modifier.border(BordeElegido, VerdeZonda, FormaTarjeta) else Modifier)
+            .then(if (elegida) Modifier.border(BordeElegido, MaterialTheme.colorScheme.primary, FormaTarjeta) else Modifier)
             .selectable(selected = elegida, onClick = alTocar, role = Role.Button)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(text = valor, style = estiloNumero, color = VerdeZonda, maxLines = 1)
+        Text(text = valor, style = estiloNumero, color = MaterialTheme.colorScheme.primary, maxLines = 1)
         Text(text = rotulo, style = MaterialTheme.typography.rotulo, color = MaterialTheme.colorScheme.onSurface)
         Text(text = detalle, style = estiloRotuloChicoResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -273,7 +271,7 @@ fun GraficoDeBarras(
                         .fillMaxWidth()
                         .widthIn(max = AnchoBarra)
                         .height(if (barra.cantidad == 0) 2.dp else alto.coerceAtLeast(2.dp))
-                        .background(color = if (barra.resaltada) VerdeZonda else VerdeBarra, shape = RoundedCornerShape(3.dp)),
+                        .background(color = if (barra.resaltada) MaterialTheme.colorScheme.primary else MaterialTheme.zonda.barra, shape = RoundedCornerShape(3.dp)),
                 )
                 Text(
                     text = barra.etiqueta,
@@ -353,7 +351,7 @@ fun FilaTipo(
             Text(text = rotulo, style = MaterialTheme.typography.bodySmall, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(modifier = Modifier.width(8.dp))
-        PistaConBarra(fraccion = fraccionDe(valor, maximo), color = VerdeZonda, alto = 10.dp, modifier = Modifier.weight(1f), marcaEnCero = false)
+        PistaConBarra(fraccion = fraccionDe(valor, maximo), color = MaterialTheme.colorScheme.primary, alto = 10.dp, modifier = Modifier.weight(1f), marcaEnCero = false)
         Spacer(modifier = Modifier.width(8.dp))
         ValorDeFila(valor = valor, color = color)
     }
@@ -400,7 +398,7 @@ fun FilaPrecision(
     ) {
         Text(text = rotulo, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, modifier = Modifier.width(152.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        PistaConBarra(fraccion = fraccion, color = if (clara) VerdeBarraClara else VerdeZonda, alto = 8.dp, modifier = Modifier.weight(1f))
+        PistaConBarra(fraccion = fraccion, color = if (clara) MaterialTheme.zonda.barraClara else MaterialTheme.colorScheme.primary, alto = 8.dp, modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = porcentaje,
@@ -431,13 +429,13 @@ fun CajaCobertura(valor: String, rotulo: String, elegida: Boolean, alTocar: () -
         modifier = modifier
             .fillMaxWidth()
             .clip(forma)
-            .background(CremaBarra, forma)
-            .then(if (elegida) Modifier.border(BordeElegido, VerdeZonda, forma) else Modifier)
+            .background(MaterialTheme.colorScheme.surfaceContainer, forma)
+            .then(if (elegida) Modifier.border(BordeElegido, MaterialTheme.colorScheme.primary, forma) else Modifier)
             .selectable(selected = elegida, onClick = alTocar, role = Role.Button)
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         Text(text = rotulo, style = MaterialTheme.typography.opcion, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-        Text(text = valor, style = MaterialTheme.typography.labelMedium, color = VerdeZonda, maxLines = 1)
+        Text(text = valor, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, maxLines = 1)
     }
 }
 
@@ -449,7 +447,7 @@ private fun PistaConBarra(fraccion: Float, color: Color, alto: Dp, modifier: Mod
         modifier = modifier
             .height(alto)
             .clip(forma)
-            .background(GrisCalido, forma),
+            .background(MaterialTheme.colorScheme.surfaceVariant, forma),
     ) {
         if (fraccion > 0f) {
             Box(
@@ -468,8 +466,10 @@ private fun PistaConBarra(fraccion: Float, color: Color, alto: Dp, modifier: Mod
  * El borde verde de lo elegido, dibujado un poco por fuera para que no tape el texto (Figma 100-8498):
  * no cambia el lugar que ocupa la pieza.
  */
-private fun Modifier.marcoElegido(elegida: Boolean, horizontal: Dp = 4.dp, vertical: Dp = 3.dp): Modifier =
-    if (!elegida) {
+@Composable
+private fun Modifier.marcoElegido(elegida: Boolean, horizontal: Dp = 4.dp, vertical: Dp = 3.dp): Modifier {
+    val color = MaterialTheme.colorScheme.primary
+    return if (!elegida) {
         this
     } else {
         drawWithContent {
@@ -478,7 +478,7 @@ private fun Modifier.marcoElegido(elegida: Boolean, horizontal: Dp = 4.dp, verti
             val h = horizontal.toPx()
             val v = vertical.toPx()
             drawRoundRect(
-                color = VerdeZonda,
+                color = color,
                 topLeft = Offset(-h + grosor / 2, -v + grosor / 2),
                 size = Size(size.width + 2 * h - grosor, size.height + 2 * v - grosor),
                 cornerRadius = CornerRadius(8.dp.toPx()),
@@ -486,6 +486,7 @@ private fun Modifier.marcoElegido(elegida: Boolean, horizontal: Dp = 4.dp, verti
             )
         }
     }
+}
 
-/** El naranja de los falsos positivos (Figma 52-2629). */
-val NaranjaFalsos: Color = Tonos.Media.punto
+/** El naranja de los falsos positivos (Figma 52-2629): el punto de las medias, igual en claro y en oscuro. */
+val NaranjaFalsos: Color = Color(0xFFEF9F27)

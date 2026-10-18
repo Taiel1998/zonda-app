@@ -1,9 +1,15 @@
 package ar.edu.uade.zonda.domain.repository
 
+import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.Catalogo
+import ar.edu.uade.zonda.domain.model.CodigoPersona
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
+import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.EstadoTelegram
+import ar.edu.uade.zonda.domain.model.Importancia
+import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.RedPareada
@@ -72,5 +78,31 @@ interface RedesRepository {
 
     /** Protocolo, certificado y vencimiento del acceso, leídos de una llamada a `GET /salud` (Detalles técnicos). */
     suspend fun detallesDeConexion(redId: String): DetallesConexion
+
+    // ---- Personas, equipos y registro de cambios (decisiones 39 a 41) ----
+
+    /** La gente de la red, la última que dijo el servidor, en el orden en que se sumó. */
+    fun observarPersonas(redId: String): Flow<List<Persona>>
+
+    /** Los equipos de la red con nombre en el catálogo y su importancia. */
+    fun observarEquipos(redId: String): Flow<List<EquipoDeLaRed>>
+
+    /** El registro de cambios de la red, de lo más nuevo a lo más viejo. */
+    fun observarRegistro(redId: String): Flow<List<CambioRegistro>>
+
+    /** Un código de un uso para sumar a [nombre] con [perfil] (`POST /personas/codigo`). Necesita conexión. */
+    suspend fun crearCodigoPersona(redId: String, nombre: String, perfil: Perfil): CodigoPersona
+
+    /** "Hacer administrador" o "Pasar a analista" (`PUT /personas/{id}/perfil`). Necesita conexión. */
+    suspend fun cambiarPerfil(redId: String, personaId: String, perfil: Perfil)
+
+    /** "Quitar del equipo" (`DELETE /personas/{id}`). Necesita conexión. */
+    suspend fun quitarPersona(redId: String, personaId: String)
+
+    /** Vuelve a pedir la gente, los equipos y el registro al servidor (después de un cambio). */
+    suspend fun actualizarPersonasYRegistro(redId: String)
+
+    /** Guarda la importancia de un equipo en el teléfono. El envío al servidor va por la cola de acciones. */
+    suspend fun guardarImportanciaLocal(redId: String, ip: String, importancia: Importancia)
 }
 

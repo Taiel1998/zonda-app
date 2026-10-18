@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Con el teléfono en oscuro, la ventana arranca en el fondo oscuro de Zonda (decisión 43). -->
+    <style name="Theme.Zonda" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/fondo_oscuro</item>
+    </style>
+</resources>

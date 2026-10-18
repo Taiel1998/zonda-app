@@ -45,4 +45,13 @@ sealed class ErrorZonda(mensaje: String, causa: Throwable? = null) : Exception(m
 
     /** Respuesta 409 al mandar el aviso de prueba: el chat ya no está vinculado (por ejemplo, bloquearon el bot). */
     class TelegramSinVincular : ErrorZonda("Telegram no está vinculado")
+
+    /** Respuesta 403: lo que se quiso cambiar lo cambia un administrador (decisión 39). */
+    class SinPermiso : ErrorZonda("Lo cambia un administrador")
+
+    /** Respuesta 409 en Personas: el cambio dejaba al equipo sin ningún administrador. */
+    class UltimoAdministrador : ErrorZonda("Tiene que quedar al menos un administrador")
+
+    /** Respuesta 409 al asignarse una alerta: otra persona ya la tiene (decisión 42). */
+    class YaAsignada : ErrorZonda("Ya está asignada a otra persona")
 }

@@ -76,10 +76,9 @@ import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.ui.components.BotonContorno
-import ar.edu.uade.zonda.ui.theme.GrisCalido
-import ar.edu.uade.zonda.ui.theme.HoraElegidaReloj
 import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.theme.tituloHoja
+import ar.edu.uade.zonda.ui.theme.zonda
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -380,11 +379,7 @@ fun ContenidoHojaCompartir(
     }
 }
 
-/** El fondo de la tarjeta del archivo en la hoja (Figma 107-5511). */
-private val FondoArchivo = Color(0xFFF4F1EA)
 
-/** El borde del selector "Imagen · PDF" (Figma 107-5511). */
-private val BordeSelector = Color(0xFF9B998F)
 
 /**
  * "Imagen · PDF" (cambio 18; Figma 107-5511): el SegmentedButton de Material 3 con el borde gris, de
@@ -394,12 +389,12 @@ private val BordeSelector = Color(0xFF9B998F)
 @Composable
 private fun SelectorDeFormato(elegido: FormatoResumen, alElegir: (FormatoResumen) -> Unit) {
     val colores = SegmentedButtonDefaults.colors(
-        activeContainerColor = HoraElegidaReloj,
+        activeContainerColor = MaterialTheme.zonda.horaElegidaReloj,
         activeContentColor = MaterialTheme.colorScheme.primary,
-        activeBorderColor = BordeSelector,
+        activeBorderColor = MaterialTheme.zonda.bordeSelector,
         inactiveContainerColor = MaterialTheme.colorScheme.surface,
         inactiveContentColor = MaterialTheme.colorScheme.onSurface,
-        inactiveBorderColor = BordeSelector,
+        inactiveBorderColor = MaterialTheme.zonda.bordeSelector,
     )
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
         FormatoResumen.entries.forEachIndexed { indice, formato ->
@@ -427,7 +422,7 @@ private fun TarjetaDeArchivo(resumen: ResumenParaCompartir, formato: FormatoResu
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .background(FondoArchivo, forma)
+            .background(MaterialTheme.zonda.fondoArchivo, forma)
             .padding(12.dp),
     ) {
         Image(
@@ -470,7 +465,7 @@ private fun BotonDestino(destino: DestinoCompartir, alTocar: () -> Unit) {
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)
-                .background(if (sinApp) GrisCalido else MaterialTheme.colorScheme.surface)
+                .background(if (sinApp) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface)
                 .then(if (sinApp) Modifier else Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)),
         ) {
             when {

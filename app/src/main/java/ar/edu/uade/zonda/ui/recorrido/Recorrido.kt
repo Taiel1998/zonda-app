@@ -47,6 +47,7 @@ import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.ui.components.BotonEnlace
 import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.theme.Tonos
+import ar.edu.uade.zonda.ui.theme.zonda
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -133,8 +134,6 @@ private val MargenResaltado = 5.dp
 /** De la orilla del elemento a la tarjeta: los 5 del resaltado y 11 más. */
 private val SeparacionTarjeta = 16.dp
 
-/** El texto de la lista del primer paso (Figma 107-3467). */
-private val TextoPuntos = Color(0xFF40403D)
 
 /**
  * La capa del recorrido sobre toda la app: el velo negro al 50 % con el elemento del paso a la vista,
@@ -261,7 +260,7 @@ private fun ColoresDelSemaforo() {
                         .size(12.dp)
                         .background(color, CircleShape),
                 )
-                Text(text = stringResource(texto), style = MaterialTheme.typography.bodySmall, color = TextoPuntos)
+                Text(text = stringResource(texto), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.zonda.textoLista)
             }
         }
     }

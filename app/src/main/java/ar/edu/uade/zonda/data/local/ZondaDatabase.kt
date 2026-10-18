@@ -11,8 +11,12 @@ import ar.edu.uade.zonda.data.local.dao.AlertasDao
 import ar.edu.uade.zonda.data.local.dao.RedesDao
 import ar.edu.uade.zonda.data.local.entidades.AccionPendienteEntity
 import ar.edu.uade.zonda.data.local.entidades.AlertaEntity
+import ar.edu.uade.zonda.data.local.entidades.AsignacionEntity
+import ar.edu.uade.zonda.data.local.entidades.AsignacionPendienteEntity
+import ar.edu.uade.zonda.data.local.entidades.CambioRegistroEntity
 import ar.edu.uade.zonda.data.local.entidades.CatalogoEquipoEntity
 import ar.edu.uade.zonda.data.local.entidades.CatalogoServicioEntity
+import ar.edu.uade.zonda.data.local.entidades.PersonaEntity
 import ar.edu.uade.zonda.data.local.entidades.RedEntity
 import ar.edu.uade.zonda.data.local.entidades.RevisionEntity
 import ar.edu.uade.zonda.data.local.entidades.SeveridadEntity
@@ -34,8 +38,12 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         AlertaEntity::class,
         RevisionEntity::class,
         AccionPendienteEntity::class,
+        PersonaEntity::class,
+        CambioRegistroEntity::class,
+        AsignacionEntity::class,
+        AsignacionPendienteEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class ZondaDatabase : RoomDatabase() {
@@ -121,6 +129,52 @@ abstract class ZondaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Versión 6 (1.0.5, correcciones de Peña): el perfil de este teléfono y su id en el servidor (los
+         * pareados antes quedan como administradores, como en el servidor), la importancia de cada equipo,
+         * la persona de cada revisión, el responsable de cada alerta y el motivo de los cambios de
+         * configuración; y las tablas de personas, registro de cambios, asignaciones y asignaciones
+         * pendientes. Las tablas nuevas van como las arma Room (decisiones 39 a 42).
+         */
+        val MIGRACION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE redes ADD COLUMN perfil TEXT NOT NULL DEFAULT 'ADMINISTRADOR'")
+                db.execSQL("ALTER TABLE redes ADD COLUMN dispositivoId TEXT")
+                db.execSQL("ALTER TABLE catalogo_equipos ADD COLUMN importancia TEXT NOT NULL DEFAULT 'NORMAL'")
+                db.execSQL("ALTER TABLE revisiones ADD COLUMN persona TEXT")
+                for (columna in listOf("responsableId TEXT", "responsable TEXT", "asignadaPorId TEXT", "asignadaPor TEXT", "asignadaEn INTEGER")) {
+                    db.execSQL("ALTER TABLE alertas ADD COLUMN $columna")
+                }
+                for (columna in listOf("motivoCambio TEXT", "equipoIp TEXT", "importancia TEXT")) {
+                    db.execSQL("ALTER TABLE acciones_pendientes ADD COLUMN $columna")
+                }
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `personas` (`redId` TEXT NOT NULL, `id` TEXT NOT NULL, `nombre` TEXT, `telefono` TEXT NOT NULL, " +
+                        "`perfil` TEXT NOT NULL, `ultimoUso` INTEGER, `vos` INTEGER NOT NULL, `orden` INTEGER NOT NULL, PRIMARY KEY(`redId`, `id`), " +
+                        "FOREIGN KEY(`redId`) REFERENCES `redes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `registro_cambios` (`redId` TEXT NOT NULL, `id` INTEGER NOT NULL, `fecha` INTEGER NOT NULL, " +
+                        "`tipo` TEXT NOT NULL, `autorId` TEXT, `autor` TEXT NOT NULL, `objeto` TEXT NOT NULL, `nombre` TEXT, `antes` TEXT, " +
+                        "`despues` TEXT, `motivo` TEXT, PRIMARY KEY(`redId`, `id`), " +
+                        "FOREIGN KEY(`redId`) REFERENCES `redes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `asignaciones` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `alertaId` TEXT NOT NULL, " +
+                        "`responsableId` TEXT, `responsable` TEXT, `porId` TEXT NOT NULL, `por` TEXT NOT NULL, `fecha` INTEGER NOT NULL, " +
+                        "`origen` TEXT NOT NULL, FOREIGN KEY(`alertaId`) REFERENCES `alertas`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_asignaciones_alertaId` ON `asignaciones` (`alertaId`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `asignaciones_pendientes` (`alertaId` TEXT NOT NULL, `redId` TEXT NOT NULL, `accionId` TEXT NOT NULL, " +
+                        "`responsableId` TEXT, `creadaEn` INTEGER NOT NULL, `intentos` INTEGER NOT NULL, `estado` TEXT NOT NULL, `ultimoError` TEXT, " +
+                        "PRIMARY KEY(`alertaId`), FOREIGN KEY(`redId`) REFERENCES `redes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , " +
+                        "FOREIGN KEY(`alertaId`) REFERENCES `alertas`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_asignaciones_pendientes_redId` ON `asignaciones_pendientes` (`redId`)")
+            }
+        }
+
         /** Los nombres anteriores y los del Figma, fijos acá: una migración no cambia aunque cambie el enum. */
         private val MOTIVOS_ANTERIORES = mapOf(
             "EQUIPO_AISLADO" to "BLOQUEADO_MANUALMENTE",
@@ -136,7 +190,7 @@ abstract class ZondaDatabase : RoomDatabase() {
             System.loadLibrary("sqlcipher")
             return Room.databaseBuilder(context, ZondaDatabase::class.java, NOMBRE_ARCHIVO)
                 .openHelperFactory(SupportOpenHelperFactory(clave))
-                .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4, MIGRACION_4_5)
+                .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4, MIGRACION_4_5, MIGRACION_5_6)
                 .build()
         }
     }

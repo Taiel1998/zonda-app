@@ -8,6 +8,7 @@ import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.ModoNotificacion
 import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
+import ar.edu.uade.zonda.domain.model.Tema
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -116,6 +117,21 @@ class PreferenciasRepositoryImplTest {
 
         assertTrue(repo.observarPrimerInicioHecho().first())
         assertTrue(repo.observarRecorridoHecho().first())
+        alcance.cancel()
+    }
+
+    @Test
+    fun `el tema arranca como el telefono y se guarda`() = runTest {
+        val alcance = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        val repo = PreferenciasRepositoryImpl(
+            PreferenceDataStoreFactory.create(scope = alcance) { File(carpeta.root, "tema.preferences_pb") },
+        )
+
+        assertEquals(Tema.COMO_EL_TELEFONO, repo.observarTema().first())
+
+        repo.guardarTema(Tema.OSCURO)
+
+        assertEquals(Tema.OSCURO, repo.observarTema().first())
         alcance.cancel()
     }
 }

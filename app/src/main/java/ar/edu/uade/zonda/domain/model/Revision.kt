@@ -73,6 +73,8 @@ data class Revision(
     val origen: OrigenRevision,
     /** Null en las revisiones del servidor anteriores a este dato. */
     val revisadaEn: Instant? = null,
+    /** La persona de ese teléfono ("Laura", decisión 39); null en los teléfonos pareados antes de la 1.0.5. */
+    val persona: String? = null,
 ) {
     /** La hora en que la persona la hizo, la mejor que se conoce. */
     val hechaEn: Instant

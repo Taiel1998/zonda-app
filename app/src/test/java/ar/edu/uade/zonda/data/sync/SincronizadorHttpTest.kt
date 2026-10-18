@@ -355,13 +355,15 @@ class SincronizadorHttpTest : PruebaConBase() {
         publicarCinco()
         alertas.sincronizar("red-1")
         CambiarSeveridades(redes, acciones, generador, reloj = { Fixtures.AHORA })(
-            "red-1", SeveridadPorTipo.RECOMENDADA.con(TipoAtaque.ESCANEO, Severidad.ALTA),
+            "red-1", SeveridadPorTipo.RECOMENDADA.con(TipoAtaque.ESCANEO, Severidad.ALTA), "Los escaneos ahora son prioridad.",
         )
 
         val resultado = alertas.sincronizar("red-1")
 
         assertEquals(1, resultado.accionesEnviadas)
         assertEquals("alta", api.severidades["escaneo"])
+        // El motivo viaja con el cambio: el servidor lo anota en el registro (decisión 40).
+        assertEquals(listOf("Los escaneos ahora son prioridad."), api.motivosRecibidos)
         assertEquals(5, resultado.modificadas)
         assertEquals(Severidad.ALTA, redes.observarSeveridades("red-1").first().severidadDe(TipoAtaque.ESCANEO))
         assertEquals(Severidad.ALTA, alertas.observarAlerta("red-1", "a-2").first()?.severidad)

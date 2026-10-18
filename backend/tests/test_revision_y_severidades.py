@@ -95,6 +95,10 @@ def test_una_alerta_revisada_vuelve_a_salir_en_la_sincronizacion_siguiente(clien
     assert novedades["alertas"][0]["estadoRevision"] == "ataque_real"
 
 
+# Desde la 1.0.5 cambiar severidades pide el motivo (decisión 40).
+MOTIVO = "Cambiamos la política después del análisis de riesgo de este año."
+
+
 def test_severidades_recomendadas_y_cambio_para_toda_la_red(cliente, auth):
     actuales = cliente.get("/severidades", headers=auth).json()
     assert actuales == {
@@ -108,7 +112,7 @@ def test_severidades_recomendadas_y_cambio_para_toda_la_red(cliente, auth):
         if not pagina["hayMas"]:
             break
 
-    respuesta = cliente.put("/severidades", json={"escaneo": "alta", "ddos": "baja"}, headers=auth)
+    respuesta = cliente.put("/severidades", json={"severidades": {"escaneo": "alta", "ddos": "baja"}, "motivo": MOTIVO}, headers=auth)
 
     assert respuesta.status_code == 200
     assert respuesta.json()["escaneo"] == "alta"
@@ -116,12 +120,13 @@ def test_severidades_recomendadas_y_cambio_para_toda_la_red(cliente, auth):
     assert escaneos and all(a["severidad"] == "alta" for a in escaneos)
     # Todas las alertas vuelven a salir, porque cambió la severidad que muestran.
     assert cliente.get("/alertas", params={"desde": cursor_previo}, headers=auth).json()["hayMas"] is True
-    assert cliente.put("/severidades", json={"otro_tipo": "alta"}, headers=auth).status_code == 422
+    assert cliente.put("/severidades", json={"severidades": {"otro_tipo": "alta"}, "motivo": MOTIVO}, headers=auth).status_code == 422
 
 
 def test_sin_la_ia_la_severidad_sale_del_detector_y_con_los_dos_toca_la_mas_alta(cliente, auth):
     # Cambio 9: lo que vieron las reglas es "servicio no autorizado" y lo de los umbrales, "volumen inusual".
-    assert cliente.put("/severidades", json={"servicio_no_autorizado": "baja", "volumen_inusual": "alta"}, headers=auth).status_code == 200
+    nuevas = {"servicio_no_autorizado": "baja", "volumen_inusual": "alta"}
+    assert cliente.put("/severidades", json={"severidades": nuevas, "motivo": MOTIVO}, headers=auth).status_code == 200
     sin_tipo = [a for a in todas_las_alertas(cliente, auth) if a["tipoAtaque"] is None]
     assert {a["severidad"] for a in sin_tipo if a["veredictos"]["reglas"]} == {"baja"}
     assert {a["severidad"] for a in sin_tipo if a["veredictos"]["umbrales"]} == {"alta"}
@@ -143,7 +148,7 @@ def test_sin_la_ia_la_severidad_sale_del_detector_y_con_los_dos_toca_la_mas_alta
     assert cliente.get("/estado", headers=auth).json()["sinRevisar"] == esperado
 
     # La clave anterior ya no se acepta: una app vieja tiene que actualizarse junto con el servidor.
-    assert cliente.put("/severidades", json={"solo_reglas_o_umbrales": "alta"}, headers=auth).status_code == 422
+    assert cliente.put("/severidades", json={"severidades": {"solo_reglas_o_umbrales": "alta"}, "motivo": MOTIVO}, headers=auth).status_code == 422
 
 
 def test_el_comentario_es_obligatorio(cliente, auth):

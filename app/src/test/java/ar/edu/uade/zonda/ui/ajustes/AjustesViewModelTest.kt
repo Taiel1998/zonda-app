@@ -13,6 +13,7 @@ import ar.edu.uade.zonda.domain.model.PreferenciasAvisos
 import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
+import ar.edu.uade.zonda.domain.model.Tema
 import ar.edu.uade.zonda.domain.model.TipoAccion
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
@@ -29,6 +30,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -136,12 +138,23 @@ class AjustesViewModelTest {
         viewModel.cambiarSeveridadDelBorrador(TipoAtaque.ESCANEO, Severidad.ALTA)
         assertEquals(Severidad.MEDIA, viewModel.estado.value.severidades.severidadDe(TipoAtaque.ESCANEO)) // todavía no se guardó
 
-        viewModel.guardarSeveridades()
+        // "Guardar" pide el motivo (decisión 40): sin escribirlo no se guarda nada.
+        assertTrue(viewModel.pedirMotivo())
+        assertEquals("", viewModel.estado.value.motivo)
+        assertFalse(viewModel.guardarSeveridades())
+        assertTrue(viewModel.estado.value.faltaMotivo)
+        assertTrue(acciones.todas.isEmpty())
+        viewModel.cambiarMotivo("Los escaneos ahora son prioridad.")
+        assertFalse(viewModel.estado.value.faltaMotivo)
+
+        assertTrue(viewModel.guardarSeveridades())
         runCurrent()
 
         val accion = acciones.todas.single()
         assertEquals(TipoAccion.CAMBIAR_SEVERIDADES, accion.tipo)
         assertEquals(Severidad.ALTA, accion.severidades?.severidadDe(TipoAtaque.ESCANEO))
+        assertEquals("Los escaneos ahora son prioridad.", accion.motivo)
+        assertNull(viewModel.estado.value.motivo)
         assertEquals(Severidad.ALTA, viewModel.estado.value.severidades.severidadDe(TipoAtaque.ESCANEO))
         assertNull(viewModel.estado.value.borradorSeveridades)
         assertEquals(AvisoAjustes.SeveridadesGuardadas, viewModel.estado.value.aviso)
@@ -237,5 +250,17 @@ class AjustesViewModelTest {
         assertEquals("red-1", viewModel.estado.value.redActiva?.id)
         assertEquals(listOf("red-1"), viewModel.estado.value.redes.map { it.red.id })
         assertEquals(AvisoAjustes.DispositivoQuitado(quedanRedes = true), viewModel.estado.value.aviso)
+    }
+
+    @Test
+    fun `el tema se lee de las preferencias y elegir otro lo guarda`() = runTest {
+        val viewModel = viewModel()
+        assertEquals(Tema.COMO_EL_TELEFONO, viewModel.estado.value.tema)
+
+        viewModel.cambiarTema(Tema.OSCURO)
+        runCurrent()
+
+        assertEquals(Tema.OSCURO, preferencias.tema.value)
+        assertEquals(Tema.OSCURO, viewModel.estado.value.tema)
     }
 }
