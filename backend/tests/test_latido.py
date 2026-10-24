@@ -1,6 +1,6 @@
 """Latido del análisis en vivo: POST /ingesta/latido, el bloque `sistema` de GET /salud (la tarjeta
 "Estado del sistema" de la app) y el vigía que avisa por Telegram cuando el latido deja de llegar y
-cuando vuelve.
+cuando vuelve, y cuando la pérdida de captura de Zeek pasa del 1 % y cuando se normaliza.
 """
 
 import asyncio
@@ -122,6 +122,10 @@ def test_el_latido_se_guarda_con_las_fechas_en_utc_y_la_hora_de_llegada(cli):
         "zeekActivo": True,
         "episodios": 1,
         "intervalo": 20,
+        "perdidaCaptura": None,
+        "perdidaCapturaEn": None,
+        "acksCaptura": None,
+        "perdidaSimulada": False,
     }
 
 
@@ -164,6 +168,11 @@ def test_sin_ningun_latido_no_hay_datos_del_analisis_ni_del_sensor(cli):
         "ultimoFlujo": None,
         "flujosUltimaCorrida": None,
         "limiteSegundos": 120,
+        "perdidaCaptura": None,
+        "perdidaCapturaEn": None,
+        "acksCaptura": None,
+        "perdidaSimulada": False,
+        "perdidaLimite": 1.0,
     }
 
 
@@ -374,5 +383,225 @@ def test_el_texto_lleva_la_hora_local_y_la_fecha_si_no_es_de_hoy():
     assert "desde las 24/10 18:41:" in latido.texto_detenido(ultimo, "Oficina central", ARGENTINA, hoy=date(2026, 10, 25))
     assert latido.texto_volvio(ultimo, "Oficina <central>", ARGENTINA, hoy=date(2026, 10, 24)) == (
         "<b>Análisis en vivo funcionando de nuevo</b>\nZonda volvió a recibir el análisis en vivo a las 18:41.\n"
+        "Red: Oficina &lt;central&gt;"
+    )
+
+
+# ---- Pérdida de captura de Zeek (capture_loss.log) ----
+
+
+def con_perdida(porcentaje: float, **cambios) -> dict:
+    """Lo que manda el latido con la última medición de capture_loss.log (cada 15 minutos)."""
+    datos = {"perdidaCaptura": porcentaje, "perdidaCapturaEn": "2026-10-24T18:45:00-03:00", "acksCaptura": 1200}
+    datos.update(cambios)
+    return datos
+
+
+def test_la_perdida_de_captura_se_guarda_en_utc_con_el_latido(cli):
+    latir(cli, **con_perdida(3.25, perdidaSimulada=True))
+    guardado = json.loads(cli.app.state.base.leer_meta("latido"))
+    assert guardado["perdidaCaptura"] == 3.25
+    assert guardado["perdidaCapturaEn"] == "2026-10-24T21:45:00+00:00"
+    assert guardado["acksCaptura"] == 1200
+    assert guardado["perdidaSimulada"] is True
+
+
+def test_una_perdida_fuera_de_rango_o_una_fecha_mala_da_422(cli):
+    for malo in (
+        un_latido(**con_perdida(-0.1)),
+        un_latido(**con_perdida(100.1)),
+        un_latido(**con_perdida(2.0, perdidaCapturaEn="hace un rato")),
+        un_latido(**con_perdida(2.0, perdidaCapturaEn="2026-10-24T18:45:00")),  # sin zona
+        un_latido(**con_perdida(2.0, acksCaptura=-1)),
+    ):
+        assert cli.post("/ingesta/latido", headers=CABECERA, json=malo).status_code == 422
+
+
+def test_con_mas_del_limite_de_perdida_el_sensor_ve_parcialmente(cli):
+    auth = cabecera(parear(cli))
+    latir(cli, **con_perdida(3.2))
+
+    estado = sistema(cli, auth)
+    assert estado["analisis"] == "funciona" and estado["sensor"] == "parcial"
+    assert estado["perdidaCaptura"] == 3.2
+    assert estado["perdidaCapturaEn"] == "2026-10-24T21:45:00+00:00"
+    assert estado["acksCaptura"] == 1200
+    assert estado["perdidaSimulada"] is False
+    assert estado["perdidaLimite"] == 1.0
+
+
+def test_con_la_perdida_en_el_limite_o_debajo_el_sensor_funciona(cli):
+    auth = cabecera(parear(cli))
+    for porcentaje in (0.0, 0.4, 1.0):
+        latir(cli, **con_perdida(porcentaje))
+        assert sistema(cli, auth)["sensor"] == "funciona"
+    # Sin tráfico TCP, Zeek mide 0 % sobre 0 ACK: no hay pérdida que avisar.
+    latir(cli, **con_perdida(0.0, acksCaptura=0))
+    assert sistema(cli, auth)["sensor"] == "funciona"
+
+
+def test_con_zeek_caido_el_sensor_esta_detenido_aunque_haya_perdida(cli):
+    auth = cabecera(parear(cli))
+    latir(cli, zeekActivo=False, **con_perdida(9.5))
+    assert sistema(cli, auth)["sensor"] == "detenido"
+
+
+def test_con_el_latido_vencido_del_sensor_no_se_sabe_aunque_haya_perdida(cli):
+    auth = cabecera(parear(cli))
+    latir(cli, **con_perdida(9.5))
+    envejecer(cli, 200)
+    estado = sistema(cli, auth)
+    assert estado["analisis"] == "detenido" and estado["sensor"] == "sin_datos"
+    # La última medición se sigue mostrando.
+    assert estado["perdidaCaptura"] == 9.5
+
+
+def test_el_limite_de_perdida_sale_de_la_configuracion(config, monkeypatch):
+    with TestClient(crear_app(replace(config, ingesta_token=TOKEN_INGESTA, perdida_limite=5.0, latido_revisar_cada=3600))) as cli:
+        auth = cabecera(parear(cli))
+        latir(cli, **con_perdida(3.2))
+        estado = sistema(cli, auth)
+        assert estado["sensor"] == "funciona" and estado["perdidaLimite"] == 5.0
+
+    monkeypatch.setattr("app.config.load_dotenv", lambda *args, **kwargs: None)
+    monkeypatch.setenv("ZONDA_PERDIDA_LIMITE", "2,5")
+    assert Config.desde_entorno().perdida_limite == 2.5
+    monkeypatch.delenv("ZONDA_PERDIDA_LIMITE")
+    assert Config.desde_entorno().perdida_limite == 1.0
+
+
+def revisar_perdida(cli, cfg, bot) -> str | None:
+    return asyncio.run(latido.revisar_perdida(cli.app.state.base, cfg, bot))
+
+
+def test_el_vigia_avisa_una_vez_que_el_sensor_ve_parcialmente_y_otra_cuando_se_normaliza(cli, cfg_latido, telegram, bot_latido):
+    vincular(cli, cabecera(parear(cli, "Teléfono de Taiel")), telegram, bot_latido, chat_id=555)
+    vincular(cli, cabecera(parear(cli, "Tablet de Taiel")), telegram, bot_latido, chat_id=555)
+    vincular(cli, cabecera(parear(cli, "Teléfono de Laura")), telegram, bot_latido, chat_id=777)
+    telegram.enviados.clear()
+
+    latir(cli, **con_perdida(0.3))
+    assert revisar_perdida(cli, cfg_latido, bot_latido) is None  # debajo del límite: nada que avisar
+
+    latir(cli, **con_perdida(3.2))
+    assert revisar_perdida(cli, cfg_latido, bot_latido) == "parcial"
+    assert sorted(m["chat_id"] for m in telegram.enviados) == ["555", "777"]
+    aviso = telegram.enviados[0]
+    hora = datetime(2026, 10, 24, 21, 45, tzinfo=timezone.utc).astimezone(ARGENTINA)
+    hora_texto = hora.strftime("%H:%M") if hora.date() == datetime.now(ARGENTINA).date() else hora.strftime("%d/%m %H:%M")
+    assert aviso["text"] == (
+        f"<b>Sensor viendo parcialmente</b>\nZeek perdió el 3,2 % de lo que pasó por el puerto espejo en la medición "
+        f"de las {hora_texto}: puede haber tráfico, y ataques, que Zonda no ve.\nRed: Red de prueba"
+    )
+    assert aviso["disable_notification"] is False and "reply_markup" not in aviso
+
+    # Sigue alta en la medición siguiente: no se repite.
+    latir(cli, **con_perdida(4.8))
+    assert revisar_perdida(cli, cfg_latido, bot_latido) is None
+    assert len(telegram.enviados) == 2
+    assert cli.app.state.base.leer_meta("perdida_aviso") == "parcial"
+
+    telegram.enviados.clear()
+    latir(cli, **con_perdida(0.0))
+    assert revisar_perdida(cli, cfg_latido, bot_latido) == "normal"
+    assert sorted(m["chat_id"] for m in telegram.enviados) == ["555", "777"]
+    assert telegram.enviados[0]["text"].startswith("<b>Sensor viendo todo de nuevo</b>\nLa pérdida de captura bajó al 0,0 % en la medición de las ")
+    assert revisar_perdida(cli, cfg_latido, bot_latido) is None
+    assert len(telegram.enviados) == 2
+
+
+def test_el_vigia_no_avisa_la_perdida_con_el_latido_vencido_sin_medicion_o_con_zeek_caido(cli, cfg_latido, telegram, bot_latido):
+    vincular(cli, cabecera(parear(cli)), telegram, bot_latido)
+    telegram.enviados.clear()
+    assert revisar_perdida(cli, cfg_latido, bot_latido) is None  # sin ningún latido
+
+    latir(cli)  # un latido sin medición de pérdida
+    assert revisar_perdida(cli, cfg_latido, bot_latido) is None
+
+    latir(cli, zeekActivo=False, **con_perdida(7.0))
+    assert revisar_perdida(cli, cfg_latido, bot_latido) is None
+
+    latir(cli, **con_perdida(7.0))
+    envejecer(cli, 200)  # de esto avisa la caída del análisis, no la pérdida
+    assert revisar_perdida(cli, cfg_latido, bot_latido) is None
+    assert telegram.enviados == []
+    assert cli.app.state.base.leer_meta("perdida_aviso") is None
+
+
+def test_la_perdida_simulada_lo_dice_en_el_aviso(cli, cfg_latido, telegram, bot_latido):
+    vincular(cli, cabecera(parear(cli)), telegram, bot_latido)
+    telegram.enviados.clear()
+
+    latir(cli, **con_perdida(5.0, perdidaSimulada=True))
+    assert revisar_perdida(cli, cfg_latido, bot_latido) == "parcial"
+    assert telegram.enviados[0]["text"].endswith("Red: Red de prueba\n(Prueba: pérdida simulada en el laboratorio.)")
+
+    latir(cli, **con_perdida(0.0, perdidaSimulada=True))
+    assert revisar_perdida(cli, cfg_latido, bot_latido) == "normal"
+    assert telegram.enviados[1]["text"].endswith("(Prueba: pérdida simulada en el laboratorio.)")
+
+
+def test_sin_medicion_de_la_hora_el_aviso_usa_la_del_latido_y_sin_bot_solo_lleva_la_cuenta(cli, cfg_latido, telegram, bot_latido):
+    vincular(cli, cabecera(parear(cli)), telegram, bot_latido)
+    telegram.enviados.clear()
+
+    latir(cli, perdidaCaptura=2.0)  # sin perdidaCapturaEn
+    assert revisar_perdida(cli, cfg_latido, bot_latido) == "parcial"
+    hora = datetime.fromisoformat(cli.app.state.base.leer_meta("latido_recibido_en")).astimezone(ARGENTINA).strftime("%H:%M")
+    assert f"en la medición de las {hora}:" in telegram.enviados[0]["text"]
+
+    latir(cli, **con_perdida(0.5))
+    assert revisar_perdida(cli, cfg_latido, None) == "normal"
+    assert len(telegram.enviados) == 1
+    assert cli.app.state.base.leer_meta("perdida_aviso") == "normal"
+
+
+def test_los_avisos_de_perdida_no_llevan_direcciones_ip_ni_nombres_de_equipos(cli, cfg_latido, telegram, bot_latido):
+    vincular(cli, cabecera(parear(cli)), telegram, bot_latido)
+    telegram.enviados.clear()
+    con = cli.app.state.base.conexion()
+    prohibidos = {fila[0] for fila in con.execute("SELECT origen_ip FROM alertas UNION SELECT destino_ip FROM alertas")}
+    prohibidos |= {fila[0] for fila in con.execute("SELECT nombre FROM catalogo_equipos")}
+    prohibidos |= {"192.168.30.50", "192.168.20.20", "10.0.2.2", "pc-rrhh", "srv-sueldos", "zeek-lab", "ovs-lab"}
+
+    latir(cli, **con_perdida(12.0))
+    revisar_perdida(cli, cfg_latido, bot_latido)
+    latir(cli, **con_perdida(0.0))
+    revisar_perdida(cli, cfg_latido, bot_latido)
+
+    assert len(telegram.enviados) == 2
+    for mensaje in telegram.enviados:
+        for dato in prohibidos:
+            assert dato not in mensaje["text"]
+
+
+def test_si_telegram_falla_la_perdida_no_cambia_de_estado_y_la_caida_se_revisa_igual(cli, cfg_latido, telegram, bot_latido, caplog):
+    vincular(cli, cabecera(parear(cli)), telegram, bot_latido)
+    telegram.error = (500, "Internal Server Error")
+    latir(cli, **con_perdida(6.0))
+
+    async def unas_vueltas() -> None:
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(latido.vigilar(cli.app.state.base, replace(cfg_latido, latido_revisar_cada=0), bot_latido), timeout=0.3)
+
+    with caplog.at_level(logging.WARNING, logger="zonda.latido"):
+        asyncio.run(unas_vueltas())
+    assert "El aviso del análisis en vivo no salió, se reintenta" in caplog.text
+    assert cli.app.state.base.leer_meta("perdida_aviso") is None
+
+    # Con el chat bloqueado, ese teléfono queda sin Telegram y el estado avanza.
+    telegram.error = (403, "Forbidden: bot was blocked by the user")
+    assert revisar_perdida(cli, cfg_latido, bot_latido) == "parcial"
+
+
+def test_el_texto_de_la_perdida_lleva_coma_decimal_hora_local_y_fecha_si_no_es_de_hoy():
+    medido = datetime(2026, 10, 24, 21, 45, 0, tzinfo=timezone.utc)  # 18:45 en Argentina
+    assert latido.texto_parcial(3.25, medido, "Oficina central", ARGENTINA, hoy=date(2026, 10, 24)) == (
+        "<b>Sensor viendo parcialmente</b>\nZeek perdió el 3,2 % de lo que pasó por el puerto espejo en la medición "
+        "de las 18:45: puede haber tráfico, y ataques, que Zonda no ve.\nRed: Oficina central"
+    )
+    assert "de las 24/10 18:45:" in latido.texto_parcial(12.0, medido, "Oficina central", ARGENTINA, hoy=date(2026, 10, 25))
+    assert latido.texto_normal(0.04, medido, "Oficina <central>", ARGENTINA, hoy=date(2026, 10, 24)) == (
+        "<b>Sensor viendo todo de nuevo</b>\nLa pérdida de captura bajó al 0,0 % en la medición de las 18:45.\n"
         "Red: Oficina &lt;central&gt;"
     )
