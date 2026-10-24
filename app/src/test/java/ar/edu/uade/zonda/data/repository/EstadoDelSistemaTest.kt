@@ -11,7 +11,9 @@ import ar.edu.uade.zonda.domain.model.EstadoPieza
 import java.io.IOException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -88,6 +90,39 @@ class EstadoDelSistemaTest : PruebaConBase() {
         assertEquals(EstadoPieza.SIN_DATOS, estado.analisis)
         assertEquals(EstadoPieza.DETENIDO, estado.sensor)
         assertNull(estado.ultimoFlujo)
+    }
+
+    @Test
+    fun `el sensor que pierde captura queda parcial con la medicion en el reloj del telefono`() = runTest {
+        redes.guardarRedPareada(Fixtures.red("red-1"), token = "t")
+        api.sistema = sistema(sensor = "parcial").copy(
+            perdidaCaptura = 3.2,
+            perdidaCapturaEn = "2026-10-12T11:50:00+00:00",
+            acksCaptura = 1_200,
+            perdidaSimulada = true,
+            perdidaLimite = 1.0,
+        )
+        api.horaSalud = "2026-10-12T12:00:00+00:00"
+
+        val estado = redes.estadoDelSistema("red-1")
+
+        assertEquals(EstadoPieza.PARCIAL, estado.sensor)
+        assertEquals(3.2, estado.perdidaCaptura!!, 0.0)
+        assertEquals(Fixtures.AHORA.minusSeconds(600), estado.perdidaMedidaEn)
+        assertFalse(estado.sinTraficoParaMedir)
+        assertTrue(estado.perdidaSimulada)
+    }
+
+    @Test
+    fun `sin trafico TCP en la medicion no hay con que medir la perdida`() = runTest {
+        redes.guardarRedPareada(Fixtures.red("red-1"), token = "t")
+        api.sistema = sistema().copy(perdidaCaptura = 0.0, perdidaCapturaEn = "2026-10-12T11:50:00+00:00", acksCaptura = 0)
+
+        val estado = redes.estadoDelSistema("red-1")
+
+        assertEquals(EstadoPieza.FUNCIONA, estado.sensor)
+        assertTrue(estado.sinTraficoParaMedir)
+        assertFalse(estado.perdidaSimulada)
     }
 
     @Test

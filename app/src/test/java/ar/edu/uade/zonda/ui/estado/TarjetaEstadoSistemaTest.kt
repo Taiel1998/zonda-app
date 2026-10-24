@@ -84,6 +84,28 @@ class TarjetaEstadoSistemaTest {
     }
 
     @Test
+    fun `el sensor que pierde captura va en Viendo parcialmente con el porcentaje`() {
+        dibujar(sistema(sensor = EstadoPieza.PARCIAL).copy(perdidaCaptura = 3.2, perdidaMedidaEn = ahora.minusSeconds(120)))
+
+        compose.onNodeWithContentDescription("Sensor de red: Viendo parcialmente").assertIsDisplayed()
+        compose.onNodeWithText("Pérdida de captura: 3,2 % · medida hace 2 min").assertIsDisplayed()
+    }
+
+    @Test
+    fun `la perdida dice si no hubo trafico para medir y si es simulada`() {
+        dibujar(sistema().copy(perdidaCaptura = 0.0, perdidaMedidaEn = ahora, sinTraficoParaMedir = true, perdidaSimulada = true))
+
+        compose.onNodeWithText("Pérdida de captura: sin tráfico para medir (simulada)").assertIsDisplayed()
+    }
+
+    @Test
+    fun `sin medicion de perdida no hay linea de perdida`() {
+        dibujar(sistema())
+
+        compose.onAllNodesWithText("Pérdida de captura", substring = true).assertCountEquals(0)
+    }
+
+    @Test
     fun `el sensor detenido con el analisis andando se ve`() {
         dibujar(sistema(sensor = EstadoPieza.DETENIDO))
 
