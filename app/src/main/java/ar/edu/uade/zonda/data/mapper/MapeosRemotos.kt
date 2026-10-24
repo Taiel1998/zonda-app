@@ -249,11 +249,16 @@ fun SistemaDto?.aDominio(horaServidor: Instant?, consultadoEn: Instant): EstadoS
         ultimaCorrida = this?.segundosDesdeUltimaCorrida?.let { consultadoEn.minusSeconds(it.coerceAtLeast(0)) },
         ultimoFlujo = this?.ultimoFlujo?.let { runCatching { it.aInstante().plus(corrimiento) }.getOrNull() },
         consultadoEn = consultadoEn,
+        perdidaCaptura = this?.perdidaCaptura,
+        perdidaMedidaEn = this?.perdidaCapturaEn?.let { runCatching { it.aInstante().plus(corrimiento) }.getOrNull() },
+        sinTraficoParaMedir = this?.acksCaptura == 0,
+        perdidaSimulada = this?.perdidaSimulada == true,
     )
 }
 
 private fun String?.aEstadoPieza(): EstadoPieza = when (this) {
     "funciona" -> EstadoPieza.FUNCIONA
+    "parcial" -> EstadoPieza.PARCIAL
     "detenido" -> EstadoPieza.DETENIDO
     else -> EstadoPieza.SIN_DATOS
 }

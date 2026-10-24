@@ -5,6 +5,12 @@ import java.time.Instant
 /** Cómo está una pieza de la plataforma de detección en la tarjeta "Estado del sistema". */
 enum class EstadoPieza {
     FUNCIONA,
+
+    /**
+     * Solo el sensor: Zeek anda, pero perdió más del 1 % de lo que pasó por el puerto espejo en su última
+     * medición (por ejemplo, porque el espejo se satura). Va en amarillo: "Viendo parcialmente".
+     */
+    PARCIAL,
     DETENIDO,
 
     /**
@@ -35,6 +41,14 @@ data class EstadoSistema(
     val ultimoFlujo: Instant?,
     /** Cuándo contestó el servidor (o cuándo se dejó de esperarlo). */
     val consultadoEn: Instant,
+    /** El porcentaje de pérdida de captura de la última medición de Zeek (cada 15 minutos); null si no se sabe. */
+    val perdidaCaptura: Double? = null,
+    /** Cuándo fue esa medición, en el reloj del teléfono. */
+    val perdidaMedidaEn: Instant? = null,
+    /** En esa medición no hubo tráfico TCP: Zeek no tuvo con qué medir la pérdida. */
+    val sinTraficoParaMedir: Boolean = false,
+    /** La pérdida salió del archivo de prueba del laboratorio, no de Zeek. */
+    val perdidaSimulada: Boolean = false,
 ) {
     companion object {
         /** El servidor no contestó: del sensor y del análisis no se sabe nada. */

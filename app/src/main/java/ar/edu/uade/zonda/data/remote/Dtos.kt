@@ -15,8 +15,9 @@ data class SaludDto(
 )
 
 /**
- * `sistema` de `GET /salud`. Los estados son `funciona`, `detenido` o `sin_datos`; el análisis en vivo se
- * da por detenido cuando su último latido tiene más de [limiteSegundos].
+ * `sistema` de `GET /salud`. Los estados son `funciona`, `detenido` o `sin_datos`, y el sensor además
+ * `parcial` (la pérdida de captura pasó de [perdidaLimite]); el análisis en vivo se da por detenido
+ * cuando su último latido tiene más de [limiteSegundos].
  */
 data class SistemaDto(
     val servidor: String?,
@@ -27,6 +28,11 @@ data class SistemaDto(
     val ultimoFlujo: String?,
     val flujosUltimaCorrida: Int?,
     val limiteSegundos: Int?,
+    val perdidaCaptura: Double? = null,
+    val perdidaCapturaEn: String? = null,
+    val acksCaptura: Int? = null,
+    val perdidaSimulada: Boolean? = null,
+    val perdidaLimite: Double? = null,
 )
 
 data class RedDto(
