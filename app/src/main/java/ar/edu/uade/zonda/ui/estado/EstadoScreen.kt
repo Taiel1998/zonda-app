@@ -113,11 +113,12 @@ fun EstadoScreen(
     alVerNoAplicadas: () -> Unit = {},
     alVerAsignadas: () -> Unit = {},
     viewModel: EstadoViewModel = viewModelDeZonda {
-        EstadoViewModel(it.obtenerEstadoRed, it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad, it.accionesPendientes)
+        EstadoViewModel(it.obtenerEstadoRed, it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad, it.accionesPendientes, it.observarEstadoSistema)
     },
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val ahora by relojDeLaPantalla()
+    val segundero = relojDeSegundos()
     EstadoContenido(
         estado = estado,
         acciones = AccionesEstado(
@@ -132,6 +133,7 @@ fun EstadoScreen(
             alVerAsignadas = alVerAsignadas,
         ),
         ahora = ahora,
+        ahoraDelSistema = { segundero.value },
     )
 }
 
@@ -154,7 +156,9 @@ data class AccionesEstado(
 
 /**
  * La pantalla sin ViewModel: recibe el estado y devuelve las acciones, así se prueba con Compose sobre
- * Robolectric. [ahora] es la hora con la que se calcula "hace 5 min".
+ * Robolectric. [ahora] es la hora con la que se calcula "hace 5 min"; [ahoraDelSistema], la que avanza
+ * cada segundo para "Última corrida hace 12 s" (se lee adentro de la tarjeta, que es lo único que se
+ * vuelve a dibujar).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,6 +167,7 @@ fun EstadoContenido(
     acciones: AccionesEstado = AccionesEstado(),
     ahora: Instant = Instant.now(),
     zona: ZoneId = ZoneId.systemDefault(),
+    ahoraDelSistema: () -> Instant = { ahora },
 ) {
     val snackbar = remember { SnackbarHostState() }
     val contexto = LocalContext.current
@@ -212,7 +217,7 @@ fun EstadoContenido(
             val lista = rememberLazyListState()
             AlRetocarPestania(Rutas.ESTADO) { lista.animateScrollToItem(0) }
             if (contenido is ContenidoEstado.Cargando || contenido is ContenidoEstado.SinRed) {
-                CuerpoEstado(estado, acciones, ahora, zona, lista)
+                CuerpoEstado(estado, acciones, ahora, zona, lista, ahoraDelSistema)
             } else {
                 // Deslizar hacia abajo también sincroniza (informe, 14.2). El círculo de deslizar se ve solo
                 // si la persona deslizó: con el ícono de la barra gira el ícono, sin tapar el semáforo.
@@ -226,7 +231,7 @@ fun EstadoContenido(
                     },
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    CuerpoEstado(estado, acciones, ahora, zona, lista)
+                    CuerpoEstado(estado, acciones, ahora, zona, lista, ahoraDelSistema)
                 }
             }
         }
@@ -239,7 +244,7 @@ fun EstadoContenido(
 
 /** Figma 1-3: 16 de margen, 16 entre cada pieza y 24 al final de la lista. */
 @Composable
-private fun CuerpoEstado(estado: EstadoUiState, acciones: AccionesEstado, ahora: Instant, zona: ZoneId, lista: LazyListState) {
+private fun CuerpoEstado(estado: EstadoUiState, acciones: AccionesEstado, ahora: Instant, zona: ZoneId, lista: LazyListState, ahoraDelSistema: () -> Instant) {
     LazyColumn(
         state = lista,
         modifier = Modifier.fillMaxSize(),
@@ -274,15 +279,15 @@ private fun CuerpoEstado(estado: EstadoUiState, acciones: AccionesEstado, ahora:
                     )
                 }
             }
-            is ContenidoEstado.Datos -> datosDeLaRed(contenido, estado, acciones, ahora, zona)
+            is ContenidoEstado.Datos -> datosDeLaRed(contenido, estado, acciones, ahora, zona, ahoraDelSistema)
         }
     }
 }
 
 /**
  * El contenido con datos (Figma 1-3, 1-87, 1-178 y 99-122 a 99-442): semáforo, la ayuda de los
- * contadores, los contadores, el encabezado de la lista y las tarjetas; con la red tranquila, al final
- * la leyenda de los tres colores (informe, 11.6).
+ * contadores, los contadores, el estado del sistema (1.0.6), el encabezado de la lista y las tarjetas;
+ * con la red tranquila, al final la leyenda de los tres colores (informe, 11.6).
  */
 private fun LazyListScope.datosDeLaRed(
     datos: ContenidoEstado.Datos,
@@ -290,6 +295,7 @@ private fun LazyListScope.datosDeLaRed(
     acciones: AccionesEstado,
     ahora: Instant,
     zona: ZoneId,
+    ahoraDelSistema: () -> Instant,
 ) {
     val elegida = estado.severidadElegida
     val noAplicadas = estado.revisionesNoAplicadas
@@ -323,6 +329,7 @@ private fun LazyListScope.datosDeLaRed(
             modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.CONTADORES),
         )
     }
+    estado.sistema?.let { sistema -> item(key = "estado-del-sistema") { TarjetaEstadoSistema(sistema, ahoraDelSistema) } }
     item {
         // "Ver todas" no está con la red tranquila y sin filtro (Figma 1-178): la leyenda ocupa ese lugar.
         val conVerTodas = elegida != null || datos.semaforo != Semaforo.VERDE
@@ -682,6 +689,15 @@ private class EnElMedioDeLaPantalla(private val barraDeEstado: Int) : PopupPosit
 private fun relojDeLaPantalla(): State<Instant> = produceState(initialValue = Instant.now()) {
     while (true) {
         delay(30_000)
+        value = Instant.now()
+    }
+}
+
+/** La hora de ahora, que avanza cada segundo, para "Última corrida hace 12 s" de la tarjeta Estado del sistema. */
+@Composable
+private fun relojDeSegundos(): State<Instant> = produceState(initialValue = Instant.now()) {
+    while (true) {
+        delay(1_000)
         value = Instant.now()
     }
 }

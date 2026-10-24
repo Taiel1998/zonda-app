@@ -3,6 +3,7 @@ package ar.edu.uade.zonda.ui.estado
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoSistema
 import ar.edu.uade.zonda.domain.model.Semaforo
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.ContextoTarjetas
@@ -78,4 +79,6 @@ data class EstadoUiState(
     val asignadasAMi: List<Alerta> = emptyList(),
     /** Quién es este teléfono y la importancia de los equipos, para las tarjetas (Figma 468-1454). */
     val contexto: ContextoTarjetas = ContextoTarjetas(),
+    /** La tarjeta "Estado del sistema": sensor, análisis en vivo y servidor. Null hasta la primera respuesta. */
+    val sistema: EstadoSistema? = null,
 )

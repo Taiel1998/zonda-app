@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoPieza
+import ar.edu.uade.zonda.domain.model.EstadoSistema
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRed
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
@@ -17,6 +19,7 @@ import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.ObservarAlertas
+import ar.edu.uade.zonda.domain.usecase.ObservarEstadoSistema
 import ar.edu.uade.zonda.domain.usecase.ObtenerEstadoRed
 import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import ar.edu.uade.zonda.ui.ContextoTarjetas
@@ -34,6 +37,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -45,6 +50,9 @@ import kotlinx.coroutines.launch
  *
  * Todo se observa desde la base local: con datos ya sincronizados el estado aparece enseguida, también
  * sin conexión (criterios 1 y 2), y cuando se revisa la última alta el semáforo cambia solo.
+ *
+ * La tarjeta "Estado del sistema" sale de [observarEstadoSistema], que pregunta al servidor cada 20 s
+ * mientras la pantalla está a la vista; sin él (las pruebas que no la miran) no hay tarjeta.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EstadoViewModel(
@@ -55,6 +63,7 @@ class EstadoViewModel(
     alertas: AlertasRepository,
     private val conectividad: Conectividad,
     acciones: AccionesPendientesRepository,
+    observarEstadoSistema: ObservarEstadoSistema? = null,
 ) : ViewModel() {
 
     /**
@@ -85,6 +94,25 @@ class EstadoViewModel(
         }
     }
 
+    /** La última respuesta, para que al volver a Estado la tarjeta aparezca enseguida y después se actualice. */
+    private var ultimoSistema: EstadoSistema? = null
+
+    /** El servidor no contestó la última consulta de la tarjeta. */
+    private var servidorSinRespuesta = false
+
+    /**
+     * Si el servidor no contesta, Estado pasa a sin conexión aunque el teléfono tenga red (la sincronización
+     * automática fallaba callada); cuando vuelve a contestar, se sincroniza sola.
+     */
+    private val sistema: Flow<EstadoSistema?> = (observarEstadoSistema?.invoke() ?: flowOf(null))
+        .onStart { ultimoSistema?.let { emit(it) } }
+        .onEach { actual ->
+            if (actual != null) ultimoSistema = actual
+            val sinRespuesta = actual?.servidor == EstadoPieza.NO_RESPONDE
+            if (servidorSinRespuesta && actual?.servidor == EstadoPieza.FUNCIONA) sincronizarSola()
+            servidorSinRespuesta = sinRespuesta
+        }
+
     private data class Datos(
         val red: EstadoRed?,
         val sinRevisar: List<Alerta>,
@@ -98,27 +126,29 @@ class EstadoViewModel(
         val elegida: Severidad?,
         val sincronizacion: Sincronizacion,
         val aviso: AvisoEstado?,
+        val sistema: EstadoSistema?,
     )
 
     val estado: StateFlow<EstadoUiState> = combine(
         combine(obtenerEstadoRed(), observarAlertas(SIN_REVISAR_GUARDADAS), progreso, noAplicadas, redes.observarContextoTarjetas()) { red, sinRevisar, progreso, noAplicadas, contexto ->
             Datos(red, sinRevisar, progreso, noAplicadas, contexto)
         },
-        combine(conectividad.conectado, severidadElegida, sincronizacion, aviso) { conectado, elegida, sincronizacion, aviso ->
-            Controles(conectado, elegida, sincronizacion, aviso)
+        combine(conectividad.conectado, severidadElegida, sincronizacion, aviso, sistema) { conectado, elegida, sincronizacion, aviso, sistema ->
+            Controles(conectado, elegida, sincronizacion, aviso, sistema)
         },
     ) { datos, controles ->
         EstadoUiState(
             contenido = contenido(datos.red, datos.sinRevisar, datos.progreso, controles.elegida),
             severidadElegida = controles.elegida,
             datosDe = datos.red?.datosDe,
-            sinConexion = !controles.conectado,
+            sinConexion = !controles.conectado || controles.sistema?.servidor == EstadoPieza.NO_RESPONDE,
             accesoVencido = datos.red?.red?.accesoVencido == true,
             sincronizando = controles.sincronizacion == Sincronizacion.PEDIDA,
             aviso = controles.aviso,
             revisionesNoAplicadas = datos.noAplicadas,
             asignadasAMi = datos.sinRevisar.filter { datos.contexto.esMia(it) },
             contexto = datos.contexto,
+            sistema = controles.sistema,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EstadoUiState())
 

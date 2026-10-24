@@ -29,6 +29,7 @@ import ar.edu.uade.zonda.domain.usecase.DeshacerRevision
 import ar.edu.uade.zonda.domain.usecase.EnviarAvisosTelegram
 import ar.edu.uade.zonda.domain.usecase.GestionarPersonas
 import ar.edu.uade.zonda.domain.usecase.ObservarAlertas
+import ar.edu.uade.zonda.domain.usecase.ObservarEstadoSistema
 import ar.edu.uade.zonda.domain.usecase.ObservarResumen
 import ar.edu.uade.zonda.domain.usecase.ObtenerDetalleAlerta
 import ar.edu.uade.zonda.domain.usecase.ObtenerEstadoRed
@@ -104,6 +105,7 @@ class AppContainer(context: Context) {
     // Casos de uso
     val observarAlertas: ObservarAlertas by lazy { ObservarAlertas(redes, alertas) }
     val obtenerEstadoRed: ObtenerEstadoRed by lazy { ObtenerEstadoRed(redes, alertas) }
+    val observarEstadoSistema: ObservarEstadoSistema by lazy { ObservarEstadoSistema(redes) }
     val obtenerDetalleAlerta: ObtenerDetalleAlerta by lazy { ObtenerDetalleAlerta(alertas, conectividad) }
     val revisarAlerta: RevisarAlerta by lazy { RevisarAlerta(alertas, accionesPendientes, generadorDeIds) }
     val deshacerRevision: DeshacerRevision by lazy { DeshacerRevision(alertas, accionesPendientes) }

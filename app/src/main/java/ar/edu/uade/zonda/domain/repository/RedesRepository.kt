@@ -6,6 +6,7 @@ import ar.edu.uade.zonda.domain.model.CodigoPersona
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
+import ar.edu.uade.zonda.domain.model.EstadoSistema
 import ar.edu.uade.zonda.domain.model.EstadoTelegram
 import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Perfil
@@ -78,6 +79,13 @@ interface RedesRepository {
 
     /** Protocolo, certificado y vencimiento del acceso, leídos de una llamada a `GET /salud` (Detalles técnicos). */
     suspend fun detallesDeConexion(redId: String): DetallesConexion
+
+    /**
+     * El sensor, el análisis en vivo y el servidor de la red (`GET /salud` con token, API 0.7.0), para la
+     * tarjeta "Estado del sistema". No lanza: si el servidor no contesta, queda "No responde" y lo demás
+     * sin datos.
+     */
+    suspend fun estadoDelSistema(redId: String): EstadoSistema
 
     // ---- Personas, equipos y registro de cambios (decisiones 39 a 41) ----
 

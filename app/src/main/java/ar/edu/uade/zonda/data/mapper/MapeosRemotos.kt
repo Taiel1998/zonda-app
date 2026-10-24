@@ -11,6 +11,7 @@ import ar.edu.uade.zonda.data.remote.EstadoTelegramDto
 import ar.edu.uade.zonda.data.remote.PersonaDto
 import ar.edu.uade.zonda.data.remote.RevisionDto
 import ar.edu.uade.zonda.data.remote.RevisionEntradaDto
+import ar.edu.uade.zonda.data.remote.SistemaDto
 import ar.edu.uade.zonda.data.remote.VinculoTelegramDto
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
@@ -20,7 +21,9 @@ import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.CodigoPersona
 import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
+import ar.edu.uade.zonda.domain.model.EstadoPieza
 import ar.edu.uade.zonda.domain.model.EstadoRevision
+import ar.edu.uade.zonda.domain.model.EstadoSistema
 import ar.edu.uade.zonda.domain.model.EstadoTelegram
 import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.ModoAviso
@@ -40,6 +43,7 @@ import ar.edu.uade.zonda.domain.model.VeredictoReglas
 import ar.edu.uade.zonda.domain.model.VeredictoUmbrales
 import ar.edu.uade.zonda.domain.model.Veredictos
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
+import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -229,3 +233,27 @@ fun CambioRegistroDto.aDominio(): CambioRegistro = CambioRegistro(
     despues = despues,
     motivo = motivo,
 )
+
+/**
+ * `sistema` de `GET /salud` en el reloj del teléfono. La última corrida sale de los segundos que contó el
+ * servidor y el último flujo se corre lo que el reloj del servidor ([horaServidor]) difiere del teléfono.
+ * Sin `sistema` (un servidor anterior a la API 0.7.0) o con un estado que no se conoce: sin datos, nunca
+ * "funciona". Si el servidor contestó, el servidor funciona.
+ */
+fun SistemaDto?.aDominio(horaServidor: Instant?, consultadoEn: Instant): EstadoSistema {
+    val corrimiento = horaServidor?.let { Duration.between(it, consultadoEn) } ?: Duration.ZERO
+    return EstadoSistema(
+        sensor = this?.sensor.aEstadoPieza(),
+        analisis = this?.analisis.aEstadoPieza(),
+        servidor = EstadoPieza.FUNCIONA,
+        ultimaCorrida = this?.segundosDesdeUltimaCorrida?.let { consultadoEn.minusSeconds(it.coerceAtLeast(0)) },
+        ultimoFlujo = this?.ultimoFlujo?.let { runCatching { it.aInstante().plus(corrimiento) }.getOrNull() },
+        consultadoEn = consultadoEn,
+    )
+}
+
+private fun String?.aEstadoPieza(): EstadoPieza = when (this) {
+    "funciona" -> EstadoPieza.FUNCIONA
+    "detenido" -> EstadoPieza.DETENIDO
+    else -> EstadoPieza.SIN_DATOS
+}
