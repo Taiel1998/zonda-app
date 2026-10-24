@@ -283,6 +283,24 @@ def test_el_vigia_avisa_una_sola_vez_la_caida_y_despues_la_vuelta(cli, cfg_latid
     assert len(telegram.enviados) == 2
 
 
+def test_si_el_servidor_estuvo_apagado_el_limite_se_cuenta_desde_que_arranco(cli, cfg_latido, telegram, bot_latido):
+    # El servidor estuvo apagado 10 minutos: el último latido guardado es viejo, pero el análisis puede
+    # seguir andando. Recién arrancado no avisa nada; si a los 2 minutos sigue sin latido, sí.
+    vincular(cli, cabecera(parear(cli)), telegram, bot_latido)
+    telegram.enviados.clear()
+    latir(cli)
+    envejecer(cli, 600)
+    base = cli.app.state.base
+
+    recien = datetime.now(timezone.utc)
+    assert asyncio.run(latido.revisar(base, cfg_latido, bot_latido, arranque=recien)) is None
+    assert telegram.enviados == []
+
+    hace_rato = recien - timedelta(seconds=cfg_latido.latido_limite + 5)
+    assert asyncio.run(latido.revisar(base, cfg_latido, bot_latido, arranque=hace_rato)) == "detenido"
+    assert len(telegram.enviados) == 1
+
+
 def test_un_telefono_revocado_no_recibe_el_aviso(cli, cfg_latido, telegram, bot_latido):
     queda = cabecera(parear(cli, "Teléfono de Taiel"))
     se_va = cabecera(parear(cli, "Teléfono perdido"))
@@ -366,7 +384,9 @@ def test_el_vigia_sigue_andando_aunque_telegram_falle(cli, cfg_latido, telegram,
 
     async def unas_vueltas() -> None:
         with pytest.raises(asyncio.TimeoutError):
-            await asyncio.wait_for(latido.vigilar(cli.app.state.base, replace(cfg_latido, latido_revisar_cada=0), bot_latido), timeout=0.3)
+            # Un servidor que arrancó hace rato: el límite se cuenta desde el último latido.
+            arranque = datetime.now(timezone.utc) - timedelta(hours=1)
+            await asyncio.wait_for(latido.vigilar(cli.app.state.base, replace(cfg_latido, latido_revisar_cada=0), bot_latido, arranque), timeout=0.3)
 
     with caplog.at_level(logging.WARNING, logger="zonda.latido"):
         asyncio.run(unas_vueltas())

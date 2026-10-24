@@ -169,16 +169,21 @@ async def _avisar(base: Base, bot: BotTelegram, texto: str) -> None:
             bot.desvincular_chat(chat_id)
 
 
-async def revisar(base: Base, cfg: Config, bot: BotTelegram | None) -> str | None:
+async def revisar(base: Base, cfg: Config, bot: BotTelegram | None, arranque: datetime | None = None) -> str | None:
     """Una vuelta del vigía. Si el análisis pasó de andando a detenido, o al revés, avisa a cada chat
     vinculado y guarda el estado nuevo, que devuelve ("detenido" o "funciona"); si no cambió, None. Sin
     bot solo guarda el estado. Si Telegram no responde, el estado no cambia y se reintenta en la vuelta
-    siguiente; si la persona bloqueó el bot, ese chat queda sin Telegram y se sigue con los demás."""
+    siguiente; si la persona bloqueó el bot, ese chat queda sin Telegram y se sigue con los demás.
+
+    [arranque] es cuándo arrancó el servidor: si estuvo apagado, el último latido guardado es viejo
+    aunque el análisis siga andando, así que el límite se cuenta desde el arranque (si no, cada vez que
+    el servidor vuelve de un corte de más de 2 minutos avisaría una caída que no pasó)."""
     recibido = base.leer_meta("latido_recibido_en")
     if recibido is None:
         return None  # todavía no llegó ningún latido: no hay nada que vigilar
     ultimo = datetime.fromisoformat(recibido)
-    detenido = (ahora() - ultimo).total_seconds() > cfg.latido_limite
+    desde = max(ultimo, arranque) if arranque is not None else ultimo
+    detenido = (ahora() - desde).total_seconds() > cfg.latido_limite
     if detenido == (base.leer_meta("latido_aviso", "funciona") == "detenido"):
         return None
     if bot is not None:
@@ -218,13 +223,15 @@ async def revisar_perdida(base: Base, cfg: Config, bot: BotTelegram | None) -> s
     return nuevo
 
 
-async def vigilar(base: Base, cfg: Config, bot: BotTelegram | None) -> None:
+async def vigilar(base: Base, cfg: Config, bot: BotTelegram | None, arranque: datetime | None = None) -> None:
     """Cada `latido_revisar_cada` segundos, la caída del análisis y la pérdida de captura. Un aviso que no
     sale no frena al otro."""
+    # Cuándo arrancó el servidor (ver revisar); las pruebas lo pasan para simular uno que anda hace rato.
+    arranque = arranque or ahora()
     while True:
-        for revision in (revisar, revisar_perdida):
+        for revision in (lambda: revisar(base, cfg, bot, arranque), lambda: revisar_perdida(base, cfg, bot)):
             try:
-                await revision(base, cfg, bot)
+                await revision()
             except ErrorTelegram as error:
                 registro.warning("El aviso del análisis en vivo no salió, se reintenta: %s", error)
             except sqlite3.Error:
