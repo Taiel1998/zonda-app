@@ -28,6 +28,8 @@ import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoPieza
+import ar.edu.uade.zonda.domain.model.EstadoSistema
 import ar.edu.uade.zonda.domain.model.EstadoTelegram
 import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Perfil
@@ -164,6 +166,19 @@ class RedesRepositoryImpl(
             certificadoVence = certificado?.notAfter?.toInstant(),
             accesoVence = respuesta.body()?.tokenVence?.aInstante() ?: red.accesoVence,
         )
+    }
+
+    override suspend fun estadoDelSistema(redId: String): EstadoSistema {
+        val red = dao.obtener(redId)?.aDominio() ?: return EstadoSistema.sinRespuesta(reloj())
+        return try {
+            val salud = conErroresTraducidos { apis.para(red).salud() }
+            salud.sistema.aDominio(horaServidor = runCatching { salud.hora.aInstante() }.getOrNull(), consultadoEn = reloj())
+        } catch (e: ErrorZonda.NoAutorizado) {
+            // Contestó pero no acepta el token: el servidor funciona; el acceso vencido lo avisa la sincronización.
+            EstadoSistema.sinRespuesta(reloj()).copy(servidor = EstadoPieza.FUNCIONA)
+        } catch (e: ErrorZonda) {
+            EstadoSistema.sinRespuesta(reloj())
+        }
     }
 
     override suspend fun marcarAccesoVencido(redId: String, vencido: Boolean) = dao.marcarAccesoVencido(redId, vencido)

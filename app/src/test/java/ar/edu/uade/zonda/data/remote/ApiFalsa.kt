@@ -105,9 +105,15 @@ class ApiFalsa : ZondaApi {
 
     override suspend fun saludConRespuesta(): retrofit2.Response<SaludDto> = retrofit2.Response.success(salud())
 
+    /** Lo que manda `GET /salud` en `sistema` (API 0.7.0); null, como un servidor anterior. */
+    var sistema: SistemaDto? = null
+
+    /** La hora del servidor que manda `GET /salud`. */
+    var horaSalud = "2026-10-12T04:05:29+00:00"
+
     override suspend fun salud(): SaludDto {
         fallarSiCorresponde("salud")
-        return SaludDto("0.3.0", "2026-10-12T04:05:29+00:00", alertas.size, RedDto(redId, redNombre), null)
+        return SaludDto("0.3.0", horaSalud, alertas.size, RedDto(redId, redNombre), null, sistema)
     }
 
     override suspend fun alertas(desde: String?): PaginaAlertasDto {

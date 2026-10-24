@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 
+from . import latido
 from . import personas as gente
 from . import registro
 from .asignaciones import asignaciones_de, asignar, responsable_de
@@ -43,6 +44,8 @@ from .modelos import (
     ImportanciaEntrada,
     IngestaEntrada,
     IngestaResultado,
+    LatidoEntrada,
+    LatidoResultado,
     PaginaAlertas,
     PareoEntrada,
     PareoSalida,
@@ -61,7 +64,7 @@ from .revisiones import aplicar_revision
 from .semilla import SQL_SEVERIDAD, guardar_equipo, severidad_de
 from .telegram import BotTelegram, ErrorTelegram
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 
 router = APIRouter()
 
@@ -140,18 +143,29 @@ def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
 
 @router.get("/salud", response_model=Salud)
 def salud(request: Request, authorization: Annotated[str | None, Header()] = None) -> Salud:
-    """Sin token sirve para verificar el servidor antes de parear. Con token, informa su vencimiento (401 si venció)."""
-    con = _base(request).conexion()
+    """Sin token sirve para verificar el servidor antes de parear. Con token, informa su vencimiento (401
+    si venció) y cómo está la cadena: el sensor, el análisis en vivo y el servidor (Estado del sistema)."""
+    base = _base(request)
+    con = base.conexion()
+    cfg = request.app.state.config
     token_vence = None
+    sistema = None
     token = token_de_cabecera(authorization)
     if token is not None:
         dispositivo = buscar_dispositivo(con, token)
         if dispositivo is None:
             raise HTTPException(status_code=401, detail="El token venció o fue revocado")
         token_vence = dispositivo["vence_en"]
-    cfg = request.app.state.config
+        sistema = latido.estado_del_sistema(base, cfg)
     cantidad = con.execute("SELECT COUNT(*) FROM alertas").fetchone()[0]
-    return Salud(version=VERSION, hora=iso(ahora()), alertas=cantidad, red={"id": cfg.red_id, "nombre": cfg.red_nombre}, tokenVence=token_vence)
+    return Salud(
+        version=VERSION,
+        hora=iso(ahora()),
+        alertas=cantidad,
+        red={"id": cfg.red_id, "nombre": cfg.red_nombre},
+        tokenVence=token_vence,
+        sistema=sistema,
+    )
 
 
 @router.get("/estado", response_model=Estado)
@@ -623,3 +637,18 @@ def ingesta_alertas(entrada: IngestaEntrada, request: Request, _: None = Depends
             if ultimo is None or ultimo < fin_mas_nuevo:
                 Base.escribir_meta(con, "ultimo_flujo", fin_mas_nuevo)
     return IngestaResultado(recibidas=len(entrada.alertas), creadas=creadas, actualizadas=len(entrada.alertas) - creadas)
+
+
+@router.post("/ingesta/latido", response_model=LatidoResultado)
+def ingesta_latido(entrada: LatidoEntrada, request: Request, _: None = Depends(verificar_token_ingesta)) -> LatidoResultado:
+    """El latido del análisis en vivo al final de cada ciclo, aunque no haya episodios, con el mismo token
+    que la ingesta. Se guarda el último: GET /salud dice con él cómo está la cadena y el vigía
+    (app/latido.py) avisa por Telegram si deja de llegar."""
+    datos = entrada.model_dump()
+    datos["hora"] = _a_utc(entrada.hora)
+    for campo in ("ultimoFlujo", "perdidaCapturaEn"):
+        if datos[campo] is not None:
+            datos[campo] = _a_utc(datos[campo])
+    with _base(request).transaccion() as con:
+        recibido = latido.guardar(con, datos)
+    return LatidoResultado(recibidoEn=recibido)

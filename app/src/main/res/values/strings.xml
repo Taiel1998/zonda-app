@@ -601,6 +601,24 @@
     <string name="estado_lista_sin_medias">Sin alertas medias sin revisar</string>
     <string name="estado_lista_sin_bajas">Sin alertas bajas sin revisar</string>
     <string name="estado_ver_todas">Ver todas →</string>
+    <!-- Tarjeta Estado del sistema (1.0.6): el sensor, el análisis en vivo y el servidor -->
+    <string name="estado_sistema_titulo">Estado del sistema</string>
+    <string name="estado_sistema_sensor">Sensor de red</string>
+    <string name="estado_sistema_analisis">Análisis en vivo</string>
+    <string name="estado_sistema_servidor">Servidor de alertas</string>
+    <string name="estado_sistema_funciona">Funciona</string>
+    <string name="estado_sistema_parcial">Viendo parcialmente</string>
+    <string name="estado_sistema_detenido">Detenido</string>
+    <string name="estado_sistema_sin_datos">Sin datos</string>
+    <string name="estado_sistema_no_responde">No responde</string>
+    <string name="estado_sistema_descripcion">%1$s: %2$s</string>
+    <string name="estado_sistema_ultima_corrida">Última corrida hace %1$s</string>
+    <string name="estado_sistema_ultima_corrida_flujo">Última corrida hace %1$s · último flujo hace %2$s</string>
+    <string name="estado_sistema_sin_corridas">Todavía no llegó ninguna corrida del análisis en vivo</string>
+    <string name="estado_sistema_perdida">Pérdida de captura: %1$s %% · medida hace %2$s</string>
+    <string name="estado_sistema_perdida_sola">Pérdida de captura: %1$s %%</string>
+    <string name="estado_sistema_perdida_sin_trafico">Pérdida de captura: sin tráfico para medir</string>
+    <string name="estado_sistema_perdida_simulada">%1$s (simulada)</string>
     <string name="estado_ver_todas_descripcion">Ver todas las alertas</string>
     <string name="estado_nota_vacia">No queda ninguna alerta sin revisar. Las nuevas aparecen acá apenas se sincronizan.</string>
     <!-- Cambio 7 (1.0.3): una revisión de este teléfono que no se aplicó porque otra persona revisó antes. -->

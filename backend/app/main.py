@@ -6,6 +6,7 @@ El contrato es el definitivo (informe, sección 13.3): después se conecta a la 
 sin tocar la app.
 
 Si TELEGRAM_BOT_TOKEN está en .env, el bot de Telegram corre en el mismo proceso (app/telegram.py).
+El vigía del latido del análisis en vivo (app/latido.py) corre siempre; sin bot no avisa.
 
 Arranque: uvicorn app.main:app --host 127.0.0.1 --port 8000
 """
@@ -18,6 +19,7 @@ from fastapi import FastAPI
 from .config import Config
 from .db import Base
 from .emisor import emitir_periodicamente
+from .latido import vigilar as vigilar_latido
 from .rutas import VERSION, router
 from .semilla import cargar_si_vacia
 from .telegram import BotTelegram, ClienteTelegram
@@ -41,6 +43,7 @@ def crear_app(config: Config | None = None) -> FastAPI:
             bot = BotTelegram(base, cfg, ClienteTelegram(cfg.telegram_token, cfg.telegram_api))
             tareas += bot.arrancar()
         app.state.bot = bot
+        tareas.append(asyncio.create_task(vigilar_latido(base, cfg, bot)))
         if cfg.emitir_cada > 0:
             tareas.append(asyncio.create_task(emitir_periodicamente(base, cfg.emitir_cada)))
         yield

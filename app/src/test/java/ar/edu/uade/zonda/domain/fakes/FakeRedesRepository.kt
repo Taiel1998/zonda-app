@@ -7,6 +7,7 @@ import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.domain.model.DetallesConexion
 import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoSistema
 import ar.edu.uade.zonda.domain.model.EstadoTelegram
 import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Perfil
@@ -49,6 +50,17 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
     override suspend fun detallesDeConexion(redId: String): DetallesConexion {
         errorDetalles?.let { throw it }
         return detallesConexion
+    }
+
+    /** Lo que contesta [estadoDelSistema] en cada consulta; por defecto, que el servidor no responde. */
+    var estadoSistema: (redId: String) -> EstadoSistema = { EstadoSistema.sinRespuesta(Instant.EPOCH) }
+
+    /** Las redes por las que se preguntó el estado del sistema, en orden. */
+    val consultasDelSistema = mutableListOf<String>()
+
+    override suspend fun estadoDelSistema(redId: String): EstadoSistema {
+        consultasDelSistema += redId
+        return estadoSistema(redId)
     }
 
     override suspend fun verificarServidor(urlBase: String) {

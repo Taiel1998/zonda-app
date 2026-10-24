@@ -30,6 +30,11 @@ class Config:
     minutos_codigo: int = 10
     dias_cache: int = 30
     tamanio_pagina: int = 200
+    # Segundos sin latido del análisis en vivo para darlo por detenido, y cada cuántos los revisa el vigía.
+    latido_limite: int = 120
+    latido_revisar_cada: int = 15
+    # Porcentaje de pérdida de captura de Zeek desde el que el sensor ve parcialmente (y se avisa).
+    perdida_limite: float = 1.0
 
     @classmethod
     def desde_entorno(cls) -> "Config":
@@ -53,4 +58,7 @@ class Config:
             multiplicar=int(leer("ZONDA_MULTIPLICAR", "1")),
             revisar_semilla=leer("ZONDA_REVISAR_SEMILLA", "0").strip().lower() in ("1", "true", "si", "sí"),
             tamanio_pagina=int(leer("ZONDA_TAMANIO_PAGINA", "200")),
+            latido_limite=int(leer("ZONDA_LATIDO_LIMITE", "120")),
+            latido_revisar_cada=int(leer("ZONDA_LATIDO_REVISAR_CADA", "15")),
+            perdida_limite=float(leer("ZONDA_PERDIDA_LIMITE", "1.0").replace(",", ".")),
         )
