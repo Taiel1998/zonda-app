@@ -139,16 +139,19 @@ class PaginaAlertas(BaseModel):
 
 
 EstadoPieza = Literal["funciona", "detenido", "sin_datos"]
+# El sensor además puede estar "parcial": Zeek anda pero perdió más que el límite de lo que pasó por el
+# puerto espejo (pérdida de captura), así que puede haber tráfico que no ve.
+EstadoSensor = Literal["funciona", "parcial", "detenido", "sin_datos"]
 
 
 class EstadoSistema(BaseModel):
     """Cómo está cada pieza de la cadena, para la tarjeta "Estado del sistema" de la app: el servidor,
     que respondió; el análisis en vivo, por la edad de su último latido; y el sensor, por lo que dijo ese
-    latido. Con el latido viejo no se sabe cómo está el sensor (sin_datos)."""
+    latido, con su pérdida de captura. Con el latido viejo no se sabe cómo está el sensor (sin_datos)."""
 
     servidor: Literal["funciona"]
     analisis: EstadoPieza
-    sensor: EstadoPieza
+    sensor: EstadoSensor
     # Cuándo llegó el último latido, con el reloj del servidor; null si nunca llegó ninguno.
     ultimaCorrida: str | None
     segundosDesdeUltimaCorrida: int | None
@@ -156,6 +159,15 @@ class EstadoSistema(BaseModel):
     ultimoFlujo: str | None
     flujosUltimaCorrida: int | None
     limiteSegundos: int
+    # La pérdida de captura de Zeek (capture_loss.log, una medición cada 15 minutos) según el último
+    # latido: el porcentaje, cuándo se midió y sobre cuántos ACK de TCP; null si no vino.
+    perdidaCaptura: float | None = None
+    perdidaCapturaEn: str | None = None
+    acksCaptura: int | None = None
+    # El valor salió del archivo de prueba del laboratorio, no de Zeek.
+    perdidaSimulada: bool = False
+    # Porcentaje desde el que el sensor ve parcialmente.
+    perdidaLimite: float
 
 
 class Salud(BaseModel):
@@ -457,8 +469,15 @@ class LatidoEntrada(BaseModel):
     episodios: int = Field(default=0, ge=0)
     # Segundos entre un ciclo y el siguiente.
     intervalo: int | None = Field(default=None, ge=1)
+    # La última medición de pérdida de captura de Zeek (capture_loss.log): porcentaje de 0 a 100, cuándo
+    # se midió y sobre cuántos ACK de TCP (sin tráfico TCP, 0 ACK y 0 %). Null si todavía no hay medición.
+    perdidaCaptura: float | None = Field(default=None, ge=0, le=100)
+    perdidaCapturaEn: str | None = None
+    acksCaptura: int | None = Field(default=None, ge=0)
+    # El valor salió del archivo de prueba del laboratorio (vivo/.perdida_simulada), no de Zeek.
+    perdidaSimulada: bool = False
 
-    @field_validator("hora", "ultimoFlujo")
+    @field_validator("hora", "ultimoFlujo", "perdidaCapturaEn")
     @classmethod
     def fecha_con_zona(cls, valor: str | None) -> str | None:
         return None if valor is None else fecha_iso_con_zona(valor)

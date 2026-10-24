@@ -646,8 +646,9 @@ def ingesta_latido(entrada: LatidoEntrada, request: Request, _: None = Depends(v
     (app/latido.py) avisa por Telegram si deja de llegar."""
     datos = entrada.model_dump()
     datos["hora"] = _a_utc(entrada.hora)
-    if entrada.ultimoFlujo is not None:
-        datos["ultimoFlujo"] = _a_utc(entrada.ultimoFlujo)
+    for campo in ("ultimoFlujo", "perdidaCapturaEn"):
+        if datos[campo] is not None:
+            datos[campo] = _a_utc(datos[campo])
     with _base(request).transaccion() as con:
         recibido = latido.guardar(con, datos)
     return LatidoResultado(recibidoEn=recibido)

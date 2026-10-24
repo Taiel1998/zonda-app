@@ -42,6 +42,7 @@ Configuración: copiar `.env.ejemplo` a `.env` (no se commitea). Variables que l
 | `ZONDA_INGESTA_TOKEN` | Token con el que la plataforma de detección manda episodios a `POST /ingesta/alertas` (cabecera `X-Token-Ingesta`); sin él la ruta responde `503`. Es una contraseña: no va al repositorio | vacío |
 | `ZONDA_LATIDO_LIMITE` | Segundos sin latido del análisis en vivo para darlo por detenido (tarjeta Estado del sistema y aviso de Telegram) | `120` |
 | `ZONDA_LATIDO_REVISAR_CADA` | Cada cuántos segundos el vigía revisa la edad del latido | `15` |
+| `ZONDA_PERDIDA_LIMITE` | Porcentaje de pérdida de captura de Zeek desde el que el sensor ve parcialmente (tarjeta en amarillo y aviso de Telegram) | `1.0` |
 
 ## Datos de muestra y fechas corridas
 
@@ -101,7 +102,7 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
 | `DELETE /dispositivos/actual` | token → 204 | 401 |
 | `GET /catalogo` | token → `{equipos {ip: nombre}, servicios []}` | 401 |
 | `POST /ingesta/alertas` | `{alertas: [episodios con el formato de la semilla], catalogo?}`, con la cabecera `X-Token-Ingesta` (no el token de los teléfonos) → `{recibidas, creadas, actualizadas}`; crea o actualiza cada episodio por id. La usa la plataforma de detección (prueba de punta a punta) | 401 token inválido, 422 formato, 503 sin token configurado |
-| `POST /ingesta/latido` | `{hora, flujos, ultimoFlujo, zeekActivo, episodios, intervalo}`, con la misma cabecera `X-Token-Ingesta` → `{recibidoEn}`; el análisis en vivo lo manda al final de cada ciclo, aunque no haya episodios, y se guarda el último | 401 token inválido, 422 formato, 503 sin token configurado |
+| `POST /ingesta/latido` | `{hora, flujos, ultimoFlujo, zeekActivo, episodios, intervalo, perdidaCaptura, perdidaCapturaEn, acksCaptura, perdidaSimulada}`, con la misma cabecera `X-Token-Ingesta` → `{recibidoEn}`; el análisis en vivo lo manda al final de cada ciclo, aunque no haya episodios, y se guarda el último | 401 token inválido, 422 formato, 503 sin token configurado |
 
 ### Una alerta
 
@@ -167,6 +168,8 @@ Si el análisis en vivo del laboratorio se cae, no se toman los registros, así 
 
 Sin ningún latido, `analisis` y `sensor` son `sin_datos`. Con el último latido de hasta `ZONDA_LATIDO_LIMITE` segundos (2 minutos), el análisis `funciona` y el sensor `funciona` o `detenido` según lo que dijo ese latido; con uno más viejo, el análisis está `detenido` y del sensor no se sabe (`sin_datos`). Sin token, `sistema` es `null`: lo del laboratorio lo ve solo un teléfono pareado.
 
+**Pérdida de captura.** Si el puerto espejo se satura, Zeek deja de ver parte del tráfico y Zonda no se entera de lo que no ve. Zeek lo mide con `misc/capture-loss` (ya cargado en zeek-lab): cada 15 minutos escribe en `capture_loss.log` qué porcentaje de lo que confirmaron los ACK de TCP no llegó a verse (`percent_lost`; sin tráfico TCP da 0 ACK y 0 %). El latido manda la última medición (`perdidaCaptura`, `perdidaCapturaEn`, `acksCaptura`) y `sistema` la devuelve con `perdidaLimite`. Si pasa de `ZONDA_PERDIDA_LIMITE` (1 %) con Zeek vivo y el latido al día, el sensor queda `parcial` ("viendo parcialmente", en amarillo en la app). Para probarlo sin saturar nada, el script del laboratorio toma el porcentaje de `vivo/.perdida_simulada` si existe y lo marca con `perdidaSimulada: true`.
+
 ## Bot de Telegram
 
 El aviso inmediato de cada alerta llega por un bot de Telegram (informe, sección 6). El bot corre dentro de la API: si `TELEGRAM_BOT_TOKEN` está en `.env`, al arrancar uvicorn arrancan también dos tareas, una que lee los mensajes del bot (long polling con `getUpdates`) y otra que cada 5 segundos busca alertas nuevas y manda los avisos (`sendMessage`). Habla con la API de bots por HTTP con httpx, sin una biblioteca aparte.
@@ -193,6 +196,18 @@ Red: Oficina central
 
 Análisis en vivo funcionando de nuevo
 Zonda volvió a recibir el análisis en vivo a las 18:47.
+Red: Oficina central
+```
+
+**El sensor viendo parcialmente.** Con el mismo criterio, el vigía avisa una vez cuando la pérdida de captura pasa del 1 % y otra cuando vuelve a quedar debajo (estado en `meta`, `perdida_aviso`). Solo mira un latido al día con Zeek vivo: si el latido venció, avisa la caída del análisis. Con la pérdida simulada, el aviso suma "(Prueba: pérdida simulada en el laboratorio.)":
+
+```
+Sensor viendo parcialmente
+Zeek perdió el 3,2 % de lo que pasó por el puerto espejo en la medición de las 18:45: puede haber tráfico, y ataques, que Zonda no ve.
+Red: Oficina central
+
+Sensor viendo todo de nuevo
+La pérdida de captura bajó al 0,0 % en la medición de las 19:00.
 Red: Oficina central
 ```
 
