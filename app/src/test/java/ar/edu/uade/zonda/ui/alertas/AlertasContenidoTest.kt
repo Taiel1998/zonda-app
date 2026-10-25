@@ -24,7 +24,6 @@ import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroEstado
-import ar.edu.uade.zonda.domain.model.FiltroServicio
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.OrigenRevision
@@ -109,8 +108,8 @@ class AlertasContenidoTest {
                 "3 alertas altas sin revisar · últimas 24 h",
             FiltroAlertas(severidades = setOf(Severidad.ALTA), periodo = Periodo.ULTIMAS_24_HORAS) to
                 "3 alertas · 3 sin revisar · altas · últimas 24 h",
-            FiltroAlertas(servicio = FiltroServicio.Uno("ssh"), periodo = Periodo.ULTIMAS_24_HORAS) to
-                "3 alertas · 3 sin revisar · SSH · últimas 24 h",
+            FiltroAlertas(servicios = setOf("ssh", "ftp"), periodo = Periodo.ULTIMAS_24_HORAS) to
+                "3 alertas · 3 sin revisar · SSH, FTP · últimas 24 h",
             FiltroAlertas(periodo = Periodo.ULTIMOS_7_DIAS) to "3 alertas · 3 sin revisar · últimos 7 días",
         )
         var filtro by mutableStateOf(casos.first().first)
@@ -243,16 +242,19 @@ class AlertasContenidoTest {
             .forEach { compose.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
         compose.onNodeWithText("KERBEROS").assertDoesNotExist()
         compose.onNodeWithText("OTRO").assertDoesNotExist()
+        compose.onNodeWithText("SSH").performScrollTo().performClick()
         compose.onNodeWithText("Los demás").performScrollTo().performClick()
         compose.onNodeWithText("srv-sueldos").performScrollTo().performClick()
+        compose.onNodeWithText("192.168.10.77").performScrollTo().performClick()
         compose.onNodeWithText("Reglas").performScrollTo().performClick()
         compose.onNodeWithText("Aplicar").performScrollTo().performClick()
         compose.waitForIdle()
 
         val esperado = FiltroAlertas(
-            servicio = FiltroServicio.Otros(setOf("ssh", "ftp", "smb", "rdp", "http", "dns", "ldap", "icmp", "netbios", "otro")),
-            destinoIp = "192.168.10.50",
-            metodo = MetodoDeteccion.REGLAS,
+            servicios = setOf("ssh"),
+            otrosServicios = setOf("ssh", "ftp", "smb", "rdp", "http", "dns", "ldap", "icmp", "netbios", "otro"),
+            destinos = setOf("192.168.10.50", "192.168.10.77"),
+            metodos = setOf(MetodoDeteccion.REGLAS),
         )
         assertEquals(listOf(esperado), aplicados)
     }

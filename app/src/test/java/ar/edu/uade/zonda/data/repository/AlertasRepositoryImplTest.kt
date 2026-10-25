@@ -6,8 +6,10 @@ import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.RangoResumen
+import java.time.LocalDateTime
+import java.time.ZoneId
 import ar.edu.uade.zonda.domain.model.Motivo
-import ar.edu.uade.zonda.domain.model.FiltroServicio
 import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.OrigenRevision
@@ -70,7 +72,7 @@ class AlertasRepositoryImplTest : PruebaConBase() {
         assertEquals(setOf("alta-ia"), ids(FiltroAlertas.sinRevisarDe(Severidad.ALTA)))
         assertEquals(setOf("alta-revisada"), ids(FiltroAlertas(estado = FiltroEstado.REVISADAS)))
         assertEquals(setOf("alta-ia", "media-reglas"), ids(FiltroAlertas(severidades = setOf(Severidad.ALTA, Severidad.MEDIA), estado = FiltroEstado.SIN_REVISAR)))
-        assertEquals(setOf("media-reglas"), ids(FiltroAlertas(metodo = MetodoDeteccion.REGLAS)))
+        assertEquals(setOf("media-reglas"), ids(FiltroAlertas(metodos = setOf(MetodoDeteccion.REGLAS))))
         assertEquals(setOf("alta-ia", "media-reglas", "alta-revisada"), ids(FiltroAlertas(periodo = Periodo.ULTIMAS_24_HORAS)))
         assertEquals(4, ids(FiltroAlertas.TODAS).size)
     }
@@ -112,10 +114,41 @@ class AlertasRepositoryImplTest : PruebaConBase() {
         assertEquals(listOf("192.168.10.50", "192.168.10.77"), opciones.destinos.map { it.ip })
         assertEquals("srv-web", opciones.destinos.first().nombre)
 
-        val otros = alertas.observarAlertas("red-1", FiltroAlertas(servicio = FiltroServicio.Otros(opciones.serviciosConChip.toSet()))).first()
+        val otros = alertas.observarAlertas("red-1", FiltroAlertas(otrosServicios = opciones.serviciosConChip.toSet())).first()
         assertEquals(setOf("sip", "smb"), otros.map { it.servicio }.toSet())
-        val ssh = alertas.observarAlertas("red-1", FiltroAlertas(servicio = FiltroServicio.Uno("ssh"))).first()
+        val ssh = alertas.observarAlertas("red-1", FiltroAlertas(servicios = setOf("ssh"))).first()
         assertEquals(3, ssh.size)
+        // De a varios (decisión 47): SSH y FTP juntos, "Los demás" se suma a un servicio y dos equipos a la vez.
+        val sshYFtp = alertas.observarAlertas("red-1", FiltroAlertas(servicios = setOf("ssh", "ftp"))).first()
+        assertEquals(5, sshYFtp.size)
+        val sshYLosDemas = alertas.observarAlertas(
+            "red-1",
+            FiltroAlertas(servicios = setOf("ssh"), otrosServicios = opciones.serviciosConChip.toSet()),
+        ).first()
+        assertEquals(setOf("ssh", "sip", "smb"), sshYLosDemas.map { it.servicio }.toSet())
+        val dosEquipos = alertas.observarAlertas("red-1", FiltroAlertas(destinos = setOf("192.168.10.50", "192.168.10.77"))).first()
+        assertEquals(servicios.size, dosEquipos.size)
+    }
+
+    @Test
+    fun `fechas deja las alertas entre desde y hasta, con el minuto de hasta, y manda sobre el periodo`() = runTest {
+        conRed()
+        val zona = ZoneId.systemDefault()
+        val base = LocalDateTime.ofInstant(Fixtures.AHORA, zona).minusDays(3).withHour(2).withMinute(0).withSecond(0).withNano(0)
+        fun a(id: String, momento: LocalDateTime) = Fixtures.alerta(id, inicio = momento.atZone(zona).toInstant())
+        alertas.guardarDelServidor(
+            listOf(
+                a("antes", base.minusMinutes(1)),
+                a("desde", base),
+                a("hasta", base.plusHours(2).plusSeconds(30)),
+                a("despues", base.plusHours(2).plusMinutes(1)),
+            ),
+        )
+
+        val rango = RangoResumen(base, base.plusHours(2))
+        val entre = alertas.observarAlertas("red-1", FiltroAlertas(periodo = Periodo.ULTIMAS_24_HORAS, fechas = rango)).first()
+
+        assertEquals(setOf("desde", "hasta"), entre.map { it.id }.toSet())
     }
 
     @Test
