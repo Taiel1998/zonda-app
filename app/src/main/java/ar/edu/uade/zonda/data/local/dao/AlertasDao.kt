@@ -23,7 +23,8 @@ abstract class AlertasDao {
     /**
      * Lista filtrada (RF02). Un filtro en null, o con su bandera de "todos" prendida, no filtra; así una
      * sola consulta cubre todas las combinaciones sin armar SQL a mano. [otrosServicios] es el chip "Los demás"
-     * de Más filtros: los servicios que no están en [serviciosConChip].
+     * de Más filtros: los servicios que no están en [serviciosConChip]. Servicios, equipos y métodos van de a
+     * varios (decisión 47).
      */
     @Transaction
     @Query(
@@ -33,13 +34,15 @@ abstract class AlertasDao {
           AND (:todosLosEstados OR estadoRevision IN (:estados))
           AND (:todasLasSeveridades OR severidad IN (:severidades))
           AND (:desde IS NULL OR inicio >= :desde)
-          AND (:servicio IS NULL OR servicio = :servicio)
-          AND (NOT :otrosServicios OR servicio NOT IN (:serviciosConChip))
-          AND (:destinoIp IS NULL OR destinoIp = :destinoIp)
-          AND (:metodo IS NULL
-               OR (:metodo = 'IA' AND veredictoIa = 1)
-               OR (:metodo = 'UMBRALES' AND veredictoUmbrales = 1)
-               OR (:metodo = 'REGLAS' AND veredictoReglas = 1))
+          AND (:hasta IS NULL OR inicio < :hasta)
+          AND (:todosLosServicios
+               OR servicio IN (:servicios)
+               OR (:otrosServicios AND servicio NOT IN (:serviciosConChip)))
+          AND (:todosLosDestinos OR destinoIp IN (:destinos))
+          AND (:todosLosMetodos
+               OR (:conIa AND veredictoIa = 1)
+               OR (:conUmbrales AND veredictoUmbrales = 1)
+               OR (:conReglas AND veredictoReglas = 1))
         ORDER BY inicio DESC
         """,
     )
@@ -50,11 +53,17 @@ abstract class AlertasDao {
         todasLasSeveridades: Boolean,
         severidades: List<String>,
         desde: Long?,
-        servicio: String?,
+        hasta: Long?,
+        todosLosServicios: Boolean,
+        servicios: List<String>,
         otrosServicios: Boolean,
         serviciosConChip: List<String>,
-        destinoIp: String?,
-        metodo: String?,
+        todosLosDestinos: Boolean,
+        destinos: List<String>,
+        todosLosMetodos: Boolean,
+        conIa: Boolean,
+        conUmbrales: Boolean,
+        conReglas: Boolean,
     ): Flow<List<AlertaConDetalles>>
 
     @Transaction

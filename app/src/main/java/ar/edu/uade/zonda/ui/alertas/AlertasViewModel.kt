@@ -21,6 +21,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import ar.edu.uade.zonda.domain.model.Periodo
+import java.time.Instant
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -58,6 +62,13 @@ class AlertasViewModel(
         .flatMapLatest { observarAlertas(it) }
         .onEach { primeraLectura.value = true }
 
+    /** Las horas de inicio con los demás filtros y sin período ni fechas: cuenta "Mostrar N alertas" de Fechas. */
+    private val iniciosSinFechas: Flow<List<Instant>> = filtro
+        .map { it.copy(periodo = Periodo.TODO, fechas = null) }
+        .distinctUntilChanged()
+        .flatMapLatest { observarAlertas(it) }
+        .map { alertas -> alertas.map(Alerta::inicio) }
+
     private val opciones: Flow<OpcionesDeFiltro> = redes.observarRedActiva().flatMapLatest { red ->
         if (red == null) flowOf(OpcionesDeFiltro()) else alertas.observarOpcionesDeFiltro(red.id)
     }
@@ -73,6 +84,7 @@ class AlertasViewModel(
         val guardadas: Int,
         val leida: Boolean,
         val contexto: ContextoTarjetas = ContextoTarjetas(),
+        val inicios: List<Instant> = emptyList(),
     )
 
     private val contexto: Flow<ContextoTarjetas> = redes.observarContextoTarjetas()
@@ -91,7 +103,8 @@ class AlertasViewModel(
                 Datos(red, alertas, opciones, guardadas, leida)
             },
             contexto,
-        ) { datos, contexto -> datos.copy(contexto = contexto) },
+            iniciosSinFechas,
+        ) { datos, contexto, inicios -> datos.copy(contexto = contexto, inicios = inicios) },
         combine(filtro, conectividad.conectado, sincronizando, aviso, ultimoError) { filtro, conectado, sincronizando, aviso, error ->
             Controles(filtro, conectado, sincronizando, aviso, error)
         },
@@ -112,6 +125,7 @@ class AlertasViewModel(
             sincronizando = controles.sincronizando,
             aviso = controles.aviso,
             contexto = datos.contexto,
+            iniciosSinFechas = datos.inicios,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AlertasUiState())
 

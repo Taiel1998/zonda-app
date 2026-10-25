@@ -24,7 +24,6 @@ import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroEstado
-import ar.edu.uade.zonda.domain.model.FiltroServicio
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.OrigenRevision
@@ -95,7 +94,8 @@ class AlertasContenidoTest {
         compose.onAllNodesWithText("10:50 · lun 12/10").assertCountEquals(2)
         // Por defecto: todas las de los últimos 30 días, con la hora de los datos.
         compose.onNodeWithText("2 alertas · 1 sin revisar · últimos 30 días · actualizado 12:00").assertIsDisplayed()
-        listOf("Todas", "Severidad", "30 días", "Más filtros").forEach { compose.onNodeWithText(it).assertIsDisplayed() }
+        // La fila se desliza: en la pantalla chica de la prueba, "Más filtros" queda a la derecha de "Fechas".
+        listOf("Todas", "Severidad", "30 días", "Fechas", "Más filtros").forEach { compose.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
 
         compose.onAllNodesWithText("pc-09 → srv-web").onFirst().performClick()
         assertEquals("a-1", abierta)
@@ -109,8 +109,8 @@ class AlertasContenidoTest {
                 "3 alertas altas sin revisar · últimas 24 h",
             FiltroAlertas(severidades = setOf(Severidad.ALTA), periodo = Periodo.ULTIMAS_24_HORAS) to
                 "3 alertas · 3 sin revisar · altas · últimas 24 h",
-            FiltroAlertas(servicio = FiltroServicio.Uno("ssh"), periodo = Periodo.ULTIMAS_24_HORAS) to
-                "3 alertas · 3 sin revisar · SSH · últimas 24 h",
+            FiltroAlertas(servicios = setOf("ssh", "ftp"), periodo = Periodo.ULTIMAS_24_HORAS) to
+                "3 alertas · 3 sin revisar · SSH, FTP · últimas 24 h",
             FiltroAlertas(periodo = Periodo.ULTIMOS_7_DIAS) to "3 alertas · 3 sin revisar · últimos 7 días",
         )
         var filtro by mutableStateOf(casos.first().first)
@@ -236,23 +236,26 @@ class AlertasContenidoTest {
         )
         dibujar(AlertasUiState(contenido = lista(Fixtures.alerta("a-1")), opciones = opciones), alCambiarFiltro = { aplicados += it })
 
-        compose.onNodeWithText("Más filtros").performClick()
+        compose.onNodeWithText("Más filtros").performScrollTo().performClick()
         listOf("SSH", "FTP", "SMB", "RDP", "HTTP", "DNS", "LDAP", "ICMP", "NETBIOS", "Sin identificar", "Los demás")
             .forEach { compose.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
         listOf("srv-sueldos", "192.168.10.77", "Modelo de IA", "Umbrales", "Reglas")
             .forEach { compose.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
         compose.onNodeWithText("KERBEROS").assertDoesNotExist()
         compose.onNodeWithText("OTRO").assertDoesNotExist()
+        compose.onNodeWithText("SSH").performScrollTo().performClick()
         compose.onNodeWithText("Los demás").performScrollTo().performClick()
         compose.onNodeWithText("srv-sueldos").performScrollTo().performClick()
+        compose.onNodeWithText("192.168.10.77").performScrollTo().performClick()
         compose.onNodeWithText("Reglas").performScrollTo().performClick()
         compose.onNodeWithText("Aplicar").performScrollTo().performClick()
         compose.waitForIdle()
 
         val esperado = FiltroAlertas(
-            servicio = FiltroServicio.Otros(setOf("ssh", "ftp", "smb", "rdp", "http", "dns", "ldap", "icmp", "netbios", "otro")),
-            destinoIp = "192.168.10.50",
-            metodo = MetodoDeteccion.REGLAS,
+            servicios = setOf("ssh"),
+            otrosServicios = setOf("ssh", "ftp", "smb", "rdp", "http", "dns", "ldap", "icmp", "netbios", "otro"),
+            destinos = setOf("192.168.10.50", "192.168.10.77"),
+            metodos = setOf(MetodoDeteccion.REGLAS),
         )
         assertEquals(listOf(esperado), aplicados)
     }

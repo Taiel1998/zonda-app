@@ -40,9 +40,9 @@ import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.FiltroResponsable
-import ar.edu.uade.zonda.domain.model.FiltroServicio
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.resumen.textosDelChip
 import ar.edu.uade.zonda.ui.components.AvisoInferior
 import ar.edu.uade.zonda.ui.components.BannerAccesoVencido
 import ar.edu.uade.zonda.ui.components.BannerSinConexion
@@ -164,6 +164,7 @@ fun AlertasContenido(
                     opciones = estado.opciones,
                     personas = estado.contexto.personas,
                     miId = estado.contexto.miId,
+                    iniciosParaFechas = estado.iniciosSinFechas,
                     alCambiar = alCambiarFiltro,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -273,14 +274,20 @@ private fun resumen(lista: ContenidoAlertas.Lista, estado: AlertasUiState, zona:
         null -> Unit
     }
     if (severidades.isNotEmpty() && filtro.estado != FiltroEstado.SIN_REVISAR) partes += adjetivos(severidades, cantidad = 2)
-    when (val servicio = filtro.servicio) {
-        is FiltroServicio.Uno -> partes += Formato.servicio(servicio.nombre)
-        is FiltroServicio.Otros -> partes += stringResource(R.string.resumen_otros_servicios)
-        null -> Unit
+    // Servicios, equipos y métodos van de a varios (decisión 47): "SSH, FTP · srv-sueldos".
+    val servicios = filtro.servicios.map(Formato::servicio) +
+        listOfNotNull(filtro.otrosServicios?.let { stringResource(R.string.resumen_otros_servicios) })
+    if (servicios.isNotEmpty()) partes += servicios.joinToString(", ")
+    if (filtro.destinos.isNotEmpty()) {
+        partes += filtro.destinos.joinToString(", ") { ip -> estado.opciones.destinos.firstOrNull { it.ip == ip }?.etiqueta ?: ip }
     }
-    filtro.destinoIp?.let { ip -> partes += estado.opciones.destinos.firstOrNull { it.ip == ip }?.etiqueta ?: ip }
-    filtro.metodo?.let { partes += stringResource(it.nombreEnFiltro()) }
-    partes += stringResource(filtro.periodo.enResumen() ?: R.string.periodo_ultimos_30d)
+    if (filtro.metodos.isNotEmpty()) partes += filtro.metodos.sorted().map { stringResource(it.nombreEnFiltro()) }.joinToString(", ")
+    val fechas = filtro.fechas
+    partes += if (fechas != null) {
+        fechas.textosDelChip(LocalContext.current.resources).first().texto
+    } else {
+        stringResource(filtro.periodo.enResumen() ?: R.string.periodo_ultimos_30d)
+    }
     // La hora de los datos va solo sin filtros, como en el Figma: con filtros la línea ya es larga.
     if (!filtro.activo) {
         partes += when {

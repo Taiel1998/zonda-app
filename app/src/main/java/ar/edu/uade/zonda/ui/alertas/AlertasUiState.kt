@@ -64,4 +64,6 @@ data class AlertasUiState(
     val aviso: AvisoAlertas? = null,
     /** Quién es este teléfono, la gente y la importancia de los equipos: chips, líneas y el filtro Responsable. */
     val contexto: ContextoTarjetas = ContextoTarjetas(),
+    /** Las horas de inicio con los demás filtros, sin período ni fechas: "Mostrar N alertas" de la hoja Fechas. */
+    val iniciosSinFechas: List<Instant> = emptyList(),
 )

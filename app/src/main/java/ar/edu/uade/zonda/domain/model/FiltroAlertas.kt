@@ -34,13 +34,6 @@ enum class FiltroEstado(val estados: Set<EstadoRevision>?) {
     TODAS(null),
 }
 
-/** El servicio de Más filtros: uno con su chip, o "Los demás", los que no tienen chip propio. */
-sealed interface FiltroServicio {
-    data class Uno(val nombre: String) : FiltroServicio
-
-    data class Otros(val conChip: Set<String>) : FiltroServicio
-}
-
 /**
  * El responsable de Más filtros (decisión 42; Figma 468-1921): "Asignadas a mí", "Sin asignar" o una
  * persona. Sin filtro ("Cualquiera"), todas.
@@ -71,9 +64,22 @@ data class FiltroAlertas(
     val estado: FiltroEstado = FiltroEstado.TODAS,
     val severidades: Set<Severidad> = emptySet(),
     val periodo: Periodo = Periodo.ULTIMOS_30_DIAS,
-    val servicio: FiltroServicio? = null,
-    val destinoIp: String? = null,
-    val metodo: MetodoDeteccion? = null,
+    /** Los servicios elegidos en Más filtros, de a varios (decisión 47); vacío es todos. */
+    val servicios: Set<String> = emptySet(),
+    /**
+     * "Los demás" de Más filtros: los servicios sin chip propio. Guarda los chips de cuando se eligió y se
+     * suma a [servicios]; null si no se eligió.
+     */
+    val otrosServicios: Set<String>? = null,
+    /** Los equipos destino elegidos (sus IP), de a varios; vacío es todos. */
+    val destinos: Set<String> = emptySet(),
+    /** Los métodos elegidos, de a varios: entra la alerta que marcó alguno; vacío es todos. */
+    val metodos: Set<MetodoDeteccion> = emptySet(),
+    /**
+     * Días y horas exactos, con la hoja "Fechas" del Resumen (decisión 47): si están, mandan sobre el
+     * [periodo]. "Hasta" incluye su minuto, como en el Resumen.
+     */
+    val fechas: RangoResumen? = null,
     /**
      * Solo las alertas con una revisión de este teléfono que no se aplicó porque otra persona la revisó
      * antes (el envío quedó en conflicto). Lo pone "Ver" del aviso de Estado con varias (cambio 7).
@@ -85,9 +91,10 @@ data class FiltroAlertas(
     val activo: Boolean
         get() = this != TODAS
 
-    /** Cuántos de Más filtros hay puestos: "Más filtros (1)". */
+    /** Cuántos valores de Más filtros hay elegidos: "Más filtros (3)" con SSH, FTP y un equipo. */
     val cantidadMasFiltros: Int
-        get() = listOfNotNull(servicio, destinoIp, metodo, responsable).size
+        get() = servicios.size + (if (otrosServicios != null) 1 else 0) + destinos.size + metodos.size +
+            (if (responsable != null) 1 else 0)
 
     companion object {
         val TODAS = FiltroAlertas()

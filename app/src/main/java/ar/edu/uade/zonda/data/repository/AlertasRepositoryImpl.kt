@@ -14,7 +14,7 @@ import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
-import ar.edu.uade.zonda.domain.model.FiltroServicio
+import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
@@ -23,6 +23,7 @@ import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.ResultadoSincronizacion
 import java.time.Instant
+import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -38,6 +39,7 @@ class AlertasRepositoryImpl(
     private val dao: AlertasDao,
     private val sincronizador: Sincronizador = SinSincronizador,
     private val reloj: () -> Instant = Instant::now,
+    private val zona: () -> ZoneId = ZoneId::systemDefault,
 ) : AlertasRepository {
 
     override fun observarAlertas(redId: String, filtro: FiltroAlertas): Flow<List<Alerta>> =
@@ -47,12 +49,19 @@ class AlertasRepositoryImpl(
             estados = filtro.estado.estados.orEmpty().map { it.name }.ifEmpty { listOf(NINGUNO) },
             todasLasSeveridades = filtro.severidades.isEmpty(),
             severidades = filtro.severidades.map { it.name }.ifEmpty { listOf(NINGUNO) },
-            desde = filtro.periodo.desde(reloj())?.toEpochMilli(),
-            servicio = (filtro.servicio as? FiltroServicio.Uno)?.nombre,
-            otrosServicios = filtro.servicio is FiltroServicio.Otros,
-            serviciosConChip = (filtro.servicio as? FiltroServicio.Otros)?.conChip.orEmpty().toList().ifEmpty { listOf(NINGUNO) },
-            destinoIp = filtro.destinoIp,
-            metodo = filtro.metodo?.name,
+            // Las fechas de "Fechas" mandan sobre el período (decisión 47); "hasta" incluye su minuto.
+            desde = (filtro.fechas?.desde?.atZone(zona())?.toInstant() ?: filtro.periodo.desde(reloj()))?.toEpochMilli(),
+            hasta = filtro.fechas?.fin?.atZone(zona())?.toInstant()?.toEpochMilli(),
+            todosLosServicios = filtro.servicios.isEmpty() && filtro.otrosServicios == null,
+            servicios = filtro.servicios.toList().ifEmpty { listOf(NINGUNO) },
+            otrosServicios = filtro.otrosServicios != null,
+            serviciosConChip = filtro.otrosServicios.orEmpty().toList().ifEmpty { listOf(NINGUNO) },
+            todosLosDestinos = filtro.destinos.isEmpty(),
+            destinos = filtro.destinos.toList().ifEmpty { listOf(NINGUNO) },
+            todosLosMetodos = filtro.metodos.isEmpty(),
+            conIa = MetodoDeteccion.IA in filtro.metodos,
+            conUmbrales = MetodoDeteccion.UMBRALES in filtro.metodos,
+            conReglas = MetodoDeteccion.REGLAS in filtro.metodos,
         ).map { filas ->
             val alertas = filas.map(AlertaConDetalles::aDominio)
             // El envío sale de la acción pendiente de cada alerta, que ya viene en la fila (cambio 7), y el

@@ -4,6 +4,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +23,6 @@ import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.FiltroResponsable
-import ar.edu.uade.zonda.domain.model.FiltroServicio
 import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
@@ -42,8 +42,15 @@ import ar.edu.uade.zonda.ui.nombreEnFiltro
 import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.theme.tituloHoja
 import ar.edu.uade.zonda.ui.tituloEnHoja
+import ar.edu.uade.zonda.domain.model.PeriodoResumen
+import ar.edu.uade.zonda.ui.resumen.ChipDeFechas
+import ar.edu.uade.zonda.ui.resumen.HojaFechas
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 
-private enum class HojaFiltro { ESTADO, SEVERIDAD, PERIODO, MAS }
+private enum class HojaFiltro { ESTADO, SEVERIDAD, PERIODO, FECHAS, MAS }
 
 /**
  * Los chips de la lista (Figma 2-3): el de estado muestra el elegido y va siempre verde; Severidad
@@ -60,6 +67,8 @@ fun FiltrosAlertas(
     /** La gente de la red, para el grupo Responsable (decisión 42); vacía con un servidor anterior. */
     personas: List<Persona> = emptyList(),
     miId: String? = null,
+    /** Las horas de inicio con los demás filtros, sin período ni fechas: "Mostrar N alertas" de Fechas. */
+    iniciosParaFechas: List<Instant> = emptyList(),
 ) {
     var hoja by remember { mutableStateOf<HojaFiltro?>(null) }
     val masFiltros = filtro.cantidadMasFiltros
@@ -96,10 +105,13 @@ fun FiltrosAlertas(
         )
         ChipOpcion(
             texto = stringResource(filtro.periodo.etiqueta()),
-            elegido = filtro.periodo != FiltroAlertas.TODAS.periodo,
+            elegido = filtro.fechas == null && filtro.periodo != FiltroAlertas.TODAS.periodo,
             alTocar = { hoja = HojaFiltro.PERIODO },
             rol = Role.Button,
         )
+        // Días y horas exactos con la hoja del Resumen (decisión 47); mandan sobre el período. En la fila
+        // que se desliza el ancho no tiene tope y el texto del chip quedaba en cero: se le pone uno.
+        ChipDeFechas(fechas = filtro.fechas, alTocar = { hoja = HojaFiltro.FECHAS }, modifier = Modifier.widthIn(max = 280.dp))
         ChipOpcion(
             texto = if (masFiltros == 0) stringResource(R.string.filtro_mas) else stringResource(R.string.filtro_mas_con_cantidad, masFiltros),
             elegido = masFiltros > 0,
@@ -143,8 +155,19 @@ fun FiltrosAlertas(
             },
             seleccionada = filtro.periodo,
             alCerrar = { hoja = null },
-            alAplicar = { alCambiar(filtro.copy(periodo = it)); hoja = null },
+            alAplicar = { alCambiar(filtro.copy(periodo = it, fechas = null)); hoja = null },
         )
+        HojaFiltro.FECHAS -> {
+            val zona = ZoneId.systemDefault()
+            val hoy = LocalDate.now(zona)
+            HojaFechas(
+                rango = filtro.fechas ?: PeriodoResumen.SIETE_DIAS.rango(hoy),
+                hoy = hoy,
+                cuantas = { rango -> iniciosParaFechas.count { LocalDateTime.ofInstant(it, zona) in rango } },
+                alMostrar = { alCambiar(filtro.copy(fechas = it)); hoja = null },
+                alCancelar = { hoja = null },
+            )
+        }
         HojaFiltro.MAS -> HojaMasFiltros(
             filtro = filtro,
             opciones = opciones,
@@ -167,9 +190,9 @@ private fun textoDeSeveridades(severidades: Set<Severidad>): String =
     }
 
 /**
- * Más filtros (Figma 51-2202): servicio, equipo destino y método que la detectó, uno por grupo; tocar
- * el elegido lo quita. Los servicios y los equipos salen de las alertas guardadas, que los informa el
- * servidor; los servicios que no tienen chip propio entran en "Los demás".
+ * Más filtros (Figma 51-2202): servicio, equipo destino y método que la detectó, de a varios por grupo
+ * (decisión 47); tocar un elegido lo quita. Los servicios y los equipos salen de las alertas guardadas,
+ * que los informa el servidor; los servicios que no tienen chip propio entran en "Los demás".
  */
 @Composable
 private fun HojaMasFiltros(
@@ -195,23 +218,23 @@ fun ContenidoMasFiltros(
     miId: String? = null,
 ) {
     var responsable by remember(filtro) { mutableStateOf(filtro.responsable) }
-    var servicio by remember(filtro) { mutableStateOf(filtro.servicio) }
-    var destino by remember(filtro) { mutableStateOf(filtro.destinoIp) }
-    var metodo by remember(filtro) { mutableStateOf(filtro.metodo) }
-    val otros = FiltroServicio.Otros(opciones.serviciosConChip.toSet())
+    var servicios by remember(filtro) { mutableStateOf(filtro.servicios) }
+    var conLosDemas by remember(filtro) { mutableStateOf(filtro.otrosServicios != null) }
+    var destinos by remember(filtro) { mutableStateOf(filtro.destinos) }
+    var metodos by remember(filtro) { mutableStateOf(filtro.metodos) }
 
     Text(text = stringResource(R.string.filtro_mas_titulo), style = MaterialTheme.typography.tituloHoja)
     if (opciones.servicios.isNotEmpty()) {
         GrupoDeChips(titulo = stringResource(R.string.filtro_servicio)) {
+            // De a varios (decisión 47): cada chip suma o saca su servicio.
             opciones.serviciosConChip.forEach { nombre ->
-                val este = FiltroServicio.Uno(nombre)
-                ChipOpcion(Formato.servicio(nombre), elegido = servicio == este, alTocar = { servicio = if (servicio == este) null else este })
+                ChipOpcion(Formato.servicio(nombre), elegido = nombre in servicios, alTocar = { servicios = servicios.alternar(nombre) })
             }
             if (opciones.hayOtrosServicios) {
                 ChipOpcion(
                     texto = stringResource(R.string.filtro_otros),
-                    elegido = servicio is FiltroServicio.Otros,
-                    alTocar = { servicio = if (servicio is FiltroServicio.Otros) null else otros },
+                    elegido = conLosDemas,
+                    alTocar = { conLosDemas = !conLosDemas },
                 )
             }
         }
@@ -219,13 +242,13 @@ fun ContenidoMasFiltros(
     if (opciones.destinos.isNotEmpty()) {
         GrupoDeChips(titulo = stringResource(R.string.filtro_destino)) {
             opciones.destinos.forEach { equipo ->
-                ChipOpcion(equipo.etiqueta, elegido = destino == equipo.ip, alTocar = { destino = if (destino == equipo.ip) null else equipo.ip })
+                ChipOpcion(equipo.etiqueta, elegido = equipo.ip in destinos, alTocar = { destinos = destinos.alternar(equipo.ip) })
             }
         }
     }
     GrupoDeChips(titulo = stringResource(R.string.filtro_metodo)) {
         MetodoDeteccion.entries.forEach { valor ->
-            ChipOpcion(stringResource(valor.nombreEnFiltro()), elegido = metodo == valor, alTocar = { metodo = if (metodo == valor) null else valor })
+            ChipOpcion(stringResource(valor.nombreEnFiltro()), elegido = valor in metodos, alTocar = { metodos = metodos.alternar(valor) })
         }
     }
     // Figma 468-1921: "Cualquiera", "Asignadas a mí", "Sin asignar" y cada una de las otras personas.
@@ -257,18 +280,23 @@ fun ContenidoMasFiltros(
         alAplicar = {
             alAplicar(
                 filtro.copy(
-                    servicio = if (servicio is FiltroServicio.Otros) otros else servicio,
-                    destinoIp = destino,
-                    metodo = metodo,
+                    servicios = servicios,
+                    otrosServicios = if (conLosDemas) opciones.serviciosConChip.toSet() else null,
+                    destinos = destinos,
+                    metodos = metodos,
                     responsable = responsable,
                 ),
             )
         },
         alLimpiar = {
-            servicio = null
-            destino = null
-            metodo = null
+            servicios = emptySet()
+            conLosDemas = false
+            destinos = emptySet()
+            metodos = emptySet()
             responsable = null
         },
     )
 }
+
+/** Suma el valor si no estaba y lo saca si estaba: los chips de a varios de Más filtros. */
+private fun <T> Set<T>.alternar(valor: T): Set<T> = if (valor in this) this - valor else this + valor
