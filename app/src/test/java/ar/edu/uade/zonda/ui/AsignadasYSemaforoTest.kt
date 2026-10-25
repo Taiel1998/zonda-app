@@ -183,7 +183,7 @@ class AsignadasYSemaforoTest {
         dibujarAlertas(AlertasUiState(contenido = ContenidoAlertas.Lista(listOf(deTaiel), sinRevisar = 1), filtro = filtro, contexto = contexto))
 
         compose.onNodeWithText("1 alerta · asignadas a mí · últimos 30 días").assertIsDisplayed()
-        compose.onNodeWithText("Más filtros (1)").assertIsDisplayed()
+        compose.onNodeWithText("Más filtros (1)").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -191,7 +191,7 @@ class AsignadasYSemaforoTest {
         val aplicados = mutableListOf<FiltroAlertas>()
         dibujarAlertas(AlertasUiState(contenido = ContenidoAlertas.Lista(listOf(deTaiel), sinRevisar = 1), contexto = contexto), alCambiarFiltro = { aplicados += it })
 
-        compose.onNodeWithText("Más filtros").performClick()
+        compose.onNodeWithText("Más filtros").performScrollTo().performClick()
         listOf("Responsable", "Cualquiera", "Asignadas a mí", "Sin asignar", "Taiel", "Meli").forEach {
             compose.onNodeWithText(it).performScrollTo().assertIsDisplayed()
         }

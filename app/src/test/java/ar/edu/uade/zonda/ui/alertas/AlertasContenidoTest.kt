@@ -94,7 +94,8 @@ class AlertasContenidoTest {
         compose.onAllNodesWithText("10:50 · lun 12/10").assertCountEquals(2)
         // Por defecto: todas las de los últimos 30 días, con la hora de los datos.
         compose.onNodeWithText("2 alertas · 1 sin revisar · últimos 30 días · actualizado 12:00").assertIsDisplayed()
-        listOf("Todas", "Severidad", "30 días", "Más filtros").forEach { compose.onNodeWithText(it).assertIsDisplayed() }
+        // La fila se desliza: en la pantalla chica de la prueba, "Más filtros" queda a la derecha de "Fechas".
+        listOf("Todas", "Severidad", "30 días", "Fechas", "Más filtros").forEach { compose.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
 
         compose.onAllNodesWithText("pc-09 → srv-web").onFirst().performClick()
         assertEquals("a-1", abierta)
@@ -235,7 +236,7 @@ class AlertasContenidoTest {
         )
         dibujar(AlertasUiState(contenido = lista(Fixtures.alerta("a-1")), opciones = opciones), alCambiarFiltro = { aplicados += it })
 
-        compose.onNodeWithText("Más filtros").performClick()
+        compose.onNodeWithText("Más filtros").performScrollTo().performClick()
         listOf("SSH", "FTP", "SMB", "RDP", "HTTP", "DNS", "LDAP", "ICMP", "NETBIOS", "Sin identificar", "Los demás")
             .forEach { compose.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
         listOf("srv-sueldos", "192.168.10.77", "Modelo de IA", "Umbrales", "Reglas")
