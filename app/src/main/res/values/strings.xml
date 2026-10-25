@@ -619,7 +619,7 @@
     <!-- El dato debajo de cada pieza -->
     <string name="estado_sistema_sensor_ve_todo">Ve todo el tráfico</string>
     <string name="estado_sistema_sensor_no_vio">No llegó a ver el %1$s %% del tráfico</string>
-    <string name="estado_sistema_sensor_sin_trafico">Sin tráfico para saber si ve todo</string>
+    <string name="estado_sistema_sensor_sin_trafico">Sin tráfico para medir pérdidas</string>
     <string name="estado_sistema_sensor_simulado">%1$s (prueba simulada)</string>
     <string name="estado_sistema_sensor_y_ultimo">%1$s · último tráfico hace %2$s</string>
     <string name="estado_sistema_sensor_ultimo">Último tráfico hace %1$s</string>

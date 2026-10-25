@@ -120,7 +120,7 @@ private fun palabraDe(estado: EstadoPieza): Int = when (estado) {
 /**
  * Lo que vio el sensor: "Ve todo el tráfico · último tráfico hace 4 min", "No llegó a ver el 5,0 % del
  * tráfico (prueba simulada)" o, si no hubo tráfico para medir (Zeek mide cada 15 minutos sobre las
- * conexiones TCP), "Sin tráfico para saber si ve todo". Sin el análisis no hay noticias del sensor.
+ * conexiones TCP), "Sin tráfico para medir pérdidas". Sin el análisis no hay noticias del sensor.
  */
 @Composable
 private fun detalleDelSensor(sistema: EstadoSistema, ahora: Instant): String {

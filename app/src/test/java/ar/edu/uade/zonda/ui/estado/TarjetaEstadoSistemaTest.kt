@@ -132,7 +132,7 @@ class TarjetaEstadoSistemaTest {
     fun `sin trafico para medir lo dice y la prueba simulada se aclara`() {
         dibujar(sistema().copy(perdidaCaptura = 0.0, perdidaMedidaEn = ahora, sinTraficoParaMedir = true, perdidaSimulada = true))
 
-        compose.onNodeWithText("Sin tráfico para saber si ve todo (prueba simulada) · último tráfico hace 4 min").assertIsDisplayed()
+        compose.onNodeWithText("Sin tráfico para medir pérdidas (prueba simulada) · último tráfico hace 4 min").assertIsDisplayed()
     }
 
     @Test

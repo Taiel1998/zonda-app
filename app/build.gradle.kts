@@ -31,7 +31,7 @@ android {
         // Android 8.0 (API 26) o superior, según RNF11.
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
+        versionCode = 9
         versionName = "1.0.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
