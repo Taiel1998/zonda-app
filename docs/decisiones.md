@@ -440,3 +440,13 @@ Registro corto de las decisiones que cambian algo respecto de la Etapa 1 o que c
 **Alternativa descartada.** Mostrar todos los servicios sin límite: en una red grande serían decenas de chips. Marcar el servidor como respondido con cualquier llamada de la app: mezclaría lo que mide la tarjeta (la consulta de salud, con el estado del sensor y del análisis) con otras respuestas.
 
 **Qué cambia.** App: `Formato.servicio`, `OpcionesDeFiltro.SERVICIOS_CON_CHIP` (de 5 a 10), el texto "Los demás", `ObservarEstadoSistema.preguntarYa` y el final de cada sincronización en `EstadoViewModel`. Pruebas: `FormatoTest`, `AlertasRepositoryImplTest`, `AlertasContenidoTest`, `ObservarEstadoSistemaTest` y `EstadoSistemaViewModelTest`. El aviso de Telegram lo arma el servidor y sigue diciendo el servicio como llega.
+
+## 47. Más filtros de a varios y "Fechas" en la lista de alertas (versión 1.0.7)
+
+**Decisión.** En Más filtros, cada chip de servicio, de equipo destino y de método suma o saca su valor: se pueden elegir varios a la vez (SSH y FTP, dos servidores, IA o umbrales). Dentro de un grupo entra la alerta que cumple alguno; entre grupos, las que cumplen todos, como ya pasaba con las severidades. "Los demás" se suma a los servicios elegidos. La línea de resumen los nombra separados por comas ("SSH, FTP · srv-sueldos") y "Más filtros (n)" cuenta los valores elegidos. El responsable sigue siendo de a uno. Al lado del período, la lista suma el chip "Fechas", con la misma hoja del Resumen: desde y hasta, cada uno con su día y su hora; las fechas mandan sobre el período, y elegir un período las saca. Sale en la versión 1.0.7 (versionCode 8).
+
+**Por qué.** Al revisar la app de punta a punta, Taiel preguntó por qué no se podían comparar dos servicios o dos equipos a la vez, ni mirar en la lista una franja exacta ("anoche de 2 a 4"). El Figma tenía un chip por grupo y tres períodos (decisión 22); las fechas con hora ya estaban en el Resumen (decisión 35), pero para llegar a la lista había que pasar por "Ver estas alertas".
+
+**Alternativa descartada.** Un chip "Equipos críticos" en lugar de elegir equipos de a varios: queda como idea, porque usa la importancia que ya marca el administrador, pero no reemplaza comparar servicios.
+
+**Qué cambia.** `FiltroAlertas` (`servicios`, `otrosServicios`, `destinos`, `metodos` y `fechas`, en lugar de `servicio`, `destinoIp` y `metodo`), la consulta de `AlertasDao` (con `hasta`), `AlertasRepositoryImpl`, los chips de `FiltrosAlertas` (que reusa `HojaFechas` y `ChipDeFechas` del Resumen), el `AlertasViewModel` (las horas sin período, para "Mostrar N alertas") y la línea de resumen. Pruebas: `AlertasRepositoryImplTest`, `AlertasContenidoTest` y el repositorio falso.
