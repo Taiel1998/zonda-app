@@ -63,7 +63,7 @@ class EstadoViewModel(
     alertas: AlertasRepository,
     private val conectividad: Conectividad,
     acciones: AccionesPendientesRepository,
-    observarEstadoSistema: ObservarEstadoSistema? = null,
+    private val observarEstadoSistema: ObservarEstadoSistema? = null,
 ) : ViewModel() {
 
     /**
@@ -208,6 +208,8 @@ class EstadoViewModel(
                 if (sincronizacion.value == Sincronizacion.PEDIDA || e !is ErrorZonda.SinConexion) aviso.value = AvisoEstado.Error(e)
             } finally {
                 sincronizacion.value = Sincronizacion.NINGUNA
+                // La tarjeta dice enseguida si el servidor contestó, sin esperar su consulta de cada 20 s.
+                observarEstadoSistema?.preguntarYa()
             }
         }
     }

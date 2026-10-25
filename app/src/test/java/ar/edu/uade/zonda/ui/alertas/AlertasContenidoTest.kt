@@ -228,26 +228,29 @@ class AlertasContenidoTest {
     }
 
     @Test
-    fun `mas filtros ofrece los servicios con Otros, los equipos y los metodos, y limpiar los quita`() {
+    fun `mas filtros ofrece hasta diez servicios con Los demas, los equipos y los metodos, y limpiar los quita`() {
         val aplicados = mutableListOf<FiltroAlertas>()
         val opciones = OpcionesDeFiltro(
-            servicios = listOf("ssh", "ftp", "smb", "rdp", "http", "dns", "ldap"),
+            servicios = listOf("ssh", "ftp", "smb", "rdp", "http", "dns", "ldap", "icmp", "netbios", "otro", "kerberos", "sip"),
             destinos = listOf(Equipo("192.168.10.50", "srv-sueldos"), Equipo("192.168.10.77")),
         )
         dibujar(AlertasUiState(contenido = lista(Fixtures.alerta("a-1")), opciones = opciones), alCambiarFiltro = { aplicados += it })
 
         compose.onNodeWithText("Más filtros").performClick()
-        listOf("SSH", "FTP", "SMB", "RDP", "HTTP", "Otros", "srv-sueldos", "192.168.10.77", "Modelo de IA", "Umbrales", "Reglas")
+        listOf("SSH", "FTP", "SMB", "RDP", "HTTP", "DNS", "LDAP", "ICMP", "NETBIOS", "Sin identificar", "Los demás")
             .forEach { compose.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
-        compose.onNodeWithText("DNS").assertDoesNotExist()
-        compose.onNodeWithText("Otros").performScrollTo().performClick()
+        listOf("srv-sueldos", "192.168.10.77", "Modelo de IA", "Umbrales", "Reglas")
+            .forEach { compose.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
+        compose.onNodeWithText("KERBEROS").assertDoesNotExist()
+        compose.onNodeWithText("OTRO").assertDoesNotExist()
+        compose.onNodeWithText("Los demás").performScrollTo().performClick()
         compose.onNodeWithText("srv-sueldos").performScrollTo().performClick()
         compose.onNodeWithText("Reglas").performScrollTo().performClick()
         compose.onNodeWithText("Aplicar").performScrollTo().performClick()
         compose.waitForIdle()
 
         val esperado = FiltroAlertas(
-            servicio = FiltroServicio.Otros(setOf("ssh", "ftp", "smb", "rdp", "http")),
+            servicio = FiltroServicio.Otros(setOf("ssh", "ftp", "smb", "rdp", "http", "dns", "ldap", "icmp", "netbios", "otro")),
             destinoIp = "192.168.10.50",
             metodo = MetodoDeteccion.REGLAS,
         )

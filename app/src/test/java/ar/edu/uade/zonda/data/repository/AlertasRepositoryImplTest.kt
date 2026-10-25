@@ -94,25 +94,26 @@ class AlertasRepositoryImplTest : PruebaConBase() {
     }
 
     @Test
-    fun `mas filtros ofrece los servicios y destinos de las alertas guardadas y Otros junta el resto`() = runTest {
+    fun `mas filtros ofrece los servicios y destinos de las alertas guardadas y Los demas junta el resto`() = runTest {
         conRed()
-        val servicios = listOf("ssh", "ssh", "ssh", "ftp", "ftp", "smb", "rdp", "http", "dns", "ldap")
+        val servicios = listOf("ssh", "ssh", "ssh", "ftp", "ftp", "smb", "rdp", "http", "dns", "ldap", "icmp", "netbios", "kerberos", "otro", "sip")
         alertas.guardarDelServidor(
             servicios.mapIndexed { indice, servicio ->
-                Fixtures.alerta("a-$indice", servicio = servicio, destinoIp = if (indice < 6) "192.168.10.50" else "192.168.10.77")
+                Fixtures.alerta("a-$indice", servicio = servicio, destinoIp = if (indice < 9) "192.168.10.50" else "192.168.10.77")
             },
         )
 
         val opciones = alertas.observarOpcionesDeFiltro("red-1").first()
 
-        assertEquals(listOf("ssh", "ftp", "dns", "http", "ldap", "rdp", "smb"), opciones.servicios)
-        assertEquals(listOf("ssh", "ftp", "dns", "http", "ldap"), opciones.serviciosConChip)
+        assertEquals(listOf("ssh", "ftp", "dns", "http", "icmp", "kerberos", "ldap", "netbios", "otro", "rdp", "sip", "smb"), opciones.servicios)
+        // Diez con chip propio (decisión 46); el resto, en "Los demás".
+        assertEquals(listOf("ssh", "ftp", "dns", "http", "icmp", "kerberos", "ldap", "netbios", "otro", "rdp"), opciones.serviciosConChip)
         assertTrue(opciones.hayOtrosServicios)
         assertEquals(listOf("192.168.10.50", "192.168.10.77"), opciones.destinos.map { it.ip })
         assertEquals("srv-web", opciones.destinos.first().nombre)
 
         val otros = alertas.observarAlertas("red-1", FiltroAlertas(servicio = FiltroServicio.Otros(opciones.serviciosConChip.toSet()))).first()
-        assertEquals(setOf("rdp", "smb"), otros.map { it.servicio }.toSet())
+        assertEquals(setOf("sip", "smb"), otros.map { it.servicio }.toSet())
         val ssh = alertas.observarAlertas("red-1", FiltroAlertas(servicio = FiltroServicio.Uno("ssh"))).first()
         assertEquals(3, ssh.size)
     }

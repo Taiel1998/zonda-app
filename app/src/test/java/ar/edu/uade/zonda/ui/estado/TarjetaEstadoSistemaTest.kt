@@ -78,8 +78,11 @@ class TarjetaEstadoSistemaTest {
     @Test
     fun `cada pieza tiene su signo de pregunta que explica que es`() {
         dibujar(sistema())
-        val ayudaAnalisis = "Cada 20 segundos revisa lo que vio el sensor con los tres métodos y manda las alertas. " +
-            "Si pasan 2 minutos sin señales, dice Detenido y avisa por Telegram."
+        // Qué es y qué quiere decir cada palabra, un renglón por estado.
+        val ayudaAnalisis = "Cada 20 segundos revisa lo que vio el sensor con los tres métodos y manda las alertas.\n" +
+            "Funciona: dio señales en los últimos 2 minutos.\n" +
+            "Detenido: pasaron más de 2 minutos sin señales; también avisa por Telegram.\n" +
+            "Sin datos: todavía no dio ninguna señal."
 
         listOf("Sensor de red", "Análisis en vivo", "Servidor de alertas")
             .forEach { pieza -> compose.onNodeWithContentDescription("Qué es $pieza").assertHasClickAction() }

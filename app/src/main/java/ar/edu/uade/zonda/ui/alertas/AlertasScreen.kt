@@ -274,7 +274,7 @@ private fun resumen(lista: ContenidoAlertas.Lista, estado: AlertasUiState, zona:
     }
     if (severidades.isNotEmpty() && filtro.estado != FiltroEstado.SIN_REVISAR) partes += adjetivos(severidades, cantidad = 2)
     when (val servicio = filtro.servicio) {
-        is FiltroServicio.Uno -> partes += servicio.nombre.uppercase()
+        is FiltroServicio.Uno -> partes += Formato.servicio(servicio.nombre)
         is FiltroServicio.Otros -> partes += stringResource(R.string.resumen_otros_servicios)
         null -> Unit
     }

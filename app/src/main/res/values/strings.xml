@@ -132,7 +132,7 @@
         <item quantity="one">baja</item>
         <item quantity="other">bajas</item>
     </plurals>
-    <string name="resumen_otros_servicios">otros servicios</string>
+    <string name="resumen_otros_servicios">los demás servicios</string>
     <string name="alertas_sin_sincronizar">sin sincronizar</string>
     <string name="periodo_ultimas_24h">últimas 24 h</string>
     <string name="periodo_ultimos_7d">últimos 7 días</string>
@@ -163,7 +163,7 @@
     <string name="filtro_destino">Equipo destino</string>
     <string name="filtro_metodo">Método que la detectó</string>
     <string name="filtro_metodo_ia">Modelo de IA</string>
-    <string name="filtro_otros">Otros</string>
+    <string name="filtro_otros">Los demás</string>
     <string name="filtro_mas_nota">Los servicios y los equipos los informa el servidor de tu empresa; no hay que configurarlos en la app. Si un equipo no tiene nombre, se muestra su dirección.</string>
     <string name="filtro_aplicar">Aplicar</string>
     <string name="filtro_limpiar">Limpiar</string>
@@ -613,9 +613,9 @@
     <string name="estado_sistema_no_responde">No responde</string>
     <string name="estado_sistema_descripcion">%1$s: %2$s</string>
     <!-- El "?" de cada pieza: qué es y qué quiere decir su palabra -->
-    <string name="estado_sistema_ayuda_sensor">Recibe una copia de todo el tráfico de la red. Si no llega a ver más del 1 %, por ejemplo porque el switch no da abasto, dice Viendo parcialmente.</string>
-    <string name="estado_sistema_ayuda_analisis">Cada 20 segundos revisa lo que vio el sensor con los tres métodos y manda las alertas. Si pasan 2 minutos sin señales, dice Detenido y avisa por Telegram.</string>
-    <string name="estado_sistema_ayuda_servidor">Guarda las alertas, manda los avisos de Telegram y es con quien habla la app. Si no contesta, dice No responde.</string>
+    <string name="estado_sistema_ayuda_sensor">Zeek, el programa que recibe por el puerto espejo una copia de todo el tráfico de la red.\nFunciona: anda y ve todo.\nViendo parcialmente: se le escapó más del 1 % del tráfico (más de 1 de cada 100 partes), por ejemplo porque el switch no da abasto; puede haber ataques que Zonda no ve.\nDetenido: Zeek no anda.\nSin datos: no hay noticias, porque el análisis en vivo no da señales.</string>
+    <string name="estado_sistema_ayuda_analisis">Cada 20 segundos revisa lo que vio el sensor con los tres métodos y manda las alertas.\nFunciona: dio señales en los últimos 2 minutos.\nDetenido: pasaron más de 2 minutos sin señales; también avisa por Telegram.\nSin datos: todavía no dio ninguna señal.</string>
+    <string name="estado_sistema_ayuda_servidor">Guarda las alertas, manda los avisos de Telegram y es con quien habla la app, que le pregunta cada 20 segundos.\nFunciona: contestó.\nNo responde: no contestó; las revisiones quedan en el teléfono y se envían cuando vuelva.</string>
     <!-- El dato debajo de cada pieza -->
     <string name="estado_sistema_sensor_ve_todo">Ve todo el tráfico</string>
     <string name="estado_sistema_sensor_no_vio">No llegó a ver el %1$s %% del tráfico</string>

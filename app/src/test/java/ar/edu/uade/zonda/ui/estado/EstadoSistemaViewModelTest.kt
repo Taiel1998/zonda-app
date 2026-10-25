@@ -15,6 +15,9 @@ import ar.edu.uade.zonda.domain.usecase.ObservarEstadoSistema
 import ar.edu.uade.zonda.domain.usecase.ObtenerEstadoRed
 import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import ar.edu.uade.zonda.ui.ReglaDispatcherPrincipal
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.currentTime
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,6 +27,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /** La tarjeta "Estado del sistema" en el ViewModel de Estado: qué muestra y qué pasa si el servidor no contesta. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class EstadoSistemaViewModelTest {
 
     @get:Rule
@@ -105,6 +109,25 @@ class EstadoSistemaViewModelTest {
             val estado = esperar { it.sistema?.servidor == EstadoPieza.FUNCIONA }
             assertFalse(estado.sinConexion)
             assertEquals(antes + 1, alertas.sincronizaciones.size)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `al terminar una sincronizacion la tarjeta vuelve a preguntar, sin esperar los 20 s`() = runTest {
+        conRed()
+        redes.estadoSistema = { funcionando }
+        val vm = viewModel()
+
+        vm.estado.test {
+            esperar { it.sistema != null && it.contenido is ContenidoEstado.Datos }
+            runCurrent()
+            val antes = redes.consultasDelSistema.size
+            val inicio = currentTime
+            vm.sincronizar()
+            runCurrent()
+            assertEquals(antes + 1, redes.consultasDelSistema.size)
+            assertEquals(inicio, currentTime)
             cancelAndIgnoreRemainingEvents()
         }
     }

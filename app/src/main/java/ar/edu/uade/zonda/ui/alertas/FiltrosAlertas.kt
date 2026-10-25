@@ -28,6 +28,7 @@ import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.BotonesDeHoja
 import ar.edu.uade.zonda.ui.components.ChipOpcion
 import ar.edu.uade.zonda.ui.resumen.ChipFiltro
@@ -168,7 +169,7 @@ private fun textoDeSeveridades(severidades: Set<Severidad>): String =
 /**
  * Más filtros (Figma 51-2202): servicio, equipo destino y método que la detectó, uno por grupo; tocar
  * el elegido lo quita. Los servicios y los equipos salen de las alertas guardadas, que los informa el
- * servidor; los servicios que no tienen chip propio entran en "Otros".
+ * servidor; los servicios que no tienen chip propio entran en "Los demás".
  */
 @Composable
 private fun HojaMasFiltros(
@@ -204,7 +205,7 @@ fun ContenidoMasFiltros(
         GrupoDeChips(titulo = stringResource(R.string.filtro_servicio)) {
             opciones.serviciosConChip.forEach { nombre ->
                 val este = FiltroServicio.Uno(nombre)
-                ChipOpcion(nombre.uppercase(), elegido = servicio == este, alTocar = { servicio = if (servicio == este) null else este })
+                ChipOpcion(Formato.servicio(nombre), elegido = servicio == este, alTocar = { servicio = if (servicio == este) null else este })
             }
             if (opciones.hayOtrosServicios) {
                 ChipOpcion(
@@ -252,7 +253,7 @@ fun ContenidoMasFiltros(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     BotonesDeHoja(
-        // "Otros" se arma con los chips de ahora: si llegaron servicios nuevos, quedan bien repartidos.
+        // "Los demás" se arma con los chips de ahora: si llegaron servicios nuevos, quedan bien repartidos.
         alAplicar = {
             alAplicar(
                 filtro.copy(

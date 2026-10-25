@@ -44,6 +44,9 @@ class FormatoTest {
         assertEquals("192.168.30.50 · pc-rrhh", Formato.ipYNombre(Equipo("192.168.30.50", "pc-rrhh")))
         assertEquals("192.168.30.50", Formato.ipYNombre(Equipo("192.168.30.50")))
         assertEquals("SSH · 22", Formato.servicioYPuerto("ssh", 22))
+        assertEquals("Sin identificar · 1", Formato.servicioYPuerto("otro", 1))
+        assertEquals("Sin identificar · TCP/1", Formato.servicioProtocoloYPuerto("otro", "tcp", 1))
+        assertEquals("NETBIOS", Formato.servicio("netbios"))
     }
 
     @Test
