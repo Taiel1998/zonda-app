@@ -18,12 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.EstadoPieza
 import ar.edu.uade.zonda.domain.model.EstadoSistema
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.components.AyudaGlobito
 import ar.edu.uade.zonda.ui.components.Panel
 import ar.edu.uade.zonda.ui.theme.Tono
 import ar.edu.uade.zonda.ui.theme.Tonos
@@ -35,51 +37,68 @@ import java.time.Instant
  * La tarjeta "Estado del sistema" (devolución del docente: que el análisis en vivo esté monitoreado
  * desde la app). Una fila por pieza, el sensor de red, el análisis en vivo y el servidor de alertas,
  * cada una con su punto, su color y la palabra, para que se entienda sin distinguir colores: verde lo que
- * funciona y rojo lo que no, también lo que no se sabe; el sensor que pierde captura va en amarillo,
- * "Viendo parcialmente". Abajo, hace cuánto llegó la última corrida del análisis ([ahora] avanza cada
- * segundo, así se ve contar y, pasados los 2 minutos, el análisis pasa a Detenido) y la pérdida de
- * captura de la última medición de Zeek. Sin botón de reinicio: el teléfono solo mira.
+ * funciona y rojo lo que no, también lo que no se sabe; el sensor que no llega a ver todo el tráfico va
+ * en amarillo, "Viendo parcialmente". Cada pieza tiene su "?" y, debajo, el dato que la respalda, así se
+ * sabe de quién es: el tráfico que vio el sensor, cuándo revisó el análisis ([ahora] avanza cada segundo,
+ * así se ve contar y, pasados los 2 minutos, el análisis pasa a Detenido) y cuándo respondió el servidor.
+ * Sin botón de reinicio: el teléfono solo mira.
  */
 @Composable
 fun TarjetaEstadoSistema(sistema: EstadoSistema, ahora: () -> Instant, modifier: Modifier = Modifier) {
-    Panel(modifier = modifier, espacio = 8.dp) {
+    val momento = ahora()
+    Panel(modifier = modifier, espacio = 10.dp) {
         Text(text = stringResource(R.string.estado_sistema_titulo), style = MaterialTheme.typography.titleSmall)
-        FilaPieza(R.string.estado_sistema_sensor, sistema.sensor)
-        FilaPieza(R.string.estado_sistema_analisis, sistema.analisis)
-        FilaPieza(R.string.estado_sistema_servidor, sistema.servidor)
-        val momento = ahora()
-        Text(
-            text = ultimaCorrida(sistema, momento),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        perdidaDeCaptura(sistema, momento)?.let { texto ->
-            Text(text = texto, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        FilaPieza(R.string.estado_sistema_sensor, R.string.estado_sistema_ayuda_sensor, sistema.sensor, detalleDelSensor(sistema, momento))
+        FilaPieza(R.string.estado_sistema_analisis, R.string.estado_sistema_ayuda_analisis, sistema.analisis, detalleDelAnalisis(sistema, momento))
+        FilaPieza(R.string.estado_sistema_servidor, R.string.estado_sistema_ayuda_servidor, sistema.servidor, detalleDelServidor(sistema, momento))
     }
 }
 
-/** "● Sensor de red ······ Funciona": el punto y la palabra con el color del estado; TalkBack lee las dos. */
+/**
+ * "● Sensor de red (?) ······ Funciona" y debajo su dato. TalkBack lee la fila entera ("Sensor de red:
+ * Funciona"); el "?" queda aparte, como su propio botón ("Qué es Sensor de red").
+ */
 @Composable
-private fun FilaPieza(@StringRes nombre: Int, estado: EstadoPieza) {
+private fun FilaPieza(@StringRes nombre: Int, @StringRes ayuda: Int, estado: EstadoPieza, detalle: String) {
     val tono = tonoDe(estado)
     val pieza = stringResource(nombre)
     val palabra = stringResource(palabraDe(estado))
     val descripcion = stringResource(R.string.estado_sistema_descripcion, pieza, palabra)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clearAndSetSemantics { contentDescription = descripcion },
-    ) {
-        Box(
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
-                .size(10.dp)
-                .background(tono.punto, CircleShape),
+                .fillMaxWidth()
+                .semantics(mergeDescendants = true) { contentDescription = descripcion },
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(tono.punto, CircleShape),
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(text = pieza, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.clearAndSetSemantics {})
+                AyudaGlobito(termino = pieza, ayuda = stringResource(ayuda))
+            }
+            Text(
+                text = palabra,
+                style = MaterialTheme.typography.labelLarge,
+                color = tono.texto,
+                modifier = Modifier.clearAndSetSemantics {},
+            )
+        }
+        // Debajo del nombre, alineado con él: 10 del punto y 10 de separación.
+        Text(
+            text = detalle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 20.dp),
         )
-        Text(text = pieza, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(text = palabra, style = MaterialTheme.typography.labelLarge, color = tono.texto)
     }
 }
 
@@ -98,29 +117,53 @@ private fun palabraDe(estado: EstadoPieza): Int = when (estado) {
     EstadoPieza.NO_RESPONDE -> R.string.estado_sistema_no_responde
 }
 
-/** "Última corrida hace 12 s · último flujo hace 4 min", o que todavía no llegó ninguna. */
-@Composable
-private fun ultimaCorrida(sistema: EstadoSistema, ahora: Instant): String {
-    val corrida = sistema.ultimaCorrida ?: return stringResource(R.string.estado_sistema_sin_corridas)
-    val hace = Formato.duracion(Duration.between(corrida, ahora))
-    val flujo = sistema.ultimoFlujo ?: return stringResource(R.string.estado_sistema_ultima_corrida, hace)
-    return stringResource(R.string.estado_sistema_ultima_corrida_flujo, hace, Formato.haceCuanto(flujo, ahora))
-}
-
 /**
- * "Pérdida de captura: 0,0 % · medida hace 6 min" (Zeek mide cada 15 minutos), "sin tráfico para medir"
- * si en esa medición no hubo tráfico TCP, y "(simulada)" en la prueba del laboratorio. Null si no se sabe.
+ * Lo que vio el sensor: "Ve todo el tráfico · último tráfico hace 4 min", "No llegó a ver el 5,0 % del
+ * tráfico (prueba simulada)" o, si no hubo tráfico para medir (Zeek mide cada 15 minutos sobre las
+ * conexiones TCP), "Sin tráfico para saber si ve todo". Sin el análisis no hay noticias del sensor.
  */
 @Composable
-private fun perdidaDeCaptura(sistema: EstadoSistema, ahora: Instant): String? {
-    val perdida = sistema.perdidaCaptura ?: return null
-    val hace = sistema.perdidaMedidaEn?.let { Formato.haceCuanto(it, ahora) }
-    val texto = when {
-        sistema.sinTraficoParaMedir -> stringResource(R.string.estado_sistema_perdida_sin_trafico)
-        hace != null -> stringResource(R.string.estado_sistema_perdida, Formato.numero(perdida, 1), hace)
-        else -> stringResource(R.string.estado_sistema_perdida_sola, Formato.numero(perdida, 1))
+private fun detalleDelSensor(sistema: EstadoSistema, ahora: Instant): String {
+    when (sistema.sensor) {
+        EstadoPieza.SIN_DATOS, EstadoPieza.NO_RESPONDE -> return stringResource(R.string.estado_sistema_sensor_sin_noticias)
+        EstadoPieza.DETENIDO -> return stringResource(R.string.estado_sistema_sensor_zeek_detenido)
+        EstadoPieza.FUNCIONA, EstadoPieza.PARCIAL -> Unit
     }
-    return if (sistema.perdidaSimulada) stringResource(R.string.estado_sistema_perdida_simulada, texto) else texto
+    val perdida = sistema.perdidaCaptura
+    val loQueVio = when {
+        perdida == null -> null
+        sistema.sinTraficoParaMedir -> stringResource(R.string.estado_sistema_sensor_sin_trafico)
+        perdida == 0.0 -> stringResource(R.string.estado_sistema_sensor_ve_todo)
+        else -> stringResource(R.string.estado_sistema_sensor_no_vio, Formato.numero(perdida, 1))
+    }?.let { texto -> if (sistema.perdidaSimulada) stringResource(R.string.estado_sistema_sensor_simulado, texto) else texto }
+    val ultimoTrafico = sistema.ultimoFlujo?.let { Formato.haceCuanto(it, ahora) }
+    return when {
+        loQueVio != null && ultimoTrafico != null -> stringResource(R.string.estado_sistema_sensor_y_ultimo, loQueVio, ultimoTrafico)
+        loQueVio != null -> loQueVio
+        ultimoTrafico != null -> stringResource(R.string.estado_sistema_sensor_ultimo, ultimoTrafico)
+        else -> stringResource(R.string.estado_sistema_sensor_escuchando)
+    }
+}
+
+/** Cuándo revisó el tráfico por última vez: "Revisó el tráfico hace 15 s" o "Sin señales desde hace 2 min 31 s". */
+@Composable
+private fun detalleDelAnalisis(sistema: EstadoSistema, ahora: Instant): String {
+    val corrida = sistema.ultimaCorrida ?: return stringResource(R.string.estado_sistema_analisis_nunca)
+    val hace = Formato.duracion(Duration.between(corrida, ahora))
+    return when (sistema.analisis) {
+        EstadoPieza.FUNCIONA -> stringResource(R.string.estado_sistema_analisis_reviso, hace)
+        EstadoPieza.DETENIDO -> stringResource(R.string.estado_sistema_analisis_sin_senales, hace)
+        else -> stringResource(R.string.estado_sistema_analisis_ultima_senal, hace)
+    }
+}
+
+/** Cuándo contestó el servidor la última consulta de la app (cada 20 s), o que no contesta. */
+@Composable
+private fun detalleDelServidor(sistema: EstadoSistema, ahora: Instant): String {
+    if (sistema.servidor == EstadoPieza.NO_RESPONDE) return stringResource(R.string.estado_sistema_servidor_no_contesta)
+    val segundos = Duration.between(sistema.consultadoEn, ahora)
+    if (segundos.seconds < 3) return stringResource(R.string.estado_sistema_servidor_recien)
+    return stringResource(R.string.estado_sistema_servidor_respondio, Formato.duracion(segundos))
 }
 
 @Preview(showBackground = true, widthDp = 380)
@@ -136,7 +179,7 @@ private fun TarjetaEstadoSistemaPreview() {
                     servidor = EstadoPieza.FUNCIONA,
                     ultimaCorrida = ahora.minusSeconds(12),
                     ultimoFlujo = ahora.minusSeconds(240),
-                    consultadoEn = ahora,
+                    consultadoEn = ahora.minusSeconds(7),
                     perdidaCaptura = 0.0,
                     perdidaMedidaEn = ahora.minusSeconds(360),
                 ),
