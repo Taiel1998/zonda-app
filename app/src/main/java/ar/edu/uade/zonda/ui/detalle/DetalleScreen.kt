@@ -738,7 +738,7 @@ private fun LoQueTrajoElAviso(aviso: AvisoRecibido, zona: ZoneId) {
             IndicadorSeveridad(aviso.severidad)
             Etiqueta(texto = stringResource(R.string.detalle_pendiente_de_descarga), tono = Tonos.Info)
         }
-        Text(text = aviso.servicio.uppercase(), style = MaterialTheme.typography.encabezado)
+        Text(text = Formato.servicio(aviso.servicio), style = MaterialTheme.typography.encabezado)
         aviso.enviadoEn?.let { enviado ->
             Text(
                 text = stringResource(R.string.detalle_aviso_de_las, Formato.hora(enviado, zona)),
@@ -750,7 +750,7 @@ private fun LoQueTrajoElAviso(aviso: AvisoRecibido, zona: ZoneId) {
     Panel {
         TituloSeccion(stringResource(R.string.detalle_lo_que_trajo))
         FilaDato(stringResource(R.string.detalle_trajo_severidad), stringResource(aviso.severidad.etiqueta()))
-        FilaDato(stringResource(R.string.detalle_trajo_servicio), aviso.servicio.uppercase())
+        FilaDato(stringResource(R.string.detalle_trajo_servicio), Formato.servicio(aviso.servicio))
         aviso.deteccion?.let { FilaDato(stringResource(R.string.detalle_trajo_hora), Formato.hora(it, zona)) }
     }
 }
@@ -763,7 +763,7 @@ private fun LoQueTrajoElAviso(aviso: AvisoRecibido, zona: ZoneId) {
 private fun textoParaCompartir(alerta: Alerta, red: String, zona: ZoneId): String = stringResource(
     R.string.detalle_compartir_texto,
     stringResource(alerta.severidad.etiqueta()).uppercase(),
-    alerta.servicio.uppercase(),
+    Formato.servicio(alerta.servicio),
     Formato.hora(alerta.inicio, zona),
     red,
     RutaDetalle.enlaceDelAviso(alerta),

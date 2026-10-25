@@ -256,7 +256,7 @@ fun nombreDelBot(red: Red?): String = red?.telegramBot?.let { "@$it" } ?: string
 fun Motivo.comentarioPropuesto(recursos: Resources, alerta: Alerta): String = when (this) {
     Motivo.ESCALADO_AL_PROVEEDOR -> recursos.getString(R.string.comentario_escalado_al_proveedor)
     Motivo.BLOQUEADO_MANUALMENTE ->
-        recursos.getString(R.string.comentario_bloqueado_manualmente, alerta.servicio.uppercase(), alerta.origen.etiqueta)
+        recursos.getString(R.string.comentario_bloqueado_manualmente, Formato.servicio(alerta.servicio), alerta.origen.etiqueta)
     Motivo.CONTRASENA_CAMBIADA -> recursos.getString(R.string.comentario_contrasena_cambiada)
     Motivo.INVESTIGANDO -> recursos.getString(R.string.comentario_investigando)
     Motivo.TAREA_PROGRAMADA -> recursos.getString(R.string.comentario_tarea_programada)

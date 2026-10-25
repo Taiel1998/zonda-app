@@ -19,6 +19,7 @@ import kotlin.math.roundToInt
 object Formato {
 
     private val LOCALE: Locale = Locale.forLanguageTag("es-AR")
+    private const val SERVICIO_SIN_IDENTIFICAR = "otro"
     private val HORA = DateTimeFormatter.ofPattern("HH:mm", LOCALE)
     private val HORA_CON_SEGUNDOS = DateTimeFormatter.ofPattern("HH:mm:ss", LOCALE)
     private val DIA = DateTimeFormatter.ofPattern("EEE dd/MM", LOCALE)
@@ -116,12 +117,19 @@ object Formato {
     /** `192.168.30.50 · pc-rrhh`, o solo la IP si el catálogo no tiene el nombre. */
     fun ipYNombre(equipo: Equipo): String = if (equipo.nombre == null) equipo.ip else "${equipo.ip} · ${equipo.nombre}"
 
+    /**
+     * `SSH`: el servicio en mayúsculas, como los protocolos. "otro" es lo que Zeek no pudo reconocer (un
+     * escaneo al puerto 1, por ejemplo) y dice `Sin identificar`: "OTRO" al lado de "Los demás" confundía.
+     */
+    fun servicio(servicio: String): String =
+        if (servicio.equals(SERVICIO_SIN_IDENTIFICAR, ignoreCase = true)) "Sin identificar" else servicio.uppercase(LOCALE)
+
     /** `SSH · 22`, como en la tarjeta de la lista. */
-    fun servicioYPuerto(servicio: String, puerto: Int): String = "${servicio.uppercase(LOCALE)} · $puerto"
+    fun servicioYPuerto(servicio: String, puerto: Int): String = "${this.servicio(servicio)} · $puerto"
 
     /** `SSH · TCP/22`, como en el detalle. Sin el protocolo (alertas guardadas antes de que la API lo mandara), `SSH · 22`. */
     fun servicioProtocoloYPuerto(servicio: String, protocolo: String?, puerto: Int): String =
-        if (protocolo == null) servicioYPuerto(servicio, puerto) else "${servicio.uppercase(LOCALE)} · ${protocolo.uppercase(LOCALE)}/$puerto"
+        if (protocolo == null) servicioYPuerto(servicio, puerto) else "${this.servicio(servicio)} · ${protocolo.uppercase(LOCALE)}/$puerto"
 
     // Resumen (RF07)
 

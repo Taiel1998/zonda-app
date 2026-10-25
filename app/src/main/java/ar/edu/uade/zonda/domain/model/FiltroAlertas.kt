@@ -34,7 +34,7 @@ enum class FiltroEstado(val estados: Set<EstadoRevision>?) {
     TODAS(null),
 }
 
-/** El servicio de Más filtros: uno con su chip, o "Otros", los que no tienen chip propio. */
+/** El servicio de Más filtros: uno con su chip, o "Los demás", los que no tienen chip propio. */
 sealed interface FiltroServicio {
     data class Uno(val nombre: String) : FiltroServicio
 
@@ -106,7 +106,7 @@ data class OpcionesDeFiltro(
     val servicios: List<String> = emptyList(),
     val destinos: List<Equipo> = emptyList(),
 ) {
-    /** Los servicios con chip propio; el resto entra en "Otros". */
+    /** Los servicios con chip propio, los más frecuentes; el resto entra en "Los demás". */
     val serviciosConChip: List<String>
         get() = servicios.take(SERVICIOS_CON_CHIP)
 
@@ -114,7 +114,10 @@ data class OpcionesDeFiltro(
         get() = servicios.size > SERVICIOS_CON_CHIP
 
     companion object {
-        /** El Figma muestra cinco servicios y "Otros". */
-        const val SERVICIOS_CON_CHIP = 5
+        /**
+         * El Figma mostraba cinco y "Otros", y así quedaban escondidos SSH y FTP, los servicios de los ataques
+         * del laboratorio, que tienen pocas alertas. Con diez se ven todos los de la red de prueba (decisión 46).
+         */
+        const val SERVICIOS_CON_CHIP = 10
     }
 }

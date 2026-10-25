@@ -22,7 +22,7 @@ abstract class AlertasDao {
 
     /**
      * Lista filtrada (RF02). Un filtro en null, o con su bandera de "todos" prendida, no filtra; así una
-     * sola consulta cubre todas las combinaciones sin armar SQL a mano. [otrosServicios] es el chip "Otros"
+     * sola consulta cubre todas las combinaciones sin armar SQL a mano. [otrosServicios] es el chip "Los demás"
      * de Más filtros: los servicios que no están en [serviciosConChip].
      */
     @Transaction

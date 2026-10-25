@@ -8,6 +8,7 @@ import ar.edu.uade.zonda.domain.model.EstadoSistema
 import java.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.currentTime
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -49,6 +50,24 @@ class ObservarEstadoSistemaTest {
             assertEquals(0L, currentTime)
             awaitItem()
             assertEquals(20_000L, currentTime)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(listOf("red-1", "red-1"), redes.consultasDelSistema)
+    }
+
+    @Test
+    fun `preguntarYa vuelve a consultar enseguida, sin esperar los 20 segundos`() = runTest {
+        redes.agregar(Fixtures.red("red-1"))
+        var vuelta = 0
+        redes.estadoSistema = { funcionando(corrida = Fixtures.AHORA.minusSeconds((++vuelta).toLong())) }
+        val observar = ObservarEstadoSistema(redes)
+
+        observar().test {
+            awaitItem()
+            runCurrent()
+            observar.preguntarYa()
+            awaitItem()
+            assertEquals(0L, currentTime)
             cancelAndIgnoreRemainingEvents()
         }
         assertEquals(listOf("red-1", "red-1"), redes.consultasDelSistema)
