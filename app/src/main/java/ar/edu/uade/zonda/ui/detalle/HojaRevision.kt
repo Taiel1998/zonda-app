@@ -34,7 +34,9 @@ import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.components.CampoTexto
 import ar.edu.uade.zonda.ui.components.ChipOpcion
 import ar.edu.uade.zonda.ui.components.HojaInferior
+import ar.edu.uade.zonda.ui.components.LeyendaObligatorio
 import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
+import ar.edu.uade.zonda.ui.components.etiquetaConAsterisco
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.etiquetaBarra
@@ -62,15 +64,10 @@ fun ContenidoHojaRevision(formulario: FormularioRevision, alerta: Alerta, accion
     }
 }
 
-/** Figma 66-2834: título, explicación, "Paso 1 de 2", las dos opciones y Cancelar. */
+/** Figma 66-2834: título, "Paso 1 de 2", las dos opciones y Cancelar; sin el párrafo de explicación (decisión 48). */
 @Composable
 private fun PasoResultado(formulario: FormularioRevision, acciones: AccionesDetalle) {
     Text(text = stringResource(R.string.revisar_paso1_titulo), style = MaterialTheme.typography.tituloHoja)
-    Text(
-        text = stringResource(R.string.revisar_paso1_detalle),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
     Text(text = stringResource(R.string.revisar_paso_1_de_2), style = MaterialTheme.typography.etiquetaBarra, color = MaterialTheme.colorScheme.primary)
     OpcionResultado(
         titulo = stringResource(R.string.resultado_ataque_real),
@@ -122,9 +119,10 @@ private fun OpcionResultado(titulo: String, detalle: String, color: Color, elegi
 }
 
 /**
- * Figma 66-2917: el motivo y el comentario son obligatorios (RF04, criterio 2). Cada motivo propone el
- * comentario de su pantalla del Figma, que la persona puede cambiar; "Confirmar revisión" se habilita
- * con resultado, motivo y comentario.
+ * Figma 66-2917: el motivo y el comentario son obligatorios (RF04, criterio 2) y lo dicen con el
+ * asterisco rojo y "* Obligatorio" (decisión 48). Cada motivo propone el comentario de su pantalla del
+ * Figma, en forma impersonal, que la persona puede cambiar; "Confirmar revisión" se habilita con
+ * resultado, motivo y comentario.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -133,7 +131,11 @@ private fun PasoMotivo(formulario: FormularioRevision, resultado: ResultadoRevis
     val recursos = LocalContext.current.resources
     Text(text = stringResource(titulo), style = MaterialTheme.typography.tituloHoja)
     Text(text = stringResource(R.string.revisar_paso_2_de_2), style = MaterialTheme.typography.etiquetaBarra, color = MaterialTheme.colorScheme.primary)
-    Text(text = stringResource(R.string.revisar_motivo), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(
+        text = etiquetaConAsterisco(stringResource(R.string.revisar_motivo)),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -155,7 +157,9 @@ private fun PasoMotivo(formulario: FormularioRevision, resultado: ResultadoRevis
         ayuda = stringResource(R.string.revisar_comentario_ayuda),
         lineasMinimas = 2,
         ayudaSiempre = true,
+        obligatorio = true,
     )
+    LeyendaObligatorio()
     Row(modifier = Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         BotonContorno(
             texto = stringResource(R.string.revisar_volver),

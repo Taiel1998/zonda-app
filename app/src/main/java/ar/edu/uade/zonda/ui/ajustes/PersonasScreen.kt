@@ -51,6 +51,7 @@ import ar.edu.uade.zonda.ui.components.FilaPersona
 import ar.edu.uade.zonda.ui.components.FilaRadio
 import ar.edu.uade.zonda.ui.components.HojaConfirmacion
 import ar.edu.uade.zonda.ui.components.HojaInferior
+import ar.edu.uade.zonda.ui.components.LeyendaObligatorio
 import ar.edu.uade.zonda.ui.components.Opcion
 import ar.edu.uade.zonda.ui.components.Panel
 import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
@@ -225,6 +226,7 @@ fun ColumnScope.ContenidoHojaAgregarPersona(formulario: FormularioPersona, accio
         etiqueta = stringResource(R.string.personas_nombre),
         ejemplo = stringResource(R.string.personas_nombre_ejemplo),
         error = if (formulario.faltaNombre) stringResource(R.string.personas_falta_nombre) else null,
+        obligatorio = true,
     )
     Text(text = stringResource(R.string.personas_perfil), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -239,6 +241,7 @@ fun ColumnScope.ContenidoHojaAgregarPersona(formulario: FormularioPersona, accio
     formulario.error?.let { error ->
         Text(text = stringResource(error.mensaje()), style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.error)
     }
+    LeyendaObligatorio()
     Row(modifier = Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         BotonContorno(texto = stringResource(R.string.accion_cancelar), alTocar = acciones.alCancelarAgregar, modifier = Modifier.weight(1f), relleno = RellenoBotonAngosto)
         BotonPrincipal(

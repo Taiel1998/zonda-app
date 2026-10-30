@@ -24,6 +24,17 @@ enum class EstadoPieza {
 }
 
 /**
+ * El color del semáforo de una pieza (decisión 48): verde si funciona, ámbar si el sensor ve parcialmente y
+ * rojo en lo demás, también si no se sabe.
+ */
+val EstadoPieza.semaforo: Semaforo
+    get() = when (this) {
+        EstadoPieza.FUNCIONA -> Semaforo.VERDE
+        EstadoPieza.PARCIAL -> Semaforo.AMARILLO
+        EstadoPieza.DETENIDO, EstadoPieza.SIN_DATOS, EstadoPieza.NO_RESPONDE -> Semaforo.ROJO
+    }
+
+/**
  * El estado de la plataforma de detección de la red activa (`GET /salud` con token, API 0.7.0): el
  * sensor de red, el análisis en vivo, que cada 20 segundos lee el `conn.log` de Zeek y le manda un
  * latido al servidor, y el servidor de alertas.
