@@ -85,7 +85,7 @@ class EstadoContenidoTest {
         compose.onNodeWithText("ATENCIÓN").assertIsDisplayed()
         compose.onNodeWithText("2 alertas altas sin revisar").assertIsDisplayed()
         compose.onNodeWithText("Última alta sin revisar: hace 5 min · actualizado 12:00").assertIsDisplayed()
-        compose.onNodeWithText("Alertas sin revisar, por severidad. Tocá una para filtrar la lista.").assertIsDisplayed()
+        compose.onNodeWithText("Tocá un contador para filtrar la lista.").assertIsDisplayed()
         compose.onNodeWithContentDescription("2 sin revisar de severidad Alta").assertIsNotSelected()
         compose.onNodeWithContentDescription("1 sin revisar de severidad Media").assertIsDisplayed()
         compose.onNodeWithContentDescription("0 sin revisar de severidad Baja").assertIsDisplayed()

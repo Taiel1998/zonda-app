@@ -69,6 +69,7 @@ import ar.edu.uade.zonda.ui.components.CampoTexto
 import ar.edu.uade.zonda.ui.components.FilaDato
 import ar.edu.uade.zonda.ui.components.FilaNavegable
 import ar.edu.uade.zonda.ui.components.HojaAyuda
+import ar.edu.uade.zonda.ui.components.LeyendaObligatorio
 import ar.edu.uade.zonda.ui.components.LogoZonda
 import ar.edu.uade.zonda.ui.components.NotaAlPie
 import ar.edu.uade.zonda.ui.components.Panel
@@ -255,6 +256,7 @@ private fun ColumnScope.Formulario(estado: ConexionUiState.Formulario, acciones:
         error = if (estado.errorDireccion) stringResource(R.string.conexion_direccion_error) else null,
         opcionesTeclado = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false, imeAction = ImeAction.Next),
         interaccion = interaccionDireccion,
+        obligatorio = true,
     )
     CampoCodigo(
         codigo = estado.codigo,
@@ -281,7 +283,9 @@ private fun ColumnScope.Formulario(estado: ConexionUiState.Formulario, acciones:
             if (estado.puedeConectar) acciones.alConectar()
         }),
         interaccion = interaccionCodigo,
+        obligatorio = true,
     )
+    LeyendaObligatorio()
     // Con la dirección en foco el Figma no muestra la ayuda del código (49-10); con el código, sí (49-131).
     if (!direccionEnfocada) {
         BotonEnlace(

@@ -207,7 +207,7 @@
     <string name="severidades_las_cambia_sin_nombres">Las cambia un administrador. Valen para todo el equipo.</string>
     <!-- "¿Por qué la cambiás?" al cambiar severidades o la importancia de un equipo (corrección 3; Figma 468-3463) -->
     <string name="motivo_titulo">¿Por qué la cambiás?</string>
-    <string name="motivo_campo">Motivo (obligatorio)</string>
+    <string name="motivo_campo">Motivo</string>
     <string name="motivo_ejemplo">Por ejemplo: el backup nocturno usa SSH y daba falsas alarmas.</string>
     <string name="motivo_ayuda">Queda en el registro de cambios con tu nombre y la hora.</string>
     <string name="motivo_falta">Escribí por qué la cambiás.</string>
@@ -233,7 +233,7 @@
     <string name="detalle_conexiones_60s">Conexiones en 60 s</string>
     <string name="detalle_conexiones_total">Conexiones en total</string>
     <string name="detalle_puertos_distintos">Puertos distintos</string>
-    <string name="detalle_veredictos">Veredicto por método</string>
+    <string name="detalle_veredictos">Predicción por método</string>
     <string name="detalle_modelo_ia">Modelo de IA</string>
     <string name="detalle_umbrales">Umbrales estadísticos</string>
     <string name="detalle_reglas">Reglas estáticas</string>
@@ -244,21 +244,16 @@
     <string name="veredicto_servicio_nuevo">Servicio nuevo en la red</string>
     <string name="veredicto_servicio_autorizado">Servicio autorizado</string>
     <string name="veredicto_servicio_no_autorizado">Servicio no autorizado</string>
-    <!-- El "?" de seis términos del detalle y su globito (Figma 468-627): una frase, sin números -->
+    <!-- Un solo "?" por sección del detalle (decisión 48), con su globito (Figma 468-627), sin números -->
     <string name="ayuda_que_es">Qué es %1$s</string>
-    <string name="ayuda_conexiones_60s">Cuántas veces el equipo de origen se conectó a este servicio en un minuto.</string>
-    <string name="ayuda_conexiones_total">Todas las conexiones entre estos dos equipos, desde la primera hasta que pasaron 5 minutos sin ninguna.</string>
-    <string name="ayuda_veredictos">Tres métodos miran el mismo tráfico; alcanza con que uno lo marque para que haya alerta.</string>
-    <string name="ayuda_modelo_ia">Aprendió cómo es el tráfico normal de tu red y marca lo que se parece poco a eso.</string>
-    <string name="ayuda_umbrales">Cuentan las conexiones a un mismo servicio en un minuto y marcan si son más que en un día normal.</string>
-    <string name="ayuda_reglas">Marcan las conexiones a servicios que no están en la lista de autorizados de tu empresa.</string>
+    <string name="ayuda_datos_del_flujo">Conexiones en 60 s: cuántas veces el origen se conectó a este servicio en un minuto.\nConexiones en total: todas las de estos dos equipos, hasta que pasan 15 minutos sin ninguna.</string>
+    <string name="ayuda_metodos">Modelo de IA: aprendió el tráfico normal de tu red y marca lo que se aleja de eso.\nUmbrales: marcan si hay más conexiones a un servicio por minuto que en un día normal.\nReglas: marcan los servicios que no están en la lista de autorizados.\nAlcanza con que uno marque para que haya alerta.</string>
     <string name="detalle_revision">Revisión</string>
     <string name="detalle_resultado">Resultado</string>
     <string name="detalle_motivo">Motivo</string>
     <string name="detalle_este_telefono">Este teléfono</string>
     <string name="detalle_pendiente_de_envio">pendiente de envío</string>
     <string name="detalle_historial">Historial</string>
-    <string name="detalle_revisar_explicacion">Al revisar vas a indicar si fue un ataque real o un falso positivo, con su motivo y un comentario.</string>
     <string name="detalle_revisar">Revisar</string>
     <string name="detalle_cambiar_revision">Cambiar revisión</string>
     <string name="detalle_comentario">Comentario</string>
@@ -289,29 +284,32 @@
     <string name="detalle_trajo_servicio">Servicio</string>
     <string name="detalle_trajo_hora">Hora de detección</string>
 
-    <!-- Revisión en dos pasos (RF04) -->
+    <!-- Revisión en dos pasos (RF04). Menos texto y asterisco en lo obligatorio (decisión 48). -->
     <string name="revisar_paso1_titulo">¿Qué resultó ser esta alerta?</string>
-    <string name="revisar_paso1_detalle">Elegí una opción. En el paso siguiente indicás el motivo y dejás un comentario; los dos son obligatorios.</string>
     <string name="revisar_paso_1_de_2">Paso 1 de 2</string>
     <string name="revisar_paso_2_de_2">Paso 2 de 2</string>
-    <string name="revisar_ataque_real_detalle">Hubo actividad no autorizada o maliciosa (verdadero positivo).</string>
-    <string name="revisar_falso_positivo_detalle">Era tráfico legítimo: un backup, una tarea programada, un equipo nuevo.</string>
+    <string name="revisar_ataque_real_detalle">Actividad no autorizada o maliciosa.</string>
+    <string name="revisar_falso_positivo_detalle">Tráfico legítimo, como un backup.</string>
     <string name="revisar_cancelar">Cancelar</string>
-    <string name="revisar_paso2_titulo_ataque">Ataque real: ¿qué hiciste?</string>
+    <string name="revisar_paso2_titulo_ataque">Ataque real: ¿qué se hizo?</string>
     <string name="revisar_paso2_titulo_falso">Falso positivo: ¿por qué?</string>
-    <string name="revisar_motivo">Motivo (obligatorio)</string>
-    <string name="revisar_comentario">Comentario (obligatorio)</string>
-    <string name="revisar_comentario_ayuda">Contá qué hiciste o por qué. Queda en el historial de la alerta.</string>
+    <string name="revisar_motivo">Motivo</string>
+    <string name="revisar_comentario">Comentario</string>
+    <string name="revisar_comentario_ayuda">Queda en el historial de la alerta.</string>
     <string name="revisar_volver">Volver</string>
     <string name="revisar_confirmar">Confirmar revisión</string>
+    <!-- Los campos obligatorios llevan un asterisco rojo; debajo, la leyenda. TalkBack dice "obligatorio". -->
+    <string name="campo_obligatorio">Obligatorio</string>
+    <string name="campo_obligatorio_descripcion">%1$s, obligatorio</string>
 
-    <!-- Comentario que propone cada motivo, el de su pantalla del Figma (se puede editar). Los que
-         nombran equipos usan los de la alerta: el servicio y el origen al bloquear, origen y destino
-         en el backup y el origen en el equipo nuevo. -->
-    <string name="comentario_escalado_al_proveedor">Avisé al proveedor de seguridad; están revisando el servidor.</string>
-    <string name="comentario_bloqueado_manualmente">Bloqueé el acceso %1$s de %2$s y avisé al proveedor.</string>
-    <string name="comentario_contrasena_cambiada">Cambié la contraseña de la cuenta usada y revisé los accesos.</string>
-    <string name="comentario_investigando">Estoy revisando los registros del servidor; sigo mañana.</string>
+    <!-- Comentario que propone cada motivo, el de su pantalla del Figma (se puede editar), en forma
+         impersonal: queda en el historial y lo lee otra persona (decisión 48). Los que nombran equipos
+         usan los de la alerta: el servicio y el origen al bloquear, origen y destino en el backup y el
+         origen en el equipo nuevo. -->
+    <string name="comentario_escalado_al_proveedor">Se avisó al proveedor de seguridad, que está revisando el servidor.</string>
+    <string name="comentario_bloqueado_manualmente">Se bloqueó el acceso %1$s de %2$s y se avisó al proveedor.</string>
+    <string name="comentario_contrasena_cambiada">Se cambió la contraseña de la cuenta usada y se revisaron los accesos.</string>
+    <string name="comentario_investigando">Se están revisando los registros del servidor.</string>
     <string name="comentario_tarea_programada">Es la copia nocturna que corre todos los domingos.</string>
     <string name="comentario_backup">Es el backup semanal de %1$s hacia %2$s.</string>
     <string name="comentario_equipo_nuevo">%1$s es un equipo nuevo que se configuró hoy.</string>
@@ -589,7 +587,7 @@
 
     <!-- Pantalla Estado (RF01; Figma 1-3, 1-178, 1-222 y 99-122 a 99-442). Los que no están en el Figma
          (lista vacía, notas de Alta y Media, sin datos con la red pareada y alertas nuevas) son para que Meli los revise. -->
-    <string name="estado_ayuda_contadores">Alertas sin revisar, por severidad. Tocá una para filtrar la lista.</string>
+    <string name="estado_ayuda_contadores">Tocá un contador para filtrar la lista.</string>
     <string name="estado_ayuda_altas">Mostrando solo altas sin revisar. Tocá de nuevo para ver todas.</string>
     <string name="estado_ayuda_medias">Mostrando solo medias sin revisar. Tocá de nuevo para ver todas.</string>
     <string name="estado_ayuda_bajas">Mostrando solo bajas sin revisar. Tocá de nuevo para ver todas.</string>

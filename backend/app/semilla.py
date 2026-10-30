@@ -216,12 +216,13 @@ def _siguiente_secuencia(con: sqlite3.Connection) -> int:
     return int(fila[0])
 
 
-# Un comentario por motivo, como los que propone la app pero sin nombres de equipos.
+# Un comentario por motivo, como los que propone la app pero sin nombres de equipos. En forma
+# impersonal (decisión 48): el comentario queda en el historial y lo lee otra persona.
 COMENTARIO_POR_MOTIVO = {
-    "escalado_al_proveedor": "Avisé al proveedor de seguridad; están revisando el servidor.",
-    "bloqueado_manualmente": "Bloqueé el acceso desde ese equipo y avisé al proveedor.",
-    "contrasena_cambiada": "Cambié la contraseña de la cuenta usada y revisé los accesos.",
-    "investigando": "Estoy revisando los registros del servidor; sigo mañana.",
+    "escalado_al_proveedor": "Se avisó al proveedor de seguridad, que está revisando el servidor.",
+    "bloqueado_manualmente": "Se bloqueó el acceso desde ese equipo y se avisó al proveedor.",
+    "contrasena_cambiada": "Se cambió la contraseña de la cuenta usada y se revisaron los accesos.",
+    "investigando": "Se están revisando los registros del servidor.",
     "tarea_programada": "Es la copia nocturna que corre todos los domingos.",
     "backup": "Es el backup semanal entre esos dos equipos.",
     "equipo_nuevo": "Es un equipo nuevo que se configuró esta semana.",

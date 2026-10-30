@@ -143,7 +143,7 @@ class PrimerInicioYConexionTest {
         var escrito = ""
         mostrar(ConexionUiState.Formulario(), AccionesConexion(alCambiarCodigo = { escrito = it }))
 
-        compose.onNodeWithContentDescription("Código de pareo").performTextInput("k7m2")
+        compose.onNodeWithContentDescription("Código de pareo, obligatorio").performTextInput("k7m2")
 
         assertEquals("k7m2", escrito)
     }

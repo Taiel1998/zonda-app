@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -53,7 +54,7 @@ class DetalleContenidoTest {
 
     /** La revisión del servidor, hecha sin conexión a las 11:10 y llegada a las 11:16. */
     private val revisionDelServidor = Fixtures.revision(fecha = Fixtures.AHORA.minus(Duration.ofMinutes(44)), origen = OrigenRevision.SERVIDOR)
-        .copy(autor = "Celular Martín", revisadaEn = Fixtures.AHORA.minus(Duration.ofMinutes(50)), comentario = "Avisé al proveedor.")
+        .copy(autor = "Celular Martín", revisadaEn = Fixtures.AHORA.minus(Duration.ofMinutes(50)), comentario = "Se avisó al proveedor.")
 
     private fun dibujar(
         estado: DetalleUiState,
@@ -90,7 +91,9 @@ class DetalleContenidoTest {
         compose.onNodeWithText("pc-09 → srv-web").assertIsDisplayed()
         compose.onNodeWithText("SSH · TCP/22 · 10:50:00 · detectada por IA").assertIsDisplayed()
         compose.onNodeWithText("Datos del flujo").assertIsDisplayed()
-        compose.onNodeWithText("Veredicto por método").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Predicción por método").performScrollTo().assertIsDisplayed()
+        // Menos texto (decisión 48): el botón se entiende solo, sin la frase de arriba.
+        compose.onAllNodesWithText("Al revisar vas a indicar", substring = true).assertCountEquals(0)
         compose.onNodeWithText("Revisar").performScrollTo().performClick()
         assertTrue(abierta)
 
@@ -121,22 +124,26 @@ class DetalleContenidoTest {
     }
 
     @Test
-    fun `seis terminos tienen su signo de pregunta, que abre un globito por vez`() {
+    fun `un solo signo de pregunta por seccion, que abre un globito por vez`() {
         dibujar(contenido(Fixtures.alerta("a-1")))
-        val ayudaIa = "Aprendió cómo es el tráfico normal de tu red y marca lo que se parece poco a eso."
-        val ayudaUmbrales = "Cuentan las conexiones a un mismo servicio en un minuto y marcan si son más que en un día normal."
+        val ayudaDatos = "Conexiones en 60 s: cuántas veces el origen se conectó a este servicio en un minuto.\n" +
+            "Conexiones en total: todas las de estos dos equipos, hasta que pasan 15 minutos sin ninguna."
+        val ayudaMetodos = "Modelo de IA: aprendió el tráfico normal de tu red y marca lo que se aleja de eso.\n" +
+            "Umbrales: marcan si hay más conexiones a un servicio por minuto que en un día normal.\n" +
+            "Reglas: marcan los servicios que no están en la lista de autorizados.\n" +
+            "Alcanza con que uno marque para que haya alerta."
 
-        listOf("Conexiones en 60 s", "Conexiones en total", "Veredicto por método", "Modelo de IA", "Umbrales estadísticos", "Reglas estáticas")
-            .forEach { termino -> compose.onNodeWithContentDescription("Qué es $termino").assertHasClickAction() }
-        compose.onAllNodesWithText(ayudaIa).assertCountEquals(0)
+        // Antes eran seis (decisión 37); ahora uno en "Datos del flujo" y otro en "Predicción por método" (decisión 48).
+        compose.onAllNodes(hasContentDescription("Qué es", substring = true)).assertCountEquals(2)
+        compose.onAllNodesWithText(ayudaDatos).assertCountEquals(0)
 
-        compose.onNodeWithContentDescription("Qué es Modelo de IA").performScrollTo().performClick()
-        compose.onNodeWithText(ayudaIa).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Qué es Datos del flujo").assertHasClickAction().performClick()
+        compose.onNodeWithText(ayudaDatos).assertIsDisplayed()
 
         // Abrir otro cierra el primero: uno por vez.
-        compose.onNodeWithContentDescription("Qué es Umbrales estadísticos").performScrollTo().performClick()
-        compose.onNodeWithText(ayudaUmbrales).assertIsDisplayed()
-        compose.onNodeWithText(ayudaIa).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Qué es Predicción por método").performScrollTo().performClick()
+        compose.onNodeWithText(ayudaMetodos).assertIsDisplayed()
+        compose.onNodeWithText(ayudaDatos).assertDoesNotExist()
     }
 
     @Test
@@ -145,7 +152,7 @@ class DetalleContenidoTest {
         dibujar(contenido(Fixtures.alerta("a-1", revision = revisionDelServidor)), AccionesDetalle(alRevisar = { cambiar = true }))
 
         compose.onNodeWithText("Ataque real · sincronizada 11:16").assertIsDisplayed()
-        compose.onNodeWithText("Avisé al proveedor.").assertIsDisplayed()
+        compose.onNodeWithText("Se avisó al proveedor.").assertIsDisplayed()
         compose.onNodeWithText("Historial").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Enviada al servidor").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Revisada: ataque real · Escalado al proveedor").performScrollTo().assertIsDisplayed()
@@ -270,7 +277,9 @@ class DetalleContenidoTest {
 
         compose.onNodeWithText("¿Qué resultó ser esta alerta?").assertIsDisplayed()
         compose.onNodeWithText("Paso 1 de 2").assertIsDisplayed()
-        compose.onNodeWithText("Era tráfico legítimo: un backup, una tarea programada, un equipo nuevo.").assertIsDisplayed()
+        compose.onNodeWithText("Tráfico legítimo, como un backup.").assertIsDisplayed()
+        // Menos texto (decisión 48): sin el párrafo que explicaba el paso siguiente.
+        compose.onAllNodesWithText("En el paso siguiente", substring = true).assertCountEquals(0)
         compose.onNodeWithText("Falso positivo").performClick()
         assertEquals(ResultadoRevision.FALSO_POSITIVO, elegido)
     }
@@ -294,7 +303,12 @@ class DetalleContenidoTest {
 
         compose.onNodeWithText("Falso positivo: ¿por qué?").assertIsDisplayed()
         listOf("Tarea programada", "Backup", "Equipo nuevo", "Usuario autorizado", "Otro").forEach { compose.onNodeWithText(it).assertIsDisplayed() }
-        compose.onNodeWithText("Contá qué hiciste o por qué. Queda en el historial de la alerta.").assertIsDisplayed()
+        compose.onNodeWithText("Queda en el historial de la alerta.").assertIsDisplayed()
+        // Los obligatorios llevan el asterisco y la leyenda (decisión 48).
+        compose.onNodeWithText("Motivo *").assertIsDisplayed()
+        compose.onNodeWithText("Comentario *").assertIsDisplayed()
+        compose.onNodeWithText("* Obligatorio").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Comentario, obligatorio").assertIsDisplayed()
         compose.onNodeWithText("Confirmar revisión").assertIsNotEnabled()
         compose.onNodeWithText("Backup").performClick()
         // El comentario del Figma, con los equipos de esta alerta.

@@ -28,11 +28,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.DatosPareo
 import ar.edu.uade.zonda.ui.theme.ejemploCampo
 import ar.edu.uade.zonda.ui.theme.encabezado
@@ -50,6 +56,40 @@ private val FormaCampo = RoundedCornerShape(8.dp)
 /** Cuántos caracteres tiene el código de pareo, sin el guion. */
 const val LARGO_CODIGO = 8
 
+/**
+ * La etiqueta de un campo obligatorio con el asterisco rojo al final ("Comentario *", decisión 48); sin
+ * [obligatorio], el texto tal cual.
+ */
+@Composable
+fun etiquetaConAsterisco(texto: String, obligatorio: Boolean = true): AnnotatedString {
+    val rojo = MaterialTheme.colorScheme.error
+    return buildAnnotatedString {
+        append(texto)
+        if (obligatorio) withStyle(SpanStyle(color = rojo)) { append(" *") }
+    }
+}
+
+/** "* Obligatorio", debajo de los campos de un formulario que tiene campos obligatorios (decisión 48). */
+@Composable
+fun LeyendaObligatorio(modifier: Modifier = Modifier) {
+    val rojo = MaterialTheme.colorScheme.error
+    val obligatorio = stringResource(R.string.campo_obligatorio)
+    Text(
+        text = buildAnnotatedString {
+            withStyle(SpanStyle(color = rojo)) { append("* ") }
+            append(obligatorio)
+        },
+        style = MaterialTheme.typography.nota,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
+}
+
+/** Lo que lee TalkBack del campo: la etiqueta y, si es obligatorio, "obligatorio" (el asterisco no se lee). */
+@Composable
+private fun descripcionDeCampo(etiqueta: String, obligatorio: Boolean): String =
+    if (obligatorio) stringResource(R.string.campo_obligatorio_descripcion, etiqueta) else etiqueta
+
 /** El recuadro de un campo con la etiqueta adentro. [campo] es el texto que se escribe. */
 @Composable
 private fun RecuadroDeCampo(
@@ -58,8 +98,10 @@ private fun RecuadroDeCampo(
     vacio: Boolean,
     enfocado: Boolean,
     conError: Boolean,
+    obligatorio: Boolean = false,
     campo: @Composable () -> Unit,
 ) {
+    val textoEtiqueta = etiquetaConAsterisco(etiqueta, obligatorio)
     val grosor: Dp = if (enfocado || conError) 2.dp else 1.dp
     val colorBorde = when {
         conError -> MaterialTheme.colorScheme.error
@@ -76,10 +118,10 @@ private fun RecuadroDeCampo(
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         if (mostrarEjemplo) {
-            Text(text = etiqueta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = textoEtiqueta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             Text(
-                text = etiqueta,
+                text = textoEtiqueta,
                 style = MaterialTheme.typography.nota,
                 color = when {
                     conError -> MaterialTheme.colorScheme.error
@@ -124,10 +166,13 @@ fun CampoTexto(
     interaccion: MutableInteractionSource = remember { MutableInteractionSource() },
     /** Con más de una línea, el campo crece con el texto (el comentario de la revisión, Figma 66-2933). */
     lineasMinimas: Int = 1,
-    /** La ayuda se ve siempre, no solo con el foco ("Contá qué hiciste o por qué"). */
+    /** La ayuda se ve siempre, no solo con el foco ("Queda en el historial de la alerta."). */
     ayudaSiempre: Boolean = false,
+    /** La etiqueta lleva el asterisco rojo de los campos obligatorios (decisión 48). */
+    obligatorio: Boolean = false,
 ) {
     val enfocado by interaccion.collectIsFocusedAsState()
+    val descripcion = descripcionDeCampo(etiqueta, obligatorio)
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         BasicTextField(
             value = valor,
@@ -141,9 +186,9 @@ fun CampoTexto(
             interactionSource = interaccion,
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = etiqueta },
+                .semantics { contentDescription = descripcion },
             decorationBox = { campo ->
-                RecuadroDeCampo(etiqueta, ejemplo, vacio = valor.isEmpty(), enfocado = enfocado, conError = error != null, campo = campo)
+                RecuadroDeCampo(etiqueta, ejemplo, vacio = valor.isEmpty(), enfocado = enfocado, conError = error != null, obligatorio = obligatorio, campo = campo)
             },
         )
         TextoBajoCampo(ayuda = if (enfocado || ayudaSiempre) ayuda else null, error = error)
@@ -169,15 +214,18 @@ fun CampoCodigo(
     opcionesTeclado: KeyboardOptions = KeyboardOptions.Default,
     accionesTeclado: KeyboardActions = KeyboardActions.Default,
     interaccion: MutableInteractionSource = remember { MutableInteractionSource() },
+    /** La etiqueta lleva el asterisco rojo de los campos obligatorios (decisión 48). */
+    obligatorio: Boolean = false,
 ) {
     val enfocado by interaccion.collectIsFocusedAsState()
     val casillas = enfocado || codigo.isNotEmpty()
     val visibles = DatosPareo.caracteresDeCodigo(codigo)
+    val descripcion = descripcionDeCampo(etiqueta, obligatorio)
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (casillas) 8.dp else 4.dp)) {
         if (casillas) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = etiqueta,
+                    text = etiquetaConAsterisco(etiqueta, obligatorio),
                     style = MaterialTheme.typography.nota,
                     color = when {
                         error != null -> MaterialTheme.colorScheme.error
@@ -200,7 +248,7 @@ fun CampoCodigo(
             interactionSource = interaccion,
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = etiqueta },
+                .semantics { contentDescription = descripcion },
             decorationBox = { campo ->
                 if (casillas) {
                     Box {
@@ -209,7 +257,7 @@ fun CampoCodigo(
                         Box(modifier = Modifier.matchParentSize().alpha(0f)) { campo() }
                     }
                 } else {
-                    RecuadroDeCampo(etiqueta, ejemplo, vacio = true, enfocado = false, conError = error != null, campo = campo)
+                    RecuadroDeCampo(etiqueta, ejemplo, vacio = true, enfocado = false, conError = error != null, obligatorio = obligatorio, campo = campo)
                 }
             },
         )

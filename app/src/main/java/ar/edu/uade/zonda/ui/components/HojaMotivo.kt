@@ -60,7 +60,9 @@ fun ColumnScope.ContenidoHojaMotivo(
         error = if (conError) stringResource(R.string.motivo_falta) else null,
         lineasMinimas = 2,
         ayudaSiempre = true,
+        obligatorio = true,
     )
+    LeyendaObligatorio()
     Row(modifier = Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         BotonContorno(texto = stringResource(R.string.revisar_cancelar), alTocar = alCancelar, modifier = Modifier.weight(1f), relleno = RellenoBotonAngosto)
         BotonPrincipal(texto = stringResource(R.string.motivo_guardar), alTocar = alGuardar, modifier = Modifier.weight(1f))
