@@ -173,6 +173,32 @@ CREATE INDEX IF NOT EXISTS asignaciones_alerta ON asignaciones (alerta_id);
 CREATE TABLE IF NOT EXISTS catalogo_servicios (
     servicio TEXT PRIMARY KEY
 );
+
+-- El tráfico que ve el sensor, para el tablero web (decisión 49): por tramo de 5 segundos y servicio.
+-- t es el comienzo del tramo en segundos desde 1970 (UTC), con el reloj del sensor. Las filas se suman:
+-- Zeek escribe una conexión cuando termina, y una larga completa tramos que ya habían llegado.
+CREATE TABLE IF NOT EXISTS trafico (
+    t INTEGER NOT NULL,
+    servicio TEXT NOT NULL,
+    conexiones INTEGER NOT NULL DEFAULT 0,
+    -- Las que no llegaron a establecerse: sin respuesta, rechazadas o cortadas en el saludo.
+    fallidas INTEGER NOT NULL DEFAULT 0,
+    bytes INTEGER NOT NULL DEFAULT 0,
+    paquetes INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (t, servicio)
+);
+
+-- Quién habló con quién, por minuto y servicio (el mapa de la red del tablero).
+CREATE TABLE IF NOT EXISTS trafico_pares (
+    minuto INTEGER NOT NULL,
+    origen TEXT NOT NULL,
+    destino TEXT NOT NULL,
+    servicio TEXT NOT NULL,
+    conexiones INTEGER NOT NULL DEFAULT 0,
+    fallidas INTEGER NOT NULL DEFAULT 0,
+    bytes INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (minuto, origen, destino, servicio)
+);
 """
 
 

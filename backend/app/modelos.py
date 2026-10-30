@@ -6,6 +6,7 @@ sale de `servicio_no_autorizado` (las reglas), de `volumen_inusual` (los umbrale
 dos, de la más alta de las dos (cambio 9).
 """
 
+import ipaddress
 from datetime import datetime
 from typing import Literal
 
@@ -486,3 +487,107 @@ class LatidoEntrada(BaseModel):
 class LatidoResultado(BaseModel):
     # Cuándo llegó, con el reloj del servidor: es la hora que mide si el análisis sigue andando.
     recibidoEn: str
+
+
+# ---- Tráfico del sensor para el tablero web (decisión 49) ----
+
+# El servicio como lo nombra el sensor: el de Zeek ("ssh", "dns") o, si Zeek no lo reconoció, el del
+# puerto o "otro". En minúsculas, para que no entre cualquier texto en la base.
+PATRON_SERVICIO = r"^[a-z0-9][a-z0-9_.-]{0,31}$"
+# Un tiempo razonable: después de 2001 y antes de 2100, en segundos desde 1970.
+T_MINIMO = 1_000_000_000
+T_MAXIMO = 4_102_444_800
+
+
+class TramoTrafico(BaseModel):
+    """Lo que sumó el sensor en un tramo de 5 segundos para un servicio: las conexiones que empezaron en
+    el tramo, cuántas de ellas no llegaron a establecerse, y los bytes y paquetes que pasaron en él."""
+
+    # Comienzo del tramo, en segundos desde 1970 (UTC), con el reloj del sensor.
+    t: int = Field(ge=T_MINIMO, le=T_MAXIMO)
+    servicio: str = Field(pattern=PATRON_SERVICIO)
+    conexiones: int = Field(default=0, ge=0)
+    fallidas: int = Field(default=0, ge=0)
+    bytes: int = Field(default=0, ge=0)
+    paquetes: int = Field(default=0, ge=0)
+
+
+class ParTrafico(BaseModel):
+    """Quién habló con quién en un minuto y por qué servicio (el mapa de la red del tablero)."""
+
+    # Comienzo del minuto, en segundos desde 1970 (UTC); si no es redondo, el servidor lo redondea.
+    minuto: int = Field(ge=T_MINIMO, le=T_MAXIMO)
+    origen: str
+    destino: str
+    servicio: str = Field(pattern=PATRON_SERVICIO)
+    conexiones: int = Field(default=0, ge=0)
+    fallidas: int = Field(default=0, ge=0)
+    bytes: int = Field(default=0, ge=0)
+
+    @field_validator("origen", "destino")
+    @classmethod
+    def direccion_ip(cls, valor: str) -> str:
+        try:
+            return str(ipaddress.ip_address(valor.strip()))
+        except ValueError as error:
+            raise ValueError("tiene que ser una dirección IP") from error
+
+
+class TraficoEntrada(BaseModel):
+    """Lo que manda el sensor a POST /ingesta/trafico cada 5 segundos. Si el servidor no contestó, el
+    sensor junta varios envíos en uno; por eso las listas pueden ser largas."""
+
+    model_config = {"extra": "ignore"}
+
+    tramos: list[TramoTrafico] = Field(default_factory=list, max_length=50_000)
+    pares: list[ParTrafico] = Field(default_factory=list, max_length=50_000)
+
+
+class TraficoResultado(BaseModel):
+    tramos: int
+    pares: int
+
+
+class PuntoTrafico(BaseModel):
+    """Un punto de la serie: el tramo que empieza en t y dura `paso` segundos."""
+
+    t: int
+    conexiones: int
+    fallidas: int
+    bytes: int
+    paquetes: int
+
+
+class SerieTrafico(BaseModel):
+    """GET /trafico: el tráfico de la ventana [desde, hasta), en tramos de `paso` segundos. Solo vienen
+    los tramos con tráfico; los que faltan son ceros."""
+
+    desde: int
+    hasta: int
+    paso: int
+    horaServidor: str
+    # El tramo más nuevo que llegó del sensor (de cualquier momento); null si nunca llegó ninguno.
+    ultimoTramo: int | None
+    total: list[PuntoTrafico]
+    servicios: dict[str, list[PuntoTrafico]]
+
+
+class ParDeTrafico(BaseModel):
+    origen: str
+    origenNombre: str | None
+    destino: str
+    destinoNombre: str | None
+    conexiones: int
+    fallidas: int
+    bytes: int
+    # De más a menos conexiones.
+    servicios: list[str]
+    ultimoMinuto: int
+
+
+class ParesTrafico(BaseModel):
+    """GET /trafico/pares: quién habló con quién en la ventana, de más a menos conexiones."""
+
+    desde: int
+    hasta: int
+    pares: list[ParDeTrafico]

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from . import latido
 from . import personas as gente
 from . import registro
+from . import trafico
 from .asignaciones import asignaciones_de, asignar, responsable_de
 from .auth import (
     administrador_actual,
@@ -47,15 +48,21 @@ from .modelos import (
     LatidoEntrada,
     LatidoResultado,
     PaginaAlertas,
+    ParDeTrafico,
     PareoEntrada,
     PareoSalida,
+    ParesTrafico,
     PerfilEntrada,
     Persona,
+    PuntoTrafico,
     Revision,
     RevisionEntrada,
     Salud,
+    SerieTrafico,
     Severidad,
     SeveridadesEntrada,
+    TraficoEntrada,
+    TraficoResultado,
     Veredictos,
     VinculoEntrada,
     VinculoTelegram,
@@ -64,7 +71,7 @@ from .revisiones import aplicar_revision
 from .semilla import SQL_SEVERIDAD, guardar_equipo, severidad_de
 from .telegram import BotTelegram, ErrorTelegram
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 
 router = APIRouter()
 
@@ -652,3 +659,82 @@ def ingesta_latido(entrada: LatidoEntrada, request: Request, _: None = Depends(v
     with _base(request).transaccion() as con:
         recibido = latido.guardar(con, datos)
     return LatidoResultado(recibidoEn=recibido)
+
+
+# ---- Tráfico del sensor para el tablero web (decisión 49) ----
+
+
+@router.post("/ingesta/trafico", response_model=TraficoResultado)
+def ingesta_trafico(entrada: TraficoEntrada, request: Request, _: None = Depends(verificar_token_ingesta)) -> TraficoResultado:
+    """El resumen del tráfico que manda el sensor cada 5 segundos, con el mismo token que la ingesta de
+    alertas. Se suma a lo que ya había (una conexión larga completa tramos viejos) y, de paso, se borra lo
+    que tiene más de `dias_trafico` días."""
+    cfg = request.app.state.config
+    limite = int(ahora().timestamp()) - cfg.dias_trafico * 86400
+    with _base(request).transaccion() as con:
+        trafico.guardar(con, entrada.tramos, entrada.pares)
+        trafico.podar(con, limite)
+    return TraficoResultado(tramos=len(entrada.tramos), pares=len(entrada.pares))
+
+
+def _ventana(con: sqlite3.Connection, desde: int | None, hasta: int | None, paso: int, por_puntos: bool = True) -> tuple[int, int]:
+    """La ventana pedida, redondeada al paso. Sin `hasta`, llega hasta ahora o hasta el último tramo si el
+    reloj del sensor va adelantado; sin `desde`, es la última hora. 422 si está al revés o, en una serie,
+    si tiene demasiados puntos."""
+    if hasta is None:
+        ultimo = trafico.ultimo_tramo(con)
+        hasta = max(int(ahora().timestamp()), (ultimo or 0) + 1)
+    hasta = -(-hasta // paso) * paso
+    desde = hasta - 3600 if desde is None else desde - desde % paso
+    if desde >= hasta:
+        raise HTTPException(status_code=422, detail="La ventana está al revés: desde tiene que ser anterior a hasta")
+    if por_puntos and (hasta - desde) // paso > trafico.MAX_PUNTOS:
+        raise HTTPException(status_code=422, detail=f"Demasiados puntos: con ese paso, la ventana pasa de {trafico.MAX_PUNTOS}")
+    return desde, hasta
+
+
+@router.get("/trafico", response_model=SerieTrafico)
+def ver_trafico(
+    request: Request,
+    dispositivo: sqlite3.Row = Depends(dispositivo_actual),
+    desde: int | None = None,
+    hasta: int | None = None,
+    paso: int = 5,
+) -> SerieTrafico:
+    """El tráfico total y por servicio en tramos de `paso` segundos, para los gráficos del tablero.
+    `desde` y `hasta` en segundos desde 1970; solo vienen los tramos con tráfico."""
+    if paso not in trafico.PASOS:
+        raise HTTPException(status_code=422, detail=f"El paso tiene que ser uno de {', '.join(map(str, trafico.PASOS))} segundos")
+    con = _base(request).conexion()
+    desde, hasta = _ventana(con, desde, hasta, paso)
+    total, servicios = trafico.serie(con, desde, hasta, paso)
+    return SerieTrafico(
+        desde=desde,
+        hasta=hasta,
+        paso=paso,
+        horaServidor=iso(ahora()),
+        ultimoTramo=trafico.ultimo_tramo(con),
+        total=[PuntoTrafico(**p) for p in total],
+        servicios={s: [PuntoTrafico(**p) for p in puntos] for s, puntos in servicios.items()},
+    )
+
+
+@router.get("/trafico/pares", response_model=ParesTrafico)
+def ver_pares(
+    request: Request,
+    dispositivo: sqlite3.Row = Depends(dispositivo_actual),
+    desde: int | None = None,
+    hasta: int | None = None,
+) -> ParesTrafico:
+    """Quién habló con quién en la ventana (por defecto, la última hora), con el nombre de cada equipo del
+    catálogo: el mapa de la red del tablero."""
+    con = _base(request).conexion()
+    desde, hasta = _ventana(con, desde, hasta, 60, por_puntos=False)
+    return ParesTrafico(
+        desde=desde,
+        hasta=hasta,
+        pares=[
+            ParDeTrafico(**p, origenNombre=nombre_equipo(con, p["origen"]), destinoNombre=nombre_equipo(con, p["destino"]))
+            for p in trafico.pares(con, desde, hasta)
+        ],
+    )
