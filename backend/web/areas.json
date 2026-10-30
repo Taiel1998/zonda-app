@@ -1,0 +1,9 @@
+{
+  "_nota": "Las áreas de la red para el mapa del tablero, en el orden de las columnas (de izquierda a derecha). Se configura en cada instalación: una por VLAN o subred. Lo que no cae en ninguna va a «Fuera de la red».",
+  "areas": [
+    { "nombre": "Usuarios", "redes": ["192.168.10.0/24"] },
+    { "nombre": "RRHH", "redes": ["192.168.30.0/24"] },
+    { "nombre": "Contabilidad", "redes": ["192.168.40.0/24"] },
+    { "nombre": "Servidores", "redes": ["192.168.20.0/24"] }
+  ]
+}

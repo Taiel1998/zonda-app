@@ -35,6 +35,26 @@ def test_lo_que_no_existe_da_404(cliente):
     assert cliente.get("/panel/no-existe.js").status_code == 404
 
 
+def test_lo_que_pide_la_pagina_existe_y_se_sirve(cliente):
+    html = (WEB / "index.html").read_text(encoding="utf-8")
+    rutas = re.findall(r"""(?:src|href)\s*=\s*["']([^"'#]+)["']""", html)
+    assert {"estilos.css", "vendor/echarts.min.js", "js/tablero.js"} <= set(rutas)
+    for ruta in rutas:
+        assert (WEB / ruta).is_file(), ruta
+        assert cliente.get(f"/panel/{ruta}").status_code == 200, ruta
+    for modulo in (WEB / "js").glob("*.js"):
+        for importado in re.findall(r"""from\s+["'](\./[^"']+)["']""", modulo.read_text(encoding="utf-8")):
+            assert (modulo.parent / importado).is_file(), f"{modulo.name} importa {importado}, que no existe"
+
+
+def test_la_pagina_no_tiene_codigo_en_linea():
+    """La política de contenido solo deja correr los scripts que sirve el servidor: un <script> sin src o un
+    onclick en el HTML no correrían, y además serían una puerta para inyectar código."""
+    html = (WEB / "index.html").read_text(encoding="utf-8")
+    assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", html)
+    assert not re.search(r"\son[a-z]+\s*=", html, re.IGNORECASE)
+
+
 def test_el_tablero_no_carga_nada_de_internet():
     """Todo lo que usa el tablero (scripts, estilos, letras, imágenes) está en backend/web: anda sin
     internet y la política de contenido no se puede aflojar sin que falle este test."""
