@@ -1,0 +1,20 @@
+[Unit]
+Description=Zonda - resumen del trafico para el tablero web (vivo/metricas_trafico.py)
+After=network-online.target zeek.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=taiel
+# El conn.log del spool es del grupo zeek, como para el analisis en vivo.
+SupplementaryGroups=zeek
+WorkingDirectory=/home/taiel/pfi
+# La primera vez manda la ultima semana de los archivos viejos de Zeek; despues sigue el conn.log en vivo.
+ExecStart=/usr/bin/python3 -u vivo/metricas_trafico.py --servidor http://10.0.2.2:8000 --token-archivo vivo/.ingesta_token --rellenar-horas 168
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/taiel/pfi/vivo/metricas_trafico.log
+StandardError=append:/home/taiel/pfi/vivo/metricas_trafico.log
+
+[Install]
+WantedBy=multi-user.target

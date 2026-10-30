@@ -59,7 +59,16 @@ FILAS_POR_ENVIO = 20000
 RETENER = 86400
 
 
-def registrar(mensaje: str) -> None:
+_ultimos: dict[str, float] = {}
+
+
+def registrar(mensaje: str, cada: float = 0) -> None:
+    """Escribe en el registro; con `cada`, el mismo mensaje sale como mucho una vez en esos segundos (si el
+    servidor está apagado, no se llena el registro con un error cada 5 segundos)."""
+    ahora = time.monotonic()
+    if cada and ahora - _ultimos.get(mensaje, -cada) < cada:
+        return
+    _ultimos[mensaje] = ahora
     print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {mensaje}", flush=True)
 
 
@@ -364,12 +373,12 @@ class Servidor:
         except urllib.error.HTTPError as error:
             detalle = error.read()[:300].decode("utf-8", "replace")
             if error.code in (401, 404, 503) or error.code >= 500:
-                registrar(f"El servidor contestó {error.code}: {detalle}. Se reintenta.")
+                registrar(f"El servidor contestó {error.code}: {detalle}. Se reintenta.", cada=60)
                 return "reintentar"
             registrar(f"El servidor rechazó el envío ({error.code}): {detalle}. Se descarta.")
             return "descartar"
         except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as error:
-            registrar(f"No se pudo mandar al servidor ({error}). Se reintenta.")
+            registrar(f"No se pudo mandar al servidor ({error}). Se reintenta.", cada=60)
             return "reintentar"
 
 
