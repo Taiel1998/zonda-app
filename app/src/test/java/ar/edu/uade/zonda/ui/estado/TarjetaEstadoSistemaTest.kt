@@ -6,7 +6,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -56,10 +58,11 @@ class TarjetaEstadoSistemaTest {
     }
 
     @Test
-    fun `con todo funcionando cada pieza dice Funciona y debajo su dato`() {
+    fun `con todo funcionando el semaforo dice Todo funciona y cada pieza Funciona con su dato`() {
         dibujar(sistema())
 
-        compose.onNodeWithText("Estado del sistema").assertIsDisplayed()
+        // La franja se lee entera, como cada fila: los dos textos quedan adentro de la descripción.
+        compose.onNodeWithContentDescription("Estado del sistema: Todo funciona").assertIsDisplayed()
         compose.onNodeWithContentDescription("Sensor de red: Funciona").assertIsDisplayed()
         compose.onNodeWithContentDescription("Análisis en vivo: Funciona").assertIsDisplayed()
         compose.onNodeWithContentDescription("Servidor de alertas: Funciona").assertIsDisplayed()
@@ -76,20 +79,32 @@ class TarjetaEstadoSistemaTest {
     }
 
     @Test
-    fun `cada pieza tiene su signo de pregunta que explica que es`() {
+    fun `la tarjeta tiene un solo signo de pregunta que explica las piezas y los colores`() {
         dibujar(sistema())
-        // Qué es y qué quiere decir cada palabra, un renglón por estado.
-        val ayudaAnalisis = "Cada 20 segundos revisa lo que vio el sensor con los tres métodos y manda las alertas.\n" +
-            "Funciona: dio señales en los últimos 2 minutos.\n" +
-            "Detenido: pasaron más de 2 minutos sin señales; también avisa por Telegram.\n" +
-            "Sin datos: todavía no dio ninguna señal."
+        val ayuda = "Sensor de red: Zeek, que recibe una copia del tráfico.\n" +
+            "Análisis en vivo: lo revisa cada 20 s con los tres métodos.\n" +
+            "Servidor de alertas: guarda las alertas y avisa por Telegram.\n" +
+            "Verde: todo anda. Amarillo: el sensor pierde tráfico. Rojo: algo se detuvo o no da señales."
 
-        listOf("Sensor de red", "Análisis en vivo", "Servidor de alertas")
-            .forEach { pieza -> compose.onNodeWithContentDescription("Qué es $pieza").assertHasClickAction() }
-        compose.onAllNodesWithText(ayudaAnalisis).assertCountEquals(0)
+        compose.onAllNodes(hasContentDescription("Qué es", substring = true)).assertCountEquals(1)
+        compose.onAllNodesWithText(ayuda).assertCountEquals(0)
 
-        compose.onNodeWithContentDescription("Qué es Análisis en vivo").performClick()
-        compose.onNodeWithText(ayudaAnalisis).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Qué es Estado del sistema").assertHasClickAction().performClick()
+        compose.onNodeWithText(ayuda).assertIsDisplayed()
+    }
+
+    @Test
+    fun `con el sensor viendo parcialmente el semaforo dice Funciona en parte`() {
+        dibujar(sistema(sensor = EstadoPieza.PARCIAL))
+
+        compose.onNodeWithContentDescription("Estado del sistema: Funciona en parte").assertIsDisplayed()
+    }
+
+    @Test
+    fun `con una pieza detenida o sin noticias el semaforo dice Algo no funciona`() {
+        dibujar(sistema(sensor = EstadoPieza.PARCIAL, analisis = EstadoPieza.DETENIDO))
+
+        compose.onNodeWithContentDescription("Estado del sistema: Algo no funciona").assertIsDisplayed()
     }
 
     @Test
@@ -162,11 +177,11 @@ class TarjetaEstadoSistemaTest {
                 )
             }
         }
-        compose.onNodeWithText("Estado del sistema").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Estado del sistema: Todo funciona").assertIsDisplayed()
         compose.onNodeWithContentDescription("Análisis en vivo: Funciona").assertIsDisplayed()
 
         conTarjeta = false
         compose.waitForIdle()
-        compose.onAllNodesWithText("Estado del sistema").assertCountEquals(0)
+        compose.onAllNodesWithContentDescription("Estado del sistema: Todo funciona").assertCountEquals(0)
     }
 }

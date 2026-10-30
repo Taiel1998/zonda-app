@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,43 +26,104 @@ import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.EstadoPieza
 import ar.edu.uade.zonda.domain.model.EstadoSistema
+import ar.edu.uade.zonda.domain.model.Semaforo
+import ar.edu.uade.zonda.domain.model.semaforo
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.AyudaGlobito
 import ar.edu.uade.zonda.ui.components.Panel
+import ar.edu.uade.zonda.ui.theme.GrisAviso
+import ar.edu.uade.zonda.ui.theme.TextoSecundario
 import ar.edu.uade.zonda.ui.theme.Tono
 import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
+import ar.edu.uade.zonda.ui.theme.etiquetaBarra
 import java.time.Duration
 import java.time.Instant
 
 /**
  * La tarjeta "Estado del sistema" (devolución del docente: que el análisis en vivo esté monitoreado
- * desde la app). Una fila por pieza, el sensor de red, el análisis en vivo y el servidor de alertas,
- * cada una con su punto, su color y la palabra, para que se entienda sin distinguir colores: verde lo que
- * funciona y rojo lo que no, también lo que no se sabe; el sensor que no llega a ver todo el tráfico va
- * en amarillo, "Viendo parcialmente". Cada pieza tiene su "?" y, debajo, el dato que la respalda, así se
- * sabe de quién es: el tráfico que vio el sensor, cuándo revisó el análisis ([ahora] avanza cada segundo,
- * así se ve contar y, pasados los 2 minutos, el análisis pasa a Detenido) y cuándo respondió el servidor.
- * Sin botón de reinicio: el teléfono solo mira.
+ * desde la app). Arriba va el semáforo de todo el sistema (decisión 48, pedido del profesor el 30/10): una
+ * franja del color de la pieza que está peor, con las tres luces y la palabra, y el único "?" de la
+ * tarjeta, que explica las tres piezas y los colores. Debajo, una fila por pieza, el sensor de red, el análisis
+ * en vivo y el servidor de alertas, cada una con su punto, su color y la palabra, para que se entienda sin
+ * distinguir colores, y el dato que la respalda: el tráfico que vio el sensor, cuándo revisó el análisis
+ * ([ahora] avanza cada segundo, así se ve contar y, pasados los 2 minutos, el análisis pasa a Detenido) y
+ * cuándo respondió el servidor. Sin botón de reinicio: el teléfono solo mira.
  */
 @Composable
 fun TarjetaEstadoSistema(sistema: EstadoSistema, ahora: () -> Instant, modifier: Modifier = Modifier) {
     val momento = ahora()
     Panel(modifier = modifier, espacio = 10.dp) {
-        Text(text = stringResource(R.string.estado_sistema_titulo), style = MaterialTheme.typography.titleSmall)
-        FilaPieza(R.string.estado_sistema_sensor, R.string.estado_sistema_ayuda_sensor, sistema.sensor, detalleDelSensor(sistema, momento))
-        FilaPieza(R.string.estado_sistema_analisis, R.string.estado_sistema_ayuda_analisis, sistema.analisis, detalleDelAnalisis(sistema, momento))
-        FilaPieza(R.string.estado_sistema_servidor, R.string.estado_sistema_ayuda_servidor, sistema.servidor, detalleDelServidor(sistema, momento))
+        SemaforoDelSistema(sistema.semaforo)
+        FilaPieza(R.string.estado_sistema_sensor, sistema.sensor, detalleDelSensor(sistema, momento))
+        FilaPieza(R.string.estado_sistema_analisis, sistema.analisis, detalleDelAnalisis(sistema, momento))
+        FilaPieza(R.string.estado_sistema_servidor, sistema.servidor, detalleDelServidor(sistema, momento))
     }
 }
 
 /**
- * "● Sensor de red (?) ······ Funciona" y debajo su dato. TalkBack lee la fila entera ("Sensor de red:
- * Funciona"); el "?" queda aparte, como su propio botón ("Qué es Sensor de red").
+ * La franja de arriba, del fondo del tono: las tres luces, "ESTADO DEL SISTEMA" y la palabra ("Todo
+ * funciona", "Funciona en parte" o "Algo no funciona"), y el "?". TalkBack lee "Estado del sistema: Todo
+ * funciona"; el "?" queda aparte, como su propio botón.
  */
 @Composable
-private fun FilaPieza(@StringRes nombre: Int, @StringRes ayuda: Int, estado: EstadoPieza, detalle: String) {
-    val tono = tonoDe(estado)
+private fun SemaforoDelSistema(semaforo: Semaforo) {
+    val tono = tonoDe(semaforo)
+    val titulo = stringResource(R.string.estado_sistema_titulo)
+    val palabra = stringResource(palabraDelSistema(semaforo))
+    val descripcion = stringResource(R.string.estado_sistema_descripcion, titulo, palabra)
+    Surface(color = tono.fondo, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics(mergeDescendants = true) { contentDescription = descripcion },
+            ) {
+                LucesDelSemaforo(semaforo)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.clearAndSetSemantics {}) {
+                    Text(text = titulo.uppercase(), style = MaterialTheme.typography.etiquetaBarra, color = tono.texto)
+                    Text(text = palabra, style = MaterialTheme.typography.labelLarge, color = tono.texto)
+                }
+            }
+            AyudaGlobito(termino = titulo, ayuda = stringResource(R.string.estado_sistema_ayuda))
+        }
+    }
+}
+
+/**
+ * Las tres luces, roja, amarilla y verde, en una caja oscura como la de un semáforo, en los dos temas;
+ * solo la del color del sistema está prendida. El estado se entiende también por la posición y por la
+ * palabra (RNF09).
+ */
+@Composable
+private fun LucesDelSemaforo(semaforo: Semaforo) {
+    val luces = listOf(Semaforo.ROJO to Tonos.Alta, Semaforo.AMARILLO to Tonos.Media, Semaforo.VERDE to Tonos.Baja)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .background(GrisAviso, RoundedCornerShape(10.dp))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+    ) {
+        luces.forEach { (color, tono) ->
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .background(if (color == semaforo) tono.punto else TextoSecundario, CircleShape),
+            )
+        }
+    }
+}
+
+/** "● Sensor de red ······ Funciona" y debajo su dato. TalkBack lee la fila entera ("Sensor de red: Funciona"). */
+@Composable
+private fun FilaPieza(@StringRes nombre: Int, estado: EstadoPieza, detalle: String) {
+    val tono = tonoDe(estado.semaforo)
     val pieza = stringResource(nombre)
     val palabra = stringResource(palabraDe(estado))
     val descripcion = stringResource(R.string.estado_sistema_descripcion, pieza, palabra)
@@ -77,14 +140,13 @@ private fun FilaPieza(@StringRes nombre: Int, @StringRes ayuda: Int, estado: Est
                     .size(10.dp)
                     .background(tono.punto, CircleShape),
             )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(text = pieza, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.clearAndSetSemantics {})
-                AyudaGlobito(termino = pieza, ayuda = stringResource(ayuda))
-            }
+            Text(
+                text = pieza,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .weight(1f)
+                    .clearAndSetSemantics {},
+            )
             Text(
                 text = palabra,
                 style = MaterialTheme.typography.labelLarge,
@@ -103,10 +165,16 @@ private fun FilaPieza(@StringRes nombre: Int, @StringRes ayuda: Int, estado: Est
 }
 
 @Composable
-private fun tonoDe(estado: EstadoPieza): Tono = when (estado) {
-    EstadoPieza.FUNCIONA -> Tonos.Baja
-    EstadoPieza.PARCIAL -> Tonos.Media
-    else -> Tonos.Alta
+private fun tonoDe(semaforo: Semaforo): Tono = when (semaforo) {
+    Semaforo.VERDE -> Tonos.Baja
+    Semaforo.AMARILLO -> Tonos.Media
+    Semaforo.ROJO, Semaforo.SIN_DATOS -> Tonos.Alta
+}
+
+private fun palabraDelSistema(semaforo: Semaforo): Int = when (semaforo) {
+    Semaforo.VERDE -> R.string.estado_sistema_todo_funciona
+    Semaforo.AMARILLO -> R.string.estado_sistema_funciona_en_parte
+    Semaforo.ROJO, Semaforo.SIN_DATOS -> R.string.estado_sistema_algo_no_funciona
 }
 
 private fun palabraDe(estado: EstadoPieza): Int = when (estado) {
