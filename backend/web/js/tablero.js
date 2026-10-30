@@ -437,6 +437,13 @@ function areaDe(ip) {
   return 'Fuera de la red';
 }
 
+function esDifusion(ip) {
+  const v6 = ip.toLowerCase();
+  if (v6.includes(':')) return v6.startsWith('fe80:') || v6.startsWith('ff') || v6 === '::';
+  const partes = ip.split('.').map(Number);
+  return ip === '0.0.0.0' || partes[3] === 255 || (partes[0] >= 224 && partes[0] <= 239);
+}
+
 async function actualizarPares() {
   const ventana = VENTANAS[e.ventana];
   const desde = Math.floor(ahoraServidor() / 1000 - ventana.segundos);
@@ -458,8 +465,10 @@ function pintarMapa() {
     const actual = alertaDelPar.get(clave);
     if (!actual || masGrave(a.severidad, actual.severidad) === a.severidad && a.severidad !== actual.severidad) alertaDelPar.set(clave, a);
   }
-  // Los 40 pares con más conexiones, y todos los que tienen una alerta.
-  const elegidos = p.pares.filter((par, i) => i < 40 || alertaDelPar.has(`${par.origen}>${par.destino}`));
+  // Los 40 pares con más conexiones, y todos los que tienen una alerta. Fuera lo que no es una conversación
+  // entre equipos: difusión y multidifusión, y las direcciones IPv6 de enlace local (descubrimiento de vecinos).
+  const conversaciones = p.pares.filter((par) => !esDifusion(par.origen) && !esDifusion(par.destino));
+  const elegidos = conversaciones.filter((par, i) => i < 40 || alertaDelPar.has(`${par.origen}>${par.destino}`));
   const nodos = new Map();
   const nodo = (ip, nombre) => {
     if (!nodos.has(ip)) {
