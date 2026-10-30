@@ -168,6 +168,22 @@ Si el análisis en vivo del laboratorio se cae, no se toman los registros, así 
 
 Sin ningún latido, `analisis` y `sensor` son `sin_datos`. Con el último latido de hasta `ZONDA_LATIDO_LIMITE` segundos (2 minutos), el análisis `funciona` y el sensor `funciona` o `detenido` según lo que dijo ese latido; con uno más viejo, el análisis está `detenido` y del sensor no se sabe (`sin_datos`). Sin token, `sistema` es `null`: lo del laboratorio lo ve solo un teléfono pareado.
 
+### Tráfico del sensor y tablero web (decisión 49)
+
+El tablero web se sirve en `/panel` desde el mismo proceso (`backend/web`): misma dirección, mismo HTTPS de Caddy y el mismo token por dispositivo. Se entra con un código de pareo de un solo uso (`zonda pair` o Ajustes → Personas en la app) y el navegador queda como un dispositivo más, con su perfil, su vencimiento y el botón Salir, que lo revoca. Solo muestra; revisar sigue en la app. Las respuestas de `/panel` llevan una política de contenido que solo deja cargar lo que sirve este servidor (ECharts 5.6.0, la letra Inter y el logo están en `backend/web`), y no se puede meter en un marco de otra página. Las áreas del mapa (una por VLAN o subred) están en `web/areas.json`.
+
+El sensor manda el tráfico con el mismo token de la ingesta. `herramientas/sensor/metricas_trafico.py` corre en zeek-lab al lado del análisis en vivo, sin tocarlo: sigue el `conn.log`, suma cada conexión y cada 5 segundos manda `POST /ingesta/trafico`:
+
+```json
+{"tramos": [{"t": 1793397600, "servicio": "ssh", "conexiones": 20, "fallidas": 0, "bytes": 61234, "paquetes": 410}],
+ "pares": [{"minuto": 1793397600, "origen": "192.168.30.50", "destino": "192.168.20.20", "servicio": "ssh",
+            "conexiones": 20, "fallidas": 0, "bytes": 61234}]}
+```
+
+`t` es el comienzo de un tramo de 5 segundos (segundos desde 1970, reloj del sensor); `fallidas` son las conexiones que no llegaron a establecerse (estados `S0`, `REJ`, `RSTOS0`, `RSTRH`, `SH` y `SHR` de Zeek); los bytes y paquetes se reparten entre los tramos que duró cada conexión. El servidor suma, nunca pisa: Zeek escribe una conexión cuando termina, y una larga completa tramos que ya habían llegado. Guarda `ZONDA_DIAS_TRAFICO` días (7) en las tablas `trafico` y `trafico_pares`. Si el servidor no contesta, el sensor junta lo que no pudo mandar (hasta un día) y recuerda hasta dónde leyó, así un reinicio no cuenta dos veces. Con `--rellenar-horas 168` manda antes la última semana de los archivos viejos de Zeek.
+
+`GET /trafico?desde=&hasta=&paso=` (token de un dispositivo) devuelve el total y cada servicio en tramos de `paso` segundos (5, 10, 15, 30, 60, 300, 900 o 3600; hasta 5.000 puntos), solo los tramos con tráfico, y `ultimoTramo`. `GET /trafico/pares?desde=&hasta=` devuelve quién habló con quién, con el nombre de cada equipo del catálogo y sus servicios de más a menos conexiones.
+
 **Pérdida de captura.** Si el puerto espejo se satura, Zeek deja de ver parte del tráfico y Zonda no se entera de lo que no ve. Zeek lo mide con `misc/capture-loss` (ya cargado en zeek-lab): cada 15 minutos escribe en `capture_loss.log` qué porcentaje de lo que confirmaron los ACK de TCP no llegó a verse (`percent_lost`; sin tráfico TCP da 0 ACK y 0 %). El latido manda la última medición (`perdidaCaptura`, `perdidaCapturaEn`, `acksCaptura`) y `sistema` la devuelve con `perdidaLimite`. Si pasa de `ZONDA_PERDIDA_LIMITE` (1 %) con Zeek vivo y el latido al día, el sensor queda `parcial` ("viendo parcialmente", en amarillo en la app). Para probarlo sin saturar nada, el script del laboratorio toma el porcentaje de `vivo/.perdida_simulada` si existe y lo marca con `perdidaSimulada: true`.
 
 ## Bot de Telegram
