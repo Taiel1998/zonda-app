@@ -601,10 +601,6 @@
     <string name="estado_ver_todas">Ver todas →</string>
     <!-- Tarjeta Estado del sistema (1.0.6): el sensor, el análisis en vivo y el servidor -->
     <string name="estado_sistema_titulo">Estado del sistema</string>
-    <!-- El semáforo de todo el sistema (1.0.8): la palabra de la franja de arriba -->
-    <string name="estado_sistema_todo_funciona">Todo funciona</string>
-    <string name="estado_sistema_funciona_en_parte">Funciona en parte</string>
-    <string name="estado_sistema_algo_no_funciona">Algo no funciona</string>
     <string name="estado_sistema_sensor">Sensor de red</string>
     <string name="estado_sistema_analisis">Análisis en vivo</string>
     <string name="estado_sistema_servidor">Servidor de alertas</string>
@@ -614,8 +610,10 @@
     <string name="estado_sistema_sin_datos">Sin datos</string>
     <string name="estado_sistema_no_responde">No responde</string>
     <string name="estado_sistema_descripcion">%1$s: %2$s</string>
-    <!-- El único "?" de la tarjeta (1.0.8): las tres piezas y los tres colores -->
-    <string name="estado_sistema_ayuda">Sensor de red: Zeek, que recibe una copia del tráfico.\nAnálisis en vivo: lo revisa cada 20 s con los tres métodos.\nServidor de alertas: guarda las alertas y avisa por Telegram.\nVerde: todo anda. Amarillo: el sensor pierde tráfico. Rojo: algo se detuvo o no da señales.</string>
+    <!-- El "?" de cada pieza: qué es y qué quiere decir cada color de su semáforo (1.0.8: sin palabras en la pantalla) -->
+    <string name="estado_sistema_ayuda_sensor">Zeek, el programa que recibe por el puerto espejo una copia de todo el tráfico de la red.\nVerde: anda y ve todo.\nÁmbar: se le escapó más del 1 % del tráfico, por ejemplo porque el switch no da abasto; puede haber ataques que Zonda no ve.\nRojo: Zeek no anda, o no hay noticias porque el análisis en vivo no da señales.</string>
+    <string name="estado_sistema_ayuda_analisis">Cada 20 segundos revisa lo que vio el sensor con los tres métodos y manda las alertas.\nVerde: dio señales en los últimos 2 minutos.\nRojo: pasaron más de 2 minutos sin señales (también avisa por Telegram) o todavía no dio ninguna.</string>
+    <string name="estado_sistema_ayuda_servidor">Guarda las alertas, manda los avisos de Telegram y es con quien habla la app, que le pregunta cada 20 segundos.\nVerde: contestó.\nRojo: no contestó; las revisiones quedan en el teléfono y se envían cuando vuelva.</string>
     <!-- El dato debajo de cada pieza -->
     <string name="estado_sistema_sensor_ve_todo">Ve todo el tráfico</string>
     <string name="estado_sistema_sensor_no_vio">No llegó a ver el %1$s %% del tráfico</string>

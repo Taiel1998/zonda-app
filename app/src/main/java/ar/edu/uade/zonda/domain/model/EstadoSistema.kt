@@ -23,7 +23,10 @@ enum class EstadoPieza {
     NO_RESPONDE,
 }
 
-/** El color de una pieza: verde si funciona, amarillo si el sensor ve parcialmente y rojo en lo demás, también si no se sabe. */
+/**
+ * El color del semáforo de una pieza (decisión 48): verde si funciona, ámbar si el sensor ve parcialmente y
+ * rojo en lo demás, también si no se sabe.
+ */
 val EstadoPieza.semaforo: Semaforo
     get() = when (this) {
         EstadoPieza.FUNCIONA -> Semaforo.VERDE
@@ -58,20 +61,6 @@ data class EstadoSistema(
     /** La pérdida salió del archivo de prueba del laboratorio, no de Zeek. */
     val perdidaSimulada: Boolean = false,
 ) {
-    /**
-     * El semáforo de todo el sistema (decisión 48, pedido del profesor el 30/10): el color de la pieza
-     * que está peor. Verde solo si las tres funcionan; nunca verde sin noticias de alguna.
-     */
-    val semaforo: Semaforo
-        get() {
-            val colores = listOf(sensor, analisis, servidor).map { it.semaforo }
-            return when {
-                Semaforo.ROJO in colores -> Semaforo.ROJO
-                Semaforo.AMARILLO in colores -> Semaforo.AMARILLO
-                else -> Semaforo.VERDE
-            }
-        }
-
     companion object {
         /** El servidor no contestó: del sensor y del análisis no se sabe nada. */
         fun sinRespuesta(consultadoEn: Instant) = EstadoSistema(
