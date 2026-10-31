@@ -54,7 +54,7 @@
     <div class="banda-error" id="banda-error" role="status" hidden></div>
 
     <section id="vista-vivo" role="tabpanel" aria-labelledby="pestania-vivo">
-      <div class="filtros barra-horario">
+      <div class="filtros barra-horario barra-fija">
         <span class="filtros-nota" id="nota-paso"></span>
         <div class="barra-tiempo" id="barra-tiempo" role="toolbar" aria-label="Horario">
           <div class="grupo-botones">
@@ -75,13 +75,12 @@
       <div class="fila" data-fila="estado">
         <h2 class="fila-titulo"><button class="fila-boton" type="button" aria-expanded="true" aria-controls="grilla-estado">Estado<span class="fila-cuenta"></span></button></h2>
         <div class="grilla" id="grilla-estado">
-          <article class="tarjeta c-12" id="tarjeta-estado" data-panel="estado" aria-labelledby="titulo-estado">
+          <article class="tarjeta c-12" id="tarjeta-estado" aria-labelledby="titulo-estado">
             <div class="estado-cabecera">
               <h3 class="tarjeta-titulo" id="titulo-estado">Estado del sistema</h3>
               <button class="boton-ayuda" type="button" id="boton-ayuda-estado" aria-expanded="false" aria-controls="ayuda-estado" aria-label="Qué muestra cada pieza" title="Qué muestra cada pieza">?</button>
               <div class="tarjeta-acciones">
                 <span class="etiqueta-rango" title="Este panel muestra siempre la última hora">Última hora</span>
-                <button class="boton-panel" type="button" data-menu-panel="estado" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Estado del sistema" title="Menú del panel"></button>
               </div>
             </div>
             <div class="ayuda-estado" id="ayuda-estado" hidden>
@@ -92,28 +91,37 @@
               <p>Los gráficos son de la última hora: las conexiones y las revisiones de cada minuto, y cuánto tarda el servidor en contestarle a este navegador.</p>
             </div>
             <div class="piezas">
-              <div class="pieza" id="pieza-sensor">
+              <div class="pieza" id="pieza-sensor" data-panel="sensor">
                 <div class="pieza-cabecera">
-                  <span class="pieza-nombre"><i class="punto" id="punto-sensor"></i>Sensor de red</span>
-                  <span class="semaforo" id="semaforo-sensor" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                  <span class="pieza-nombre"><i class="punto" id="punto-sensor"></i><span class="pieza-titulo">Sensor de red</span></span>
+                  <span class="pieza-acciones">
+                    <span class="semaforo" id="semaforo-sensor" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                    <button class="boton-panel" type="button" data-menu-panel="sensor" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Sensor de red" title="Menú del panel"></button>
+                  </span>
                 </div>
                 <div class="pieza-dato" id="dato-sensor">–</div>
                 <div class="grafico mini" id="grafico-pieza-sensor" role="img" aria-label="Conexiones por minuto en la última hora"></div>
                 <div class="pieza-pie">Conexiones por minuto</div>
               </div>
-              <div class="pieza" id="pieza-analisis">
+              <div class="pieza" id="pieza-analisis" data-panel="analisis">
                 <div class="pieza-cabecera">
-                  <span class="pieza-nombre"><i class="punto" id="punto-analisis"></i>Análisis en vivo</span>
-                  <span class="semaforo" id="semaforo-analisis" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                  <span class="pieza-nombre"><i class="punto" id="punto-analisis"></i><span class="pieza-titulo">Análisis en vivo</span></span>
+                  <span class="pieza-acciones">
+                    <span class="semaforo" id="semaforo-analisis" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                    <button class="boton-panel" type="button" data-menu-panel="analisis" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Análisis en vivo" title="Menú del panel"></button>
+                  </span>
                 </div>
                 <div class="pieza-dato" id="dato-analisis">–</div>
                 <div class="grafico mini" id="grafico-pieza-analisis" role="img" aria-label="Revisiones por minuto en la última hora"></div>
                 <div class="pieza-pie">Revisiones por minuto</div>
               </div>
-              <div class="pieza" id="pieza-servidor">
+              <div class="pieza" id="pieza-servidor" data-panel="servidor">
                 <div class="pieza-cabecera">
-                  <span class="pieza-nombre"><i class="punto" id="punto-servidor"></i>Servidor de alertas</span>
-                  <span class="semaforo" id="semaforo-servidor" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                  <span class="pieza-nombre"><i class="punto" id="punto-servidor"></i><span class="pieza-titulo">Servidor de alertas</span></span>
+                  <span class="pieza-acciones">
+                    <span class="semaforo" id="semaforo-servidor" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                    <button class="boton-panel" type="button" data-menu-panel="servidor" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Servidor de alertas" title="Menú del panel"></button>
+                  </span>
                 </div>
                 <div class="pieza-dato" id="dato-servidor">–</div>
                 <div class="grafico mini" id="grafico-pieza-servidor" role="img" aria-label="Tiempo de respuesta del servidor"></div>
@@ -125,6 +133,7 @@
           <article class="tarjeta c-6" aria-labelledby="titulo-sin-revisar">
             <p class="kpi-etiqueta" id="titulo-sin-revisar">Alertas sin revisar</p>
             <div class="contadores" id="sin-revisar"></div>
+            <p class="kpi-detalle">Tocá un contador para ver esas alertas.</p>
           </article>
 
           <article class="tarjeta c-2" aria-labelledby="titulo-ahora">
@@ -233,12 +242,25 @@
     </section>
 
     <section id="vista-alertas" role="tabpanel" aria-labelledby="pestania-alertas" hidden>
-      <div class="filtros" id="filtros-alertas"></div>
-      <p class="resumen-filtros" id="resumen-filtros-alertas"></p>
+      <div class="filtros barra-filtros barra-fija">
+        <div class="filtros-chips" id="filtros-alertas"></div>
+        <div class="barra-tiempo" id="barra-tiempo-alertas" role="toolbar" aria-label="Horario de las alertas">
+          <div class="grupo-botones">
+            <button class="boton-barra" id="alertas-atras" type="button" data-icono="izquierda" aria-label="Correr el horario para atrás" title="Correr el horario para atrás"></button>
+            <button class="boton-barra boton-rango" id="alertas-rango" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="selector-alertas"><span data-icono="reloj"></span><span id="alertas-rango-texto">Últimos 30 días</span><span data-icono="abajo"></span></button>
+            <button class="boton-barra" id="alertas-adelante" type="button" data-icono="derecha" aria-label="Correr el horario para adelante" title="Correr el horario para adelante"></button>
+          </div>
+          <div class="selector-tiempo" id="selector-alertas" role="dialog" aria-label="Elegir el horario de las alertas" hidden></div>
+        </div>
+      </div>
+      <div class="resumen-con-acciones">
+        <p class="resumen-filtros" id="resumen-filtros-alertas"></p>
+        <button class="boton-barra" id="alertas-csv" type="button" title="Descargar en CSV las alertas de la lista, con estos filtros"><span data-icono="descargar"></span><span class="texto-boton">Descargar CSV</span></button>
+      </div>
       <article class="tarjeta">
         <div class="tabla-envoltura">
           <table class="tabla" id="tabla-alertas">
-            <thead><tr><th>Severidad</th><th>Tipo</th><th>Origen → destino</th><th>Servicio</th><th>Empezó</th><th class="num">Flujos</th><th>Métodos</th><th>Responsable</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Severidad</th><th>Tipo</th><th>Origen → destino</th><th>Servicio</th><th>Empezó</th><th class="num">Conexiones</th><th>Métodos</th><th>Responsable</th><th>Estado</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -248,72 +270,10 @@
     </section>
 
     <section id="vista-resumen" role="tabpanel" aria-labelledby="pestania-resumen" hidden>
-      <div class="filtros no-imprimir">
-        <span class="filtros-etiqueta" id="etiqueta-periodo">Período</span>
-        <div class="segmentado" id="periodos" role="group" aria-labelledby="etiqueta-periodo">
-          <button type="button" data-dias="7" aria-pressed="true">7 días</button>
-          <button type="button" data-dias="30" aria-pressed="false">30 días</button>
-          <button type="button" data-dias="fechas" aria-pressed="false">Fechas</button>
-        </div>
-        <div class="filtros-activos" id="filtros-resumen"></div>
-        <div class="descargas">
-          <button class="boton-secundario" id="descargar-imagen" type="button">Descargar imagen</button>
-          <button class="boton-secundario" id="descargar-pdf" type="button">Guardar PDF</button>
-        </div>
-      </div>
-
-      <div id="resumen-imprimible">
-      <div class="grilla">
-        <article class="tarjeta c-12" id="tarjeta-metricas">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo" id="titulo-resumen">Resumen</h2><p class="tarjeta-sub" id="sub-resumen"></p></div>
-          </div>
-          <div class="metricas" id="metricas-resumen"></div>
-          <p class="nota-resumen no-imprimir">Tocá una cifra o una barra de «Por tipo de ataque» para filtrar todo el resumen.</p>
-        </article>
-
-        <article class="tarjeta c-7" id="tarjeta-por-dia" data-panel="por-dia">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Alertas por día</h2><p class="tarjeta-sub">Por severidad, según cuándo empezó cada una.</p></div>
-            <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="por-dia" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Alertas por día" title="Menú del panel"></button></div>
-          </div>
-          <div class="leyenda" id="leyenda-por-dia"></div>
-          <div class="grafico" id="grafico-por-dia" role="img" aria-label="Alertas por día y severidad"></div>
-        </article>
-
-        <article class="tarjeta c-5" id="tarjeta-por-tipo" data-panel="por-tipo">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Por tipo de ataque</h2><p class="tarjeta-sub">Lo tipifica la segunda etapa; sin tipo, según qué método la vio.</p></div>
-            <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="por-tipo" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Por tipo de ataque" title="Menú del panel"></button></div>
-          </div>
-          <div class="grafico" id="grafico-por-tipo" role="img" aria-label="Alertas por tipo de ataque"></div>
-        </article>
-
-        <article class="tarjeta c-6 no-imprimir" id="tarjeta-equipos" data-panel="equipos">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Equipos con más alertas</h2><p class="tarjeta-sub">Como destino del tráfico, los ocho primeros.</p></div>
-            <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="equipos" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Equipos con más alertas" title="Menú del panel"></button></div>
-          </div>
-          <div class="grafico" id="grafico-equipos" role="img" aria-label="Equipos con más alertas"></div>
-        </article>
-
-        <article class="tarjeta c-6" id="tarjeta-acierto" data-panel="acierto">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Cuánto acierta cada método</h2><p class="tarjeta-sub">De las alertas revisadas que marcó cada método, cuántas fueron un ataque real.</p></div>
-            <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="acierto" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Cuánto acierta cada método" title="Menú del panel"></button></div>
-          </div>
-          <div class="grafico bajo" id="grafico-acierto" role="img" aria-label="Precisión de cada método sobre las alertas revisadas"></div>
-        </article>
-
-        <article class="tarjeta c-12" id="tarjeta-revision">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Revisión</h2><p class="tarjeta-sub">Qué tan rápido y qué tan bien se revisa, como el Resumen de la app.</p></div>
-          </div>
-          <div class="metricas" id="metricas-revision"></div>
-        </article>
-      </div>
-      <p class="nota-resumen" id="pie-resumen">Generado con Zonda · no incluye IPs ni nombres de equipos</p>
-      </div>
+      <!-- Como el Resumen de la app (resumen.js): el período y los filtros, la línea de la red y las piezas. -->
+      <div class="res-barra-superior barra-fija" id="resumen-barra" role="toolbar" aria-label="Período, filtros y compartir"></div>
+      <p class="res-linea" id="resumen-linea"></p>
+      <div id="resumen-cuerpo"></div>
     </section>
 
     <section id="vista-ajustes" role="tabpanel" aria-labelledby="pestania-ajustes" hidden>

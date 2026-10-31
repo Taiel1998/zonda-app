@@ -3,7 +3,7 @@
 // alertas marcadas, y las últimas alertas, con un aviso cuando entra una nueva. El mapa está en mapa.js.
 
 import {
-  bitsPorSegundo, bytes, el, fechaHora, fechaHoraSegundos, haceCuanto, hora, horaConSegundos, icono, numero, porcentaje, tasa, vaciar,
+  bitsPorSegundo, bytes, el, fechaCsv, fechaHora, fechaHoraSegundos, haceCuanto, hora, horaConSegundos, icono, numero, porcentaje, tasa, vaciar,
 } from './util.js';
 import {
   GRUPOS, SEVERIDADES, colores, formatoBits, grupoDe, opcionesMini, opcionesSerieSimple, opcionesServicios,
@@ -16,13 +16,6 @@ import {
   claveRango, esRelativo, esperarArrastre, fraseRango, nombrePaso, pasoPara, prepararGraficoDeTiempo, rangoActual,
 } from './tiempo.js';
 import { abrirDetalle } from './alertas.js';
-
-/** «2026-10-31 06:15:05», la hora de este navegador para los CSV. */
-function fechaCsv(ms) {
-  const f = new Date(ms);
-  const dos = (n) => String(n).padStart(2, '0');
-  return `${f.getFullYear()}-${dos(f.getMonth() + 1)}-${dos(f.getDate())} ${dos(f.getHours())}:${dos(f.getMinutes())}:${dos(f.getSeconds())}`;
-}
 
 // ---- Estado del sistema y alertas sin revisar ----
 
@@ -128,52 +121,71 @@ function cuanto(ms) {
   return `${Math.floor(segundos / 86400)} días`;
 }
 
+/** Los datos de una pieza por minuto, para su tabla (de lo más nuevo a lo más viejo) y su CSV (en orden). */
+function tablaPorMinuto(minutos, valores, columna) {
+  return {
+    columnas: ['Minuto', columna],
+    numericas: 1,
+    filas: minutos.map((t, i) => [fechaHora(t * 1000), numero(valores[i])]).reverse(),
+    csv: { columnas: ['Minuto', columna], filas: minutos.map((t, i) => [fechaCsv(t * 1000), valores[i]]) },
+  };
+}
+
 /** Los gráficos chicos del sensor y del análisis: conexiones y latidos de cada minuto de la última hora
-    (un minuto sin latidos es un rato en que el análisis no anduvo). En grande, con sus ejes. */
+    (un minuto sin latidos es un rato en que el análisis no anduvo). Cada pieza es un panel: en grande, con
+    sus ejes. */
 export function pintarGraficosPiezas() {
   const p = e.piezas;
-  const ejes = e.panelGrande === 'estado';
   if (p) {
     const c = colores();
     const minutos = Array.from({ length: (p.hasta - p.desde) / 60 }, (_, i) => p.desde + i * 60);
     const conexiones = new Map(p.trafico.total.map((x) => [x.t, x.conexiones]));
     const latidos = new Map(p.latidos.minutos.map((x) => [x.minuto, x.latidos]));
     const ventana = { desde: p.desde * 1000, hasta: p.hasta * 1000 };
-    dibujar('pieza-sensor', opcionesMini(c, { ...ventana, puntos: minutos.map((t) => [t * 1000, conexiones.get(t) || 0]) },
-      { tipo: 'barras', color: c['--serie-2'], nombre: 'conexiones', paso: 60, ejes }));
+    const porMinuto = minutos.map((t) => conexiones.get(t) || 0);
+    dibujar('pieza-sensor', opcionesMini(c, { ...ventana, puntos: minutos.map((t, i) => [t * 1000, porMinuto[i]]) },
+      { tipo: 'barras', color: c['--serie-2'], nombre: 'conexiones', paso: 60, ejes: e.panelGrande === 'sensor' }));
     const valores = minutos.map((t) => latidos.get(t) || 0);
     dibujar('pieza-analisis', opcionesMini(c, { ...ventana, puntos: minutos.map((t, i) => [t * 1000, valores[i]]) },
-      { tipo: 'barras', color: c['--verde'], nombre: 'revisiones', paso: 60, maximo: Math.max(3, ...valores), ejes }));
-    // Los datos del panel: cada minuto, con lo que tardó en promedio el servidor en contestar.
-    const respuesta = (t) => {
-      const medidas = e.respuestas.filter((r) => r.ms != null && r.t >= t * 1000 && r.t < (t + 60) * 1000).map((r) => r.ms);
-      return medidas.length ? Math.round(medidas.reduce((a, b) => a + b, 0) / medidas.length) : null;
-    };
-    const filas = minutos.map((t) => [t, conexiones.get(t) || 0, latidos.get(t) || 0, respuesta(t)]);
-    e.tablas.estado = {
-      columnas: ['Minuto', 'Conexiones', 'Revisiones', 'Respuesta del servidor'],
-      numericas: 3,
-      filas: filas.slice().reverse().map(([t, n, l, r]) => [fechaHora(t * 1000), numero(n), numero(l), r == null ? '–' : `${numero(r)} ms`]),
-      csv: { columnas: ['Minuto', 'Conexiones', 'Revisiones', 'Respuesta del servidor (ms)'], filas: filas.map(([t, n, l, r]) => [fechaCsv(t * 1000), n, l, r ?? '']) },
-    };
-    refrescarTablas('estado');
+      { tipo: 'barras', color: c['--verde'], nombre: 'revisiones', paso: 60, maximo: Math.max(3, ...valores), ejes: e.panelGrande === 'analisis' }));
+    e.tablas.sensor = tablaPorMinuto(minutos, porMinuto, 'Conexiones');
+    e.tablas.analisis = tablaPorMinuto(minutos, valores, 'Revisiones');
+    refrescarTablas('sensor', 'analisis');
   }
   pintarGraficoServidor();
 }
 
-/** El gráfico chico del servidor: cuánto tardó en contestarle a este navegador, desde que se abrió. */
+/** El gráfico chico del servidor: cuánto tardó en contestarle a este navegador, desde que se abrió. Sus
+    datos son cada consulta, con la hora y lo que tardó. */
 function pintarGraficoServidor() {
   const c = colores();
   const ahora = Date.now();
   dibujar('pieza-servidor', opcionesMini(c, { desde: ahora - 3600e3, hasta: ahora, puntos: e.respuestas.map((r) => [r.t, r.ms]) },
-    { tipo: 'linea', color: c['--serie-1'], nombre: 'de respuesta', formato: (v) => `${numero(v)} ms`, ejes: e.panelGrande === 'estado' }));
+    { tipo: 'linea', color: c['--serie-1'], nombre: 'de respuesta', formato: (v) => `${numero(v)} ms`, ejes: e.panelGrande === 'servidor' }));
+  e.tablas.servidor = {
+    columnas: ['Hora', 'Respuesta'],
+    numericas: 1,
+    filas: e.respuestas.map((r) => [horaConSegundos(r.t), r.ms == null ? 'No respondió' : `${numero(r.ms)} ms`]).reverse(),
+    csv: { columnas: ['Hora', 'Respuesta (ms)'], filas: e.respuestas.map((r) => [fechaCsv(r.t), r.ms ?? '']) },
+  };
+  refrescarTablas('servidor');
 }
 
+/** Cada contador abre la lista de Alertas con las sin revisar de su severidad (tablero.js), como la
+    notificación de la app: en el teléfono la lista está justo abajo; acá, en su vista. */
 export function pintarSinRevisar() {
   const conteo = (e.conteo && e.conteo.sinRevisar) || { alta: 0, media: 0, baja: 0 };
-  vaciar($('sin-revisar'), SEVERIDADES.map((s) => el('div', { class: 'contador' },
-    el('div', { class: 'contador-titulo' }, el('span', { class: 'punto', style: `background:var(${s.color})` }), s.nombre),
-    el('div', { class: 'contador-numero' }, numero(conteo[s.id])))));
+  const lugar = $('sin-revisar');
+  // Se piden cada 5 s: si ya están, cambian solo los números, así no se pierde el foco del teclado.
+  if (lugar.children.length) {
+    for (const s of SEVERIDADES) lugar.querySelector(`[data-severidad="${s.id}"] .contador-numero`).textContent = numero(conteo[s.id]);
+    return;
+  }
+  vaciar(lugar, SEVERIDADES.map((s) => el('button', {
+    type: 'button', class: 'contador', dataset: { severidad: s.id }, title: `Ver las alertas ${s.nombre.toLowerCase()}s sin revisar`,
+  },
+  el('span', { class: 'contador-titulo' }, el('span', { class: 'punto', style: `background:var(${s.color})` }), s.nombre),
+  el('span', { class: 'contador-numero' }, numero(conteo[s.id])))));
 }
 
 // ---- Tráfico ----
@@ -425,7 +437,6 @@ function tocarServicio(id, presentes, sumar) {
 export function pintarLeyendas() {
   vaciar($('leyenda-marcas'), el('span', {}, 'Alertas:'),
     SEVERIDADES.map((s) => el('span', {}, el('i', { class: 'triangulo', style: `border-bottom-color:var(${s.color})` }), s.nombre)));
-  vaciar($('leyenda-por-dia'), SEVERIDADES.map((s) => el('span', {}, el('i', { style: `background:var(${s.color})` }), s.nombre)));
 }
 
 // ---- Últimas alertas y el aviso de una nueva ----

@@ -9,18 +9,18 @@ import { colores } from './graficos.js';
 import { avisoInferior } from './hojas.js';
 import { enlaceCon, escribirUrl, nombreRango } from './tiempo.js';
 import { abrirFilaDe } from './filas.js';
+import { bajarArchivo, csvDe, nombreConFecha } from './compartir.js';
 
-// Los gráficos de cada panel.
+// Los gráficos de cada panel. Las tres piezas del estado del sistema son paneles por separado, dentro de su
+// tarjeta, y muestran siempre la última hora.
 const GRAFICOS = {
-  estado: ['pieza-sensor', 'pieza-analisis', 'pieza-servidor'],
+  sensor: ['pieza-sensor'],
+  analisis: ['pieza-analisis'],
+  servidor: ['pieza-servidor'],
   servicios: ['servicios'],
   volumen: ['volumen'],
   fallidas: ['fallidas'],
   mapa: ['mapa'],
-  'por-dia': ['por-dia'],
-  'por-tipo': ['por-tipo'],
-  equipos: ['equipos'],
-  acierto: ['acierto'],
 };
 
 let inspeccionado = null;
@@ -28,16 +28,24 @@ let bajoMouse = null;
 let alAgrandar = () => {};
 let irAVista = () => {};
 
+const PIEZAS = ['sensor', 'analisis', 'servidor'];
+
+/** El panel: su elemento (una tarjeta o una pieza del estado), su título y, para una pieza, la tarjeta que la
+    tiene, que es donde va el botón para volver. */
 function panelDe(nombre) {
   const tarjeta = document.querySelector(`[data-panel="${nombre}"]`);
   if (!tarjeta || !GRAFICOS[nombre]) return null;
-  const titulo = tarjeta.querySelector('.tarjeta-titulo');
-  return { nombre, tarjeta, titulo: titulo ? titulo.textContent : nombre, graficos: GRAFICOS[nombre], vista: tarjeta.closest('section[id^="vista-"]').id.replace('vista-', '') };
+  const titulo = tarjeta.querySelector('.tarjeta-titulo, .pieza-titulo');
+  const anfitriona = tarjeta.classList.contains('tarjeta') ? tarjeta : tarjeta.closest('.tarjeta');
+  return {
+    nombre, tarjeta, anfitriona, titulo: titulo ? titulo.textContent : nombre, graficos: GRAFICOS[nombre],
+    vista: tarjeta.closest('section[id^="vista-"]').id.replace('vista-', ''),
+  };
 }
 
 /** El horario de los datos del panel, para el inspector. */
 function horarioDe(panel) {
-  if (panel.nombre === 'estado') return 'Última hora';
+  if (PIEZAS.includes(panel.nombre)) return 'Última hora';
   if (panel.vista === 'resumen') return $('sub-resumen').textContent;
   return nombreRango();
 }
@@ -49,11 +57,13 @@ export function verEnGrande(nombre) {
   if (!panel) return;
   salirDeGrande(false);
   irAVista(panel.vista);
-  abrirFilaDe(panel.tarjeta);
+  abrirFilaDe(panel.anfitriona);
   panel.tarjeta.closest('section[id^="vista-"]').classList.add('modo-panel');
-  panel.tarjeta.classList.add('panel-grande');
+  // Una pieza del estado se ve sola dentro de su tarjeta, que queda con su título y su «?».
+  if (panel.anfitriona === panel.tarjeta) panel.tarjeta.classList.add('panel-grande');
+  else { panel.anfitriona.classList.add('contiene-grande'); panel.tarjeta.classList.add('pieza-grande'); }
   const volver = el('button', { type: 'button', class: 'boton-secundario boton-volver', onclick: () => salirDeGrande() }, icono('volver'), 'Volver al tablero');
-  panel.tarjeta.querySelector('.tarjeta-acciones').prepend(volver);
+  panel.anfitriona.querySelector('.tarjeta-acciones').prepend(volver);
   e.panelGrande = nombre;
   escribirUrl();
   window.scrollTo(0, 0);
@@ -69,8 +79,9 @@ export function salirDeGrande(escribir = true) {
   for (const seccion of document.querySelectorAll('.modo-panel')) seccion.classList.remove('modo-panel');
   const panel = panelDe(nombre);
   if (panel) {
-    panel.tarjeta.classList.remove('panel-grande');
-    const volver = panel.tarjeta.querySelector('.boton-volver');
+    panel.tarjeta.classList.remove('panel-grande', 'pieza-grande');
+    panel.anfitriona.classList.remove('contiene-grande');
+    const volver = panel.anfitriona.querySelector('.boton-volver');
     if (volver) volver.remove();
   }
   if (escribir) escribirUrl();
@@ -134,33 +145,12 @@ export function cerrarInspector() {
 
 // ---- Bajar archivos ----
 
-/** «zonda-volumen-2026-10-31_0615». */
-function nombreArchivo(nombre) {
-  const f = new Date();
-  const dos = (n) => String(n).padStart(2, '0');
-  return `zonda-${nombre}-${f.getFullYear()}-${dos(f.getMonth() + 1)}-${dos(f.getDate())}_${dos(f.getHours())}${dos(f.getMinutes())}`;
-}
-
-function bajar(archivo, contenido) {
-  const url = URL.createObjectURL(contenido);
-  const enlace = el('a', { href: url, download: archivo, hidden: true });
-  document.body.append(enlace);
-  enlace.click();
-  enlace.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
-
-/** CSV con punto y coma, como lo abre Excel en castellano; con los valores sin unidades si el panel los da. */
+/** El CSV, con los valores sin unidades si el panel los da. */
 function bajarCsv(nombre) {
   const datos = e.tablas[nombre];
   if (!datos) { avisoInferior('Todavía no hay datos para bajar'); return; }
   const fuente = datos.csv || datos;
-  const celda = (valor) => {
-    const texto = String(valor ?? '');
-    return /[";\r\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
-  };
-  const lineas = [fuente.columnas, ...fuente.filas].map((fila) => fila.map(celda).join(';'));
-  bajar(`${nombreArchivo(nombre)}.csv`, new Blob(['﻿', lineas.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  bajarArchivo(`${nombreConFecha(nombre)}.csv`, csvDe(fuente.columnas, fuente.filas));
 }
 
 function bajarImagen(nombre) {
@@ -170,7 +160,7 @@ function bajarImagen(nombre) {
   const binario = atob(url.split(',')[1]);
   const bytes = new Uint8Array(binario.length);
   for (let i = 0; i < binario.length; i += 1) bytes[i] = binario.charCodeAt(i);
-  bajar(`${nombreArchivo(nombre)}.png`, new Blob([bytes], { type: 'image/png' }));
+  bajarArchivo(`${nombreConFecha(nombre)}.png`, new Blob([bytes], { type: 'image/png' }));
 }
 
 async function copiarEnlace(nombre) {

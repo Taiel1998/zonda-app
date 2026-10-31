@@ -8,6 +8,7 @@
 
 :root {
   color-scheme: light;
+  --alto-cabecera: 66px;
   --pagina: #f7f5ef;
   --superficie: #ffffff;
   --superficie-2: #fbfaf6;
@@ -43,6 +44,8 @@
   --serie-3: #6250d6;
   --serie-4: #e87ba4;
   --serie-otros: #a8a69e;
+  --barra-resumen: #5ab89a;
+  --precision-clara: #9fe1cb;
   --sombra: 0 1px 2px rgba(28, 27, 31, 0.04), 0 6px 20px rgba(28, 27, 31, 0.05);
   --sombra-flotante: 0 12px 40px rgba(28, 27, 31, 0.16);
   --radio: 14px;
@@ -83,6 +86,8 @@
   --serie-3: #9085e9;
   --serie-4: #d55181;
   --serie-otros: #7a7871;
+  --barra-resumen: #2f9e7b;
+  --precision-clara: #2b6e5a;
   --sombra: none;
   --sombra-flotante: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
@@ -194,7 +199,7 @@ button { cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 20px;
-  height: 66px;
+  height: var(--alto-cabecera);
   padding: 0 28px;
   background: color-mix(in srgb, var(--superficie) 92%, transparent);
   backdrop-filter: blur(8px);
@@ -296,6 +301,20 @@ button { cursor: pointer; }
 /* ---- El horario, como la barra de tiempo de Grafana ---- */
 
 .barra-horario .filtros-nota { margin-left: 0; }
+/* La barra de arriba de En vivo, Alertas y Resumen queda fija debajo de la cabecera al bajar, para cambiar el
+   horario sin volver arriba; ya pegada, lleva una línea abajo (tablero.js le pone la clase). */
+.barra-fija {
+  position: sticky;
+  top: var(--alto-cabecera);
+  z-index: 15;
+  margin: -10px -28px 8px;
+  padding: 10px 28px;
+  background: var(--pagina);
+}
+.barra-fija.pegada { box-shadow: 0 1px 0 var(--borde); }
+#resumen-barra.barra-fija { margin-bottom: 0; }
+/* En Alertas, los filtros a la izquierda y el horario a la derecha, como en Grafana. */
+.filtros-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .barra-tiempo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; position: relative; }
 .grupo-botones { display: inline-flex; }
 .grupo-botones > .boton-barra + .boton-barra { margin-left: -1px; }
@@ -337,6 +356,9 @@ button { cursor: pointer; }
   border: 1px solid var(--borde);
   border-radius: 12px;
   box-shadow: var(--sombra-flotante);
+  /* Con la barra fija, el selector no puede pasarse de la pantalla: lo que no entra se recorre adentro. */
+  max-height: calc(100vh - var(--alto-cabecera) - 80px);
+  overflow-y: auto;
 }
 .selector-columna { padding: 16px 18px; min-width: 0; }
 .selector-columna + .selector-columna { border-left: 1px solid var(--borde); }
@@ -405,6 +427,11 @@ button { cursor: pointer; }
 @media (max-width: 720px) {
   .barra-tiempo { margin-left: 0; }
   .texto-boton { display: none; }
+  .barra-fija { margin: -8px -16px 10px; padding: 8px 16px; }
+  /* Los filtros de Alertas en una sola fila que se corre de costado, como en la app: la barra fija ocupa menos. */
+  .barra-filtros .filtros-chips { flex: 0 0 calc(100% + 32px); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+  .barra-filtros .filtros-chips::-webkit-scrollbar { display: none; }
+  .barra-filtros .filtros-chips > * { flex: none; }
   .boton-rango { min-width: 0; }
   .selector-tiempo { grid-template-columns: minmax(0, 1fr); right: auto; left: 0; }
   .selector-columna + .selector-columna { border-left: 0; border-top: 1px solid var(--borde); }
@@ -515,15 +542,17 @@ button { cursor: pointer; }
 
 /* Un panel en grande: los demás se esconden y el gráfico toma el alto de la pantalla; la barra del horario
    queda arriba, como en Grafana. */
-.modo-panel .grilla > :not(.panel-grande) { display: none; }
-.modo-panel .grilla > .panel-grande { grid-column: 1 / -1; }
-.modo-panel .fila-titulo, .modo-panel .fila:not(:has(.panel-grande)) { display: none; }
+.modo-panel .grilla > :not(.panel-grande):not(.contiene-grande) { display: none; }
+.modo-panel .grilla > .panel-grande, .modo-panel .grilla > .contiene-grande { grid-column: 1 / -1; }
+.modo-panel .fila-titulo, .modo-panel .fila:not(:has(.panel-grande, .contiene-grande)) { display: none; }
 .modo-panel .fila + .fila { margin-top: 0; }
 .tarjeta.panel-grande .grafico { height: calc(100vh - 290px); min-height: 340px; }
 #tarjeta-servicios.panel-grande .grafico { height: calc(100vh - 470px); min-height: 300px; }
 .tarjeta.panel-grande .mapa-detalle { max-height: calc(100vh - 290px); }
-.tarjeta.panel-grande .piezas { grid-template-columns: minmax(0, 1fr); }
-.tarjeta.panel-grande .grafico.mini { height: calc((100vh - 480px) / 3); min-height: 130px; }
+/* Una pieza del estado del sistema en grande: sola, dentro de su tarjeta. */
+.tarjeta.contiene-grande .pieza:not(.pieza-grande) { display: none; }
+.tarjeta.contiene-grande .piezas { grid-template-columns: minmax(0, 1fr); }
+.pieza.pieza-grande .grafico.mini { height: calc(100vh - 360px); min-height: 260px; }
 
 .leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--texto-2); margin: 2px 0 6px; }
 .leyenda span { display: inline-flex; align-items: center; gap: 7px; }
@@ -585,14 +614,20 @@ button { cursor: pointer; }
 .contadores { display: flex; gap: 10px; }
 .contador {
   flex: 1;
+  min-width: 0;
   border-radius: 12px;
   padding: 10px 12px;
   background: var(--superficie-2);
   border: 1px solid var(--borde);
+  color: var(--texto);
+  text-align: left;
+  cursor: pointer;
 }
+.contador:hover { border-color: var(--borde-fuerte); }
 .contador-titulo { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--texto-2); font-weight: 500; }
 .contador-titulo .punto { width: 9px; height: 9px; border-radius: 50%; }
-.contador-numero { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; }
+.contador-numero { display: block; font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; }
+.contadores + .kpi-detalle { margin-top: 10px; }
 
 /* El estado del sistema, como la tarjeta de la app (decisión 52): cada pieza con su punto, su nombre, el
    semáforo de dos luces a la derecha (sin palabras), un dato corto y un gráfico chico de la última hora. */
@@ -622,6 +657,8 @@ button { cursor: pointer; }
 .pieza-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pieza-nombre { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; min-width: 0; }
 .pieza-nombre .punto { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--texto-3); }
+.pieza-acciones { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.pieza .boton-panel { width: 28px; height: 28px; }
 .pieza-dato { font-size: 13.5px; color: var(--texto-2); margin: 2px 0 8px 18px; }
 .pieza-pie { font-size: 12px; color: var(--texto-3); margin-top: 4px; }
 .grafico.mini { height: 64px; }
@@ -829,6 +866,10 @@ button { cursor: pointer; }
 .detalle-cabecera { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .detalle-cabecera h2 { font-size: 22px; font-weight: 600; margin: 6px 0 2px; letter-spacing: -0.01em; }
 .detalle-cabecera p { margin: 0; color: var(--texto-2); font-size: 14px; }
+/* El único «?» del detalle de una alerta, al lado del tipo (como el del estado del sistema). */
+.titulo-con-ayuda { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; }
+.titulo-con-ayuda h2 { margin: 0; }
+#ayuda-detalle { margin: -6px 0 16px; }
 .detalle-cabecera .boton-icono { margin-left: auto; flex: none; }
 
 /* Los datos de un panel, como el inspector de Grafana: la tabla con su encabezado fijo y el botón del CSV. */
@@ -1099,6 +1140,9 @@ button { cursor: pointer; }
 /* ---- Lista de alertas ---- */
 
 .resumen-filtros { font-size: 13.5px; color: var(--texto-2); margin: -6px 0 14px; }
+.resumen-con-acciones { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: -6px 0 14px; }
+.resumen-con-acciones .resumen-filtros { margin: 0; }
+.resumen-con-acciones .boton-barra { height: 32px; font-size: 13px; }
 .resumen-filtros strong { color: var(--texto); }
 .responsable-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--texto-2); white-space: nowrap; }
 .responsable-chip .inicial {
@@ -1108,25 +1152,175 @@ button { cursor: pointer; }
 }
 .vacio-lista { text-align: center; padding: 36px 12px; color: var(--texto-2); }
 
-/* ---- Resumen ---- */
+/* ---- Resumen, como el de la app (resumen.js): en la compu, las piezas de a dos ---- */
 
-.metricas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.metrica {
-  border: 1px solid var(--borde);
-  border-radius: 12px;
-  padding: 12px 14px;
-  background: var(--superficie-2);
-  text-align: left;
+.res-barra-superior { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.res-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 8px;
+  background: transparent;
+  padding: 7px 13px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--texto);
 }
-button.metrica { cursor: pointer; }
-button.metrica:hover { border-color: var(--borde-fuerte); }
-button.metrica[aria-pressed="true"] { border: 2px solid var(--verde); padding: 11px 13px; }
-.metrica strong { display: block; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
-.metrica span { font-size: 13px; color: var(--texto-2); }
-.filtros-activos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.descargas { margin-left: auto; display: flex; gap: 8px; }
-@media (max-width: 720px) { .descargas { margin-left: 0; width: 100%; } .descargas > * { flex: 1; } }
-.nota-resumen { font-size: 13px; color: var(--texto-2); margin: 8px 0 0; }
+.res-chip svg { width: 14px; height: 14px; }
+.res-chip[aria-pressed="true"] { border-color: transparent; background: var(--verde-claro); color: var(--verde-texto); }
+.res-compartir { width: auto; margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; font-size: 14px; border-radius: 20px; }
+.res-compartir svg { width: 16px; height: 16px; }
+.res-linea { font-size: 13px; color: var(--texto-2); margin: 0 0 14px; }
+
+.res-grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.res-ancho { grid-column: 1 / -1; }
+@media (max-width: 1100px) { .res-grilla { grid-template-columns: minmax(0, 1fr); } }
+
+.res-pieza { display: grid; gap: 10px; }
+.res-totales { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.res-metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.res-cifra, .res-metrica {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  border: 0;
+  border-radius: 12px;
+  text-align: left;
+  color: var(--texto);
+}
+/* En la app la tarjeta del total es crema sobre blanco; acá la página ya es crema, así que va blanca con borde. */
+.res-cifra { padding: 11px 12px; background: var(--superficie); box-shadow: inset 0 0 0 1px var(--borde); }
+.res-cifra strong, .res-metrica strong { font-size: 22px; font-weight: 600; line-height: 1.25; }
+.res-cifra span { font-size: 12px; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res-cifra.revisadas { background: var(--verde-claro); }
+.res-cifra.revisadas strong { color: var(--verde-texto); }
+.res-cifra.sin-revisar { background: var(--media-fondo); }
+.res-cifra.sin-revisar strong { color: var(--media-texto); }
+.res-metrica { padding: 10px 12px; background: transparent; }
+.res-metrica strong { color: var(--verde-texto); }
+.res-metrica-nombre { font-size: 12.5px; font-weight: 500; }
+.res-metrica-detalle { font-size: 12px; color: var(--texto-2); }
+.res-cifra[aria-pressed="true"], .res-metrica[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--verde); }
+
+.res-tarjeta { background: var(--superficie); border: 1px solid var(--borde-fuerte); border-radius: 12px; padding: 14px 16px; }
+.res-titulo { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13.5px; font-weight: 600; color: var(--texto-2); }
+.res-ayuda { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 50%; padding: 0; background: transparent; color: var(--verde-texto); }
+.res-ayuda svg { width: 20px; height: 20px; }
+
+.res-barras { display: flex; align-items: flex-end; min-height: 128px; }
+.res-columna {
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  color: var(--texto);
+}
+.res-columna-n { font-size: 11.5px; font-weight: 500; }
+.res-columna-etiqueta { font-size: 11.5px; color: var(--texto-2); white-space: nowrap; }
+.res-barras.muchas .res-columna-n, .res-barras.muchas .res-columna-etiqueta { font-size: 9.5px; }
+.res-barra { display: block; width: min(100%, 28px); border-radius: 3px 3px 0 0; background: var(--barra-resumen); }
+.res-barra.hoy { background: var(--verde); }
+.res-barra.cero { background: var(--borde-fuerte); border-radius: 1px; }
+.res-columna.elegida { box-shadow: 0 0 0 2px var(--superficie), 0 0 0 4px var(--verde); }
+.res-columna.apagada { opacity: 0.35; }
+.res-frase { margin: 10px 0 0; font-size: 12.5px; line-height: 1.3; color: var(--texto-2); }
+
+.res-bloque { display: grid; gap: 8px; }
+.res-bloque + .res-bloque { border-top: 1px solid var(--borde-fuerte); margin-top: 10px; padding-top: 10px; }
+.res-bloque-titulo { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; color: var(--texto-2); }
+.res-filas { display: grid; gap: 10px; }
+.res-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) minmax(40px, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% + 8px);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  text-align: left;
+  font-size: 13.5px;
+  color: var(--texto);
+}
+.res-fila.dos { grid-template-columns: 150px minmax(40px, 1fr) 34px; }
+.res-fila.equipo { grid-template-columns: minmax(0, 260px) minmax(40px, 1fr) 34px; }
+.res-fila.cero { color: var(--texto-2); }
+.res-fila-nombre { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.res-fila-nombre > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res-fila-nombre .punto, .res-check .punto, .res-ayuda-tipo .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+.res-fila-valor { text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+.res-pista { display: block; height: 10px; border-radius: 999px; background: var(--neutro); overflow: hidden; }
+.res-pista i { display: block; height: 100%; border-radius: 999px; background: var(--verde); }
+.res-pista.fina { height: 8px; }
+.res-pista i.clara { background: var(--precision-clara); }
+.res-fila.elegida, .res-precision.elegida, .res-cobertura.elegida { box-shadow: inset 0 0 0 2px var(--verde); }
+.res-nota { margin: 10px 0 0; font-size: 12.5px; line-height: 1.3; color: var(--texto-2); }
+.res-nota.arriba { margin: -6px 0 12px; }
+
+.res-cobertura {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: var(--pagina);
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--texto);
+}
+.res-cobertura strong { color: var(--verde-texto); font-weight: 600; }
+.res-precision {
+  display: grid;
+  grid-template-columns: 160px minmax(40px, 1fr) 46px 64px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 2px 4px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--texto);
+}
+.res-precision strong { text-align: right; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.res-de { text-align: right; font-size: 12.5px; color: var(--texto-2); }
+
+.res-vacio { display: grid; justify-items: center; gap: 8px; padding: 40px 24px; text-align: center; }
+.res-vacio-circulo { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--baja-fondo); color: var(--baja-texto); }
+.res-vacio-circulo svg { width: 24px; height: 24px; }
+.res-vacio h3 { margin: 4px 0 0; font-size: 18px; font-weight: 600; }
+.res-vacio p { margin: 0; max-width: 460px; font-size: 14px; color: var(--texto-2); }
+
+/* Las hojas del resumen: los tipos con su casilla y las ayudas. */
+.res-check { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; padding: 4px 0; cursor: pointer; }
+.res-check input { width: 18px; height: 18px; accent-color: var(--verde); }
+.res-ayuda-tipo { display: flex; gap: 8px; align-items: baseline; margin: 0; font-size: 13.5px; color: var(--texto-2); }
+.res-ayuda-tipo b { color: var(--texto); font-weight: 600; }
+.res-ayuda-texto { margin: 0; font-size: 13px; line-height: 1.35; color: var(--texto-2); }
+.res-ayuda-bloque h4 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.res-ayuda-bloque p { margin: 0; font-size: 13.5px; color: var(--texto-2); }
+.res-recuadro { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--info-fondo); color: var(--info-texto); font-size: 13.5px; }
+.res-divisor { border: 0; border-top: 1px solid var(--borde-fuerte); margin: 4px 0; width: 100%; }
+
+@media (max-width: 720px) {
+  .res-compartir { margin-left: 0; width: 100%; justify-content: center; }
+  .res-cifra span { white-space: normal; font-size: 11.5px; }
+  .res-fila { grid-template-columns: minmax(0, 150px) minmax(30px, 1fr) 30px; }
+  .res-precision { grid-template-columns: 120px minmax(30px, 1fr) 42px 54px; font-size: 13px; }
+}
 
 /* ---- Ajustes ---- */
 
@@ -1164,6 +1358,8 @@ button.metrica[aria-pressed="true"] { border: 2px solid var(--verde); padding: 1
 @media (max-width: 720px) {
   body { padding-bottom: 72px; }
   .pestanias { display: none; }
+  /* En el teléfono la lista es como la de la app, que no baja CSV. */
+  #alertas-csv { display: none; }
   .barra-inferior {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1189,7 +1385,7 @@ button.metrica[aria-pressed="true"] { border: 2px solid var(--verde); padding: 1
   .barra-inferior button svg { width: 22px; height: 22px; padding: 3px 14px; box-sizing: content-box; border-radius: 999px; }
   .barra-inferior button[aria-selected="true"] { color: var(--verde-texto); }
   .barra-inferior button[aria-selected="true"] svg { background: var(--verde-claro); }
-  .cabecera { height: 58px; }
+  :root { --alto-cabecera: 58px; }
   .marca img { width: 30px; height: 30px; }
   .marca-nombre { font-size: 18px; }
   #boton-tema, #boton-salir { display: none; }
@@ -1212,7 +1408,6 @@ button.metrica[aria-pressed="true"] { border: 2px solid var(--verde); padding: 1
   .contador { padding: 8px; }
   .contador-numero { font-size: 24px; }
   .piezas { grid-template-columns: 1fr; }
-  .metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ajustes { grid-template-columns: 1fr; }
   .detalle { width: 100vw; padding: 16px 16px 90px; border-left: 0; }
   .hoja-velo { place-items: end stretch; padding: 0; }
@@ -1235,13 +1430,3 @@ button.metrica[aria-pressed="true"] { border: 2px solid var(--verde); padding: 1
   #tabla-alertas td[data-etiqueta]::before { content: attr(data-etiqueta) " · "; color: var(--texto-3); font-size: 12.5px; }
 }
 
-/* ---- Impresión del resumen: solo la hoja del resumen, en A4 ---- */
-
-@media print {
-  @page { size: A4; margin: 14mm; }
-  body { background: #ffffff; padding: 0; }
-  body * { visibility: hidden; }
-  #resumen-imprimible, #resumen-imprimible * { visibility: visible; }
-  #resumen-imprimible { position: absolute; left: 0; top: 0; width: 100%; }
-  .no-imprimir, #resumen-imprimible .tarjeta-acciones { display: none !important; }
-}
