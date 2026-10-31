@@ -58,6 +58,8 @@ def test_un_administrador_suma_a_laura_como_analista_con_un_codigo_de_un_uso(cli
     assert (codigo["nombre"], codigo["perfil"]) == ("Laura", "analista")
     # El QR lleva lo mismo que el de zonda pair: la dirección, el código y cuándo vence.
     assert codigo["contenido"] == f"zonda:https://prueba.duckdns.org#{codigo['codigo']};vence={codigo['vence']}"
+    # Y viene dibujado en SVG para el tablero web, que lo muestra sin librerías (decisión 50).
+    assert codigo["qrSvg"].startswith("<svg") and "<path" in codigo["qrSvg"]
 
     pareo = cliente.post("/pareo", json={"codigo": codigo["codigo"], "nombreDispositivo": "Teléfono de Laura"}).json()
     assert (pareo["perfil"], pareo["persona"]) == ("analista", "Laura")

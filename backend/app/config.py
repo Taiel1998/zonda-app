@@ -35,6 +35,8 @@ class Config:
     latido_revisar_cada: int = 15
     # Porcentaje de pérdida de captura de Zeek desde el que el sensor ve parcialmente (y se avisa).
     perdida_limite: float = 1.0
+    # Días de tráfico que guarda el servidor para el tablero web (decisión 49); lo anterior se borra.
+    dias_trafico: int = 7
 
     @classmethod
     def desde_entorno(cls) -> "Config":
@@ -61,4 +63,5 @@ class Config:
             latido_limite=int(leer("ZONDA_LATIDO_LIMITE", "120")),
             latido_revisar_cada=int(leer("ZONDA_LATIDO_REVISAR_CADA", "15")),
             perdida_limite=float(leer("ZONDA_PERDIDA_LIMITE", "1.0").replace(",", ".")),
+            dias_trafico=int(leer("ZONDA_DIAS_TRAFICO", "7")),
         )
