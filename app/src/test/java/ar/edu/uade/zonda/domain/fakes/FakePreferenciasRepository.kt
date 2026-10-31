@@ -5,6 +5,7 @@ import ar.edu.uade.zonda.domain.model.PreferenciasNotificaciones
 import ar.edu.uade.zonda.domain.model.Tema
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
 import java.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -28,7 +29,11 @@ class FakePreferenciasRepository(
 
     override fun observarAvisos(): Flow<PreferenciasAvisos> = avisos
 
+    /** Si no es null, guardar los avisos espera hasta que la prueba lo complete, como DataStore escribiendo el archivo. */
+    var esperaAlGuardarAvisos: CompletableDeferred<Unit>? = null
+
     override suspend fun guardarAvisos(preferencias: PreferenciasAvisos) {
+        esperaAlGuardarAvisos?.await()
         avisos.value = preferencias
     }
 

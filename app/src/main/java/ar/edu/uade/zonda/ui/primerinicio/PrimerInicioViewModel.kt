@@ -8,8 +8,11 @@ import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * ViewModel del primer inicio (RF05), compartido por todas sus pantallas a través del grafo anidado.
@@ -25,8 +28,13 @@ class PrimerInicioViewModel(
     val avisos: StateFlow<PreferenciasAvisos> =
         preferencias.observarAvisos().stateIn(viewModelScope, SharingStarted.Eagerly, PreferenciasAvisos())
 
+    /** De a un cambio por vez: DataStore tarda en escribir, y el segundo partía de lo que se veía, sin el primero. */
+    private val escritura = Mutex()
+
     fun cambiarAviso(severidad: Severidad, modo: ModoAviso) {
-        viewModelScope.launch { preferencias.guardarAvisos(avisos.value.con(severidad, modo)) }
+        viewModelScope.launch {
+            escritura.withLock { preferencias.guardarAvisos(preferencias.observarAvisos().first().con(severidad, modo)) }
+        }
     }
 
     /** La introducción ya no vuelve a aparecer, aunque el pareo quede para después (RF05). */
