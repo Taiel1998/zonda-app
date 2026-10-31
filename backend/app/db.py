@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS dispositivos (
     -- El nombre de la persona ("Laura"); null en los pareados antes de la 1.0.5.
     persona TEXT,
     -- Cuándo usó la app por última vez (Ajustes → Personas).
-    ultimo_uso TEXT
+    ultimo_uso TEXT,
+    -- telefono o navegador (el tablero web): un bloqueo solo lo hace efectivo un teléfono (decisión 51).
+    tipo TEXT NOT NULL DEFAULT 'telefono'
 );
 
 CREATE TABLE IF NOT EXISTS codigos_pareo (
@@ -199,6 +201,48 @@ CREATE TABLE IF NOT EXISTS trafico_pares (
     bytes INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (minuto, origen, destino, servicio)
 );
+
+-- El bloqueo del origen de una alerta en el firewall (decisión 51). Lo hace efectivo un administrador desde
+-- su teléfono y lo aplica el agente del firewall cuando pregunta. Ninguna fila se borra.
+CREATE TABLE IF NOT EXISTS bloqueos (
+    id TEXT PRIMARY KEY,
+    alerta_id TEXT NOT NULL REFERENCES alertas (id) ON DELETE CASCADE,
+    ip TEXT NOT NULL,
+    -- Como las revisiones: la misma acción reenviada desde la cola no se aplica dos veces.
+    accion_id TEXT NOT NULL UNIQUE,
+    -- pedido, aprobado, aplicado, rechazado, desbloqueado o vencido.
+    estado TEXT NOT NULL,
+    -- Segundos; null: hasta desbloquear (solo con la alerta revisada como ataque real). Manda vence_en.
+    duracion INTEGER,
+    motivo TEXT NOT NULL,
+    -- 1 si lo pidió un analista o el tablero web y lo tuvo que aprobar un administrador.
+    fue_pedido INTEGER NOT NULL DEFAULT 0,
+    pedido_por_id TEXT NOT NULL,
+    pedido_por TEXT NOT NULL,
+    pedido_en TEXT NOT NULL,
+    aprobado_por_id TEXT,
+    aprobado_por TEXT,
+    aprobado_en TEXT,
+    vence_en TEXT,
+    -- Cuándo dijo el firewall que lo aplicó.
+    aplicado_en TEXT,
+    -- Quién lo rechazó o lo desbloqueó ("Firewall" si lo rechazó el firewall), cuándo y por qué.
+    terminado_por_id TEXT,
+    terminado_por TEXT,
+    terminado_en TEXT,
+    detalle TEXT
+);
+CREATE INDEX IF NOT EXISTS bloqueos_estado ON bloqueos (estado);
+
+-- Un aviso de Telegram por bloqueo, momento y chat: el bot nunca manda dos veces el mismo.
+CREATE TABLE IF NOT EXISTS avisos_bloqueos (
+    bloqueo_id TEXT NOT NULL REFERENCES bloqueos (id) ON DELETE CASCADE,
+    -- pedido, aprobado, desbloqueado o rechazado (por el firewall).
+    evento TEXT NOT NULL,
+    chat_id TEXT NOT NULL,
+    enviado_en TEXT NOT NULL,
+    PRIMARY KEY (bloqueo_id, evento, chat_id)
+);
 """
 
 
@@ -231,7 +275,7 @@ class Base:
         teléfono, los motivos nuevos, lo que guarda el bot de Telegram, las severidades del tipo vacío
         (cambio 9) y, desde la 1.0.5, la persona y el perfil de cada teléfono y la importancia de cada
         equipo. Los teléfonos ya pareados quedan como administradores: hasta la 1.0.4 todos podían
-        cambiar las severidades."""
+        cambiar las severidades. Desde la API 0.9.0, si cada dispositivo es un teléfono o un navegador."""
         from .modelos import MOTIVOS_ANTERIORES
         from .semilla import poner_al_dia_severidades
 
@@ -256,6 +300,10 @@ class Base:
             con.execute("ALTER TABLE dispositivos ADD COLUMN persona TEXT")
             con.execute("ALTER TABLE dispositivos ADD COLUMN ultimo_uso TEXT")
             con.execute("UPDATE dispositivos SET ultimo_uso = creado_en")
+        if "tipo" not in columnas:
+            con.execute("ALTER TABLE dispositivos ADD COLUMN tipo TEXT NOT NULL DEFAULT 'telefono'")
+            # Los navegadores pareados antes de este campo se llaman «Tablero web · Chrome en Windows».
+            con.execute("UPDATE dispositivos SET tipo = 'navegador' WHERE nombre LIKE 'Tablero web%'")
         if "perfil" not in {fila[1] for fila in con.execute("PRAGMA table_info(codigos_pareo)")}:
             con.execute("ALTER TABLE codigos_pareo ADD COLUMN persona TEXT")
             con.execute("ALTER TABLE codigos_pareo ADD COLUMN perfil TEXT NOT NULL DEFAULT 'administrador'")

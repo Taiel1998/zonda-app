@@ -3,6 +3,7 @@
 Un solo registro con todo: los cambios de severidad y de importancia de un equipo, con su motivo, y
 los de la gente (sumar a alguien, cambiarle el perfil, quitarlo), sin motivo porque la línea ya dice
 qué pasó. Lo ve todo el equipo y desde la app nadie lo puede borrar ni editar: solo se agregan filas.
+Desde la API 0.9.0 también anota los bloqueos del firewall y los desbloqueos, con su motivo (decisión 51).
 """
 
 import sqlite3
@@ -41,8 +42,10 @@ def anotar(
     )
 
 
-def leer(con: sqlite3.Connection) -> list[CambioRegistro]:
-    """De lo más nuevo a lo más viejo."""
+def leer(con: sqlite3.Connection, con_bloqueos: bool = False) -> list[CambioRegistro]:
+    """De lo más nuevo a lo más viejo. Los bloqueos y desbloqueos, solo con [con_bloqueos]: la app 1.0.8 y
+    el tablero anterior no conocen esos tipos y dejarían de leer el registro."""
+    donde = "" if con_bloqueos else " WHERE tipo NOT IN ('bloqueo', 'desbloqueo')"
     return [
         CambioRegistro(
             id=f["id"],
@@ -56,5 +59,5 @@ def leer(con: sqlite3.Connection) -> list[CambioRegistro]:
             despues=f["despues"],
             motivo=f["motivo"],
         )
-        for f in con.execute("SELECT * FROM registro_cambios ORDER BY id DESC")
+        for f in con.execute(f"SELECT * FROM registro_cambios{donde} ORDER BY id DESC")
     ]

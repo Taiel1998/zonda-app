@@ -71,7 +71,7 @@ from .revisiones import aplicar_revision
 from .semilla import SQL_SEVERIDAD, guardar_equipo, severidad_de
 from .telegram import BotTelegram, ErrorTelegram
 
-VERSION = "0.8.1"
+VERSION = "0.9.0"
 
 router = APIRouter()
 
@@ -326,7 +326,7 @@ def parear(entrada: PareoEntrada, request: Request) -> PareoSalida:
     cfg = request.app.state.config
     limite = iso(ahora() - timedelta(days=cfg.dias_cache))
     with _base(request).transaccion() as con:
-        datos = canjear_codigo_pareo(con, entrada.codigo, entrada.nombreDispositivo, cfg.dias_token)
+        datos = canjear_codigo_pareo(con, entrada.codigo, entrada.nombreDispositivo, cfg.dias_token, tipo=entrada.tipo)
         recientes = con.execute("SELECT COUNT(*) FROM alertas WHERE creada_en >= ?", (limite,)).fetchone()[0]
     return PareoSalida(
         token=datos["token"],
@@ -535,9 +535,10 @@ def cambiar_importancia(ip: str, entrada: ImportanciaEntrada, request: Request, 
 
 
 @router.get("/registro", response_model=list[CambioRegistro])
-def registro_de_cambios(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> list[CambioRegistro]:
-    """Quién cambió la configuración de la red, cuándo y por qué, de lo más nuevo a lo más viejo. Lo ve todo el equipo."""
-    return registro.leer(_base(request).conexion())
+def registro_de_cambios(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual), bloqueos: bool = False) -> list[CambioRegistro]:
+    """Quién cambió la configuración de la red, cuándo y por qué, de lo más nuevo a lo más viejo. Lo ve todo el
+    equipo. Los bloqueos del firewall vienen solo con ?bloqueos=true (decisión 51): la app 1.0.8 no los conoce."""
+    return registro.leer(_base(request).conexion(), con_bloqueos=bloqueos)
 
 
 @router.put("/alertas/{alerta_id}/asignacion", response_model=Alerta)

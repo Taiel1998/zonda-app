@@ -11,6 +11,9 @@ El vigía del latido del análisis en vivo (app/latido.py) corre siempre; sin bo
 El tablero web (backend/web, decisión 49) se sirve en /panel desde el mismo proceso: misma dirección,
 mismo HTTPS de Caddy y el mismo token por dispositivo que la app.
 
+Los bloqueos del firewall (app/bloqueos.py, decisión 51) tienen su propio router: los pide la gente con el
+token de su dispositivo y los lee el agente del firewall con el suyo.
+
 Arranque: uvicorn app.main:app --host 127.0.0.1 --port 8000
 """
 
@@ -20,6 +23,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
+from .bloqueos import router as router_bloqueos
 from .config import RAIZ, Config
 from .db import Base
 from .emisor import emitir_periodicamente
@@ -82,6 +86,7 @@ def crear_app(config: Config | None = None) -> FastAPI:
         lifespan=ciclo_de_vida,
     )
     app.include_router(router)
+    app.include_router(router_bloqueos)
     app.mount("/panel", StaticFiles(directory=RAIZ / "web", html=True), name="panel")
 
     @app.middleware("http")
