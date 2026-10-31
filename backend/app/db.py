@@ -212,7 +212,7 @@ CREATE TABLE IF NOT EXISTS bloqueos (
     accion_id TEXT NOT NULL UNIQUE,
     -- pedido, aprobado, aplicado, rechazado, desbloqueado o vencido.
     estado TEXT NOT NULL,
-    -- Segundos; null: hasta desbloquear (solo con la alerta revisada como ataque real). Manda vence_en.
+    -- Segundos; null: hasta desbloquear. Manda vence_en.
     duracion INTEGER,
     motivo TEXT NOT NULL,
     -- 1 si lo pidió un analista o el tablero web y lo tuvo que aprobar un administrador.

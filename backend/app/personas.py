@@ -36,6 +36,7 @@ def persona_dto(fila: sqlite3.Row, vos: bool) -> Persona:
         perfil=fila["perfil"],
         ultimoUso=fila["ultimo_uso"],
         vos=vos,
+        tipo=fila["tipo"],
     )
 
 

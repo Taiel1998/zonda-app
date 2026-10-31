@@ -4,9 +4,9 @@ Un administrador bloquea desde su teléfono el origen de una alerta, con un moti
 o el tablero web lo piden, y lo aprueba un administrador desde su teléfono. El servidor no guarda ninguna clave
 del firewall: el agente del firewall pregunta cada pocos segundos qué tiene que bloquear (GET
 /firewall/bloqueos, con su propio token), lo valida contra su lista de «nunca bloquear» y sus topes, lo aplica
-y cuenta qué hizo (POST /firewall/informe). Todo bloqueo vence solo, salvo que la alerta esté revisada como
-ataque real y un administrador lo deje hasta desbloquear. Sin ZONDA_FIREWALL_TOKEN los bloqueos están
-apagados y la red queda en modo de observación.
+y cuenta qué hizo (POST /firewall/informe). Un bloqueo dura 1 o 24 horas, o hasta que alguien lo desbloquea;
+siempre se puede desbloquear antes. Sin ZONDA_FIREWALL_TOKEN los bloqueos están apagados y la red queda en
+modo de observación.
 """
 
 import ipaddress
@@ -48,7 +48,6 @@ PEDIDO_VALE = timedelta(hours=1)
 AUTOR_FIREWALL = "Firewall"
 
 APAGADOS = "Los bloqueos están apagados: esta red no tiene un firewall conectado"
-SIN_CONFIRMAR = "«Hasta desbloquear» se elige con la alerta revisada como ataque real"
 EN_LA_LISTA = "El firewall nunca bloquea ese equipo: está en su lista de «nunca bloquear»"
 NO_PENDIENTE = "Ese pedido ya no está pendiente"
 
@@ -160,12 +159,6 @@ def _bloqueo(con: sqlite3.Connection, bloqueo_id: str) -> sqlite3.Row:
     return fila
 
 
-def _confirmado(con: sqlite3.Connection, alerta_id: str) -> bool:
-    """Si la alerta está revisada como ataque real: recién ahí un bloqueo puede quedar hasta desbloquear."""
-    fila = con.execute("SELECT estado_revision FROM alertas WHERE id = ?", (alerta_id,)).fetchone()
-    return fila is not None and fila["estado_revision"] == "ataque_real"
-
-
 def _terminar(con: sqlite3.Connection, bloqueo_id: str, estado: str, autor: sqlite3.Row, detalle: str) -> None:
     con.execute(
         "UPDATE bloqueos SET estado = ?, terminado_por_id = ?, terminado_por = ?, terminado_en = ?, detalle = ? WHERE id = ?",
@@ -193,9 +186,8 @@ def listar(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actu
 def bloquear(entrada: BloqueoEntrada, request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> Bloqueo:
     """Bloquea el origen de una alerta. Un administrador desde su teléfono lo deja aprobado en el acto; un
     analista o el tablero web lo piden. Idempotente por accionId. 404 sin la alerta; 409 si ese equipo ya
-    tiene un bloqueo o un pedido, o con el tope de bloqueos activos; 422 si el origen no es un equipo, está en
-    la lista de «nunca bloquear» o se pidió hasta desbloquear sin el ataque confirmado; 429 con demasiados en
-    una hora; 503 si están apagados."""
+    tiene un bloqueo o un pedido, o con el tope de bloqueos activos; 422 si el origen no es un equipo o está en
+    la lista de «nunca bloquear»; 429 con demasiados en una hora; 503 si están apagados."""
     _exigir_prendidos(request)
     cfg = _config(request)
     base = _base(request)
@@ -207,8 +199,6 @@ def bloquear(entrada: BloqueoEntrada, request: Request, dispositivo: sqlite3.Row
         alerta = con.execute("SELECT * FROM alertas WHERE id = ?", (entrada.alertaId,)).fetchone()
         if alerta is None:
             raise HTTPException(status_code=404, detail="No existe esa alerta")
-        if entrada.duracion is None and alerta["estado_revision"] != "ataque_real":
-            raise HTTPException(status_code=422, detail=SIN_CONFIRMAR)
         ip = ip_bloqueable(alerta["origen_ip"])
         if ip is None:
             raise HTTPException(status_code=422, detail="Ese origen no es la dirección de un equipo: no se puede bloquear")
@@ -308,17 +298,15 @@ def desbloquear(bloqueo_id: str, entrada: MotivoEntrada, request: Request, admin
 
 @router.put("/bloqueos/{bloqueo_id}/duracion", response_model=Bloqueo)
 def cambiar_duracion(bloqueo_id: str, entrada: DuracionEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Bloqueo:
-    """Cuánto dura desde ahora un bloqueo vigente, con su motivo. Sin duración queda hasta desbloquear, y eso
-    solo con la alerta revisada como ataque real (422 si no). El firewall lo vuelve a aplicar con la duración
-    nueva; hasta que lo confirma, queda aprobado. 409 si no está vigente."""
+    """Cuánto dura desde ahora un bloqueo vigente, con su motivo; sin duración queda hasta desbloquear. El
+    firewall lo vuelve a aplicar con la duración nueva; hasta que lo confirma, queda aprobado. 409 si no está
+    vigente."""
     _exigir_prendidos(request)
     with _base(request).transaccion() as con:
         poner_al_dia(con)
         fila = _bloqueo(con, bloqueo_id)
         if fila["estado"] not in EN_EL_FIREWALL:
             raise HTTPException(status_code=409, detail="Ese bloqueo no está vigente")
-        if entrada.duracion is None and not _confirmado(con, fila["alerta_id"]):
-            raise HTTPException(status_code=422, detail=SIN_CONFIRMAR)
         con.execute(
             "UPDATE bloqueos SET estado = 'aprobado', aplicado_en = NULL, duracion = ?, vence_en = ? WHERE id = ?",
             (entrada.duracion, _vence(ahora(), entrada.duracion), bloqueo_id),

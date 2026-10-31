@@ -283,6 +283,9 @@ class Persona(BaseModel):
     ultimoUso: str | None
     # Si es el teléfono que pregunta.
     vos: bool
+    # telefono o navegador (el tablero web, decisión 51): a un navegador no se le asigna una alerta, porque no
+    # recibe el aviso de la asignación; la app lo muestra aparte en Personas.
+    tipo: Literal["telefono", "navegador"] = "telefono"
 
 
 class CodigoPersonaEntrada(BaseModel):
@@ -618,14 +621,14 @@ class ParesTrafico(BaseModel):
 # pedido (falta que lo apruebe un administrador desde su teléfono), aprobado (el firewall todavía no dijo
 # que lo aplicó), aplicado, rechazado (por un administrador o por el firewall), desbloqueado o vencido.
 EstadoBloqueo = Literal["pedido", "aprobado", "aplicado", "rechazado", "desbloqueado", "vencido"]
-# Cuánto puede durar un bloqueo, en segundos: 15 minutos, 1 hora (la que propone la app), 8 y 24 horas. Sin
-# duración (null) queda hasta que alguien lo desbloquea, y eso solo con la alerta revisada como ataque real.
-DURACIONES_BLOQUEO = (900, 3600, 28800, 86400)
+# Cuánto puede durar un bloqueo, en segundos: 1 hora (la que propone la app) o 24 horas. Sin duración (null)
+# queda hasta que alguien lo desbloquea.
+DURACIONES_BLOQUEO = (3600, 86400)
 
 
 def _duracion_permitida(valor: int | None) -> int | None:
     if valor is not None and valor not in DURACIONES_BLOQUEO:
-        raise ValueError("La duración tiene que ser de 15 minutos, 1, 8 o 24 horas, o hasta desbloquear")
+        raise ValueError("La duración tiene que ser de 1 o 24 horas, o hasta desbloquear")
     return valor
 
 

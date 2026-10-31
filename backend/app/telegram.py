@@ -149,7 +149,7 @@ TITULO_BLOQUEO = {
     "desbloqueado": "{persona} desbloqueó el origen de una alerta {alerta}",
     "rechazado": "El firewall no aplicó el bloqueo de una alerta {alerta}",
 }
-DURACION_BLOQUEO = {900: "15 min", 3600: "1 h", 28800: "8 h", 86400: "24 h"}
+DURACION_BLOQUEO = {3600: "1 h", 86400: "24 h"}
 
 
 def texto_de_bloqueo(

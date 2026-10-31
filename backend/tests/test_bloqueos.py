@@ -10,7 +10,7 @@ from app.auth import ahora, iso
 from app.db import Base
 from tests.conftest import cabecera, todas_las_alertas
 from tests.test_perfiles_y_registro import sumar
-from tests.test_revision_y_severidades import primera_alta, revision
+from tests.test_revision_y_severidades import primera_alta
 from tests.test_telegram import vincular
 
 TOKEN_FIREWALL = "token-del-firewall-de-prueba"
@@ -63,6 +63,14 @@ def parear_tablero(cliente, auth, tipo: str | None = "navegador") -> dict:
     return cabecera(pareo.json()["token"])
 
 
+def test_personas_dice_que_el_tablero_es_un_navegador(cliente, auth):
+    parear_tablero(cliente, auth)
+
+    tipos = {p["telefono"]: p["tipo"] for p in cliente.get("/personas", headers=auth).json()}
+
+    assert tipos == {"Teléfono de prueba": "telefono", "Tablero web · Chrome en Windows": "navegador"}
+
+
 def test_sin_firewall_conectado_los_bloqueos_estan_apagados(cliente, auth):
     cliente.app.state.config.firewall_token = ""
     alerta = primera_alta(cliente, auth)
@@ -110,25 +118,35 @@ def test_el_motivo_es_obligatorio_y_la_duracion_una_de_las_permitidas(cliente, a
     alerta = primera_alta(cliente, auth)
 
     assert bloquear(cliente, auth, alerta["id"], motivo="   ").status_code == 422
-    assert bloquear(cliente, auth, alerta["id"], duracion=600).status_code == 422
+    # Las duraciones son 1 o 24 horas (o hasta desbloquear): ni 10 ni 15 minutos, ni 8 horas.
+    for duracion in (600, 900, 28800):
+        assert bloquear(cliente, auth, alerta["id"], duracion=duracion).status_code == 422
     assert bloquear(cliente, auth, "no-existe").status_code == 404
     assert bloqueos(cliente, auth) == []
 
 
-def test_hasta_desbloquear_solo_con_el_ataque_confirmado(cliente, auth):
+def test_hasta_desbloquear_no_pide_la_alerta_revisada(cliente, auth):
     alerta = primera_alta(cliente, auth)
-    assert bloquear(cliente, auth, alerta["id"], duracion=None).status_code == 422
-    bloqueo = bloquear(cliente, auth, alerta["id"], accion="2").json()
-    permanente = {"duracion": None, "motivo": "pc-rrhh queda aislada hasta formatearla."}
-    assert cliente.put(f"/bloqueos/{bloqueo['id']}/duracion", json=permanente, headers=auth).status_code == 422
+    hasta = bloquear(cliente, auth, alerta["id"], duracion=None).json()
 
-    cliente.post(f"/alertas/{alerta['id']}/revision", json=revision(motivo="bloqueado_manualmente", comentario="Se bloqueó el acceso SSH."), headers=auth)
+    assert (hasta["duracion"], hasta["venceEn"], hasta["estado"]) == (None, None, "aprobado")
+    assert lo_que_bloquea_el_firewall(cliente) == {alerta["origenIp"]: None}
+
+
+def test_cambiar_la_duracion_a_hasta_desbloquear_y_a_24_horas(cliente, auth):
+    alerta = primera_alta(cliente, auth)
+    bloqueo = bloquear(cliente, auth, alerta["id"]).json()
+    permanente = {"duracion": None, "motivo": "pc-rrhh queda aislada hasta formatearla."}
+
     cambiado = cliente.put(f"/bloqueos/{bloqueo['id']}/duracion", json=permanente, headers=auth).json()
 
     assert (cambiado["duracion"], cambiado["venceEn"], cambiado["estado"]) == (None, None, "aprobado")
     assert lo_que_bloquea_el_firewall(cliente) == {alerta["origenIp"]: None}
     cambio = cliente.get("/registro", params={"bloqueos": "true"}, headers=auth).json()[0]
     assert (cambio["tipo"], cambio["antes"], cambio["despues"], cambio["motivo"]) == ("bloqueo", "3600", "hasta_desbloquear", permanente["motivo"])
+    un_dia = cliente.put(f"/bloqueos/{bloqueo['id']}/duracion", json={"duracion": 86400, "motivo": "Hasta mañana."}, headers=auth).json()
+    assert un_dia["duracion"] == 86400
+    assert 86390 <= lo_que_bloquea_el_firewall(cliente)[alerta["origenIp"]] <= 86400
 
 
 def test_desbloquear_pide_el_motivo_y_el_firewall_lo_saca(cliente, auth):
@@ -285,7 +303,7 @@ def test_lo_que_no_corresponde_a_cada_estado(cliente, auth):
 
     assert cliente.post("/bloqueos/b-no-existe/desbloqueo", json={"motivo": "Ya está"}, headers=auth).status_code == 404
     assert cliente.post(f"/bloqueos/{pedido['id']}/desbloqueo", json={"motivo": "Ya está"}, headers=auth).status_code == 409
-    assert cliente.put(f"/bloqueos/{pedido['id']}/duracion", json={"duracion": 900, "motivo": "Más corto"}, headers=auth).status_code == 409
+    assert cliente.put(f"/bloqueos/{pedido['id']}/duracion", json={"duracion": 86400, "motivo": "Más largo"}, headers=auth).status_code == 409
     # Si el firewall suma ese equipo a su lista mientras el pedido espera, ya no se aprueba.
     cliente.post("/firewall/informe", json={"nuncaBloquear": [alerta["origenIp"]]}, headers=FIREWALL)
     assert cliente.post(f"/bloqueos/{pedido['id']}/aprobacion", headers=auth).status_code == 422
@@ -335,9 +353,9 @@ def test_los_administradores_se_enteran_de_cada_bloqueo_por_telegram_sin_la_ip(c
 def test_el_firewall_que_no_aplica_un_bloqueo_se_avisa(cliente, auth, telegram, bot):
     vincular(cliente, auth, telegram, bot, chat_id=555)
     alerta = primera_alta(cliente, auth)
-    bloqueo = bloquear(cliente, auth, alerta["id"], duracion=900).json()
+    bloqueo = bloquear(cliente, auth, alerta["id"], duracion=86400).json()
     asyncio.run(bot.avisar_bloqueos())
-    assert telegram.enviados[-1]["text"].endswith("</b>\nPor 15 min. Tocá para ver el detalle en Zonda.")
+    assert telegram.enviados[-1]["text"].endswith("</b>\nPor 24 h. Tocá para ver el detalle en Zonda.")
 
     cliente.post("/firewall/informe", json={"rechazados": [{"id": bloqueo["id"], "motivo": "tope"}]}, headers=FIREWALL)
 
