@@ -1,6 +1,6 @@
 // Lo que se baja del tablero: los CSV de los paneles y de la lista de alertas, y lo que se comparte del
-// Resumen, como en la app: una sola imagen, siempre en claro aunque el tablero esté en oscuro, y el PDF es
-// esa misma imagen en una hoja A4. El PDF se arma acá, sin el diálogo de imprimir del navegador (que
+// Resumen: la imagen de la app, siempre en claro aunque el tablero esté en oscuro, y el PDF, una hoja A4 con
+// el reporte que dibuja reporte.js. El PDF se arma acá, sin el diálogo de imprimir del navegador (que
 // agregaba márgenes y tomaba los colores de la pantalla): una página con la imagen en JPEG, que todos los
 // lectores de PDF abren.
 

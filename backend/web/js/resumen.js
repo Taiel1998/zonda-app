@@ -3,13 +3,14 @@
 // por hora, día o semana con su frase, los tipos de ataque, los reales y falsos positivos y la precisión de cada
 // modelo, con los mismos cálculos y textos. Tocar una pieza filtra todo el resumen, como en la app. En la compu
 // las piezas van de a dos y al final está «Equipos con más alertas», que solo existe acá. Se comparte como en la
-// app: una sola imagen, siempre en claro, y el PDF es esa imagen en una hoja A4 (compartir.js).
+// app con una sola imagen, siempre en claro; el PDF es un reporte armado para la hoja A4 (reporte.js).
 
 import { el, icono, numero, vaciar } from './util.js';
 import { $, METODOS, TIPOS, ahoraServidor, e, pedir, tiposDe } from './comun.js';
 import { abrirHoja, avisoInferior } from './hojas.js';
 import { abrirMenu } from './menu.js';
-import { bajarArchivo, pdfDe, pngDe } from './compartir.js';
+import { bajarArchivo, pngDe } from './compartir.js';
+import { reportePdf } from './reporte.js';
 
 // Los tipos en el orden de la app: primero lo que detectó la IA y después lo que no.
 const TIPOS_IA = ['fuerza_bruta', 'sin_tipificar', 'escaneo', 'ddos', 'probable_falsa_alarma'];
@@ -653,7 +654,7 @@ function hojaPrecision(x) {
   ]);
 }
 
-// ---- Compartir: la imagen de la app, siempre en claro, y el PDF con esa imagen en A4 ----
+// ---- Compartir: la imagen de la app, siempre en claro, y el PDF, que es el reporte A4 de reporte.js ----
 
 // Los colores del tema claro de la app.
 const C = {
@@ -888,12 +889,13 @@ function nombreDeArchivo(x) {
 async function compartir(como) {
   const x = calcular();
   await document.fonts.ready;
-  const { lienzo, ancho, alto } = dibujarImagen(x);
   if (como === 'pdf') {
-    bajarArchivo(`${nombreDeArchivo(x)}.pdf`, pdfDe(lienzo, ancho, alto));
+    const pdf = await reportePdf(x, { filtros: gruposDeFiltros(x, 'fecha'), severidadDe, bloques: [TIPOS_IA, TIPOS_SIN_IA], duracion: duracionCorta });
+    bajarArchivo(`${nombreDeArchivo(x)}.pdf`, pdf);
     avisoInferior('PDF del resumen descargado.', { duracion: 3000 });
     return;
   }
+  const { lienzo } = dibujarImagen(x);
   const png = pngDe(lienzo);
   if (como === 'copiar') {
     try {
