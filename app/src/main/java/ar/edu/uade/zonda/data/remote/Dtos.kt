@@ -183,6 +183,8 @@ data class PersonaDto(
     val perfil: String,
     val ultimoUso: String?,
     val vos: Boolean,
+    /** `telefono` o `navegador` (el tablero web, API 0.9.0); un servidor anterior no lo manda: teléfono. */
+    val tipo: String? = null,
 )
 
 /** Cuerpo de `POST /personas/codigo`. */

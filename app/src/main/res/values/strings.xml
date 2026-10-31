@@ -1232,12 +1232,9 @@
     <string name="bloqueo_ejemplo_rechazar">Por ejemplo: es el backup nocturno.</string>
     <string name="bloqueo_cuanto">¿Por cuánto tiempo?</string>
     <string name="bloqueo_cuanto_desde_ahora">¿Por cuánto tiempo, desde ahora?</string>
-    <string name="bloqueo_15_minutos">15 minutos</string>
     <string name="bloqueo_1_hora">1 hora</string>
-    <string name="bloqueo_8_horas">8 horas</string>
     <string name="bloqueo_24_horas">24 horas</string>
     <string name="bloqueo_hasta_desbloquear_opcion">Hasta desbloquear</string>
-    <string name="bloqueo_solo_ataque_real">Con la alerta revisada como ataque real</string>
     <string name="bloqueo_motivo_falta">Escribí el motivo.</string>
     <string name="bloqueo_sin_conexion">Sin conexión: el bloqueo no se envió.</string>
     <string name="error_bloqueo_no_posible">El servidor no aceptó el cambio del bloqueo.</string>
@@ -1251,4 +1248,14 @@
     <string name="registro_bloqueo_cambio">Cambió el bloqueo de %1$s a %2$s</string>
     <string name="registro_bloqueo_cambio_hasta">Dejó %1$s bloqueado hasta desbloquear</string>
     <string name="registro_desbloqueo">Desbloqueó %1$s</string>
+    <string name="bloqueo_se_corta">%1$s no va a llegar a otras áreas ni a internet durante %2$s.</string>
+    <string name="bloqueo_se_corta_hasta">%1$s no va a llegar a otras áreas ni a internet hasta que alguien lo desbloquee.</string>
+    <string name="bloqueo_vuelve">%1$s vuelve a llegar a otras áreas y a internet.</string>
+    <string name="bloqueo_sin_bloqueo_de_pantalla">Para bloquear, el teléfono tiene que tener huella o PIN.</string>
+    <string name="huella_titulo">Confirmá que sos vos</string>
+    <string name="huella_bloquear">Bloquear %1$s · %2$s</string>
+    <string name="huella_duracion">Bloqueo de %1$s · %2$s</string>
+    <string name="huella_desbloquear">Desbloquear %1$s</string>
+    <string name="huella_aprobar">Aprobar el bloqueo de %1$s</string>
+    <string name="personas_navegador">Navegador</string>
 </resources>

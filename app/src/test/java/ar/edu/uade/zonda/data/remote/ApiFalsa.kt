@@ -338,9 +338,6 @@ class ApiFalsa : ZondaApi {
         if (!firewall.habilitado) throw errorHttp(503, """{"detail": "Los bloqueos están apagados: esta red no tiene un firewall conectado"}""")
         bloqueos.firstOrNull { it.id == "b-${entrada.accionId}" }?.let { return it }
         val alerta = alertas[entrada.alertaId] ?: throw errorHttp(404)
-        if (entrada.duracion == null && alerta.estadoRevision != "ataque_real") {
-            throw errorHttp(422, """{"detail": "«Hasta desbloquear» se elige con la alerta revisada como ataque real"}""")
-        }
         if (bloqueos.any { it.ip == alerta.origenIp && it.estado in ACTIVOS }) {
             throw errorHttp(409, """{"detail": "Ese equipo ya tiene un bloqueo o un pedido de bloqueo"}""")
         }

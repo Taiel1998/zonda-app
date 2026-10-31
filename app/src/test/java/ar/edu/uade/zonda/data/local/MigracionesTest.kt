@@ -12,6 +12,7 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.data.local.entidades.CatalogoEquipoEntity
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.Severidad
@@ -204,6 +205,38 @@ class MigracionesTest {
         migrada.close()
     }
 
+    @Test
+    fun `la migracion 6 a 7 deja a las personas guardadas como telefonos`() = runTest {
+        val nueva = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO).allowMainThreadQueries().build()
+        nueva.redesDao().insertar(Fixtures.red("red-1").aEntidad(creadaEn = Fixtures.AHORA))
+        val taiel = Persona("d-1", "Taiel", "moto g(9) plus", Perfil.ADMINISTRADOR, null, vos = true)
+        nueva.redesDao().guardarPersonas("red-1", listOf(taiel.aEntidad("red-1", 0)))
+        nueva.close()
+        llevarAVersion6()
+
+        val migrada = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO)
+            .addMigrations(*MIGRACIONES)
+            .allowMainThreadQueries()
+            .build()
+
+        assertEquals(listOf(taiel), migrada.redesDao().observarPersonas("red-1").first().map { it.aDominio() })
+        migrada.close()
+    }
+
+    /** Deja el archivo como lo dejaba la versión 6 (la 1.0.8): las personas sin la marca del navegador. */
+    private fun llevarAVersion6() {
+        val db = SQLiteDatabase.openDatabase(contexto.getDatabasePath(ARCHIVO).path, null, SQLiteDatabase.OPEN_READWRITE)
+        db.beginTransaction()
+        try {
+            quitarColumnas(db, "personas", listOf("navegador"))
+            db.version = 6
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+    }
+
     /**
      * Deja el archivo como lo dejaba la versión 5 (la 1.0.4): sin perfiles, personas, registro de
      * cambios, importancia de los equipos ni asignaciones.
@@ -345,6 +378,7 @@ class MigracionesTest {
             ZondaDatabase.MIGRACION_3_4,
             ZondaDatabase.MIGRACION_4_5,
             ZondaDatabase.MIGRACION_5_6,
+            ZondaDatabase.MIGRACION_6_7,
         )
         val COLUMNAS_VERSION_2 = listOf("accesoVencido", "accesoEmitidoEn", "accesoVenceEn")
     }

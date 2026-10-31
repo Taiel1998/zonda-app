@@ -94,6 +94,9 @@ sealed interface AvisoDetalle {
 
     /** Sin conexión el bloqueo no sale ni queda en la cola: el aviso lo dice, para que nadie lo dé por hecho. */
     data object BloqueoSinConexion : AvisoDetalle
+
+    /** El teléfono no tiene huella ni bloqueo de pantalla: no se puede confirmar que es su dueño, y no sale. */
+    data object SinBloqueoDePantalla : AvisoDetalle
 }
 
 /**

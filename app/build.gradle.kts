@@ -116,6 +116,8 @@ dependencies {
     implementation(libs.zxing.core)
     // Sincronización en segundo plano cada 15 minutos con red (RNF08).
     implementation(libs.androidx.work.runtime)
+    // Lo que corta o devuelve tráfico se confirma con la huella o el PIN del teléfono (decisión 51).
+    implementation(libs.androidx.biometric)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

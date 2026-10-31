@@ -28,6 +28,11 @@ data class Persona(
     val ultimoUso: Instant?,
     /** Si es este teléfono. */
     val vos: Boolean,
+    /**
+     * Es un navegador con el tablero web, no un teléfono (decisión 51). No se le asignan alertas: no
+     * recibe el aviso de la asignación. En Personas se ve aparte, para poder quitarlo.
+     */
+    val navegador: Boolean = false,
 ) {
     val nombreVisible: String
         get() = nombre ?: telefono

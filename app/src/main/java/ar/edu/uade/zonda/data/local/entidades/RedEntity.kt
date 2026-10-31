@@ -74,6 +74,9 @@ data class PersonaEntity(
     val vos: Boolean,
     /** El orden en que se sumaron, como lo manda el servidor. */
     val orden: Int,
+    // Versión 7 (ZondaDatabase.MIGRACION_6_7): si es un navegador con el tablero web (decisión 51).
+    @ColumnInfo(defaultValue = "0")
+    val navegador: Boolean = false,
 )
 
 /** Una línea del registro de cambios de la red (`GET /registro`, versión 6; decisión 40). */

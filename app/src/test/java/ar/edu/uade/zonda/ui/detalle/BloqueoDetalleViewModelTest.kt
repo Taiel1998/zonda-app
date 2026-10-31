@@ -13,7 +13,9 @@ import ar.edu.uade.zonda.domain.fakes.GeneradorDeIdsFijo
 import ar.edu.uade.zonda.domain.model.DuracionBloqueo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoBloqueo
+import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.usecase.AsignarAlerta
 import ar.edu.uade.zonda.domain.usecase.DeshacerRevision
 import ar.edu.uade.zonda.domain.usecase.GestionarBloqueos
@@ -120,11 +122,11 @@ class BloqueoDetalleViewModelTest {
             esperar { it.bloqueo != null }
             vm.abrirBloqueo("Fuerza bruta de pc-09 a srv-web.")
             assertEquals(DuracionBloqueo.UNA_HORA, vm.hojaBloqueo.value?.duracion)
-            vm.elegirDuracion(DuracionBloqueo.QUINCE_MINUTOS)
+            vm.elegirDuracion(DuracionBloqueo.UN_DIA)
             vm.confirmarBloqueo()
 
             val bloqueado = esperar { it.bloqueo?.actual != null }
-            assertEquals(listOf("bloquear a-1 QUINCE_MINUTOS Fuerza bruta de pc-09 a srv-web."), bloqueos.hecho)
+            assertEquals(listOf("bloquear a-1 UN_DIA Fuerza bruta de pc-09 a srv-web."), bloqueos.hecho)
             assertEquals(EstadoBloqueo.APROBADO, bloqueado.bloqueo?.actual?.estado)
             assertNull(vm.hojaBloqueo.value)
             cancelAndIgnoreRemainingEvents()
@@ -198,6 +200,37 @@ class BloqueoDetalleViewModelTest {
     }
 
     @Test
+    fun `sin huella ni PIN en el telefono no sale, se cierra la hoja y lo avisa`() = runTest {
+        alertas.agregar(Fixtures.alerta("a-1"))
+        val vm = viewModel(backgroundScope)
+
+        vm.abrirBloqueo("Fuerza bruta.")
+        vm.sinBloqueoDePantalla()
+
+        assertEquals(AvisoDetalle.SinBloqueoDePantalla, vm.aviso.value)
+        assertNull(vm.hojaBloqueo.value)
+        assertTrue(bloqueos.hecho.isEmpty())
+    }
+
+    @Test
+    fun `con el origen bloqueado la revision viene propuesta como bloqueado manualmente`() = runTest {
+        alertas.agregar(Fixtures.alerta("a-1"))
+        val vm = viewModel(backgroundScope)
+
+        vm.abrirRevisionBloqueada("Se bloqueó el acceso SSH de pc-09 y se avisó al proveedor.")
+
+        val formulario = vm.formulario.value!!
+        assertEquals(PasoRevision.RESULTADO, formulario.paso)
+        assertEquals(ResultadoRevision.ATAQUE_REAL, formulario.resultado)
+        assertEquals(Motivo.BLOQUEADO_MANUALMENTE, formulario.motivo)
+        assertEquals("Se bloqueó el acceso SSH de pc-09 y se avisó al proveedor.", formulario.comentario)
+        // La persona igual pasa por los dos pasos: tocar "Ataque real" lleva al motivo con lo propuesto.
+        vm.elegirResultado(ResultadoRevision.ATAQUE_REAL)
+        assertEquals(Motivo.BLOQUEADO_MANUALMENTE, vm.formulario.value?.motivo)
+        assertTrue(vm.formulario.value!!.puedeConfirmar)
+    }
+
+    @Test
     fun `un analista pide el bloqueo y queda pedido`() = runTest {
         alertas.agregar(Fixtures.alerta("a-1"))
         bloqueos.administrador = false
@@ -243,11 +276,11 @@ class BloqueoDetalleViewModelTest {
         runCurrent()
         assertEquals(AccionBloqueo.CAMBIAR_DURACION, vm.hojaBloqueo.value?.accion)
         assertEquals(DuracionBloqueo.UNA_HORA, vm.hojaBloqueo.value?.duracion)
-        vm.elegirDuracion(DuracionBloqueo.OCHO_HORAS)
+        vm.elegirDuracion(DuracionBloqueo.HASTA_DESBLOQUEAR)
         vm.cambiarMotivoBloqueo("Sigue el ataque.")
         vm.confirmarBloqueo()
         runCurrent()
-        assertEquals("duracion OCHO_HORAS Sigue el ataque. b-7", bloqueos.hecho.last())
+        assertEquals("duracion HASTA_DESBLOQUEAR Sigue el ataque. b-7", bloqueos.hecho.last())
 
         vm.abrirDesbloqueo()
         vm.cambiarMotivoBloqueo("Se cambió la contraseña.")

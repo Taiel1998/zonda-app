@@ -281,6 +281,7 @@ fun PersonaEntity.aDominio(): Persona = Persona(
     perfil = Perfil.entries.firstOrNull { it.name == perfil } ?: Perfil.ANALISTA,
     ultimoUso = ultimoUso?.aInstant(),
     vos = vos,
+    navegador = navegador,
 )
 
 fun Persona.aEntidad(redId: String, orden: Int): PersonaEntity = PersonaEntity(
@@ -292,6 +293,7 @@ fun Persona.aEntidad(redId: String, orden: Int): PersonaEntity = PersonaEntity(
     ultimoUso = ultimoUso?.aMilis(),
     vos = vos,
     orden = orden,
+    navegador = navegador,
 )
 
 fun CatalogoEquipoEntity.aDominio(): EquipoDeLaRed = EquipoDeLaRed(

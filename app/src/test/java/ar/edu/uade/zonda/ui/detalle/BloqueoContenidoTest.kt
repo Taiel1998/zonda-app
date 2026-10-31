@@ -3,7 +3,6 @@ package ar.edu.uade.zonda.ui.detalle
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -13,14 +12,16 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.fakes.FakeBloqueosRepository.Companion.bloqueo
 import ar.edu.uade.zonda.domain.model.Bloqueo
 import ar.edu.uade.zonda.domain.model.CambioRegistro
+import ar.edu.uade.zonda.domain.model.DuracionBloqueo
 import ar.edu.uade.zonda.domain.model.EstadoBloqueo
 import ar.edu.uade.zonda.domain.model.EstadoFirewall
 import ar.edu.uade.zonda.domain.model.EstadoPieza
 import ar.edu.uade.zonda.domain.model.EstadoSistema
 import ar.edu.uade.zonda.domain.model.Perfil
-import ar.edu.uade.zonda.domain.model.ResultadoRevision
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.TipoCambio
 import ar.edu.uade.zonda.ui.ajustes.tituloDelCambio
+import ar.edu.uade.zonda.ui.components.FilaPersona
 import ar.edu.uade.zonda.ui.estado.TarjetaBloqueos
 import ar.edu.uade.zonda.ui.estado.TarjetaEstadoSistema
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
@@ -140,27 +141,20 @@ class BloqueoContenidoTest {
         compose.onNodeWithText("Aprobar").assertDoesNotExist()
     }
 
-    private fun hoja(formulario: FormularioBloqueo, revisadaComoAtaque: Boolean = false, perfil: Perfil = Perfil.ADMINISTRADOR) {
-        val alerta = Fixtures.alerta("a-1", revision = if (revisadaComoAtaque) Fixtures.revision(resultado = ResultadoRevision.ATAQUE_REAL) else null)
-        compose.setContent { ZondaTheme { Column { ContenidoHojaBloqueo(formulario, alerta, perfil, AccionesDetalle()) } } }
+    private fun hoja(formulario: FormularioBloqueo, perfil: Perfil = Perfil.ADMINISTRADOR) {
+        compose.setContent { ZondaTheme { Column { ContenidoHojaBloqueo(formulario, Fixtures.alerta("a-1"), perfil, AccionesDetalle()) } } }
     }
 
     @Test
-    fun `hasta desbloquear se elige solo con la alerta revisada como ataque real`() {
+    fun `tres duraciones y hasta desbloquear se elige sin revisar la alerta`() {
         hoja(FormularioBloqueo(AccionBloqueo.BLOQUEAR))
 
         compose.onNodeWithText("Bloquear pc-09").assertExists()
         compose.onNodeWithText("1 hora").assertIsEnabled()
-        compose.onNodeWithText("Hasta desbloquear").assertIsNotEnabled()
-        compose.onNodeWithText("Con la alerta revisada como ataque real").assertExists()
-    }
-
-    @Test
-    fun `con el ataque confirmado hasta desbloquear se puede elegir`() {
-        hoja(FormularioBloqueo(AccionBloqueo.BLOQUEAR), revisadaComoAtaque = true)
-
+        compose.onNodeWithText("24 horas").assertIsEnabled()
         compose.onNodeWithText("Hasta desbloquear").assertIsEnabled()
-        compose.onNodeWithText("Con la alerta revisada como ataque real").assertDoesNotExist()
+        compose.onNodeWithText("15 minutos").assertDoesNotExist()
+        compose.onNodeWithText("8 horas").assertDoesNotExist()
     }
 
     @Test
@@ -176,6 +170,61 @@ class BloqueoContenidoTest {
 
         compose.onNodeWithText("Desbloquear pc-09").assertExists()
         compose.onNodeWithText("1 hora").assertDoesNotExist()
+        compose.onNodeWithText("pc-09 (192.168.10.9) vuelve a llegar a otras áreas y a internet.").assertExists()
+    }
+
+    @Test
+    fun `la hoja dice que se corta y por cuanto tiempo`() {
+        hoja(FormularioBloqueo(AccionBloqueo.BLOQUEAR))
+        compose.onNodeWithText("pc-09 (192.168.10.9) no va a llegar a otras áreas ni a internet durante 1 hora.").assertExists()
+    }
+
+    @Test
+    fun `hasta desbloquear dice que dura hasta que alguien lo suelte`() {
+        hoja(FormularioBloqueo(AccionBloqueo.BLOQUEAR, duracion = DuracionBloqueo.HASTA_DESBLOQUEAR))
+        compose.onNodeWithText("pc-09 (192.168.10.9) no va a llegar a otras áreas ni a internet hasta que alguien lo desbloquee.").assertExists()
+    }
+
+    @Test
+    fun `con el origen bloqueado Revisar trae propuesto Bloqueado manualmente`() {
+        var propuesto: String? = null
+        var sinPropuesta = 0
+        detalle(actual = bloqueo(estado = EstadoBloqueo.APLICADO), acciones = AccionesDetalle(alRevisarBloqueada = { propuesto = it }, alRevisar = { sinPropuesta++ }))
+
+        compose.onNodeWithText("Revisar").performScrollTo().performClick()
+
+        assertEquals("Se bloqueó el acceso SSH de pc-09 y se avisó al proveedor.", propuesto)
+        assertEquals(0, sinPropuesta)
+    }
+
+    @Test
+    fun `sin bloqueo Revisar abre la revision de siempre`() {
+        var sinPropuesta = 0
+        detalle(acciones = AccionesDetalle(alRevisar = { sinPropuesta++ }))
+
+        compose.onNodeWithText("Revisar").performScrollTo().performClick()
+
+        assertEquals(1, sinPropuesta)
+    }
+
+    @Test
+    fun `asignar no ofrece los navegadores del tablero y Personas los marca`() {
+        val taiel = Persona("d-1", "Taiel", "moto g(9) plus", Perfil.ADMINISTRADOR, null, vos = true)
+        val laura = Persona("d-2", "Laura", "Teléfono de Laura", Perfil.ANALISTA, null, vos = false)
+        val tablero = Persona("d-3", null, "Tablero web", Perfil.ADMINISTRADOR, null, vos = false, navegador = true)
+        compose.setContent {
+            ZondaTheme {
+                Column {
+                    ContenidoHojaAsignar(listOf(taiel, laura, tablero), responsableId = null) {}
+                    FilaPersona(tablero, Fixtures.AHORA, utc)
+                }
+            }
+        }
+
+        compose.onNodeWithText("Laura").assertExists()
+        // El tablero aparece una sola vez: en la fila de Personas, marcado como navegador.
+        compose.onNodeWithText("Tablero web").assertExists()
+        compose.onNodeWithText("Navegador · Administrador").assertExists()
     }
 
     @Test

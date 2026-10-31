@@ -60,10 +60,10 @@ class BloqueosEnLaApiTest {
         servidor.enqueue(respuesta(201, BLOQUEO))
         servidor.enqueue(respuesta(200, BLOQUEO))
 
-        api().bloquear(BloqueoEntradaDto("accion-1", "a-1", 900, "Fuerza bruta."))
+        api().bloquear(BloqueoEntradaDto("accion-1", "a-1", 86_400, "Fuerza bruta."))
         api().cambiarDuracionBloqueo("b-1", DuracionEntradaDto(null, "Sigue el ataque."))
 
-        assertTrue(servidor.takeRequest().body.readUtf8().contains("\"duracion\":900"))
+        assertTrue(servidor.takeRequest().body.readUtf8().contains("\"duracion\":86400"))
         val cambio = servidor.takeRequest()
         assertEquals("PUT /bloqueos/b-1/duracion", "${cambio.method} ${cambio.requestUrl?.encodedPath}")
         assertTrue(cambio.body.readUtf8().contains("\"duracion\":null"))

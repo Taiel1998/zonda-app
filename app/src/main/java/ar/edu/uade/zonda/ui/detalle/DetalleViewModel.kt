@@ -193,6 +193,18 @@ class DetalleViewModel(
         _formulario.value = FormularioRevision()
     }
 
+    /**
+     * Con el origen bloqueado, la revisión viene propuesta: ataque real, "Bloqueado manualmente" y su
+     * comentario, que la pantalla arma con la alerta. La persona igual pasa por los dos pasos y puede cambiarla.
+     */
+    fun abrirRevisionBloqueada(comentarioPropuesto: String) {
+        _formulario.value = FormularioRevision(
+            resultado = ResultadoRevision.ATAQUE_REAL,
+            motivo = Motivo.BLOQUEADO_MANUALMENTE,
+            comentario = comentarioPropuesto,
+        )
+    }
+
     /** Paso 1. Si cambia el resultado, el motivo elegido deja de valer y el comentario propuesto se borra. */
     fun elegirResultado(resultado: ResultadoRevision) {
         _formulario.update { actual ->
@@ -302,6 +314,12 @@ class DetalleViewModel(
 
     fun cerrarBloqueo() {
         _hojaBloqueo.value = null
+    }
+
+    /** El teléfono no tiene huella ni PIN: no sale nada y el aviso dice por qué. */
+    fun sinBloqueoDePantalla() {
+        _hojaBloqueo.value = null
+        _aviso.value = AvisoDetalle.SinBloqueoDePantalla
     }
 
     /** Sin motivo no sale ("Escribí el motivo."); con motivo, sale en el momento o no sale. */

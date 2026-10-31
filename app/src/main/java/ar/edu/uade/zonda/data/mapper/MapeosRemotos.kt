@@ -216,6 +216,7 @@ fun PersonaDto.aDominio(): Persona = Persona(
     perfil = perfilDeLaApi(perfil),
     ultimoUso = ultimoUso?.aInstante(),
     vos = vos,
+    navegador = tipo == "navegador",
 )
 
 fun CodigoPersonaDto.aDominio(): CodigoPersona = CodigoPersona(

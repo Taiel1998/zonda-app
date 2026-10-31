@@ -2,7 +2,6 @@ package ar.edu.uade.zonda
 
 import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -10,6 +9,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.domain.model.Tema
 import ar.edu.uade.zonda.ui.navigation.ZondaNavHost
@@ -18,9 +18,10 @@ import ar.edu.uade.zonda.ui.theme.ZondaTheme
 /**
  * Única Activity de la app. Toda la navegación entre pantallas la resuelve Navigation Compose
  * dentro de [ZondaNavHost]; la Activity solo arma el tema y el contenido. El tema sale de Ajustes →
- * Apariencia → Tema (decisión 43): de fábrica sigue al teléfono, y lo elegido manda sobre el teléfono.
+ * Apariencia → Tema (decisión 43): de fábrica sigue al teléfono, y lo elegido manda sobre el teléfono. Es
+ * una FragmentActivity porque el diálogo de la huella de Android la necesita (decisión 51).
  */
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

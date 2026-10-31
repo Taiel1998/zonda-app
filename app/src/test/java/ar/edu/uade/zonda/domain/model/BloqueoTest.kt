@@ -56,11 +56,13 @@ class BloqueoTest {
 
     @Test
     fun `las duraciones son las que acepta el servidor y la predeterminada es una hora`() {
-        assertEquals(listOf(900, 3600, 28_800, 86_400, null), DuracionBloqueo.entries.map { it.segundos })
+        assertEquals(listOf(3600, 86_400, null), DuracionBloqueo.entries.map { it.segundos })
         assertEquals(DuracionBloqueo.UNA_HORA, DuracionBloqueo.PREDETERMINADA)
         assertEquals(DuracionBloqueo.HASTA_DESBLOQUEAR, DuracionBloqueo.de(null))
-        assertEquals(DuracionBloqueo.OCHO_HORAS, DuracionBloqueo.de(28_800))
-        assertNull(DuracionBloqueo.de(60))
+        assertEquals(DuracionBloqueo.UN_DIA, DuracionBloqueo.de(86_400))
+        // Un bloqueo viejo de 15 minutos u 8 horas no es ninguna de las de ahora.
+        assertNull(DuracionBloqueo.de(900))
+        assertNull(DuracionBloqueo.de(28_800))
     }
 
     @Test
@@ -68,9 +70,9 @@ class BloqueoTest {
         val repositorio = FakeBloqueosRepository()
         val gestionar = GestionarBloqueos(repositorio, GeneradorDeIdsFijo())
 
-        val nuevo = gestionar.bloquear("red-1", "a-1", DuracionBloqueo.QUINCE_MINUTOS, "  Fuerza bruta.  ")
+        val nuevo = gestionar.bloquear("red-1", "a-1", DuracionBloqueo.UN_DIA, "  Fuerza bruta.  ")
 
-        assertEquals(listOf("bloquear a-1 QUINCE_MINUTOS Fuerza bruta."), repositorio.hecho)
+        assertEquals(listOf("bloquear a-1 UN_DIA Fuerza bruta."), repositorio.hecho)
         assertEquals(EstadoBloqueo.APROBADO, nuevo.estado)
         gestionar.desbloquear("red-1", nuevo.id, "Se cambió la contraseña.")
         assertEquals("desbloquear Se cambió la contraseña. ${nuevo.id}", repositorio.hecho.last())

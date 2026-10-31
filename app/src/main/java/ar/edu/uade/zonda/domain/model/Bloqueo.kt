@@ -25,11 +25,13 @@ enum class EstadoBloqueo {
         get() = this == APROBADO || this == APLICADO
 }
 
-/** Las duraciones que acepta el servidor. Hasta desbloquear, solo con la alerta revisada como ataque real. */
+/**
+ * Las duraciones que acepta el servidor: 1 hora para contenerlo mientras se investiga, 24 horas si nadie lo
+ * puede mirar hasta el día siguiente, y hasta desbloquear cuando ya se sabe que es un ataque. Siempre se
+ * puede desbloquear antes.
+ */
 enum class DuracionBloqueo(val segundos: Int?) {
-    QUINCE_MINUTOS(900),
     UNA_HORA(3600),
-    OCHO_HORAS(28_800),
     UN_DIA(86_400),
     HASTA_DESBLOQUEAR(null),
     ;

@@ -19,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -30,7 +29,6 @@ import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.Bloqueo
 import ar.edu.uade.zonda.domain.model.DuracionBloqueo
 import ar.edu.uade.zonda.domain.model.EstadoBloqueo
-import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.ui.Formato
@@ -184,8 +182,8 @@ private fun motivoPropuesto(alerta: Alerta): String {
 }
 
 /**
- * La hoja del bloqueo: la duración (al bloquear y al cambiarla), el motivo obligatorio y "Cancelar" o la
- * acción. "Hasta desbloquear" se elige solo con la alerta revisada como ataque real. Cerrarla es Cancelar.
+ * La hoja del bloqueo: qué se corta, la duración (al bloquear y al cambiarla), el motivo obligatorio y
+ * "Cancelar" o la acción. Cerrarla es Cancelar.
  */
 @Composable
 fun HojaBloqueo(formulario: FormularioBloqueo, alerta: Alerta, perfil: Perfil, acciones: AccionesDetalle) {
@@ -210,16 +208,16 @@ fun ColumnScope.ContenidoHojaBloqueo(formulario: FormularioBloqueo, alerta: Aler
         AccionBloqueo.RECHAZAR -> Triple(stringResource(R.string.bloqueo_hoja_rechazar, equipo), stringResource(R.string.bloqueo_rechazar), stringResource(R.string.bloqueo_ejemplo_rechazar))
     }
     Text(text = titulo, style = MaterialTheme.typography.tituloHoja)
+    // Hasta desbloquear se puede elegir siempre; la línea pasa a ámbar para que se vea que no vence solo.
+    val sinVencimiento = formulario.conDuracion && formulario.duracion == DuracionBloqueo.HASTA_DESBLOQUEAR
+    queSeCorta(formulario, alerta)?.let {
+        Text(text = it, style = MaterialTheme.typography.bodyMedium, color = if (sinVencimiento) Tonos.Media.texto else MaterialTheme.colorScheme.onSurfaceVariant)
+    }
     if (formulario.conDuracion) {
         TituloSeccion(stringResource(if (formulario.accion == AccionBloqueo.CAMBIAR_DURACION) R.string.bloqueo_cuanto_desde_ahora else R.string.bloqueo_cuanto))
         Column(modifier = Modifier.selectableGroup()) {
             DuracionBloqueo.entries.forEach { duracion ->
-                FilaDuracion(
-                    duracion = duracion,
-                    elegida = formulario.duracion == duracion,
-                    habilitada = duracion != DuracionBloqueo.HASTA_DESBLOQUEAR || alerta.estadoRevision == EstadoRevision.ATAQUE_REAL,
-                    alElegir = { acciones.alElegirDuracion(duracion) },
-                )
+                FilaDuracion(duracion = duracion, elegida = formulario.duracion == duracion, alElegir = { acciones.alElegirDuracion(duracion) })
             }
         }
     }
@@ -241,32 +239,44 @@ fun ColumnScope.ContenidoHojaBloqueo(formulario: FormularioBloqueo, alerta: Aler
     }
 }
 
-/** Una duración con su botón de radio; "Hasta desbloquear" sin la alerta confirmada va gris y dice por qué. */
+/**
+ * Lo que la persona corta o devuelve, con el equipo y su dirección: "pc-rrhh (192.168.30.50) no va a llegar
+ * a otras áreas ni a internet durante 1 hora." El tráfico dentro de su misma área no pasa por el firewall.
+ */
 @Composable
-private fun FilaDuracion(duracion: DuracionBloqueo, elegida: Boolean, habilitada: Boolean, alElegir: () -> Unit) {
+private fun queSeCorta(formulario: FormularioBloqueo, alerta: Alerta): String? {
+    val origen = alerta.origen
+    val equipo = if (origen.nombre != null) "${origen.nombre} (${origen.ip})" else origen.ip
+    return when (formulario.accion) {
+        AccionBloqueo.BLOQUEAR, AccionBloqueo.CAMBIAR_DURACION -> if (formulario.duracion == DuracionBloqueo.HASTA_DESBLOQUEAR) {
+            stringResource(R.string.bloqueo_se_corta_hasta, equipo)
+        } else {
+            stringResource(R.string.bloqueo_se_corta, equipo, stringResource(formulario.duracion.titulo()))
+        }
+        AccionBloqueo.DESBLOQUEAR -> stringResource(R.string.bloqueo_vuelve, equipo)
+        AccionBloqueo.RECHAZAR -> null
+    }
+}
+
+/** Una duración con su botón de radio. */
+@Composable
+private fun FilaDuracion(duracion: DuracionBloqueo, elegida: Boolean, alElegir: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .selectable(selected = elegida, enabled = habilitada, onClick = alElegir, role = Role.RadioButton)
-            .alpha(if (habilitada) 1f else 0.5f)
+            .selectable(selected = elegida, onClick = alElegir, role = Role.RadioButton)
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         MarcaRadio(elegida)
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(text = stringResource(duracion.titulo()), style = MaterialTheme.typography.titleSmall)
-            if (!habilitada) {
-                Text(text = stringResource(R.string.bloqueo_solo_ataque_real), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+        Text(text = stringResource(duracion.titulo()), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
     }
 }
 
-private fun DuracionBloqueo.titulo(): Int = when (this) {
-    DuracionBloqueo.QUINCE_MINUTOS -> R.string.bloqueo_15_minutos
+/** "15 minutos", "1 hora", "8 horas", "24 horas" o "Hasta desbloquear": la opción de la hoja y el diálogo de la huella. */
+internal fun DuracionBloqueo.titulo(): Int = when (this) {
     DuracionBloqueo.UNA_HORA -> R.string.bloqueo_1_hora
-    DuracionBloqueo.OCHO_HORAS -> R.string.bloqueo_8_horas
     DuracionBloqueo.UN_DIA -> R.string.bloqueo_24_horas
     DuracionBloqueo.HASTA_DESBLOQUEAR -> R.string.bloqueo_hasta_desbloquear_opcion
 }

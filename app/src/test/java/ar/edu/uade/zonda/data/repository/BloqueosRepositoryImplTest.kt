@@ -6,6 +6,7 @@ import ar.edu.uade.zonda.data.remote.ApiFalsa
 import ar.edu.uade.zonda.data.remote.CambioRegistroDto
 import ar.edu.uade.zonda.data.remote.DtoFixtures
 import ar.edu.uade.zonda.data.remote.EstadoFirewallDto
+import ar.edu.uade.zonda.data.remote.PersonaDto
 import ar.edu.uade.zonda.data.remote.ProveedorDeApiFalso
 import ar.edu.uade.zonda.data.remote.errorHttp
 import ar.edu.uade.zonda.domain.Fixtures
@@ -68,26 +69,24 @@ class BloqueosRepositoryImplTest : PruebaConBase() {
         redes.guardarRedPareada(Fixtures.red("red-1"), token = "t")
         api.personas[0] = api.personas[0].copy(perfil = "analista")
 
-        val pedido = bloqueos.bloquear("red-1", "accion-1", "a-1", DuracionBloqueo.OCHO_HORAS, "Fuerza bruta.")
+        val pedido = bloqueos.bloquear("red-1", "accion-1", "a-1", DuracionBloqueo.UN_DIA, "Fuerza bruta.")
 
         assertEquals(EstadoBloqueo.PEDIDO, pedido.estado)
         assertNull(pedido.venceEn)
         api.personas[0] = api.personas[0].copy(perfil = "administrador")
         val aprobado = bloqueos.aprobar("red-1", pedido.id)
         assertEquals(EstadoBloqueo.APROBADO, aprobado.estado)
-        assertEquals(28_800, aprobado.segundos)
+        assertEquals(86_400, aprobado.segundos)
         assertNotNull(aprobado.venceEn)
     }
 
     @Test
-    fun `hasta desbloquear sin la alerta confirmada no se acepta y el porque llega a la app`() = runTest {
+    fun `hasta desbloquear sale sin revisar la alerta y viaja sin vencimiento`() = runTest {
         redes.guardarRedPareada(Fixtures.red("red-1"), token = "t")
 
-        val error = runCatching { bloqueos.bloquear("red-1", "accion-1", "a-1", DuracionBloqueo.HASTA_DESBLOQUEAR, "Fuerza bruta.") }.exceptionOrNull()
+        val hasta = bloqueos.bloquear("red-1", "accion-1", "a-1", DuracionBloqueo.HASTA_DESBLOQUEAR, "Fuerza bruta.")
 
-        assertTrue((error as ErrorZonda.BloqueoNoPosible).detalle.orEmpty().contains("ataque real"))
-        api.publicar(DtoFixtures.alerta("a-2", estadoRevision = "ataque_real"))
-        val hasta = bloqueos.bloquear("red-1", "accion-2", "a-2", DuracionBloqueo.HASTA_DESBLOQUEAR, "Confirmado.")
+        assertEquals(EstadoBloqueo.APROBADO, hasta.estado)
         assertNull(hasta.segundos)
         assertNull(hasta.venceEn)
         assertEquals(null, api.bloqueosRecibidos.last().duracion)
@@ -107,7 +106,7 @@ class BloqueosRepositoryImplTest : PruebaConBase() {
     @Test
     fun `cambiar la duracion la deja aprobada hasta que el firewall la vuelve a aplicar`() = runTest {
         redes.guardarRedPareada(Fixtures.red("red-1"), token = "t")
-        val nuevo = bloqueos.bloquear("red-1", "accion-1", "a-1", DuracionBloqueo.QUINCE_MINUTOS, "Fuerza bruta.")
+        val nuevo = bloqueos.bloquear("red-1", "accion-1", "a-1", DuracionBloqueo.UNA_HORA, "Fuerza bruta.")
         api.aplicarBloqueosAprobados()
 
         val cambiado = bloqueos.cambiarDuracion("red-1", nuevo.id, DuracionBloqueo.UN_DIA, "Sigue el ataque.")
@@ -160,6 +159,17 @@ class BloqueosRepositoryImplTest : PruebaConBase() {
 
         assertEquals(EstadoPieza.FUNCIONA, estado.firewall)
         assertTrue(estado.bloqueos.isEmpty())
+    }
+
+    @Test
+    fun `los navegadores del tablero quedan marcados al traer la gente`() = runTest {
+        redes.guardarRedPareada(Fixtures.red("red-1"), token = "t")
+        api.personas += PersonaDto("d-9", null, "Tablero web", "administrador", null, vos = false, tipo = "navegador")
+
+        redes.actualizarPersonasYRegistro("red-1")
+
+        val personas = redes.observarPersonas("red-1").first()
+        assertEquals(listOf("d-1" to false, "d-9" to true), personas.map { it.id to it.navegador })
     }
 
     @Test

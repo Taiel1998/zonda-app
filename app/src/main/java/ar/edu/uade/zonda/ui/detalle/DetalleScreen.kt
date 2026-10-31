@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.ui.detalle
 
+import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.lectura
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.comentarioPropuesto
 import ar.edu.uade.zonda.ui.components.AvisoInferior
 import ar.edu.uade.zonda.ui.components.BannerSinConexion
 import ar.edu.uade.zonda.ui.components.BarraSuperior
@@ -123,6 +125,8 @@ class AccionesDetalle(
     val alCambiarMotivoBloqueo: (String) -> Unit = {},
     val alCerrarBloqueo: () -> Unit = {},
     val alConfirmarBloqueo: () -> Unit = {},
+    /** "Revisar" con el origen bloqueado: la revisión viene propuesta como "Bloqueado manualmente". */
+    val alRevisarBloqueada: (comentarioPropuesto: String) -> Unit = {},
 )
 
 /**
@@ -163,6 +167,9 @@ fun DetalleScreen(
     val aviso by viewModel.aviso.collectAsStateWithLifecycle()
     val cerrar by viewModel.cerrar.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
+    // Lo que corta o devuelve tráfico se confirma con la huella o el PIN del teléfono (decisión 51).
+    val confirmacion = LocalConfirmacionDelDueno.current ?: remember(contexto) { contexto.actividad()?.let(::ConfirmacionConHuella) }
+    val origen = (estado as? DetalleUiState.Contenido)?.alerta?.origen?.etiqueta.orEmpty()
 
     // La revisión quedó guardada: vuelve a la lista de la que se vino (o a Estado, si se abrió desde un aviso).
     LaunchedEffect(cerrar) { if (cerrar) alVolver() }
@@ -195,13 +202,47 @@ fun DetalleScreen(
             alCambiarDuracionBloqueo = viewModel::abrirCambioDeDuracion,
             alDesbloquear = viewModel::abrirDesbloqueo,
             alRechazarBloqueo = viewModel::abrirRechazo,
-            alAprobarBloqueo = viewModel::aprobarBloqueo,
+            alAprobarBloqueo = {
+                confirmarConHuella(
+                    pide = true,
+                    confirmacion = confirmacion,
+                    titulo = contexto.getString(R.string.huella_titulo),
+                    detalle = contexto.getString(R.string.huella_aprobar, origen),
+                    alConfirmar = viewModel::aprobarBloqueo,
+                    alNoPoder = viewModel::sinBloqueoDePantalla,
+                )
+            },
             alElegirDuracion = viewModel::elegirDuracion,
             alCambiarMotivoBloqueo = viewModel::cambiarMotivoBloqueo,
             alCerrarBloqueo = viewModel::cerrarBloqueo,
-            alConfirmarBloqueo = viewModel::confirmarBloqueo,
+            alConfirmarBloqueo = {
+                // Sin motivo no se pide la huella: la hoja dice primero "Escribí el motivo.".
+                val hoja = hojaBloqueo
+                val perfil = (estado as? DetalleUiState.Contenido)?.perfil
+                if (hoja == null || perfil == null || hoja.motivo.isBlank()) {
+                    viewModel.confirmarBloqueo()
+                } else {
+                    confirmarConHuella(
+                        pide = pideHuella(hoja.accion, perfil),
+                        confirmacion = confirmacion,
+                        titulo = contexto.getString(R.string.huella_titulo),
+                        detalle = textoDeLaHuella(contexto, hoja, origen),
+                        alConfirmar = viewModel::confirmarBloqueo,
+                        alNoPoder = viewModel::sinBloqueoDePantalla,
+                    )
+                }
+            },
+            alRevisarBloqueada = viewModel::abrirRevisionBloqueada,
         ),
     )
+}
+
+/** Lo que dice el diálogo de la huella debajo del título: "Bloquear pc-rrhh · 1 hora". */
+private fun textoDeLaHuella(contexto: Context, hoja: FormularioBloqueo, origen: String): String = when (hoja.accion) {
+    AccionBloqueo.BLOQUEAR -> contexto.getString(R.string.huella_bloquear, origen, contexto.getString(hoja.duracion.titulo()))
+    AccionBloqueo.CAMBIAR_DURACION -> contexto.getString(R.string.huella_duracion, origen, contexto.getString(hoja.duracion.titulo()))
+    AccionBloqueo.DESBLOQUEAR -> contexto.getString(R.string.huella_desbloquear, origen)
+    AccionBloqueo.RECHAZAR -> ""
 }
 
 /** Cómo se muestra la revisión según en qué quedó (cada caso es un cuadro del Figma). */
@@ -258,6 +299,10 @@ fun DetalleContenido(
             }
             AvisoDetalle.BloqueoSinConexion -> {
                 snackbar.showSnackbar(contexto.getString(R.string.bloqueo_sin_conexion))
+                acciones.alAvisoMostrado()
+            }
+            AvisoDetalle.SinBloqueoDePantalla -> {
+                snackbar.showSnackbar(contexto.getString(R.string.bloqueo_sin_bloqueo_de_pantalla))
                 acciones.alAvisoMostrado()
             }
             null -> Unit
@@ -379,9 +424,14 @@ private fun CuerpoDetalle(
             ModoDetalle.SIN_REVISAR -> {
                 DatosDelFlujo(alerta, zona)
                 Veredictos(alerta)
+                // Con el origen bloqueado, la revisión viene propuesta como "Bloqueado manualmente" (decisión 51).
+                val bloqueada = estado.bloqueo?.actual?.estado?.enElFirewall == true
+                val recursos = LocalContext.current.resources
                 BotonPrincipal(
                     texto = stringResource(R.string.detalle_revisar),
-                    alTocar = acciones.alRevisar,
+                    alTocar = {
+                        if (bloqueada) acciones.alRevisarBloqueada(Motivo.BLOQUEADO_MANUALMENTE.comentarioPropuesto(recursos, alerta)) else acciones.alRevisar()
+                    },
                     modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.BOTON_REVISAR),
                 )
             }
