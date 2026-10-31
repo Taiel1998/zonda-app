@@ -29,6 +29,7 @@ import ar.edu.uade.zonda.domain.usecase.ResolverEnvioRevision
 import ar.edu.uade.zonda.domain.usecase.RevisarAlerta
 import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
 import ar.edu.uade.zonda.ui.ReglaDispatcherPrincipal
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -171,6 +172,28 @@ class DetalleViewModelTest {
             assertTrue(esperar { it is DetalleUiState.Contenido } is DetalleUiState.Contenido)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `Reintentar mientras se lee la base no lanza una segunda descarga del detalle`() = runTest {
+        alertas.alertasRemotas = mapOf("a-9" to Fixtures.alerta("a-9"))
+        val lectura = CompletableDeferred<Unit>()
+        val red = CompletableDeferred<Unit>()
+        alertas.esperaAlLeerUna = lectura
+        alertas.esperaAlDescargar = red
+        val viewModel = viewModel("a-9", backgroundScope)
+        runCurrent() // la descarga del arranque quedó leyendo la base, como Room en su hilo
+
+        // Antes la marca de "descargando" se prendía después de leer: las dos pasaban y el detalle se pedía dos veces.
+        viewModel.reintentarDescarga()
+        runCurrent()
+        alertas.esperaAlLeerUna = null
+        lectura.complete(Unit)
+        runCurrent()
+        red.complete(Unit)
+        runCurrent()
+
+        assertEquals(listOf("a-9"), alertas.detallesDescargados)
     }
 
     @Test
