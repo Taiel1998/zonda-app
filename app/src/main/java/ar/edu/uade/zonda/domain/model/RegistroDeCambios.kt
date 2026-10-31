@@ -2,8 +2,11 @@ package ar.edu.uade.zonda.domain.model
 
 import java.time.Instant
 
-/** Lo que anota el registro de cambios (corrección 3, decisión 40). */
-enum class TipoCambio { SEVERIDAD, IMPORTANCIA, PERSONA_NUEVA, PERFIL, PERSONA_QUITADA }
+/**
+ * Lo que anota el registro de cambios (corrección 3, decisión 40). Desde la API 0.9.0 también los bloqueos
+ * del firewall y los desbloqueos (decisión 51); un cambio de duración es un bloqueo con [CambioRegistro.antes].
+ */
+enum class TipoCambio { SEVERIDAD, IMPORTANCIA, PERSONA_NUEVA, PERFIL, PERSONA_QUITADA, BLOQUEO, DESBLOQUEO }
 
 /**
  * Una línea del registro de cambios de la red: quién cambió la configuración, cuándo, de qué a qué y
@@ -44,6 +47,13 @@ data class CambioRegistro(
 
     val perfilDespues: Perfil?
         get() = despues?.let { valor -> Perfil.entries.firstOrNull { it.name == valor.uppercase() } }
+
+    /** Los segundos de un bloqueo ("3600"); null si es hasta desbloquear o no es un bloqueo. */
+    val segundosAntes: Int?
+        get() = antes?.toIntOrNull()
+
+    val segundosDespues: Int?
+        get() = despues?.toIntOrNull()
 }
 
 /**

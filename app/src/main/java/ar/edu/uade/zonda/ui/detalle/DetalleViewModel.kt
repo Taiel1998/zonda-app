@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.AvisoRecibido
+import ar.edu.uade.zonda.domain.model.Bloqueo
+import ar.edu.uade.zonda.domain.model.BloqueosDeLaRed
 import ar.edu.uade.zonda.domain.model.CalculoSeveridad
 import ar.edu.uade.zonda.domain.model.CambioRegistro
+import ar.edu.uade.zonda.domain.model.DuracionBloqueo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.Importancia
@@ -19,12 +22,16 @@ import ar.edu.uade.zonda.domain.repository.AccionesPendientesRepository
 import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.AsignarAlerta
+import ar.edu.uade.zonda.domain.usecase.GestionarBloqueos
 import ar.edu.uade.zonda.domain.usecase.ObtenerDetalleAlerta
 import ar.edu.uade.zonda.domain.usecase.ResolverEnvioRevision
 import ar.edu.uade.zonda.domain.usecase.RevisarAlerta
 import ar.edu.uade.zonda.domain.usecase.SincronizarAlertas
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -69,6 +76,8 @@ class DetalleViewModel(
     private val nombreDelTelefono: String = "",
     /** Lo que trajo el enlace del aviso, para mostrarlo mientras la alerta no está en el teléfono. */
     private val avisoRecibido: AvisoRecibido? = null,
+    /** Los bloqueos del firewall (decisión 51). Sin él, el detalle no tiene la tarjeta del bloqueo. */
+    private val gestionarBloqueos: GestionarBloqueos? = null,
 ) : ViewModel() {
 
     private val descargando = MutableStateFlow(false)
@@ -77,9 +86,15 @@ class DetalleViewModel(
     private val _formulario = MutableStateFlow(ventana.recuperarFormulario(alertaId)?.copy(paso = PasoRevision.MOTIVO))
     private val _aviso = MutableStateFlow<AvisoDetalle?>(null)
     private val _cerrar = MutableStateFlow(false)
+    private val bloqueos = MutableStateFlow<BloqueosDeLaRed?>(null)
+    private val _hojaBloqueo = MutableStateFlow<FormularioBloqueo?>(null)
+    private var seguimiento: Job? = null
 
     /** La hoja Revisar abierta, o null si está cerrada. */
     val formulario: StateFlow<FormularioRevision?> = _formulario.asStateFlow()
+
+    /** La hoja del bloqueo abierta, o null si está cerrada. */
+    val hojaBloqueo: StateFlow<FormularioBloqueo?> = _hojaBloqueo.asStateFlow()
 
     /** Aviso de un solo uso para el snackbar: un error. */
     val aviso: StateFlow<AvisoDetalle?> = _aviso.asStateFlow()
@@ -96,6 +111,8 @@ class DetalleViewModel(
     }
 
     private data class Descarga(val enCurso: Boolean, val error: ErrorZonda?)
+
+    private data class Extras(val descarga: Descarga, val datos: DeLaRed, val bloqueos: BloqueosDeLaRed?)
 
     /** Lo de la red que hace falta para el responsable y el cálculo de la severidad (decisiones 40 a 42). */
     private data class DeLaRed(
@@ -125,8 +142,8 @@ class DetalleViewModel(
         alerta,
         accion,
         conectividad.conectado,
-        combine(descargando, errorDeDescarga, deLaRed) { enCurso, error, datos -> Descarga(enCurso, error) to datos },
-    ) { red, alertaActual, accionActual, conectado, (descarga, datos) ->
+        combine(descargando, errorDeDescarga, deLaRed, bloqueos) { enCurso, error, datos, actuales -> Extras(Descarga(enCurso, error), datos, actuales) },
+    ) { red, alertaActual, accionActual, conectado, (descarga, datos, bloqueosDeLaRed) ->
         val (enCurso, error) = descarga
         when {
             red == null -> DetalleUiState.SinRed
@@ -142,6 +159,13 @@ class DetalleViewModel(
                 miId = red.dispositivoId ?: datos.personas.firstOrNull { it.vos }?.id,
                 calculo = CalculoSeveridad.de(alertaActual, datos.severidades, datos.importancias),
                 cambiosDeSeveridad = cambiosDeSeveridad(alertaActual, datos.registro, datos.severidades, datos.importancias),
+                bloqueo = bloqueosDeLaRed?.takeIf { it.firewall.habilitado }?.let {
+                    SeccionBloqueo(
+                        firewall = it.firewall,
+                        actual = it.activoDe(alertaActual.origen.ip),
+                        nuncaSeBloquea = it.firewall.nuncaBloquea(alertaActual.origen.ip),
+                    )
+                },
             )
             enCurso -> DetalleUiState.Cargando
             else -> DetalleUiState.NoDisponible(sinConexion = !conectado, error = error, aviso = avisoRecibido)
@@ -150,11 +174,13 @@ class DetalleViewModel(
 
     init {
         descargarSiFalta()
+        consultarBloqueos()
         viewModelScope.launch {
             // Cuando vuelve la conexión: se completa lo que faltaba descargar y sale lo pendiente (RF03 y RF04, criterio 3).
             conectividad.conectado.drop(1).filter { it }.collect {
                 descargarSiFalta()
                 enviarSiQuedoPendiente()
+                consultarBloqueos()
             }
         }
     }
@@ -246,6 +272,124 @@ class DetalleViewModel(
         enviarAhora(redId)
     }
 
+    // ---- Bloqueo del origen (decisión 51) ----
+
+    /** "Bloquear" o "Pedir bloqueo": la hoja abre con una hora y el motivo que propone la pantalla. */
+    fun abrirBloqueo(motivoPropuesto: String) {
+        _hojaBloqueo.value = FormularioBloqueo(AccionBloqueo.BLOQUEAR, motivo = motivoPropuesto)
+    }
+
+    /** La hoja abre con la duración que tiene el bloqueo; la nueva corre desde ahora. */
+    fun abrirCambioDeDuracion() = conBloqueoActual { actual ->
+        _hojaBloqueo.value = FormularioBloqueo(AccionBloqueo.CAMBIAR_DURACION, duracion = DuracionBloqueo.de(actual.segundos) ?: DuracionBloqueo.PREDETERMINADA)
+    }
+
+    fun abrirDesbloqueo() {
+        _hojaBloqueo.value = FormularioBloqueo(AccionBloqueo.DESBLOQUEAR)
+    }
+
+    fun abrirRechazo() {
+        _hojaBloqueo.value = FormularioBloqueo(AccionBloqueo.RECHAZAR)
+    }
+
+    fun elegirDuracion(duracion: DuracionBloqueo) {
+        _hojaBloqueo.update { it?.copy(duracion = duracion) }
+    }
+
+    fun cambiarMotivoBloqueo(texto: String) {
+        _hojaBloqueo.update { it?.copy(motivo = texto, conError = false) }
+    }
+
+    fun cerrarBloqueo() {
+        _hojaBloqueo.value = null
+    }
+
+    /** Sin motivo no sale ("Escribí el motivo."); con motivo, sale en el momento o no sale. */
+    fun confirmarBloqueo() {
+        val formulario = _hojaBloqueo.value ?: return
+        if (formulario.enviando) return
+        if (formulario.motivo.isBlank()) {
+            _hojaBloqueo.value = formulario.copy(conError = true)
+            return
+        }
+        _hojaBloqueo.value = formulario.copy(enviando = true)
+        enElServidor { gestionar, redId, actual ->
+            when (formulario.accion) {
+                AccionBloqueo.BLOQUEAR -> gestionar.bloquear(redId, alertaId, formulario.duracion, formulario.motivo)
+                AccionBloqueo.CAMBIAR_DURACION -> actual?.let { gestionar.cambiarDuracion(redId, it.id, formulario.duracion, formulario.motivo) }
+                AccionBloqueo.DESBLOQUEAR -> actual?.let { gestionar.desbloquear(redId, it.id, formulario.motivo) }
+                AccionBloqueo.RECHAZAR -> actual?.let { gestionar.rechazar(redId, it.id, formulario.motivo) }
+            }
+        }
+    }
+
+    /** Aprobar un pedido no lleva hoja: la duración y el motivo son los del pedido. */
+    fun aprobarBloqueo() = enElServidor { gestionar, redId, actual ->
+        actual?.let { gestionar.aprobar(redId, it.id) }
+    }
+
+    /**
+     * Lo que se hace con un bloqueo sale en el momento: sin conexión no sale y no queda en la cola (un
+     * bloqueo que llega tarde es otra decisión). Pase lo que pase, se cierra la hoja y se vuelve a mirar
+     * cómo quedó; si salió, se mira otra vez mientras el firewall lo aplica.
+     */
+    private fun enElServidor(accion: suspend (GestionarBloqueos, String, Bloqueo?) -> Unit) {
+        val gestionar = gestionarBloqueos ?: return
+        viewModelScope.launch {
+            val red = redes.observarRedActiva().first() ?: return@launch
+            try {
+                if (!conectividad.hayConexion()) throw ErrorZonda.SinConexion()
+                accion(gestionar, red.id, bloqueoActual(red.id))
+                _hojaBloqueo.value = null
+                seguirAlFirewall(red.id)
+            } catch (e: ErrorZonda) {
+                _hojaBloqueo.value = null
+                _aviso.value = if (e is ErrorZonda.SinConexion) AvisoDetalle.BloqueoSinConexion else AvisoDetalle.Error(e)
+                actualizarBloqueos(red.id)
+            }
+        }
+    }
+
+    private fun conBloqueoActual(bloque: (Bloqueo) -> Unit) {
+        viewModelScope.launch {
+            val red = redes.observarRedActiva().first() ?: return@launch
+            bloqueoActual(red.id)?.let(bloque)
+        }
+    }
+
+    /** El bloqueo o pedido abierto del origen de la alerta, según la última consulta. */
+    private suspend fun bloqueoActual(redId: String): Bloqueo? {
+        val origen = obtenerDetalle.observar(redId, alertaId).first()?.origen?.ip ?: return null
+        return bloqueos.value?.activoDe(origen)
+    }
+
+    private fun consultarBloqueos() {
+        if (gestionarBloqueos == null) return
+        viewModelScope.launch { redes.observarRedActiva().first()?.let { actualizarBloqueos(it.id) } }
+    }
+
+    /** Si el servidor no contesta, queda lo último que se supo. */
+    private suspend fun actualizarBloqueos(redId: String) {
+        val gestionar = gestionarBloqueos ?: return
+        bloqueos.value = try {
+            gestionar.consultar(redId)
+        } catch (e: ErrorZonda) {
+            bloqueos.value
+        }
+    }
+
+    /** El firewall pregunta cada 10 s: después de un cambio se vuelve a mirar unas veces, hasta que lo aplica. */
+    private fun seguirAlFirewall(redId: String) {
+        seguimiento?.cancel()
+        seguimiento = viewModelScope.launch {
+            actualizarBloqueos(redId)
+            for (espera in SEGUIMIENTO) {
+                delay(espera)
+                actualizarBloqueos(redId)
+            }
+        }
+    }
+
     // ---- Envío que no pudo llegar ----
 
     fun aplicarLaMiaIgual() = conRedActiva { redId ->
@@ -312,5 +456,10 @@ class DetalleViewModel(
                 descargando.value = false
             }
         }
+    }
+
+    private companion object {
+        /** Cuándo se vuelve a mirar un bloqueo después de un cambio: a los 4, 12 y 24 segundos. */
+        val SEGUIMIENTO = listOf(4.seconds, 8.seconds, 12.seconds)
     }
 }

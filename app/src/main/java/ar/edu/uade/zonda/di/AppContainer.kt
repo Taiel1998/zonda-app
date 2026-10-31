@@ -9,6 +9,7 @@ import ar.edu.uade.zonda.data.remote.ProveedorDeApi
 import ar.edu.uade.zonda.data.remote.ProveedorDeApiRetrofit
 import ar.edu.uade.zonda.data.repository.AccionesPendientesRepositoryImpl
 import ar.edu.uade.zonda.data.repository.AlertasRepositoryImpl
+import ar.edu.uade.zonda.data.repository.BloqueosRepositoryImpl
 import ar.edu.uade.zonda.data.repository.RedesRepositoryImpl
 import ar.edu.uade.zonda.data.seguridad.AlmacenSeguro
 import ar.edu.uade.zonda.data.seguridad.AlmacenSeguroKeystore
@@ -17,6 +18,7 @@ import ar.edu.uade.zonda.data.sync.Sincronizador
 import ar.edu.uade.zonda.data.sync.SincronizadorHttp
 import ar.edu.uade.zonda.domain.repository.AccionesPendientesRepository
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
+import ar.edu.uade.zonda.domain.repository.BloqueosRepository
 import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.GeneradorDeIds
 import ar.edu.uade.zonda.domain.repository.PreferenciasRepository
@@ -27,6 +29,7 @@ import ar.edu.uade.zonda.domain.usecase.CambiarImportancia
 import ar.edu.uade.zonda.domain.usecase.CambiarSeveridades
 import ar.edu.uade.zonda.domain.usecase.DeshacerRevision
 import ar.edu.uade.zonda.domain.usecase.EnviarAvisosTelegram
+import ar.edu.uade.zonda.domain.usecase.GestionarBloqueos
 import ar.edu.uade.zonda.domain.usecase.GestionarPersonas
 import ar.edu.uade.zonda.domain.usecase.ObservarAlertas
 import ar.edu.uade.zonda.domain.usecase.ObservarEstadoSistema
@@ -83,6 +86,7 @@ class AppContainer(context: Context) {
     val redes: RedesRepository by lazy { RedesRepositoryImpl(baseDeDatos.redesDao(), almacenSeguro, apis) }
     val alertas: AlertasRepository by lazy { AlertasRepositoryImpl(baseDeDatos.alertasDao(), sincronizador) }
     val accionesPendientes: AccionesPendientesRepository by lazy { AccionesPendientesRepositoryImpl(baseDeDatos.accionesPendientesDao()) }
+    val bloqueos: BloqueosRepository by lazy { BloqueosRepositoryImpl(baseDeDatos.redesDao(), apis) }
     val generadorDeIds: GeneradorDeIds = GeneradorDeIds { UUID.randomUUID().toString() }
 
     /**
@@ -121,6 +125,7 @@ class AppContainer(context: Context) {
     val cambiarImportancia: CambiarImportancia by lazy { CambiarImportancia(redes, accionesPendientes, generadorDeIds) }
     val asignarAlerta: AsignarAlerta by lazy { AsignarAlerta(redes, alertas, accionesPendientes, generadorDeIds) }
     val gestionarPersonas: GestionarPersonas by lazy { GestionarPersonas(redes) }
+    val gestionarBloqueos: GestionarBloqueos by lazy { GestionarBloqueos(bloqueos, generadorDeIds) }
 
     /**
      * La ventana de Deshacer de las revisiones (decisión 38): una para toda la app, porque al confirmar

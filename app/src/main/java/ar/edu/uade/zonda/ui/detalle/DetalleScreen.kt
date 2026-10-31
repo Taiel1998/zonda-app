@@ -44,6 +44,7 @@ import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.Asignacion
 import ar.edu.uade.zonda.domain.model.AvisoRecibido
 import ar.edu.uade.zonda.domain.model.CambioDeSeveridad
+import ar.edu.uade.zonda.domain.model.DuracionBloqueo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
@@ -112,6 +113,16 @@ class AccionesDetalle(
     val alAvisoMostrado: () -> Unit = {},
     /** Asignar a una persona, o dejarla sin asignar con null (decisión 42). */
     val alAsignar: (Persona?) -> Unit = {},
+    /** Bloqueo del origen (decisión 51): abrir la hoja con el motivo propuesto, y lo que sigue. */
+    val alBloquear: (motivoPropuesto: String) -> Unit = {},
+    val alCambiarDuracionBloqueo: () -> Unit = {},
+    val alDesbloquear: () -> Unit = {},
+    val alRechazarBloqueo: () -> Unit = {},
+    val alAprobarBloqueo: () -> Unit = {},
+    val alElegirDuracion: (DuracionBloqueo) -> Unit = {},
+    val alCambiarMotivoBloqueo: (String) -> Unit = {},
+    val alCerrarBloqueo: () -> Unit = {},
+    val alConfirmarBloqueo: () -> Unit = {},
 )
 
 /**
@@ -141,12 +152,14 @@ fun DetalleScreen(
             alertaId = alertaId,
             nombreDelTelefono = contenedor.nombreDelTelefono,
             avisoRecibido = avisoRecibido,
+            gestionarBloqueos = contenedor.gestionarBloqueos,
         )
     },
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     // El comentario se escribe en la hoja: el estado se lee sin demora para que el teclado no pierda letras.
     val formulario by viewModel.formulario.collectAsStateWithLifecycle(context = Dispatchers.Main.immediate)
+    val hojaBloqueo by viewModel.hojaBloqueo.collectAsStateWithLifecycle(context = Dispatchers.Main.immediate)
     val aviso by viewModel.aviso.collectAsStateWithLifecycle()
     val cerrar by viewModel.cerrar.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
@@ -157,6 +170,7 @@ fun DetalleScreen(
     DetalleContenido(
         estado = estado,
         formulario = formulario,
+        hojaBloqueo = hojaBloqueo,
         aviso = aviso,
         acciones = AccionesDetalle(
             alVolver = alVolver,
@@ -177,6 +191,15 @@ fun DetalleScreen(
             alReintentarEnvio = viewModel::reintentarEnvio,
             alAvisoMostrado = viewModel::avisoMostrado,
             alAsignar = viewModel::asignar,
+            alBloquear = viewModel::abrirBloqueo,
+            alCambiarDuracionBloqueo = viewModel::abrirCambioDeDuracion,
+            alDesbloquear = viewModel::abrirDesbloqueo,
+            alRechazarBloqueo = viewModel::abrirRechazo,
+            alAprobarBloqueo = viewModel::aprobarBloqueo,
+            alElegirDuracion = viewModel::elegirDuracion,
+            alCambiarMotivoBloqueo = viewModel::cambiarMotivoBloqueo,
+            alCerrarBloqueo = viewModel::cerrarBloqueo,
+            alConfirmarBloqueo = viewModel::confirmarBloqueo,
         ),
     )
 }
@@ -216,6 +239,7 @@ fun DetalleContenido(
     estado: DetalleUiState,
     acciones: AccionesDetalle,
     formulario: FormularioRevision? = null,
+    hojaBloqueo: FormularioBloqueo? = null,
     aviso: AvisoDetalle? = null,
     zona: ZoneId = ZoneId.systemDefault(),
     ahora: Instant = Instant.now(),
@@ -227,7 +251,13 @@ fun DetalleContenido(
     LaunchedEffect(aviso) {
         when (aviso) {
             is AvisoDetalle.Error -> {
-                snackbar.showSnackbar(contexto.getString(aviso.error.mensaje()))
+                // Si no se pudo bloquear, el servidor dice por qué con sus palabras ("Ese equipo ya tiene un bloqueo...").
+                val error = aviso.error
+                snackbar.showSnackbar((error as? ErrorZonda.BloqueoNoPosible)?.detalle ?: contexto.getString(error.mensaje()))
+                acciones.alAvisoMostrado()
+            }
+            AvisoDetalle.BloqueoSinConexion -> {
+                snackbar.showSnackbar(contexto.getString(R.string.bloqueo_sin_conexion))
                 acciones.alAvisoMostrado()
             }
             null -> Unit
@@ -296,6 +326,7 @@ fun DetalleContenido(
 
     if (formulario != null && alertaVisible != null) HojaRevision(formulario = formulario, alerta = alertaVisible, acciones = acciones)
     val conPersonas = estado as? DetalleUiState.Contenido
+    if (hojaBloqueo != null && conPersonas != null) HojaBloqueo(formulario = hojaBloqueo, alerta = conPersonas.alerta, perfil = conPersonas.perfil, acciones = acciones)
     if (asignando && conPersonas != null) {
         HojaInferior(alCerrar = { asignando = false }) {
             ContenidoHojaAsignar(conPersonas.personas, conPersonas.alerta.asignacion?.responsableId) { persona ->
@@ -342,6 +373,8 @@ private fun CuerpoDetalle(
                 alSoltar = { acciones.alAsignar(null) },
             )
         }
+        // Decisión 51: el bloqueo del origen, debajo del responsable; sin firewall conectado no hay tarjeta.
+        estado.bloqueo?.let { TarjetaBloqueo(seccion = it, alerta = alerta, perfil = estado.perfil, zona = zona, ahora = ahora, acciones = acciones) }
         when (modo) {
             ModoDetalle.SIN_REVISAR -> {
                 DatosDelFlujo(alerta, zona)

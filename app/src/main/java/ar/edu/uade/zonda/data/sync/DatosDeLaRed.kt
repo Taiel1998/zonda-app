@@ -3,6 +3,7 @@ package ar.edu.uade.zonda.data.sync
 import ar.edu.uade.zonda.data.local.dao.RedesDao
 import ar.edu.uade.zonda.data.mapper.aDominio
 import ar.edu.uade.zonda.data.mapper.aEntidad
+import ar.edu.uade.zonda.data.mapper.tipoConocido
 import ar.edu.uade.zonda.data.remote.OperacionHttp
 import ar.edu.uade.zonda.data.remote.ZondaApi
 import ar.edu.uade.zonda.data.remote.conErroresTraducidos
@@ -25,7 +26,9 @@ internal suspend fun traerPersonasYRegistro(redId: String, api: ZondaApi, dao: R
     }
     dao.guardarPersonas(redId, personas.mapIndexed { orden, persona -> persona.aEntidad(redId, orden) })
     personas.firstOrNull { it.vos }?.let { yo -> dao.actualizarPerfil(redId, yo.perfil.name, yo.id) }
-    val registro = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.registro() }.map { it.aDominio() }
+    val registro = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.registro(conBloqueos = true) }
+        .filter { it.tipoConocido }
+        .map { it.aDominio() }
     dao.guardarRegistro(redId, registro.map { it.aEntidad(redId) })
 }
 

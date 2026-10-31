@@ -60,6 +60,15 @@ data class EstadoSistema(
     val sinTraficoParaMedir: Boolean = false,
     /** La pérdida salió del archivo de prueba del laboratorio, no de Zeek. */
     val perdidaSimulada: Boolean = false,
+    /**
+     * El firewall (decisión 51): funciona si preguntó en el último minuto y detenido si no. Null si la red no
+     * tiene un firewall conectado (modo de observación) o el servidor es anterior a la API 0.9.0: sin fila.
+     */
+    val firewall: EstadoPieza? = null,
+    /** Cuándo preguntó el firewall por última vez, en el reloj del teléfono; null si nunca. */
+    val ultimaConsultaFirewall: Instant? = null,
+    /** Los equipos bloqueados y los pedidos de bloqueo abiertos, para la tarjeta de Estado. */
+    val bloqueos: List<Bloqueo> = emptyList(),
 ) {
     companion object {
         /** El servidor no contestó: del sensor y del análisis no se sabe nada. */

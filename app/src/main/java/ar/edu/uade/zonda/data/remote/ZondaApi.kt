@@ -91,9 +91,34 @@ interface ZondaApi {
     @PUT("equipos/{ip}")
     suspend fun cambiarImportancia(@Path("ip") ip: String, @Body entrada: ImportanciaEntradaDto): EquipoDto
 
+    /**
+     * Con [conBloqueos], también los bloqueos y desbloqueos del firewall (API 0.9.0): sin el parámetro el
+     * servidor no los manda, porque la app 1.0.8 no conoce esos tipos. Un servidor anterior lo ignora.
+     */
     @GET("registro")
-    suspend fun registro(): List<CambioRegistroDto>
+    suspend fun registro(@Query("bloqueos") conBloqueos: Boolean): List<CambioRegistroDto>
 
     @PUT("alertas/{id}/asignacion")
     suspend fun asignar(@Path("id") id: String, @Body entrada: AsignacionEntradaDto): AlertaDto
+
+    // ---- Bloqueos del firewall (API 0.9.0; decisión 51) ----
+
+    @GET("bloqueos")
+    suspend fun bloqueos(): ListaBloqueosDto
+
+    @POST("bloqueos")
+    suspend fun bloquear(@Body entrada: BloqueoEntradaDto): BloqueoDto
+
+    /** Sin cuerpo: la duración y el motivo son los del pedido. */
+    @POST("bloqueos/{id}/aprobacion")
+    suspend fun aprobarBloqueo(@Path("id") id: String): BloqueoDto
+
+    @POST("bloqueos/{id}/rechazo")
+    suspend fun rechazarBloqueo(@Path("id") id: String, @Body entrada: MotivoEntradaDto): BloqueoDto
+
+    @POST("bloqueos/{id}/desbloqueo")
+    suspend fun desbloquear(@Path("id") id: String, @Body entrada: MotivoEntradaDto): BloqueoDto
+
+    @PUT("bloqueos/{id}/duracion")
+    suspend fun cambiarDuracionBloqueo(@Path("id") id: String, @Body entrada: DuracionEntradaDto): BloqueoDto
 }

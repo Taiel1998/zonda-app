@@ -17,10 +17,12 @@ import ar.edu.uade.zonda.data.remote.PerfilEntradaDto
 import ar.edu.uade.zonda.data.remote.ProveedorDeApi
 import ar.edu.uade.zonda.data.remote.ProveedorDeApiRetrofit
 import ar.edu.uade.zonda.data.remote.VinculoEntradaDto
+import ar.edu.uade.zonda.data.remote.ZondaApi
 import ar.edu.uade.zonda.data.remote.conErroresTraducidos
 import ar.edu.uade.zonda.data.seguridad.AlmacenSeguro
 import ar.edu.uade.zonda.data.sync.perfilDelPareo
 import ar.edu.uade.zonda.data.sync.traerPersonasYRegistro
+import ar.edu.uade.zonda.domain.model.Bloqueo
 import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.CodigoPersona
@@ -41,6 +43,7 @@ import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.VinculoTelegram
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 import java.security.cert.X509Certificate
+import java.time.Duration
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -171,14 +174,31 @@ class RedesRepositoryImpl(
     override suspend fun estadoDelSistema(redId: String): EstadoSistema {
         val red = dao.obtener(redId)?.aDominio() ?: return EstadoSistema.sinRespuesta(reloj())
         return try {
-            val salud = conErroresTraducidos { apis.para(red).salud() }
-            salud.sistema.aDominio(horaServidor = runCatching { salud.hora.aInstante() }.getOrNull(), consultadoEn = reloj())
+            val api = apis.para(red)
+            val salud = conErroresTraducidos { api.salud() }
+            val horaServidor = runCatching { salud.hora.aInstante() }.getOrNull()
+            val consultadoEn = reloj()
+            val sistema = salud.sistema.aDominio(horaServidor = horaServidor, consultadoEn = consultadoEn)
+            val firewall = salud.firewall?.takeIf { it.habilitado } ?: return sistema
+            val corrimiento = horaServidor?.let { Duration.between(it, consultadoEn) } ?: Duration.ZERO
+            sistema.copy(
+                firewall = if (firewall.conectado) EstadoPieza.FUNCIONA else EstadoPieza.DETENIDO,
+                ultimaConsultaFirewall = firewall.aDominio(corrimiento).ultimaConsulta,
+                bloqueos = bloqueosAbiertos(api),
+            )
         } catch (e: ErrorZonda.NoAutorizado) {
             // Contestó pero no acepta el token: el servidor funciona; el acceso vencido lo avisa la sincronización.
             EstadoSistema.sinRespuesta(reloj()).copy(servidor = EstadoPieza.FUNCIONA)
         } catch (e: ErrorZonda) {
             EstadoSistema.sinRespuesta(reloj())
         }
+    }
+
+    /** Los bloqueos y pedidos abiertos de la red; si no se pueden traer, la tarjeta sigue sin ellos. */
+    private suspend fun bloqueosAbiertos(api: ZondaApi): List<Bloqueo> = try {
+        conErroresTraducidos(OperacionHttp.BLOQUEO) { api.bloqueos() }.aDominio().bloqueos.filter { it.estado.activo }
+    } catch (e: ErrorZonda) {
+        emptyList()
     }
 
     override suspend fun marcarAccesoVencido(redId: String, vencido: Boolean) = dao.marcarAccesoVencido(redId, vencido)

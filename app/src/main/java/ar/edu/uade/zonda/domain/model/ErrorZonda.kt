@@ -54,4 +54,10 @@ sealed class ErrorZonda(mensaje: String, causa: Throwable? = null) : Exception(m
 
     /** Respuesta 409 al asignarse una alerta: otra persona ya la tiene (decisión 42). */
     class YaAsignada : ErrorZonda("Ya está asignada a otra persona")
+
+    /**
+     * Respuesta 409, 422, 429 o 503 al bloquear (decisión 51): el equipo ya tiene un bloqueo, el firewall
+     * nunca lo bloquea, se llegó al tope o los bloqueos están apagados. El servidor lo dice en [detalle].
+     */
+    class BloqueoNoPosible(val detalle: String?) : ErrorZonda(detalle ?: "No se pudo bloquear")
 }

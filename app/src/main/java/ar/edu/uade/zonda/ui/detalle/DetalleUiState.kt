@@ -3,9 +3,12 @@ package ar.edu.uade.zonda.ui.detalle
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.AvisoRecibido
+import ar.edu.uade.zonda.domain.model.Bloqueo
 import ar.edu.uade.zonda.domain.model.CalculoSeveridad
 import ar.edu.uade.zonda.domain.model.CambioDeSeveridad
+import ar.edu.uade.zonda.domain.model.DuracionBloqueo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoFirewall
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.Persona
@@ -41,6 +44,8 @@ sealed interface DetalleUiState {
         val calculo: CalculoSeveridad? = null,
         /** Los cambios de configuración que cambiaron el color de la alerta, para el historial (decisión 40). */
         val cambiosDeSeveridad: List<CambioDeSeveridad> = emptyList(),
+        /** El bloqueo del origen (decisión 51); null si la red no tiene firewall o todavía no se sabe. */
+        val bloqueo: SeccionBloqueo? = null,
     ) : DetalleUiState
 
     /**
@@ -86,4 +91,36 @@ data class FormularioRevision(
 sealed interface AvisoDetalle {
 
     data class Error(val error: ErrorZonda) : AvisoDetalle
+
+    /** Sin conexión el bloqueo no sale ni queda en la cola: el aviso lo dice, para que nadie lo dé por hecho. */
+    data object BloqueoSinConexion : AvisoDetalle
+}
+
+/**
+ * La tarjeta del bloqueo del origen (decisión 51). Solo con un firewall conectado al servidor: en modo de
+ * observación la red no bloquea y el detalle no la muestra.
+ */
+data class SeccionBloqueo(
+    val firewall: EstadoFirewall,
+    /** El bloqueo o el pedido abierto del origen; null si no tiene. */
+    val actual: Bloqueo?,
+    /** El origen está en la lista de "nunca bloquear" del firewall: no hay botón. */
+    val nuncaSeBloquea: Boolean,
+)
+
+/** Qué confirma la hoja del bloqueo. */
+enum class AccionBloqueo { BLOQUEAR, CAMBIAR_DURACION, DESBLOQUEAR, RECHAZAR }
+
+/** Lo que la persona va eligiendo en la hoja del bloqueo; vive en el ViewModel, como la de Revisar. */
+data class FormularioBloqueo(
+    val accion: AccionBloqueo,
+    val duracion: DuracionBloqueo = DuracionBloqueo.PREDETERMINADA,
+    val motivo: String = "",
+    /** Se tocó confirmar sin motivo. */
+    val conError: Boolean = false,
+    /** Esperando al servidor: el botón muestra la rueda y no se manda dos veces. */
+    val enviando: Boolean = false,
+) {
+    val conDuracion: Boolean
+        get() = accion == AccionBloqueo.BLOQUEAR || accion == AccionBloqueo.CAMBIAR_DURACION
 }

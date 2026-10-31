@@ -330,6 +330,9 @@ private fun LazyListScope.datosDeLaRed(
         )
     }
     estado.sistema?.let { sistema -> item(key = "estado-del-sistema") { TarjetaEstadoSistema(sistema, ahoraDelSistema) } }
+    estado.sistema?.bloqueos?.takeIf { it.isNotEmpty() }?.let { bloqueos ->
+        item(key = "bloqueos") { TarjetaBloqueos(bloqueos, zona, ahoraDelSistema(), acciones.alAbrirDetalle) }
+    }
     item {
         // "Ver todas" no está con la red tranquila y sin filtro (Figma 1-178): la leyenda ocupa ese lugar.
         val conVerTodas = elegida != null || datos.semaforo != Semaforo.VERDE

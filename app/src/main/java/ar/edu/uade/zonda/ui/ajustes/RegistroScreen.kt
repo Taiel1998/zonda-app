@@ -10,6 +10,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PersonRemove
@@ -32,6 +34,7 @@ import ar.edu.uade.zonda.domain.model.TipoCambio
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.BarraSuperior
 import ar.edu.uade.zonda.ui.components.Panel
+import ar.edu.uade.zonda.ui.detalle.textoDuracionBloqueo
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.nombreCorto
 import ar.edu.uade.zonda.ui.theme.rotulo
@@ -108,6 +111,8 @@ private fun TipoCambio.icono(): ImageVector = when (this) {
     TipoCambio.PERFIL -> Icons.Outlined.Person
     TipoCambio.PERSONA_NUEVA -> Icons.Outlined.PersonAdd
     TipoCambio.PERSONA_QUITADA -> Icons.Outlined.PersonRemove
+    TipoCambio.BLOQUEO -> Icons.Outlined.Lock
+    TipoCambio.DESBLOQUEO -> Icons.Outlined.LockOpen
 }
 
 /** "Hoy 10:05", "Ayer 18:00" o "24/09 18:00". */
@@ -153,6 +158,18 @@ fun tituloDelCambio(cambio: CambioRegistro): String {
             } else {
                 stringResource(R.string.registro_persona_quitada, nombre)
             }
+        // Decisión 51: "Bloqueó pc-rrhh por 1 h", "Cambió el bloqueo de pc-rrhh a 8 h" y "Desbloqueó pc-rrhh".
+        // Un cambio de duración trae la de antes; "hasta desbloquear" viaja como texto, no como segundos.
+        TipoCambio.BLOQUEO -> {
+            val segundos = cambio.segundosDespues
+            when {
+                cambio.antes == null && segundos == null -> stringResource(R.string.registro_bloqueo_hasta, nombre)
+                cambio.antes == null -> stringResource(R.string.registro_bloqueo, nombre, textoDuracionBloqueo(segundos))
+                segundos == null -> stringResource(R.string.registro_bloqueo_cambio_hasta, nombre)
+                else -> stringResource(R.string.registro_bloqueo_cambio, nombre, textoDuracionBloqueo(segundos))
+            }
+        }
+        TipoCambio.DESBLOQUEO -> stringResource(R.string.registro_desbloqueo, nombre)
     }
 }
 

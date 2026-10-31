@@ -1,5 +1,13 @@
 package ar.edu.uade.zonda.data.remote
 
+import com.google.gson.Gson
+import com.google.gson.TypeAdapter
+import com.google.gson.TypeAdapterFactory
+import com.google.gson.annotations.JsonAdapter
+import com.google.gson.reflect.TypeToken
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonWriter
+
 // Objetos que viajan en el JSON de la API, con los nombres exactos del contrato (backend/README.md):
 // camelCase, enumeraciones en minúsculas con guion bajo y fechas ISO 8601 como texto. Gson los llena
 // por reflexión. El dominio nunca los ve: los mappers de `data/mapper/MapeosRemotos.kt` los traducen.
@@ -12,6 +20,8 @@ data class SaludDto(
     val tokenVence: String?,
     /** Desde la API 0.7.0 y solo con token: el sensor, el análisis en vivo y el servidor. */
     val sistema: SistemaDto? = null,
+    /** Desde la API 0.9.0 y solo con token: el firewall, para su pieza en Estado del sistema (decisión 51). */
+    val firewall: EstadoFirewallDto? = null,
 )
 
 /**
@@ -231,6 +241,93 @@ data class CatalogoDto(
     val equipos: Map<String, String>,
     val servicios: List<String>,
 )
+
+// ---- Bloqueos del firewall (API 0.9.0, decisión 51) ----
+
+/** `firewall` de `GET /salud` y de `GET /bloqueos`. Gson no aplica valores por defecto: lo que puede faltar es nullable. */
+data class EstadoFirewallDto(
+    val habilitado: Boolean,
+    val conectado: Boolean,
+    val ultimaConsulta: String?,
+    val nuncaBloquear: List<String>?,
+)
+
+/** Un bloqueo. `estado` es `pedido`, `aprobado`, `aplicado`, `rechazado`, `desbloqueado` o `vencido`. */
+data class BloqueoDto(
+    val id: String,
+    val alertaId: String,
+    val ip: String,
+    val nombre: String?,
+    val estado: String,
+    /** Segundos; null es hasta desbloquear. */
+    val duracion: Int?,
+    val motivo: String,
+    val pedidoPorId: String,
+    val pedidoPor: String,
+    val pedidoEn: String,
+    val aprobadoPorId: String?,
+    val aprobadoPor: String?,
+    val aprobadoEn: String?,
+    val venceEn: String?,
+    val aplicadoEn: String?,
+    val terminadoPorId: String?,
+    val terminadoPor: String?,
+    val terminadoEn: String?,
+    val detalle: String?,
+)
+
+/** Respuesta de `GET /bloqueos`. */
+data class ListaBloqueosDto(
+    val bloqueos: List<BloqueoDto>,
+    val firewall: EstadoFirewallDto,
+)
+
+/**
+ * Cuerpo de `POST /bloqueos`. La duración null es hasta desbloquear y tiene que viajar escrita: sin el
+ * campo, el servidor pone una hora.
+ */
+@JsonAdapter(ConNulos::class)
+data class BloqueoEntradaDto(
+    val accionId: String,
+    val alertaId: String,
+    val duracion: Int?,
+    val motivo: String,
+)
+
+/** Cuerpo de `PUT /bloqueos/{id}/duracion`; como en [BloqueoEntradaDto], null es hasta desbloquear. */
+@JsonAdapter(ConNulos::class)
+data class DuracionEntradaDto(
+    val duracion: Int?,
+    val motivo: String,
+)
+
+/** Cuerpo de `POST /bloqueos/{id}/desbloqueo` y `/rechazo`. */
+data class MotivoEntradaDto(
+    val motivo: String,
+)
+
+/**
+ * Para los cuerpos en los que null quiere decir algo: los escribe con sus null, aunque el Gson de la app los
+ * omita (sin `serializeNulls`, que cambiaría todos los demás cuerpos).
+ */
+class ConNulos : TypeAdapterFactory {
+    override fun <T> create(gson: Gson, type: TypeToken<T>): TypeAdapter<T> {
+        val delegado = gson.getDelegateAdapter(this, type)
+        return object : TypeAdapter<T>() {
+            override fun write(salida: JsonWriter, valor: T?) {
+                val antes = salida.serializeNulls
+                salida.serializeNulls = true
+                try {
+                    delegado.write(salida, valor)
+                } finally {
+                    salida.serializeNulls = antes
+                }
+            }
+
+            override fun read(entrada: JsonReader): T? = delegado.read(entrada)
+        }
+    }
+}
 
 data class VinculoTelegramDto(
     val codigo: String,
