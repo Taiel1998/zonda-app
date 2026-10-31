@@ -204,7 +204,6 @@
     <string name="error_validacion">Revisá los datos ingresados.</string>
     <string name="error_telegram_no_disponible">El servidor de esta red todavía no tiene el bot de Telegram. Avisale al administrador.</string>
     <string name="error_telegram_sin_vincular">Telegram ya no está vinculado. Conectalo de nuevo.</string>
-    <string name="error_generico">Algo salió mal.</string>
     <!-- Severidades de la analista (corrección 2; Figma 468-3353) -->
     <string name="severidades_las_cambia">Las cambia un administrador: %1$s. Valen para todo el equipo.</string>
     <string name="severidades_las_cambia_sin_nombres">Las cambia un administrador. Valen para todo el equipo.</string>
@@ -226,7 +225,6 @@
     <string name="detalle_detectada_por">detectada por %1$s</string>
     <string name="detalle_cargando">Descargando el detalle…</string>
     <string name="detalle_no_disponible_titulo">No se pudo cargar la alerta</string>
-    <string name="detalle_no_disponible_sin_conexion">Sin conexión. Se va a descargar cuando vuelva la red.</string>
     <string name="detalle_datos_del_flujo">Datos del flujo</string>
     <string name="detalle_origen">Origen</string>
     <string name="detalle_destino">Destino</string>
@@ -254,7 +252,6 @@
     <string name="detalle_revision">Revisión</string>
     <string name="detalle_resultado">Resultado</string>
     <string name="detalle_motivo">Motivo</string>
-    <string name="detalle_este_telefono">Este teléfono</string>
     <string name="detalle_pendiente_de_envio">pendiente de envío</string>
     <string name="detalle_historial">Historial</string>
     <string name="detalle_revisar">Revisar</string>
