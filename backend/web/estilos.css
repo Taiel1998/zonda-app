@@ -1183,67 +1183,78 @@ button { cursor: pointer; }
 .res-compartir svg { width: 16px; height: 16px; }
 .res-linea { font-size: 13px; color: var(--texto-2); margin: 0 0 14px; }
 
-.res-grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+/* Las tarjetas de una misma fila tienen la misma altura: no quedan huecos debajo de la más corta. */
+.res-grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
 .res-ancho { grid-column: 1 / -1; }
 @media (max-width: 1100px) { .res-grilla { grid-template-columns: minmax(0, 1fr); } }
 
-.res-pieza { display: grid; gap: 10px; }
-.res-totales { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.res-metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.res-cifra, .res-metrica {
+/* Los cinco indicadores, como una fila de paneles «Stat» de Grafana: todos iguales, sin bloques de color; el
+   color queda para un punto chico cuando hay algo pendiente. Tocarlos filtra, como en la app. */
+.res-indicadores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.res-indicador {
   display: grid;
   align-content: start;
   gap: 2px;
-  border: 0;
+  min-width: 0;
+  border: 1px solid var(--borde-fuerte);
   border-radius: 12px;
+  background: var(--superficie);
+  padding: 12px 14px;
   text-align: left;
   color: var(--texto);
+  cursor: pointer;
 }
-/* En la app la tarjeta del total es crema sobre blanco; acá la página ya es crema, así que va blanca con borde. */
-.res-cifra { padding: 11px 12px; background: var(--superficie); box-shadow: inset 0 0 0 1px var(--borde); }
-.res-cifra strong, .res-metrica strong { font-size: 22px; font-weight: 600; line-height: 1.25; }
-.res-cifra span { font-size: 12px; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.res-cifra.revisadas { background: var(--verde-claro); }
-.res-cifra.revisadas strong { color: var(--verde-texto); }
-.res-cifra.sin-revisar { background: var(--media-fondo); }
-.res-cifra.sin-revisar strong { color: var(--media-texto); }
-.res-metrica { padding: 10px 12px; background: transparent; }
-.res-metrica strong { color: var(--verde-texto); }
-.res-metrica-nombre { font-size: 12.5px; font-weight: 500; }
-.res-metrica-detalle { font-size: 12px; color: var(--texto-2); }
-.res-cifra[aria-pressed="true"], .res-metrica[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--verde); }
+.res-indicador:hover { border-color: var(--texto-3); }
+.res-indicador[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--verde); border-color: transparent; }
+.res-indicador-nombre { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--texto-2); }
+.res-indicador-nombre .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+.res-indicador strong { font-size: 26px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; }
+.res-indicador-detalle { font-size: 12px; color: var(--texto-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1250px) { .res-indicador strong { font-size: 22px; } }
 
-.res-tarjeta { background: var(--superficie); border: 1px solid var(--borde-fuerte); border-radius: 12px; padding: 14px 16px; }
+.res-tarjeta { display: flex; flex-direction: column; background: var(--superficie); border: 1px solid var(--borde-fuerte); border-radius: 12px; padding: 14px 16px; }
 .res-titulo { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13.5px; font-weight: 600; color: var(--texto-2); }
 .res-ayuda { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 50%; padding: 0; background: transparent; color: var(--verde-texto); }
 .res-ayuda svg { width: 20px; height: 20px; }
 
-.res-barras { display: flex; align-items: flex-end; min-height: 128px; }
+/* Las barras llenan el alto que deja la tarjeta de al lado, sobre una línea de base; el número va solo arriba de
+   las que tienen alertas. Finas (hasta 24 px), con la punta redondeada. */
+.res-barras { flex: 1 1 auto; display: flex; align-items: stretch; min-height: 170px; }
 .res-columna {
   flex: 1 1 0;
   min-width: 0;
   display: grid;
-  justify-items: center;
-  gap: 4px;
+  grid-template-rows: minmax(0, 1fr) auto;
   border: 0;
   border-radius: 8px;
   background: transparent;
   padding: 0;
   color: var(--texto);
+  cursor: pointer;
 }
-.res-columna-n { font-size: 11.5px; font-weight: 500; }
-.res-columna-etiqueta { font-size: 11.5px; color: var(--texto-2); white-space: nowrap; }
+.res-columna-pista { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 0; border-bottom: 1px solid var(--borde-fuerte); }
+.res-columna-n { font-size: 11.5px; font-weight: 500; margin-bottom: 3px; }
+.res-columna-etiqueta { padding-top: 6px; font-size: 11.5px; color: var(--texto-2); white-space: nowrap; text-align: center; }
 .res-barras.muchas .res-columna-n, .res-barras.muchas .res-columna-etiqueta { font-size: 9.5px; }
-.res-barra { display: block; width: min(100%, 28px); border-radius: 3px 3px 0 0; background: var(--barra-resumen); }
+.res-barra { display: block; width: min(70%, 24px); border-radius: 4px 4px 0 0; background: var(--barra-resumen); }
 .res-barra.hoy { background: var(--verde); }
-.res-barra.cero { background: var(--borde-fuerte); border-radius: 1px; }
+.res-barra.cero { height: 0; }
+.res-columna:hover .res-columna-pista { background: var(--superficie-2); }
 .res-columna.elegida { box-shadow: 0 0 0 2px var(--superficie), 0 0 0 4px var(--verde); }
 .res-columna.apagada { opacity: 0.35; }
 .res-frase { margin: 10px 0 0; font-size: 12.5px; line-height: 1.3; color: var(--texto-2); }
 
 .res-bloque { display: grid; gap: 8px; }
 .res-bloque + .res-bloque { border-top: 1px solid var(--borde-fuerte); margin-top: 10px; padding-top: 10px; }
-.res-bloque-titulo { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; color: var(--texto-2); }
+.res-bloque-titulo { margin: 0; font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.res-sin-alertas { margin: 0; font-size: 12.5px; line-height: 1.35; color: var(--texto-3); }
+/* Reales y falsos positivos: una sola barra partida, con un hueco de 2 px entre las dos partes, y su leyenda. */
+.res-partida { display: flex; gap: 2px; height: 12px; border-radius: 6px; overflow: hidden; background: var(--neutro); }
+.res-partida i { display: block; height: 100%; }
+.res-partida-leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
+.res-leyenda-item { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 8px; background: transparent; padding: 4px 6px; margin: -4px -6px; font-size: 13.5px; color: var(--texto); cursor: pointer; }
+.res-leyenda-item .punto { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.res-leyenda-item[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--verde); }
 .res-filas { display: grid; gap: 10px; }
 .res-fila {
   display: grid;
@@ -1282,15 +1293,17 @@ button { cursor: pointer; }
   gap: 8px;
   width: 100%;
   border: 0;
-  border-radius: 8px;
-  background: var(--pagina);
-  padding: 8px 10px;
+  border-bottom: 1px solid var(--borde);
+  border-radius: 0;
+  background: transparent;
+  padding: 2px 0 10px;
   margin-bottom: 10px;
   font-size: 13.5px;
   font-weight: 500;
-  color: var(--texto);
+  color: var(--texto-2);
+  cursor: pointer;
 }
-.res-cobertura strong { color: var(--verde-texto); font-weight: 600; }
+.res-cobertura strong { color: var(--texto); font-weight: 600; }
 .res-precision {
   display: grid;
   grid-template-columns: 160px minmax(40px, 1fr) 46px 64px;
@@ -1327,7 +1340,10 @@ button { cursor: pointer; }
 
 @media (max-width: 720px) {
   .res-compartir { margin-left: 0; width: 100%; justify-content: center; }
-  .res-cifra span { white-space: normal; font-size: 11.5px; }
+  /* Los indicadores de a dos; el total arriba, a todo el ancho. */
+  .res-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .res-indicador:first-child { grid-column: 1 / -1; }
+  .res-indicador-detalle { white-space: normal; }
   .res-fila { grid-template-columns: minmax(0, 150px) minmax(30px, 1fr) 30px; }
   .res-precision { grid-template-columns: 120px minmax(30px, 1fr) 42px 54px; font-size: 13px; }
 }

@@ -336,8 +336,6 @@ function cambiarPeriodo(periodo) {
 
 // ---- La pantalla ----
 
-const pieza = (clase, ...hijos) => el('div', { class: `res-pieza ${clase}` }, ...hijos);
-
 function tarjeta(titulo, ayuda, ...contenido) {
   return el('section', { class: 'res-tarjeta' },
     el('h3', { class: 'res-titulo' }, titulo, ayuda ? el('button', { type: 'button', class: 'res-ayuda', 'aria-label': ayuda.titulo, title: ayuda.titulo, onclick: ayuda.abrir }, icono('info')) : null),
@@ -348,43 +346,43 @@ function botonTocable(clase, elegido, alTocar, ...hijos) {
   return el('button', { type: 'button', class: clase, 'aria-pressed': String(Boolean(elegido)), onclick: alTocar }, ...hijos);
 }
 
-function totales(x) {
-  const cobertura = porciento(x.revisadas, x.total) || '0 %';
-  return pieza('res-totales',
-    botonTocable('res-cifra total', false, limpiarFiltros, el('strong', {}, numero(x.total)), el('span', {}, plural(x.total, 'alerta', 'alertas'))),
-    botonTocable('res-cifra revisadas', r.revision === 'revisadas', () => elegirRevision('revisadas'), el('strong', {}, numero(x.revisadas)), el('span', {}, `${plural(x.revisadas, 'revisada', 'revisadas')} · ${cobertura}`)),
-    botonTocable('res-cifra sin-revisar', r.revision === 'sin_revisar', () => elegirRevision('sin_revisar'), el('strong', {}, numero(x.sinRevisar)), el('span', {}, 'sin revisar')));
-}
-
-function metricas(x) {
+/** Los cinco indicadores de arriba, iguales, como una fila de paneles «Stat» de Grafana: el nombre, el número y
+    un detalle, sin bloques de color. Tocarlos filtra igual que en la app. */
+function indicadores(x) {
   const altas = porciento(x.altasParte, x.altasTotal);
-  return pieza('res-metricas',
-    botonTocable('res-metrica', r.revision === 'revisadas', () => elegirRevision('revisadas'),
-      el('strong', {}, x.mediana === null ? '—' : duracionCorta(x.mediana)),
-      el('span', { class: 'res-metrica-nombre' }, 'hasta la primera revisión'),
-      el('span', { class: 'res-metrica-detalle' }, x.mediana === null ? 'sin revisiones todavía' : 'mediana del período')),
-    botonTocable('res-metrica', sonLasAltas(), tocarAltas,
-      el('strong', {}, altas || '—'),
-      el('span', { class: 'res-metrica-nombre' }, 'altas revisadas en la primera hora'),
-      el('span', { class: 'res-metrica-detalle' }, x.altasTotal ? `${x.altasParte} de ${x.altasTotal}` : 'ninguna alta con más de 1 h')));
+  const indicador = (elegido, alTocar, nombre, valor, detalle, punto = null) => botonTocable('res-indicador', elegido, alTocar,
+    el('span', { class: 'res-indicador-nombre' }, punto, nombre),
+    el('strong', {}, valor),
+    el('span', { class: 'res-indicador-detalle' }, detalle));
+  return el('div', { class: 'res-indicadores res-ancho' },
+    indicador(false, limpiarFiltros, 'Alertas', numero(x.total), r.fechas ? 'en estas fechas' : r.periodo === '7d' ? 'en 7 días' : 'en 30 días'),
+    indicador(r.revision === 'revisadas', () => elegirRevision('revisadas'), 'Revisadas', numero(x.revisadas), `${porciento(x.revisadas, x.total) || '0 %'} del total`),
+    indicador(r.revision === 'sin_revisar', () => elegirRevision('sin_revisar'), 'Sin revisar', numero(x.sinRevisar), x.sinRevisar ? 'esperan revisión' : 'nada pendiente',
+      x.sinRevisar ? el('i', { class: 'punto', style: 'background:var(--media)' }) : null),
+    indicador(r.revision === 'revisadas', () => elegirRevision('revisadas'), 'Primera revisión', x.mediana === null ? '—' : duracionCorta(x.mediana),
+      x.mediana === null ? 'sin revisiones todavía' : 'mediana del período'),
+    indicador(sonLasAltas(), tocarAltas, 'Altas revisadas a tiempo', altas || '—',
+      x.altasTotal ? `${x.altasParte} de ${x.altasTotal} en la primera hora` : 'ninguna alta con más de 1 h'));
 }
 
+/** Las barras llenan el alto de su tarjeta, que es el de la de al lado. El número va solo arriba de las barras
+    con alertas: un cero escrito en cada día vacío no se lee. */
 function grafico(x) {
   const maximo = Math.max(1, ...x.conteos);
   const hayElegidas = r.barras.size > 0;
   const muchas = x.barras.length > 12;
   const columnas = x.barras.map((b, i) => {
     const n = x.conteos[i];
-    const alto = n ? Math.max(2, (90 * n) / maximo) : 2;
     const elegida = r.barras.has(b.inicio);
     return botonTocable(`res-columna${elegida ? ' elegida' : ''}${hayElegidas && !elegida ? ' apagada' : ''}`, elegida, () => alternar(r.barras, b.inicio),
-      el('span', { class: 'res-columna-n' }, String(n)),
-      el('span', { class: `res-barra${b.hoy ? ' hoy' : ''}${n ? '' : ' cero'}`, style: `height:${alto}px` }),
-      el('span', { class: 'res-columna-etiqueta' }, b.etiqueta || ' '));
+      el('span', { class: 'res-columna-pista' },
+        n ? el('span', { class: 'res-columna-n' }, String(n)) : null,
+        el('span', { class: `res-barra${b.hoy ? ' hoy' : ''}${n ? '' : ' cero'}`, style: `height:${n ? Math.max(3, (85 * n) / maximo) : 0}%` })),
+      el('span', { class: 'res-columna-etiqueta' }, b.etiqueta || ' '));
   });
   const frase = fraseDelGrafico(x);
   return tarjeta(tituloGrafico(x.escala), null,
-    el('div', { class: `res-barras${muchas ? ' muchas' : ''}`, style: `gap:${x.barras.length <= 7 ? 8 : x.barras.length <= 12 ? 4 : 2}px` }, columnas),
+    el('div', { class: `res-barras${muchas ? ' muchas' : ''}` }, columnas),
     frase ? el('p', { class: 'res-frase' }, frase) : null);
 }
 
@@ -401,34 +399,45 @@ function filaDeBarra({ clase, elegida = false, alTocar = null, punto = null, eti
   return alTocar ? botonTocable(clases, elegida, alTocar, ...hijos) : el('div', { class: clases }, ...hijos);
 }
 
+/** Los tipos con alertas, cada uno con su barra; los que no tuvieron van juntos en una línea, debajo de su grupo. */
 function tipos(x) {
   const maximo = Math.max(1, ...x.porTipo.values());
   const todoCero = [...x.porTipo.values()].every((n) => n === 0);
   const bloque = (titulo, lista) => {
-    if (!todoCero && lista.every((t) => !x.porTipo.get(t))) return null;
+    const con = lista.filter((t) => x.porTipo.get(t));
+    const sin = lista.filter((t) => !x.porTipo.get(t));
+    if (!todoCero && !con.length) return null;
     return el('div', { class: 'res-bloque' }, el('p', { class: 'res-bloque-titulo' }, titulo),
-      lista.map((t) => filaDeBarra({
+      con.map((t) => filaDeBarra({
         clase: 'tipo', elegida: r.tipos.has(t), alTocar: () => alternar(r.tipos, t), punto: el('i', { class: 'punto', style: `background:var(--${severidadDe(t)})` }),
         etiqueta: ETIQUETA_TIPO[t], valor: x.porTipo.get(t), lleno: (95 * x.porTipo.get(t)) / maximo,
-      })));
+      })),
+      sin.length ? el('p', { class: 'res-sin-alertas' }, `Sin alertas: ${enumerar(sin.map((t) => minuscula(ETIQUETA_TIPO[t])))}.`) : null);
   };
   return tarjeta('Por tipo de ataque', { titulo: 'Qué es cada tipo', abrir: hojaTipos },
-    bloque('LO QUE DETECTÓ LA IA', TIPOS_IA), bloque('LO QUE LA IA NO DETECTÓ', TIPOS_SIN_IA));
+    bloque('Lo que detectó la IA', TIPOS_IA), bloque('Lo que la IA no detectó', TIPOS_SIN_IA));
 }
 
+/** Reales y falsos positivos en una sola barra partida, con su leyenda: tocar una parte filtra, como en la app. */
 function realesYFalsos(x) {
-  const maximo = Math.max(1, x.reales, x.falsos);
-  return tarjeta('Reales y falsos positivos (de las revisadas)', null,
-    el('div', { class: 'res-filas' },
-      filaDeBarra({ clase: 'dos', elegida: r.revision === 'reales', alTocar: () => elegirRevision('reales'), etiqueta: 'Reales', valor: x.reales, lleno: (95 * x.reales) / maximo, color: 'var(--verde)', marcaCero: true }),
-      filaDeBarra({ clase: 'dos', elegida: r.revision === 'falsos', alTocar: () => elegirRevision('falsos'), etiqueta: 'Falsos positivos', valor: x.falsos, lleno: (95 * x.falsos) / maximo, color: 'var(--media)', marcaCero: true })),
-    el('p', { class: 'res-nota' }, 'Un falso positivo con motivo sirve para ajustar la detección.'));
+  const parte = (clase, n, color, uno, otros, revision) => botonTocable(`res-leyenda-item ${clase}`, r.revision === revision, () => elegirRevision(revision),
+    el('i', { class: 'punto', style: `background:${color}` }), el('strong', {}, numero(n)), ` ${plural(n, uno, otros)}`);
+  return tarjeta('Reales y falsos positivos', null,
+    el('div', { class: 'res-partida', role: 'img', 'aria-label': `${x.reales} reales y ${x.falsos} falsos positivos` },
+      x.reales ? el('i', { style: `flex:${x.reales};background:var(--verde)` }) : null,
+      x.falsos ? el('i', { style: `flex:${x.falsos};background:var(--media)` }) : null),
+    el('div', { class: 'res-partida-leyenda' },
+      parte('reales', x.reales, 'var(--verde)', 'real', 'reales', 'reales'),
+      parte('falsos', x.falsos, 'var(--media)', 'falso positivo', 'falsos positivos', 'falsos')),
+    el('p', { class: 'res-nota' }, x.revisadas
+      ? `De las ${numero(x.revisadas)} revisadas. Un falso positivo con motivo sirve para ajustar la detección.`
+      : 'Todavía no hay alertas revisadas en el período.'));
 }
 
 function precision(x) {
-  return tarjeta('Precisión de cada modelo (de las revisadas)', { titulo: 'Cómo se lee la precisión', abrir: () => hojaPrecision(x) },
+  return tarjeta('Precisión de cada modelo', { titulo: 'Cómo se lee la precisión', abrir: () => hojaPrecision(x) },
     botonTocable(`res-cobertura${r.revision === 'revisadas' ? ' elegida' : ''}`, r.revision === 'revisadas', () => elegirRevision('revisadas'),
-      el('span', {}, 'Cobertura de revisión'), el('strong', {}, `${porciento(x.revisadas, x.total) || '0 %'} · ${x.revisadas} de ${x.total}`)),
+      el('span', {}, 'Revisadas'), el('strong', {}, `${porciento(x.revisadas, x.total) || '0 %'} · ${x.revisadas} de ${x.total}`)),
     el('div', { class: 'res-filas' }, x.precision.map((p) => botonTocable(`res-precision${r.metodo === p.m.id ? ' elegida' : ''}`, r.metodo === p.m.id, () => elegirModelo(p.m.id),
       el('span', { class: 'res-fila-nombre' }, p.m.resumen),
       el('span', { class: 'res-pista fina' }, el('i', { class: p.total < 30 ? 'clara' : null, style: `width:${p.parte ? `${(100 * p.parte) / p.total}%` : '2px'}` })),
@@ -491,7 +500,7 @@ export function pintarResumen() {
     return;
   }
   vaciar($('resumen-cuerpo'), el('div', { class: 'res-grilla' },
-    totales(x), metricas(x), grafico(x), tipos(x), realesYFalsos(x), precision(x),
+    indicadores(x), grafico(x), tipos(x), realesYFalsos(x), precision(x),
     el('div', { class: 'res-ancho' }, equipos(x))));
 }
 
