@@ -3,7 +3,7 @@
 // alertas marcadas, y las últimas alertas, con un aviso cuando entra una nueva. El mapa está en mapa.js.
 
 import {
-  bitsPorSegundo, bytes, el, fechaCsv, fechaHora, fechaHoraSegundos, haceCuanto, hora, horaConSegundos, icono, numero, porcentaje, tasa, vaciar,
+  bitsPorSegundo, bytes, dia, el, fechaCsv, fechaHora, fechaHoraSegundos, haceCuanto, hora, horaConSegundos, icono, numero, porcentaje, tasa, vaciar,
 } from './util.js';
 import {
   GRUPOS, SEVERIDADES, colores, formatoBits, grupoDe, opcionesAlertasTiempo, opcionesMini, opcionesSerieSimple, opcionesServicios,
@@ -190,18 +190,20 @@ function pintarGraficoServidor() {
 /** Cada contador abre la lista de Alertas con las sin revisar de su severidad (tablero.js), como la
     notificación de la app: en el teléfono la lista está justo abajo; acá, en su vista. */
 export function pintarSinRevisar() {
-  const conteo = (e.conteo && e.conteo.sinRevisar) || { alta: 0, media: 0, baja: 0 };
+  const conteo = e.conteo && e.conteo.sinRevisar;
+  const valor = (s) => (conteo ? numero(conteo[s]) : '–');
   const lugar = $('sin-revisar');
+  lugar.setAttribute('aria-busy', String(!conteo));
   // Se piden cada 5 s: si ya están, cambian solo los números, así no se pierde el foco del teclado.
   if (lugar.children.length) {
-    for (const s of SEVERIDADES) lugar.querySelector(`[data-severidad="${s.id}"] .contador-numero`).textContent = numero(conteo[s.id]);
+    for (const s of SEVERIDADES) lugar.querySelector(`[data-severidad="${s.id}"] .contador-numero`).textContent = valor(s.id);
     return;
   }
   vaciar(lugar, SEVERIDADES.map((s) => el('button', {
     type: 'button', class: 'contador', dataset: { severidad: s.id }, title: `Ver las alertas ${s.nombre.toLowerCase()}s sin revisar`,
   },
   el('span', { class: 'contador-titulo' }, el('span', { class: 'punto', style: `background:var(${s.color})` }), s.nombre),
-  el('span', { class: 'contador-numero' }, numero(conteo[s.id])))));
+  el('span', { class: 'contador-numero' }, valor(s.id)))));
 }
 
 // ---- Tráfico ----
@@ -431,7 +433,7 @@ export function pintarTrafico() {
   $('conexiones-ahora-detalle').textContent = `Promedio de los últimos 30 segundos. ${numero(total)} conexiones ${frase}.`;
 
   const aviso = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor. El sensor lo manda cada 5 segundos.'
-    : `No hubo tráfico ${frase}. Lo último que vio el sensor fue a las ${fechaHora(g.ultimoTramo * 1000)}.`;
+    : `No hubo tráfico ${frase}. Lo último que vio el sensor fue ${cuandoFue(g.ultimoTramo * 1000)}.`;
   for (const id of ['vacio-servicios', 'vacio-volumen']) {
     $(id).hidden = total > 0 || bytesTotal > 0;
     $(id).textContent = aviso;
@@ -470,6 +472,11 @@ export function pintarTrafico() {
     csv: { columnas: columnasAlertas, filas: barras.tiempos.map((t, i) => [fechaCsv(t), barras.totales[i], ...SEVERIDADES.map((s) => barras.porSeveridad[s.id][i])]) },
   };
   refrescarTablas('servicios', 'volumen', 'fallidas', 'alertas-tiempo');
+}
+
+/** «a las 22:26» si es de hoy; «el 30/10 a las 22:26» si es de otro día. */
+function cuandoFue(ms) {
+  return new Date(ms).toDateString() === new Date(ahoraServidor()).toDateString() ? `a las ${hora(ms)}` : `el ${dia(ms)} a las ${hora(ms)}`;
 }
 
 function horaTramo(ms, paso) {

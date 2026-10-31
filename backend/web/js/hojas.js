@@ -100,15 +100,37 @@ export function avisoInferior(texto, { accion, alAccion, duracion = 5000, alTerm
       if (cerrado) return;
       cerrado = true;
       clearTimeout(reloj);
+      quitarAtajo();
       caja.remove();
       if (avisoActual === aviso) avisoActual = null;
       if (alTerminar) alTerminar(porOtro ? 'reemplazado' : 'vencido');
     },
   };
+  let reloj = null;
+  let quitarAtajo = () => {};
   if (accion) {
-    caja.append(el('button', { type: 'button', onclick: () => { cerrado = true; clearTimeout(reloj); caja.remove(); avisoActual = null; alAccion(); } }, accion));
+    const hacer = () => { cerrado = true; clearTimeout(reloj); quitarAtajo(); caja.remove(); avisoActual = null; alAccion(); };
+    caja.append(el('button', { type: 'button', onclick: hacer }, accion));
+    // Ctrl+Z (⌘Z) mientras el aviso está a la vista, salvo que se esté escribiendo.
+    const atajo = (ev) => {
+      const escribiendo = ev.target instanceof Element && ev.target.closest('input, textarea, select, [contenteditable="true"]');
+      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z' && !escribiendo) { ev.preventDefault(); hacer(); }
+    };
+    document.addEventListener('keydown', atajo);
+    quitarAtajo = () => document.removeEventListener('keydown', atajo);
   }
-  const reloj = setTimeout(() => aviso.cerrar(), duracion);
+  // El reloj se frena mientras el mouse o el foco están sobre el aviso (WCAG 2.2.1) y sigue con lo que le quedaba.
+  let restante = duracion;
+  let desde = Date.now();
+  let encima = 0;
+  const correr = () => { desde = Date.now(); clearTimeout(reloj); reloj = setTimeout(() => aviso.cerrar(), Math.max(1000, restante)); };
+  const frenar = () => { if (encima++ === 0) { clearTimeout(reloj); restante -= Date.now() - desde; } };
+  const soltar = () => { if (encima > 0 && --encima === 0) correr(); };
+  caja.addEventListener('mouseenter', frenar);
+  caja.addEventListener('mouseleave', soltar);
+  caja.addEventListener('focusin', frenar);
+  caja.addEventListener('focusout', soltar);
+  correr();
   document.body.append(caja);
   avisoActual = aviso;
   return aviso;

@@ -210,7 +210,13 @@ html { scrollbar-gutter: stable; }
   border-bottom: 1px solid var(--borde);
 }
 
-.marca { display: flex; align-items: center; gap: 12px; min-width: 0; color: inherit; text-decoration: none; border-radius: 10px; }
+.marca { flex: none; display: flex; align-items: center; gap: 12px; min-width: 0; color: inherit; text-decoration: none; border-radius: 10px; }
+/* En media pantalla (de 721 a 1000 px) no entra todo: la red y el perfil ya están en Ajustes → General, y el texto de
+   «En vivo» queda para el lector de pantalla y en el globito del punto. */
+@media (max-width: 1000px) {
+  .red-actual { display: none; }
+  #en-vivo-texto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
 .marca:focus-visible { outline: 2px solid var(--verde); outline-offset: 4px; }
 .marca img { width: 36px; height: 36px; border-radius: 9px; }
 .marca-nombre { font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
@@ -504,7 +510,6 @@ html { scrollbar-gutter: stable; }
   .c-2, .c-3 { grid-column: span 12; }
   .contenido { padding: 16px; }
   .cabecera { padding: 0 16px; gap: 10px; }
-  .red-actual, #en-vivo-texto { display: none; }
   .pestanias { margin-left: 0; }
 }
 
@@ -565,6 +570,7 @@ html { scrollbar-gutter: stable; }
 .leyenda span { display: inline-flex; align-items: center; gap: 7px; }
 .leyenda i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .leyenda i.linea { width: 14px; height: 2px; border-radius: 2px; }
+.leyenda i.linea.punteada { background: repeating-linear-gradient(90deg, var(--baja) 0 4px, transparent 4px 7px) !important; }
 .leyenda i.punto { width: 9px; height: 9px; border-radius: 50%; }
 .leyenda i.triangulo { width: 0; height: 0; border-radius: 0; background: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid; }
 .leyenda-marcas { margin: 10px 0 0; }
@@ -616,6 +622,7 @@ html { scrollbar-gutter: stable; }
 /* ---- Indicadores ---- */
 
 .kpi-etiqueta { font-size: 13px; color: var(--texto-2); font-weight: 500; margin: 0 0 8px; }
+.kpi-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .kpi-valor { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
 .kpi-valor small { font-size: 16px; font-weight: 500; color: var(--texto-2); letter-spacing: 0; margin-left: 4px; }
 .kpi-detalle { font-size: 13px; color: var(--texto-2); margin-top: 8px; }
@@ -1191,7 +1198,7 @@ html { scrollbar-gutter: stable; }
 }
 .res-chip svg { width: 14px; height: 14px; }
 .res-chip[aria-pressed="true"] { border-color: transparent; background: var(--verde-claro); color: var(--verde-texto); }
-.res-compartir { width: auto; margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; font-size: 14px; border-radius: 12px; }
+.res-compartir { margin-left: auto; }
 .res-compartir svg { width: 16px; height: 16px; }
 .res-linea { font-size: 13px; color: var(--texto-2); margin: 0 0 14px; }
 
@@ -1350,7 +1357,6 @@ html { scrollbar-gutter: stable; }
 .res-divisor { border: 0; border-top: 1px solid var(--borde-fuerte); margin: 4px 0; width: 100%; }
 
 @media (max-width: 720px) {
-  .res-compartir { margin-left: 0; width: 100%; justify-content: center; }
   /* Los indicadores de a dos; el total arriba, a todo el ancho. */
   .res-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .res-indicador:first-child { grid-column: 1 / -1; }
@@ -1363,7 +1369,7 @@ html { scrollbar-gutter: stable; }
 
 /* ---- Ajustes, como la administración de Grafana (ajustes.js): el menú de secciones a la izquierda y la
    sección elegida a la derecha, con tablas que se editan en el lugar. ---- */
-.ajustes { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 20px; align-items: start; max-width: 1180px; margin: 0 auto; }
+.ajustes { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 20px; align-items: start; max-width: 1180px; margin: 0; }
 .ajustes-menu { display: grid; gap: 2px; position: sticky; top: calc(var(--alto-cabecera) + 16px); }
 .ajustes-menu button {
   display: flex;
@@ -1383,7 +1389,7 @@ html { scrollbar-gutter: stable; }
 }
 .ajustes-menu button:hover { background: var(--superficie-2); color: var(--texto); }
 .ajustes-menu button[aria-selected="true"] { background: var(--verde-claro); color: var(--verde-texto); font-weight: 600; }
-.ajustes-pendientes { min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--media-fondo); color: var(--media-texto); font-size: 12px; font-weight: 600; text-align: center; }
+.ajustes-pendientes { min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--info-fondo); color: var(--info-texto); font-size: 12px; font-weight: 600; text-align: center; }
 .ajustes-panel { padding: 20px 22px; }
 .seccion-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .seccion-titulo { font-size: 17px; font-weight: 600; margin: 0; }
@@ -1420,10 +1426,15 @@ html { scrollbar-gutter: stable; }
 }
 .tabla-ajustes td { padding: 8px 10px; }
 .tabla-ajustes tbody tr:last-child td { border-bottom: 0; }
-.tabla-ajustes tr.cambiada td { background: var(--media-fondo); }
+.tabla-ajustes tr.cambiada td { background: var(--info-fondo); }
 .tabla-ajustes td.accion { text-align: right; width: 1%; }
 .tabla-ajustes td.envolver { white-space: normal; min-width: 180px; }
 .etiqueta.vos { margin-left: 8px; }
+.pestania .ajustes-pendientes { margin-left: 6px; }
+.barra-inferior button { position: relative; }
+.barra-inferior .ajustes-pendientes { position: absolute; top: 2px; left: calc(50% + 10px); }
+.con-punto { display: inline-flex; align-items: center; gap: 8px; }
+.con-punto .punto { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
 .boton-texto.peligro { color: var(--alta-texto); }
 .ajustes-leyenda { margin: 10px 0 0; }
 /* Lo que se cambió y no se guardó: pegado abajo mientras se baja por una tabla larga. */
@@ -1536,7 +1547,7 @@ html { scrollbar-gutter: stable; }
   .tabla-ajustes td, .tabla-ajustes tbody tr:last-child td { border: 0; padding: 3px 0; white-space: normal; }
   .tabla-ajustes td[data-etiqueta]::before { content: attr(data-etiqueta) " · "; color: var(--texto-3); font-size: 12.5px; }
   .tabla-ajustes td.accion { text-align: left; width: auto; }
-  .tabla-ajustes tr.cambiada { background: var(--media-fondo); }
+  .tabla-ajustes tr.cambiada { background: var(--info-fondo); }
   .tabla-ajustes tr.cambiada td { background: transparent; }
   .barra-cambios { bottom: 72px; margin: 12px 0 0; padding: 12px 14px; flex-wrap: wrap; border: 1px solid var(--borde); border-radius: 12px; }
   .detalle { width: 100vw; padding: 16px 16px 90px; border-left: 0; }

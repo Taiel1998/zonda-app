@@ -26,7 +26,8 @@ const SECCIONES = [
 const CLAVE_SECCION = 'zonda.tablero.ajustes';
 
 let alSalir = () => {};
-let alCambiarTema = () => {};
+let alElegirTema = () => {};
+let temaElegido = () => 'sistema';
 let esperaTelegram = null;
 let seccion = leerSeccion();
 // Lo que se cambió en las tablas y todavía no se guardó: perfiles, permisos de bloquear, importancias y severidades.
@@ -55,9 +56,12 @@ const editando = () => {
   return Boolean(activo && $('ajustes').contains(activo) && ['INPUT', 'SELECT', 'TEXTAREA'].includes(activo.tagName));
 };
 
-export function configurarAjustes({ salir, cambiarTema }) {
+export function configurarAjustes({ salir, elegirTema, temaElegido: elegido }) {
   alSalir = salir;
-  alCambiarTema = cambiarTema;
+  alElegirTema = elegirTema;
+  temaElegido = elegido;
+  // Recargar o cerrar la pestaña con cambios sin guardar: el navegador pregunta.
+  window.addEventListener('beforeunload', (ev) => { if (cambiosSinGuardar()) { ev.preventDefault(); ev.returnValue = ''; } });
   $('ajustes').addEventListener('focusout', () => setTimeout(() => {
     if (repintarAlSoltar && !editando()) { repintarAlSoltar = false; pintarAjustes(); }
   }, 0));
@@ -81,6 +85,21 @@ export async function actualizarAjustes() {
   if (pedidos[3].status === 'fulfilled') e.registro = pedidos[3].value;
   if (pedidos[4].status === 'fulfilled') e.telegram = pedidos[4].value;
   if (e.vista === 'ajustes') pintarAjustes({ desdeElServidor: true });
+}
+
+/** Cuántos cambios faltan guardar, en todas las secciones. */
+export const cambiosSinGuardar = () => Object.values(pendientes).reduce((suma, m) => suma + m.size, 0);
+
+/** La pestaña «Ajustes», arriba y en la barra de abajo, también dice cuántos cambios faltan guardar. */
+function marcarPestania() {
+  const n = cambiosSinGuardar();
+  for (const boton of document.querySelectorAll('.pestania[data-vista="ajustes"], #barra-inferior [data-vista="ajustes"]')) {
+    let marca = boton.querySelector('.ajustes-pendientes');
+    if (!n) { if (marca) marca.remove(); continue; }
+    if (!marca) { marca = el('span', { class: 'ajustes-pendientes' }); boton.append(marca); }
+    marca.textContent = numero(n);
+    marca.title = `${numero(n)} sin guardar`;
+  }
 }
 
 /** Lo pendiente que otra persona ya dejó igual (o que desapareció) deja de estarlo. */
@@ -117,6 +136,7 @@ const CONTENIDO = {
 export function pintarAjustes({ desdeElServidor = false } = {}) {
   if (desdeElServidor && editando()) { repintarAlSoltar = true; return; }
   limpiarPendientes();
+  marcarPestania();
   if (!CONTENIDO[seccion]) seccion = 'general';
   // El campo o la lista que tenía el foco lo recupera después de armar todo de nuevo.
   const foco = document.activeElement && $('ajustes').contains(document.activeElement) ? document.activeElement.dataset.foco : null;
@@ -229,7 +249,6 @@ function hojaMotivo({ titulo, lineas, ejemplo, alGuardar }) {
 function seccionGeneral() {
   const red = e.acceso.red ? e.acceso.red.nombre : 'Red';
   const yo = e.personas.find((p) => p.vos);
-  const tema = document.documentElement.dataset.tema === 'oscuro' ? 'oscuro' : 'claro';
   const vence = e.acceso.vence ? ` · el acceso vence el ${fechaHora(Date.parse(e.acceso.vence), 0)}` : '';
   return [
     cabecera('General', 'Esta red, este navegador y cómo se ve el tablero.'),
@@ -239,8 +258,8 @@ function seccionGeneral() {
         el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => alSalir() }, 'Salir')),
       dato('Servidor de alertas', `Versión ${e.salud ? e.salud.version : '–'} · ${location.protocol === 'https:' ? 'HTTPS con el certificado de la red' : 'sin cifrar (HTTP)'}`),
       dato('Tema', null, selector({
-        etiqueta: 'Tema', opciones: { claro: 'Claro', oscuro: 'Oscuro' }, valor: tema, foco: 'tema',
-        alCambiar: (valor) => { if (valor !== tema) alCambiarTema(); pintarAjustes(); },
+        etiqueta: 'Tema', opciones: { sistema: 'Como el sistema', claro: 'Claro', oscuro: 'Oscuro' }, valor: temaElegido(), foco: 'tema',
+        alCambiar: (valor) => { alElegirTema(valor); pintarAjustes(); },
       }))),
   ];
 }
@@ -265,17 +284,17 @@ function seccionPersonas() {
       })
       : el('span', { class: `etiqueta${p.perfil === 'administrador' ? ' admin' : ''}` }, PERFILES[p.perfil]);
     return el('tr', { class: pendientes.personas.has(p.id) || pendientes.bloqueos.has(p.id) ? 'cambiada' : null },
-      el('td', {}, el('strong', {}, nombrePersona(p)), p.vos ? el('span', { class: 'etiqueta vos' }, 'vos') : null),
+      el('td', {}, el('strong', {}, nombrePersona(p)), p.vos ? [' ', el('span', { class: 'etiqueta vos' }, 'vos')] : null),
       el('td', { class: 'secundario envolver', 'data-etiqueta': 'Dispositivo' }, p.telefono),
       el('td', { 'data-etiqueta': 'Perfil' }, perfil),
       el('td', { 'data-etiqueta': 'Bloqueos' }, celdaBloqueos(p, editable)),
-      el('td', { class: 'secundario', 'data-etiqueta': 'Usó Zonda' }, p.ultimoUso ? haceCuanto(Date.parse(p.ultimoUso), ahora) : '–'),
+      el('td', { class: 'secundario', 'data-etiqueta': 'Último uso' }, p.ultimoUso ? haceCuanto(Date.parse(p.ultimoUso), ahora) : '–'),
       el('td', { class: 'accion' }, editable ? el('button', { type: 'button', class: 'boton-texto peligro', onclick: () => quitarPersona(p) }, 'Quitar') : null));
   });
   return [
     cabecera('Personas', 'Quiénes usan Zonda en esta red. Los administradores cambian la configuración y agregan personas.',
       cambia ? el('button', { type: 'button', class: 'boton-principal boton-chico', onclick: hojaAgregarPersona }, 'Agregar persona') : null),
-    tabla(['Nombre', 'Dispositivo', 'Perfil', 'Bloqueos', 'Usó Zonda', ''], filas),
+    tabla(['Nombre', 'Dispositivo', 'Perfil', 'Bloqueos', 'Último uso', ''], filas),
     el('p', { class: 'nota ajustes-leyenda' }, 'Bloquea: corta el tráfico de un equipo en el acto. Pide aprobación: lo aprueba alguien que puede bloquear.'),
     admin && !cambia ? el('p', { class: 'solo-admin-nota' }, 'Sin la llave de esta computadora, las personas se agregan y se cambian desde la app.') : null,
     cambia ? barraCambios('personas') : (admin ? null : notaSoloAdmin()),
@@ -452,10 +471,10 @@ function seccionSeveridades() {
     return el('tr', { class: pendientes.severidades.has(t) ? 'cambiada' : null },
       el('td', {}, el('strong', {}, TIPOS[t])),
       el('td', { 'data-etiqueta': 'Severidad' }, admin
-        ? selector({
+        ? el('span', { class: 'con-punto' }, el('i', { class: 'punto', style: `background:var(--${valor})` }), selector({
           etiqueta: `Severidad de ${TIPOS[t]}`, opciones: Object.fromEntries(ORDEN_SEVERIDAD.map((s) => [s, NIVEL[s]])), valor, foco: `severidad-${t}`,
           alCambiar: (nuevo) => marcar('severidades', t, nuevo, e.severidades[t]),
-        })
+        }))
         : el('span', { class: `sev ${valor}` }, NIVEL[valor])));
   });
   return [
