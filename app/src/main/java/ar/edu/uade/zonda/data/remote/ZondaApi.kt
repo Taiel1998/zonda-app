@@ -81,6 +81,10 @@ interface ZondaApi {
     @PUT("personas/{id}/perfil")
     suspend fun cambiarPerfil(@Path("id") id: String, @Body entrada: PerfilEntradaDto): PersonaDto
 
+    /** El permiso de bloquear de un analista (API 0.9.0, decisión 51). */
+    @PUT("personas/{id}/bloqueos")
+    suspend fun cambiarPermisoBloqueo(@Path("id") id: String, @Body entrada: PermisoBloqueoEntradaDto): PersonaDto
+
     /** Responde 204 sin cuerpo. */
     @DELETE("personas/{id}")
     suspend fun quitarPersona(@Path("id") id: String): Response<Unit>

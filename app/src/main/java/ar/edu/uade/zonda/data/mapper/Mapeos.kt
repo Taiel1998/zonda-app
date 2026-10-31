@@ -58,6 +58,7 @@ fun RedEntity.aDominio(): Red = Red(
     telegramBot = telegramBot,
     perfil = Perfil.entries.firstOrNull { it.name == perfil } ?: Perfil.ADMINISTRADOR,
     dispositivoId = dispositivoId,
+    permisoDeBloquear = permisoDeBloquear,
 )
 
 fun Red.aEntidad(creadaEn: Instant): RedEntity = RedEntity(
@@ -75,6 +76,7 @@ fun Red.aEntidad(creadaEn: Instant): RedEntity = RedEntity(
     telegramBot = telegramBot,
     perfil = perfil.name,
     dispositivoId = dispositivoId,
+    permisoDeBloquear = permisoDeBloquear,
 )
 
 fun RevisionEntity.aDominio(): Revision = Revision(
@@ -282,6 +284,7 @@ fun PersonaEntity.aDominio(): Persona = Persona(
     ultimoUso = ultimoUso?.aInstant(),
     vos = vos,
     navegador = navegador,
+    permisoDeBloquear = permisoDeBloquear,
 )
 
 fun Persona.aEntidad(redId: String, orden: Int): PersonaEntity = PersonaEntity(
@@ -294,6 +297,7 @@ fun Persona.aEntidad(redId: String, orden: Int): PersonaEntity = PersonaEntity(
     vos = vos,
     orden = orden,
     navegador = navegador,
+    permisoDeBloquear = permisoDeBloquear,
 )
 
 fun CatalogoEquipoEntity.aDominio(): EquipoDeLaRed = EquipoDeLaRed(

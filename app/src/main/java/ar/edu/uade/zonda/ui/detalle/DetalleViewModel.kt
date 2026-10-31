@@ -156,6 +156,7 @@ class DetalleViewModel(
                 nombreDeLaRed = red.nombre,
                 personas = datos.personas,
                 perfil = red.perfil,
+                puedeBloquear = red.puedeBloquear,
                 miId = red.dispositivoId ?: datos.personas.firstOrNull { it.vos }?.id,
                 calculo = CalculoSeveridad.de(alertaActual, datos.severidades, datos.importancias),
                 cambiosDeSeveridad = cambiosDeSeveridad(alertaActual, datos.registro, datos.severidades, datos.importancias),

@@ -48,8 +48,8 @@ class BloqueoDetalleViewModelTest {
     private val conectividad = FakeConectividad()
     private val bloqueos = FakeBloqueosRepository()
 
-    private fun viewModel(alcance: CoroutineScope, perfil: Perfil = Perfil.ADMINISTRADOR): DetalleViewModel {
-        val redes = FakeRedesRepository(listOf(Fixtures.red("red-1").copy(perfil = perfil)))
+    private fun viewModel(alcance: CoroutineScope, perfil: Perfil = Perfil.ADMINISTRADOR, permisoDeBloquear: Boolean = false): DetalleViewModel {
+        val redes = FakeRedesRepository(listOf(Fixtures.red("red-1").copy(perfil = perfil, permisoDeBloquear = permisoDeBloquear)))
         return DetalleViewModel(
             obtenerDetalle = ObtenerDetalleAlerta(alertas, conectividad),
             revisarAlerta = RevisarAlerta(alertas, acciones, GeneradorDeIdsFijo(), reloj = { Fixtures.AHORA }),
@@ -82,6 +82,20 @@ class BloqueoDetalleViewModelTest {
             assertNull(estado.bloqueo?.actual)
             assertFalse(estado.bloqueo!!.nuncaSeBloquea)
             assertTrue(estado.bloqueo!!.firewall.conectado)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `el analista bloquea en el acto solo si tiene el permiso de bloquear`() = runTest {
+        alertas.agregar(Fixtures.alerta("a-1"))
+
+        viewModel(backgroundScope, perfil = Perfil.ANALISTA).estado.test {
+            assertFalse(esperar { it.bloqueo != null }.puedeBloquear)
+            cancelAndIgnoreRemainingEvents()
+        }
+        viewModel(backgroundScope, perfil = Perfil.ANALISTA, permisoDeBloquear = true).estado.test {
+            assertTrue(esperar { it.bloqueo != null }.puedeBloquear)
             cancelAndIgnoreRemainingEvents()
         }
     }

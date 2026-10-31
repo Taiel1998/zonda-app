@@ -265,7 +265,15 @@ class ApiFalsa : ZondaApi {
         fallarSiCorresponde("perfil")
         val indice = personas.indexOfFirst { it.id == id }
         if (indice < 0) throw errorHttp(404)
-        personas[indice] = personas[indice].copy(perfil = entrada.perfil)
+        personas[indice] = personas[indice].copy(perfil = entrada.perfil, puedeBloquear = entrada.perfil == "administrador")
+        return personas[indice]
+    }
+
+    override suspend fun cambiarPermisoBloqueo(id: String, entrada: PermisoBloqueoEntradaDto): PersonaDto {
+        fallarSiCorresponde("permisoBloqueo")
+        val indice = personas.indexOfFirst { it.id == id }
+        if (indice < 0) throw errorHttp(404)
+        personas[indice] = personas[indice].copy(puedeBloquear = entrada.puedeBloquear)
         return personas[indice]
     }
 

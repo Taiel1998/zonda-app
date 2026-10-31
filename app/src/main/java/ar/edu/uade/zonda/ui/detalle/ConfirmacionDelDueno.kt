@@ -9,7 +9,6 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import ar.edu.uade.zonda.domain.model.Perfil
 
 /** Cómo terminó el pedido de la huella o el PIN. */
 enum class Confirmacion { CONFIRMADA, CANCELADA, SIN_BLOQUEO_DE_PANTALLA }
@@ -64,10 +63,10 @@ fun Context.actividad(): FragmentActivity? = when (this) {
 
 /**
  * Qué acciones del bloqueo piden la huella: las que cambian lo que corta el firewall. Pedir un bloqueo
- * (analista) y rechazar un pedido no cortan nada.
+ * (quien pide aprobación) y rechazar un pedido no cortan nada.
  */
-fun pideHuella(accion: AccionBloqueo, perfil: Perfil): Boolean = when (accion) {
-    AccionBloqueo.BLOQUEAR -> perfil == Perfil.ADMINISTRADOR
+fun pideHuella(accion: AccionBloqueo, puedeBloquear: Boolean): Boolean = when (accion) {
+    AccionBloqueo.BLOQUEAR -> puedeBloquear
     AccionBloqueo.CAMBIAR_DURACION, AccionBloqueo.DESBLOQUEAR -> true
     AccionBloqueo.RECHAZAR -> false
 }

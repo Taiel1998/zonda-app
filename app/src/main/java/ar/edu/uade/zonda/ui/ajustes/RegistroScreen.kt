@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PersonRemove
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -113,6 +114,7 @@ private fun TipoCambio.icono(): ImageVector = when (this) {
     TipoCambio.PERSONA_QUITADA -> Icons.Outlined.PersonRemove
     TipoCambio.BLOQUEO -> Icons.Outlined.Lock
     TipoCambio.DESBLOQUEO -> Icons.Outlined.LockOpen
+    TipoCambio.PERMISO_BLOQUEO -> Icons.Outlined.Shield
 }
 
 /** "Hoy 10:05", "Ayer 18:00" o "24/09 18:00". */
@@ -170,6 +172,11 @@ fun tituloDelCambio(cambio: CambioRegistro): String {
             }
         }
         TipoCambio.DESBLOQUEO -> stringResource(R.string.registro_desbloqueo, nombre)
+        // "Le dio permiso de bloquear a Laura" o "Le sacó el permiso de bloquear a Laura".
+        TipoCambio.PERMISO_BLOQUEO -> stringResource(
+            if (cambio.dioPermisoDeBloquear) R.string.registro_permiso_bloqueo else R.string.registro_sin_permiso_bloqueo,
+            nombre,
+        )
     }
 }
 

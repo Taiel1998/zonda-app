@@ -4,9 +4,10 @@ import java.time.Instant
 
 /**
  * Lo que anota el registro de cambios (corrección 3, decisión 40). Desde la API 0.9.0 también los bloqueos
- * del firewall y los desbloqueos (decisión 51); un cambio de duración es un bloqueo con [CambioRegistro.antes].
+ * del firewall, los desbloqueos y el permiso de bloquear de un analista (decisión 51); un cambio de duración
+ * es un bloqueo con [CambioRegistro.antes].
  */
-enum class TipoCambio { SEVERIDAD, IMPORTANCIA, PERSONA_NUEVA, PERFIL, PERSONA_QUITADA, BLOQUEO, DESBLOQUEO }
+enum class TipoCambio { SEVERIDAD, IMPORTANCIA, PERSONA_NUEVA, PERFIL, PERSONA_QUITADA, BLOQUEO, DESBLOQUEO, PERMISO_BLOQUEO }
 
 /**
  * Una línea del registro de cambios de la red: quién cambió la configuración, cuándo, de qué a qué y
@@ -54,6 +55,10 @@ data class CambioRegistro(
 
     val segundosDespues: Int?
         get() = despues?.toIntOrNull()
+
+    /** Un cambio de permiso que le dio a un analista el bloqueo en el acto ("bloquea"; si no, "pide_aprobacion"). */
+    val dioPermisoDeBloquear: Boolean
+        get() = tipo == TipoCambio.PERMISO_BLOQUEO && despues == "bloquea"
 }
 
 /**

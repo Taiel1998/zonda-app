@@ -185,6 +185,8 @@ data class PersonaDto(
     val vos: Boolean,
     /** `telefono` o `navegador` (el tablero web, API 0.9.0); un servidor anterior no lo manda: teléfono. */
     val tipo: String? = null,
+    /** Si bloquea en el acto (API 0.9.0, decisión 51); un servidor anterior no lo manda: los administradores. */
+    val puedeBloquear: Boolean? = null,
 )
 
 /** Cuerpo de `POST /personas/codigo`. */
@@ -204,6 +206,11 @@ data class CodigoPersonaDto(
 /** Cuerpo de `PUT /personas/{id}/perfil`. */
 data class PerfilEntradaDto(
     val perfil: String,
+)
+
+/** Cuerpo de `PUT /personas/{id}/bloqueos` (decisión 51): si ese analista bloquea en el acto o pide aprobación. */
+data class PermisoBloqueoEntradaDto(
+    val puedeBloquear: Boolean,
 )
 
 /** Un equipo de la red con su importancia (`GET /equipos`). */

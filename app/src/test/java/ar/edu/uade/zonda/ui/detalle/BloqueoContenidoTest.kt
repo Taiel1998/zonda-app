@@ -49,6 +49,7 @@ class BloqueoContenidoTest {
     private fun detalle(
         actual: Bloqueo? = null,
         perfil: Perfil = Perfil.ADMINISTRADOR,
+        puedeBloquear: Boolean = perfil.esAdministrador,
         firewall: EstadoFirewall = conectado,
         nuncaSeBloquea: Boolean = false,
         acciones: AccionesDetalle = AccionesDetalle(),
@@ -59,6 +60,7 @@ class BloqueoContenidoTest {
             sinConexion = false,
             datosDe = Fixtures.AHORA,
             perfil = perfil,
+            puedeBloquear = puedeBloquear,
             bloqueo = SeccionBloqueo(firewall, actual, nuncaSeBloquea),
         )
         compose.setContent { ZondaTheme { DetalleContenido(estado = estado, acciones = acciones, zona = utc, ahora = Fixtures.AHORA) } }
@@ -81,6 +83,22 @@ class BloqueoContenidoTest {
 
         compose.onNodeWithText("Pedir bloqueo").performScrollTo().assertExists()
         compose.onNodeWithText("Bloquear").assertDoesNotExist()
+    }
+
+    @Test
+    fun `el analista de guardia con permiso ve Bloquear`() {
+        detalle(perfil = Perfil.ANALISTA, puedeBloquear = true)
+
+        compose.onNodeWithText("Bloquear").performScrollTo().assertExists()
+        compose.onNodeWithText("Pedir bloqueo").assertDoesNotExist()
+    }
+
+    @Test
+    fun `el analista de guardia con permiso aprueba y rechaza los pedidos`() {
+        detalle(actual = bloqueo(estado = EstadoBloqueo.PEDIDO, pedidoPor = "Diego"), perfil = Perfil.ANALISTA, puedeBloquear = true)
+
+        compose.onNodeWithText("Aprobar").performScrollTo().assertExists()
+        compose.onNodeWithText("Rechazar").assertExists()
     }
 
     @Test
@@ -134,15 +152,15 @@ class BloqueoContenidoTest {
     }
 
     @Test
-    fun `un analista con su pedido abierto ve que espera a un administrador`() {
+    fun `un analista con su pedido abierto ve que espera a alguien que pueda bloquear`() {
         detalle(actual = bloqueo(estado = EstadoBloqueo.PEDIDO), perfil = Perfil.ANALISTA)
 
-        compose.onNodeWithText("Espera a un administrador").performScrollTo().assertExists()
+        compose.onNodeWithText("Espera a alguien que pueda bloquear").performScrollTo().assertExists()
         compose.onNodeWithText("Aprobar").assertDoesNotExist()
     }
 
-    private fun hoja(formulario: FormularioBloqueo, perfil: Perfil = Perfil.ADMINISTRADOR) {
-        compose.setContent { ZondaTheme { Column { ContenidoHojaBloqueo(formulario, Fixtures.alerta("a-1"), perfil, AccionesDetalle()) } } }
+    private fun hoja(formulario: FormularioBloqueo, puedeBloquear: Boolean = true) {
+        compose.setContent { ZondaTheme { Column { ContenidoHojaBloqueo(formulario, Fixtures.alerta("a-1"), puedeBloquear, AccionesDetalle()) } } }
     }
 
     @Test
@@ -159,7 +177,7 @@ class BloqueoContenidoTest {
 
     @Test
     fun `la hoja de un analista pide y la de desbloquear no tiene duraciones`() {
-        hoja(FormularioBloqueo(AccionBloqueo.BLOQUEAR, conError = true), perfil = Perfil.ANALISTA)
+        hoja(FormularioBloqueo(AccionBloqueo.BLOQUEAR, conError = true), puedeBloquear = false)
         compose.onNodeWithText("Pedir bloqueo de pc-09").assertExists()
         compose.onNodeWithText("Escribí el motivo.").assertExists()
     }
@@ -228,6 +246,16 @@ class BloqueoContenidoTest {
     }
 
     @Test
+    fun `Personas dice quien de los analistas bloquea`() {
+        val laura = Persona("d-2", "Laura", "Teléfono de Laura", Perfil.ANALISTA, null, vos = false, permisoDeBloquear = true)
+        val diego = Persona("d-4", "Diego", "Teléfono de Diego", Perfil.ANALISTA, null, vos = false)
+        compose.setContent { ZondaTheme { Column { FilaPersona(laura, Fixtures.AHORA, utc); FilaPersona(diego, Fixtures.AHORA, utc) } } }
+
+        compose.onNodeWithText("Analista · Bloquea · Teléfono de Laura").assertExists()
+        compose.onNodeWithText("Analista · Teléfono de Diego").assertExists()
+    }
+
+    @Test
     fun `Estado del sistema muestra el firewall solo si la red tiene uno`() {
         val sistema = EstadoSistema(
             sensor = EstadoPieza.FUNCIONA,
@@ -274,6 +302,8 @@ class BloqueoContenidoTest {
                     Text(tituloDelCambio(cambio(TipoCambio.BLOQUEO, "3600", "hasta_desbloquear")))
                     Text(tituloDelCambio(cambio(TipoCambio.BLOQUEO, null, "900")))
                     Text(tituloDelCambio(cambio(TipoCambio.DESBLOQUEO, "3600", null)))
+                    Text(tituloDelCambio(cambio(TipoCambio.PERMISO_BLOQUEO, "pide_aprobacion", "bloquea").copy(objeto = "d-2", nombre = "Laura")))
+                    Text(tituloDelCambio(cambio(TipoCambio.PERMISO_BLOQUEO, "bloquea", "pide_aprobacion").copy(objeto = "d-4", nombre = "Diego")))
                 }
             }
         }
@@ -284,5 +314,7 @@ class BloqueoContenidoTest {
         compose.onNodeWithText("Dejó pc-rrhh bloqueado hasta desbloquear").assertExists()
         compose.onNodeWithText("Bloqueó pc-rrhh por 15 min").assertExists()
         compose.onNodeWithText("Desbloqueó pc-rrhh").assertExists()
+        compose.onNodeWithText("Le dio permiso de bloquear a Laura").assertExists()
+        compose.onNodeWithText("Le sacó el permiso de bloquear a Diego").assertExists()
     }
 }

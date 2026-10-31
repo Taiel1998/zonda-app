@@ -72,13 +72,15 @@ fun nombreDePersona(persona: Persona): String =
 
 /**
  * "Administrador · moto g(9) plus · hoy 14:33" (Figma 468-2614): el perfil, el teléfono y su último uso. Un
- * navegador con el tablero web empieza por "Navegador", para que no se confunda con una persona (decisión 51).
+ * navegador con el tablero web empieza por "Navegador", para que no se confunda con una persona, y un
+ * analista con permiso de bloquear dice "Bloquea" después del perfil (decisión 51).
  */
 @Composable
 fun detalleDePersona(persona: Persona, ahora: Instant, zona: ZoneId): String {
     val partes = mutableListOf<String>()
     if (persona.navegador) partes += stringResource(R.string.personas_navegador)
     partes += stringResource(persona.perfil.etiqueta())
+    if (!persona.perfil.esAdministrador && persona.puedeBloquear) partes += stringResource(R.string.personas_bloquea)
     // Los teléfonos pareados antes de la 1.0.5 se llaman como el teléfono: no se repite.
     if (persona.nombre != null) partes += persona.telefono
     persona.ultimoUso?.let { partes += ultimoUso(it, ahora, zona) }

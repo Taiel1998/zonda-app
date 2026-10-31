@@ -1,6 +1,5 @@
 package ar.edu.uade.zonda.ui.detalle
 
-import ar.edu.uade.zonda.domain.model.Perfil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -27,12 +26,12 @@ class ConfirmacionDelDuenoTest {
 
     @Test
     fun `piden la huella las acciones que cambian lo que corta el firewall`() {
-        assertTrue(pideHuella(AccionBloqueo.BLOQUEAR, Perfil.ADMINISTRADOR))
-        assertTrue(pideHuella(AccionBloqueo.CAMBIAR_DURACION, Perfil.ADMINISTRADOR))
-        assertTrue(pideHuella(AccionBloqueo.DESBLOQUEAR, Perfil.ADMINISTRADOR))
-        // Un analista pide el bloqueo y lo aprueba un administrador, con su huella; rechazar no corta nada.
-        assertFalse(pideHuella(AccionBloqueo.BLOQUEAR, Perfil.ANALISTA))
-        assertFalse(pideHuella(AccionBloqueo.RECHAZAR, Perfil.ADMINISTRADOR))
+        assertTrue(pideHuella(AccionBloqueo.BLOQUEAR, puedeBloquear = true))
+        assertTrue(pideHuella(AccionBloqueo.CAMBIAR_DURACION, puedeBloquear = true))
+        assertTrue(pideHuella(AccionBloqueo.DESBLOQUEAR, puedeBloquear = true))
+        // Quien pide aprobación pide el bloqueo y lo aprueba, con su huella, alguien que bloquea; rechazar no corta nada.
+        assertFalse(pideHuella(AccionBloqueo.BLOQUEAR, puedeBloquear = false))
+        assertFalse(pideHuella(AccionBloqueo.RECHAZAR, puedeBloquear = true))
     }
 
     @Test

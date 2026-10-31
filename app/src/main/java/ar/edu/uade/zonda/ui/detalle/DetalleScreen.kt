@@ -218,12 +218,12 @@ fun DetalleScreen(
             alConfirmarBloqueo = {
                 // Sin motivo no se pide la huella: la hoja dice primero "Escribí el motivo.".
                 val hoja = hojaBloqueo
-                val perfil = (estado as? DetalleUiState.Contenido)?.perfil
-                if (hoja == null || perfil == null || hoja.motivo.isBlank()) {
+                val puedeBloquear = (estado as? DetalleUiState.Contenido)?.puedeBloquear
+                if (hoja == null || puedeBloquear == null || hoja.motivo.isBlank()) {
                     viewModel.confirmarBloqueo()
                 } else {
                     confirmarConHuella(
-                        pide = pideHuella(hoja.accion, perfil),
+                        pide = pideHuella(hoja.accion, puedeBloquear),
                         confirmacion = confirmacion,
                         titulo = contexto.getString(R.string.huella_titulo),
                         detalle = textoDeLaHuella(contexto, hoja, origen),
@@ -371,7 +371,7 @@ fun DetalleContenido(
 
     if (formulario != null && alertaVisible != null) HojaRevision(formulario = formulario, alerta = alertaVisible, acciones = acciones)
     val conPersonas = estado as? DetalleUiState.Contenido
-    if (hojaBloqueo != null && conPersonas != null) HojaBloqueo(formulario = hojaBloqueo, alerta = conPersonas.alerta, perfil = conPersonas.perfil, acciones = acciones)
+    if (hojaBloqueo != null && conPersonas != null) HojaBloqueo(formulario = hojaBloqueo, alerta = conPersonas.alerta, puedeBloquear = conPersonas.puedeBloquear, acciones = acciones)
     if (asignando && conPersonas != null) {
         HojaInferior(alCerrar = { asignando = false }) {
             ContenidoHojaAsignar(conPersonas.personas, conPersonas.alerta.asignacion?.responsableId) { persona ->
@@ -419,7 +419,7 @@ private fun CuerpoDetalle(
             )
         }
         // Decisión 51: el bloqueo del origen, debajo del responsable; sin firewall conectado no hay tarjeta.
-        estado.bloqueo?.let { TarjetaBloqueo(seccion = it, alerta = alerta, perfil = estado.perfil, zona = zona, ahora = ahora, acciones = acciones) }
+        estado.bloqueo?.let { TarjetaBloqueo(seccion = it, alerta = alerta, puedeBloquear = estado.puedeBloquear, zona = zona, ahora = ahora, acciones = acciones) }
         when (modo) {
             ModoDetalle.SIN_REVISAR -> {
                 DatosDelFlujo(alerta, zona)

@@ -29,7 +29,6 @@ import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.Bloqueo
 import ar.edu.uade.zonda.domain.model.DuracionBloqueo
 import ar.edu.uade.zonda.domain.model.EstadoBloqueo
-import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.BotonChico
@@ -51,21 +50,21 @@ import java.time.ZoneId
 
 /**
  * "Bloqueo" (decisión 51), debajo del responsable y con su misma forma: cómo está el origen de la alerta en
- * el firewall y el botón que le toca a cada perfil. Sin bloquear: "Bloquear" para un administrador y "Pedir
- * bloqueo" para un analista. Bloqueado: hasta cuándo, y para el administrador "Cambiar duración" y
- * "Desbloquear". Pedido: quién lo pidió y por qué, y para el administrador "Rechazar" y "Aprobar".
+ * el firewall y el botón que le toca a cada uno. Quien bloquea es un administrador o un analista con
+ * permiso (el de guardia); los demás piden aprobación. Sin bloquear: "Bloquear" para quien bloquea y "Pedir
+ * bloqueo" para los demás. Bloqueado: hasta cuándo, y para quien bloquea "Cambiar duración" y "Desbloquear".
+ * Pedido: quién lo pidió y por qué, y para quien bloquea "Rechazar" y "Aprobar".
  */
 @Composable
 fun TarjetaBloqueo(
     seccion: SeccionBloqueo,
     alerta: Alerta,
-    perfil: Perfil,
+    puedeBloquear: Boolean,
     zona: ZoneId,
     ahora: Instant,
     acciones: AccionesDetalle,
 ) {
     val actual = seccion.actual
-    val administrador = perfil == Perfil.ADMINISTRADOR
     val propuesto = motivoPropuesto(alerta)
     Panel {
         TituloSeccion(stringResource(R.string.bloqueo_titulo))
@@ -78,7 +77,7 @@ fun TarjetaBloqueo(
                 }
                 FilaBloqueo(Icons.Outlined.LockOpen, MaterialTheme.colorScheme.onSurfaceVariant, stringResource(R.string.bloqueo_sin_bloquear), aviso) {
                     if (!seccion.nuncaSeBloquea) {
-                        val texto = stringResource(if (administrador) R.string.bloqueo_bloquear else R.string.bloqueo_pedir)
+                        val texto = stringResource(if (puedeBloquear) R.string.bloqueo_bloquear else R.string.bloqueo_pedir)
                         BotonChico(texto, { acciones.alBloquear(propuesto) })
                     }
                 }
@@ -92,7 +91,7 @@ fun TarjetaBloqueo(
                     detalle = stringResource(R.string.bloqueo_lo_pidio, actual.pedidoPor, cuando),
                 )
                 Text(text = stringResource(R.string.registro_motivo, actual.motivo), style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (administrador) {
+                if (puedeBloquear) {
                     BotonesBloqueo(
                         primero = stringResource(R.string.bloqueo_rechazar) to acciones.alRechazarBloqueo,
                         segundo = stringResource(R.string.bloqueo_aprobar) to acciones.alAprobarBloqueo,
@@ -111,7 +110,7 @@ fun TarjetaBloqueo(
                     }
                 }
                 FilaBloqueo(Icons.Outlined.Lock, MaterialTheme.colorScheme.error, tituloBloqueado(actual, ahora, zona), detalle)
-                if (administrador) {
+                if (puedeBloquear) {
                     BotonesBloqueo(
                         primero = stringResource(R.string.bloqueo_cambiar_duracion) to acciones.alCambiarDuracionBloqueo,
                         segundo = stringResource(R.string.bloqueo_desbloquear) to acciones.alDesbloquear,
@@ -186,19 +185,18 @@ private fun motivoPropuesto(alerta: Alerta): String {
  * "Cancelar" o la acción. Cerrarla es Cancelar.
  */
 @Composable
-fun HojaBloqueo(formulario: FormularioBloqueo, alerta: Alerta, perfil: Perfil, acciones: AccionesDetalle) {
+fun HojaBloqueo(formulario: FormularioBloqueo, alerta: Alerta, puedeBloquear: Boolean, acciones: AccionesDetalle) {
     HojaInferior(alCerrar = acciones.alCerrarBloqueo) {
-        ContenidoHojaBloqueo(formulario, alerta, perfil, acciones)
+        ContenidoHojaBloqueo(formulario, alerta, puedeBloquear, acciones)
     }
 }
 
 /** El contenido de [HojaBloqueo], aparte para dibujarlo en las pruebas sin la ventana de la hoja. */
 @Composable
-fun ColumnScope.ContenidoHojaBloqueo(formulario: FormularioBloqueo, alerta: Alerta, perfil: Perfil, acciones: AccionesDetalle) {
+fun ColumnScope.ContenidoHojaBloqueo(formulario: FormularioBloqueo, alerta: Alerta, puedeBloquear: Boolean, acciones: AccionesDetalle) {
     val equipo = alerta.origen.etiqueta
-    val analista = perfil == Perfil.ANALISTA
     val (titulo, confirmar, ejemplo) = when (formulario.accion) {
-        AccionBloqueo.BLOQUEAR -> if (analista) {
+        AccionBloqueo.BLOQUEAR -> if (!puedeBloquear) {
             Triple(stringResource(R.string.bloqueo_hoja_pedir, equipo), stringResource(R.string.bloqueo_pedir), stringResource(R.string.bloqueo_ejemplo_bloquear))
         } else {
             Triple(stringResource(R.string.bloqueo_hoja_bloquear, equipo), stringResource(R.string.bloqueo_bloquear), stringResource(R.string.bloqueo_ejemplo_bloquear))

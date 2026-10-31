@@ -142,8 +142,8 @@ abstract class RedesDao {
 
     // ---- Personas y registro de cambios (decisiones 39 y 40) ----
 
-    @Query("UPDATE redes SET perfil = :perfil, dispositivoId = :dispositivoId WHERE id = :id")
-    abstract suspend fun actualizarPerfil(id: String, perfil: String, dispositivoId: String?)
+    @Query("UPDATE redes SET perfil = :perfil, dispositivoId = :dispositivoId, permisoDeBloquear = :permisoDeBloquear WHERE id = :id")
+    abstract suspend fun actualizarPerfil(id: String, perfil: String, dispositivoId: String?, permisoDeBloquear: Boolean)
 
     @Query("SELECT * FROM personas WHERE redId = :redId ORDER BY orden")
     abstract fun observarPersonas(redId: String): Flow<List<PersonaEntity>>

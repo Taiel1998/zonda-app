@@ -14,6 +14,7 @@ import ar.edu.uade.zonda.data.remote.CodigoPersonaEntradaDto
 import ar.edu.uade.zonda.data.remote.OperacionHttp
 import ar.edu.uade.zonda.data.remote.PareoEntradaDto
 import ar.edu.uade.zonda.data.remote.PerfilEntradaDto
+import ar.edu.uade.zonda.data.remote.PermisoBloqueoEntradaDto
 import ar.edu.uade.zonda.data.remote.ProveedorDeApi
 import ar.edu.uade.zonda.data.remote.ProveedorDeApiRetrofit
 import ar.edu.uade.zonda.data.remote.VinculoEntradaDto
@@ -124,7 +125,7 @@ class RedesRepositoryImpl(
             dao.insertarComoActiva(red.aEntidad(creadaEn = reloj()))
         } else {
             dao.actualizarDatosDePareo(red.id, red.nombre, red.urlBase, red.accesoEmitido?.toEpochMilli(), red.accesoVence?.toEpochMilli())
-            dao.actualizarPerfil(red.id, red.perfil.name, red.dispositivoId)
+            dao.actualizarPerfil(red.id, red.perfil.name, red.dispositivoId, red.permisoDeBloquear)
             dao.activar(red.id)
         }
         almacen.guardar(claveToken(red.id), token)
@@ -284,6 +285,12 @@ class RedesRepositoryImpl(
     override suspend fun cambiarPerfil(redId: String, personaId: String, perfil: Perfil) {
         val api = apis.para(red(redId))
         conErroresTraducidos(OperacionHttp.PERSONAS) { api.cambiarPerfil(personaId, PerfilEntradaDto(perfil.enLaApi())) }
+        actualizarPersonasYRegistro(redId)
+    }
+
+    override suspend fun cambiarPermisoBloqueo(redId: String, personaId: String, puedeBloquear: Boolean) {
+        val api = apis.para(red(redId))
+        conErroresTraducidos(OperacionHttp.PERSONAS) { api.cambiarPermisoBloqueo(personaId, PermisoBloqueoEntradaDto(puedeBloquear)) }
         actualizarPersonasYRegistro(redId)
     }
 

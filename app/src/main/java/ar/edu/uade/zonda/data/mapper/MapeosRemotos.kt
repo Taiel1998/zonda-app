@@ -209,15 +209,21 @@ fun importanciaDeLaApi(valor: String): Importancia = Importancia.valueOf(valor.u
 
 fun Importancia.enLaApi(): String = name.lowercase()
 
-fun PersonaDto.aDominio(): Persona = Persona(
-    id = id,
-    nombre = nombre,
-    telefono = telefono,
-    perfil = perfilDeLaApi(perfil),
-    ultimoUso = ultimoUso?.aInstante(),
-    vos = vos,
-    navegador = tipo == "navegador",
-)
+fun PersonaDto.aDominio(): Persona {
+    val perfilDeLaPersona = perfilDeLaApi(perfil)
+    return Persona(
+        id = id,
+        nombre = nombre,
+        telefono = telefono,
+        perfil = perfilDeLaPersona,
+        ultimoUso = ultimoUso?.aInstante(),
+        vos = vos,
+        navegador = tipo == "navegador",
+        // El servidor dice si bloquea; un administrador bloquea por su perfil, así que el permiso es del analista.
+        // Un servidor anterior a la 0.9.0 no lo manda: ningún analista bloquea.
+        permisoDeBloquear = puedeBloquear == true && !perfilDeLaPersona.esAdministrador,
+    )
+}
 
 fun CodigoPersonaDto.aDominio(): CodigoPersona = CodigoPersona(
     codigo = codigo,

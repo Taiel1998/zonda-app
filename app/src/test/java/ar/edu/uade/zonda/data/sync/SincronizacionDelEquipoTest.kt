@@ -96,6 +96,19 @@ class SincronizacionDelEquipoTest : PruebaConBase() {
     }
 
     @Test
+    fun `el analista de guardia queda con el permiso de bloquear que dice el servidor`() = runTest {
+        conRed()
+        api.personas[0] = api.personas[0].copy(nombre = "Taiel", perfil = "analista", puedeBloquear = true)
+        api.personas += laura.copy(puedeBloquear = false)
+
+        alertas.sincronizar("red-1")
+
+        assertTrue(redes.observarRedActiva().first()!!.puedeBloquear)
+        assertTrue(persona("d-1").puedeBloquear)
+        assertEquals(false, persona("d-2").puedeBloquear)
+    }
+
+    @Test
     fun `con un servidor anterior sin personas la red queda como antes`() = runTest {
         conRed()
         api.errores["personas"] = errorHttp(404)

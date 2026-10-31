@@ -13,7 +13,7 @@ import ar.edu.uade.zonda.domain.model.Perfil
 /**
  * La gente de la red y el registro de cambios, como los dice el servidor (decisiones 39 y 40). Lo usan
  * la sincronización y las pantallas de Personas después de un cambio. De paso deja al día el perfil de
- * este teléfono y su id en el servidor (la persona marcada como "vos").
+ * este teléfono, si bloquea en el acto y su id en el servidor (la persona marcada como "vos").
  *
  * Un servidor anterior a la API 0.6.0 no tiene estas rutas (404): la red queda como antes, con este
  * teléfono de administrador y sin gente ni registro.
@@ -25,7 +25,7 @@ internal suspend fun traerPersonasYRegistro(redId: String, api: ZondaApi, dao: R
         return
     }
     dao.guardarPersonas(redId, personas.mapIndexed { orden, persona -> persona.aEntidad(redId, orden) })
-    personas.firstOrNull { it.vos }?.let { yo -> dao.actualizarPerfil(redId, yo.perfil.name, yo.id) }
+    personas.firstOrNull { it.vos }?.let { yo -> dao.actualizarPerfil(redId, yo.perfil.name, yo.id, yo.permisoDeBloquear) }
     val registro = conErroresTraducidos(OperacionHttp.SINCRONIZACION) { api.registro(conBloqueos = true) }
         .filter { it.tipoConocido }
         .map { it.aDominio() }

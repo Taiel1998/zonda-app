@@ -38,6 +38,11 @@ sealed interface DetalleUiState {
         val personas: List<Persona> = emptyList(),
         /** El perfil de este teléfono: decide qué botón tiene la tarjeta Responsable. */
         val perfil: Perfil = Perfil.ADMINISTRADOR,
+        /**
+         * Si este teléfono bloquea en el acto (un administrador, o un analista con permiso) o pide
+         * aprobación (decisión 51): decide los botones de la tarjeta Bloqueo y si pide la huella.
+         */
+        val puedeBloquear: Boolean = perfil.esAdministrador,
         /** El id de este teléfono en el servidor: "Laura (vos)", "Me la asigno" y "Soltarla". */
         val miId: String? = null,
         /** Cómo se calculó la severidad con la importancia del equipo destino (decisión 41). */

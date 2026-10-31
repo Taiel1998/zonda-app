@@ -51,8 +51,12 @@ data class PersonasUiState(
 /** Avisos inferiores de un solo uso de Personas. */
 sealed interface AvisoPersonas {
     data class PerfilCambiado(val nombre: String, val perfil: Perfil) : AvisoPersonas
+    data class PermisoBloqueoCambiado(val nombre: String, val puedeBloquear: Boolean) : AvisoPersonas
     data class Quitada(val nombre: String) : AvisoPersonas
     data class Error(val error: ErrorZonda) : AvisoPersonas
+
+    /** El teléfono no tiene huella ni PIN: lo que da poder no sale sin confirmar (decisión 51). */
+    data object SinBloqueoDePantalla : AvisoPersonas
 }
 
 /**
@@ -158,6 +162,12 @@ class PersonasViewModel(
         controles.update { it.copy(aviso = AvisoPersonas.PerfilCambiado(persona.nombreVisible, perfil)) }
     }
 
+    /** "Darle permiso de bloquear" o "Sacarle el permiso de bloquear" a un analista (decisión 51). */
+    fun cambiarPermisoBloqueo(persona: Persona, puedeBloquear: Boolean) = conRedActiva { redId ->
+        gestionar.cambiarPermisoBloqueo(redId, persona.id, puedeBloquear)
+        controles.update { it.copy(aviso = AvisoPersonas.PermisoBloqueoCambiado(persona.nombreVisible, puedeBloquear)) }
+    }
+
     /** "Quitar del equipo", ya confirmado. */
     fun quitar(persona: Persona) = conRedActiva { redId ->
         gestionar.quitar(redId, persona.id)
@@ -166,6 +176,11 @@ class PersonasViewModel(
 
     fun avisoMostrado() {
         controles.update { it.copy(aviso = null) }
+    }
+
+    /** Sin huella ni PIN, sumar, quitar o cambiarle el perfil o el permiso de bloquear a alguien no sale. */
+    fun sinBloqueoDePantalla() {
+        controles.update { it.copy(aviso = AvisoPersonas.SinBloqueoDePantalla) }
     }
 
     private fun conRedActiva(bloque: suspend (redId: String) -> Unit) {

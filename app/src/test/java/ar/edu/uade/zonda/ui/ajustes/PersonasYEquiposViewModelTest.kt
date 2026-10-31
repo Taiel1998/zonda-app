@@ -133,6 +133,35 @@ class PersonasYEquiposViewModelTest {
     }
 
     @Test
+    fun `darle o sacarle el permiso de bloquear a un analista lo avisa`() = runTest {
+        redes.personas.value = listOf(taiel, laura)
+        val viewModel = personas()
+
+        viewModel.cambiarPermisoBloqueo(laura, true)
+        runCurrent()
+
+        assertEquals(AvisoPersonas.PermisoBloqueoCambiado("Laura", true), viewModel.estado.value.aviso)
+        assertTrue(viewModel.estado.value.personas.first { it.id == "d-2" }.puedeBloquear)
+        viewModel.avisoMostrado()
+        viewModel.cambiarPermisoBloqueo(laura, false)
+        runCurrent()
+        assertEquals(listOf("d-2" to true, "d-2" to false), redes.permisosDeBloquear)
+        assertFalse(viewModel.estado.value.personas.first { it.id == "d-2" }.puedeBloquear)
+    }
+
+    @Test
+    fun `sin huella ni PIN lo que da poder no sale y lo avisa`() = runTest {
+        redes.personas.value = listOf(taiel, laura)
+        val viewModel = personas()
+
+        // La pantalla no llama al ViewModel si el teléfono no puede confirmar: solo avisa.
+        viewModel.sinBloqueoDePantalla()
+
+        assertEquals(AvisoPersonas.SinBloqueoDePantalla, viewModel.estado.value.aviso)
+        assertTrue(redes.perfilesCambiados.isEmpty() && redes.permisosDeBloquear.isEmpty() && redes.personasQuitadas.isEmpty())
+    }
+
+    @Test
     fun `la analista ve la lista sin poder tocar a nadie`() = runTest {
         redes.actualizar(Fixtures.red("red-1").copy(perfil = Perfil.ANALISTA, dispositivoId = "d-2"))
         redes.personas.value = listOf(taiel, laura.copy(vos = true))

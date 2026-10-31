@@ -179,6 +179,7 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
     val registro = MutableStateFlow<List<CambioRegistro>>(emptyList())
     val codigosPedidos = mutableListOf<Pair<String, Perfil>>()
     val perfilesCambiados = mutableListOf<Pair<String, Perfil>>()
+    val permisosDeBloquear = mutableListOf<Pair<String, Boolean>>()
     val personasQuitadas = mutableListOf<String>()
     var errorPersonas: ErrorZonda? = null
 
@@ -197,7 +198,14 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
     override suspend fun cambiarPerfil(redId: String, personaId: String, perfil: Perfil) {
         errorPersonas?.let { throw it }
         perfilesCambiados += personaId to perfil
-        personas.value = personas.value.map { if (it.id == personaId) it.copy(perfil = perfil) else it }
+        // Como el servidor: con otro perfil, el permiso de bloquear vuelve a cero.
+        personas.value = personas.value.map { if (it.id == personaId) it.copy(perfil = perfil, permisoDeBloquear = false) else it }
+    }
+
+    override suspend fun cambiarPermisoBloqueo(redId: String, personaId: String, puedeBloquear: Boolean) {
+        errorPersonas?.let { throw it }
+        permisosDeBloquear += personaId to puedeBloquear
+        personas.value = personas.value.map { if (it.id == personaId) it.copy(permisoDeBloquear = puedeBloquear) else it }
     }
 
     override suspend fun quitarPersona(redId: String, personaId: String) {

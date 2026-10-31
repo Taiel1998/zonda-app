@@ -1068,6 +1068,8 @@
     <string name="personas_generar_codigo">Generar código</string>
     <string name="personas_hacer_administrador">Hacer administrador</string>
     <string name="personas_pasar_a_analista">Pasar a analista</string>
+    <string name="personas_dar_permiso_bloquear">Darle permiso de bloquear</string>
+    <string name="personas_sacar_permiso_bloquear">Sacarle el permiso de bloquear</string>
     <string name="personas_quitar">Quitar del equipo</string>
     <string name="personas_quitar_titulo">¿Quitar a %1$s del equipo?</string>
     <string name="personas_quitar_texto">Su teléfono deja de tener acceso a %1$s. Queda en el registro de cambios.</string>
@@ -1080,6 +1082,8 @@
     </plurals>
     <string name="personas_ahora_administrador">%1$s ahora es administrador.</string>
     <string name="personas_ahora_analista">%1$s ahora es analista.</string>
+    <string name="personas_ahora_bloquea">%1$s ya puede bloquear.</string>
+    <string name="personas_ahora_pide_aprobacion">%1$s ahora pide aprobación para bloquear.</string>
     <string name="personas_quitada">%1$s ya no está en el equipo.</string>
     <string name="perfil_administrador">Administrador</string>
     <string name="perfil_analista">Analista</string>
@@ -1206,7 +1210,7 @@
     <string name="bloqueo_pedir">Pedir bloqueo</string>
     <string name="bloqueo_pedido">Pedido de bloqueo · %1$s</string>
     <string name="bloqueo_lo_pidio">Lo pidió %1$s · %2$s</string>
-    <string name="bloqueo_espera_administrador">Espera a un administrador</string>
+    <string name="bloqueo_espera_administrador">Espera a alguien que pueda bloquear</string>
     <string name="bloqueo_rechazar">Rechazar</string>
     <string name="bloqueo_aprobar">Aprobar</string>
     <string name="bloqueo_esperando_firewall">Esperando al firewall</string>
@@ -1248,6 +1252,8 @@
     <string name="registro_bloqueo_cambio">Cambió el bloqueo de %1$s a %2$s</string>
     <string name="registro_bloqueo_cambio_hasta">Dejó %1$s bloqueado hasta desbloquear</string>
     <string name="registro_desbloqueo">Desbloqueó %1$s</string>
+    <string name="registro_permiso_bloqueo">Le dio permiso de bloquear a %1$s</string>
+    <string name="registro_sin_permiso_bloqueo">Le sacó el permiso de bloquear a %1$s</string>
     <string name="bloqueo_se_corta">%1$s no va a llegar a otras áreas ni a internet durante %2$s.</string>
     <string name="bloqueo_se_corta_hasta">%1$s no va a llegar a otras áreas ni a internet hasta que alguien lo desbloquee.</string>
     <string name="bloqueo_vuelve">%1$s vuelve a llegar a otras áreas y a internet.</string>
@@ -1257,5 +1263,13 @@
     <string name="huella_duracion">Bloqueo de %1$s · %2$s</string>
     <string name="huella_desbloquear">Desbloquear %1$s</string>
     <string name="huella_aprobar">Aprobar el bloqueo de %1$s</string>
+    <string name="huella_sumar">Sumar a %1$s como %2$s</string>
+    <string name="huella_hacer_administrador">Hacer administrador a %1$s</string>
+    <string name="huella_pasar_a_analista">Pasar a analista a %1$s</string>
+    <string name="huella_dar_permiso">Darle permiso de bloquear a %1$s</string>
+    <string name="huella_sacar_permiso">Sacarle el permiso de bloquear a %1$s</string>
+    <string name="huella_quitar">Quitar a %1$s del equipo</string>
+    <string name="personas_sin_bloqueo_de_pantalla">Para esto, el teléfono tiene que tener huella o PIN.</string>
     <string name="personas_navegador">Navegador</string>
+    <string name="personas_bloquea">Bloquea</string>
 </resources>
