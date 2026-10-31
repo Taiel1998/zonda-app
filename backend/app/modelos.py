@@ -289,6 +289,9 @@ class CodigoPersona(BaseModel):
     contenido: str
     nombre: str
     perfil: Perfil
+    # El QR ya dibujado, en SVG, para que el tablero web lo muestre sin librerías (decisión 50). La app
+    # lo ignora: arma el suyo con `contenido`. Null si el servidor no tiene la librería qrcode.
+    qrSvg: str | None = None
 
 
 class PerfilEntrada(BaseModel):

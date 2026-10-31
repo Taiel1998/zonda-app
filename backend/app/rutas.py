@@ -71,7 +71,7 @@ from .revisiones import aplicar_revision
 from .semilla import SQL_SEVERIDAD, guardar_equipo, severidad_de
 from .telegram import BotTelegram, ErrorTelegram
 
-VERSION = "0.8.0"
+VERSION = "0.8.1"
 
 router = APIRouter()
 
@@ -470,7 +470,19 @@ def codigo_para_persona(entrada: CodigoPersonaEntrada, request: Request, adminis
     cfg = request.app.state.config
     with _base(request).transaccion() as con:
         codigo, vence = crear_codigo_pareo(con, cfg.minutos_codigo, persona=entrada.nombre, perfil=entrada.perfil, creado_por=administrador["id"])
-    return CodigoPersona(codigo=codigo, vence=iso(vence), contenido=contenido_qr(cfg.url_publica, codigo, vence), nombre=entrada.nombre, perfil=entrada.perfil)
+    contenido = contenido_qr(cfg.url_publica, codigo, vence)
+    return CodigoPersona(codigo=codigo, vence=iso(vence), contenido=contenido, nombre=entrada.nombre, perfil=entrada.perfil, qrSvg=qr_svg(contenido))
+
+
+def qr_svg(contenido: str) -> str | None:
+    """El QR del código como SVG, para el tablero web (decisión 50). None si falta la librería qrcode."""
+    try:
+        import qrcode
+        import qrcode.image.svg
+    except ImportError:
+        return None
+    imagen = qrcode.make(contenido, image_factory=qrcode.image.svg.SvgPathImage, border=2, box_size=10)
+    return imagen.to_string(encoding="unicode")
 
 
 def _persona_activa(con: sqlite3.Connection, persona_id: str) -> sqlite3.Row:
