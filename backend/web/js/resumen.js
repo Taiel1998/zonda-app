@@ -8,6 +8,7 @@
 import { el, icono, numero, vaciar } from './util.js';
 import { $, METODOS, TIPOS, ahoraServidor, e, pedir, tiposDe } from './comun.js';
 import { abrirHoja, avisoInferior } from './hojas.js';
+import { alternarAyuda } from './ayuda.js';
 import { abrirMenu } from './menu.js';
 import { bajarArchivo, pngDe } from './compartir.js';
 import { reportePdf } from './reporte.js';
@@ -156,7 +157,7 @@ function nombreBarra(escala, b, forma) {
   return { uno: `${mayuscula(diaLargo(b.inicio))} ${ddMM(b.inicio)}`, varios: diaLargo(b.inicio), chip: `${diaCorto(b.inicio)} ${ddMM(b.inicio)}`, fecha: `${diaLargo(b.inicio)} ${ddMM(b.inicio)}` }[forma];
 }
 
-/** La severidad de cada tipo en esta red (Ajustes → Severidad por tipo de ataque). */
+/** La severidad de cada tipo en esta red (Ajustes → Severidades). */
 const severidadDe = (tipo) => (e.severidades && e.severidades[tipo]) || SEVERIDAD_DE_FABRICA[tipo];
 const altasConfiguradas = () => new Set(ORDEN.filter((t) => severidadDe(t) === 'alta'));
 const sonLasAltas = () => {
@@ -338,7 +339,10 @@ function cambiarPeriodo(periodo) {
 
 function tarjeta(titulo, ayuda, ...contenido) {
   return el('section', { class: 'res-tarjeta' },
-    el('h3', { class: 'res-titulo' }, titulo, ayuda ? el('button', { type: 'button', class: 'res-ayuda', 'aria-label': ayuda.titulo, title: ayuda.titulo, onclick: ayuda.abrir }, icono('info')) : null),
+    el('h3', { class: 'res-titulo' }, titulo, ayuda ? el('button', {
+      type: 'button', class: 'boton-ayuda', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-controls': 'ayuda-flotante',
+      'aria-label': ayuda.titulo, title: ayuda.titulo, onclick: (ev) => alternarAyuda(ev.currentTarget, ayuda.titulo, ayuda.contenido()),
+    }, '?') : null),
     ...contenido);
 }
 
@@ -414,7 +418,7 @@ function tipos(x) {
       })),
       sin.length ? el('p', { class: 'res-sin-alertas' }, `Sin alertas: ${enumerar(sin.map((t) => minuscula(ETIQUETA_TIPO[t])))}.`) : null);
   };
-  return tarjeta('Por tipo de ataque', { titulo: 'Qué es cada tipo', abrir: hojaTipos },
+  return tarjeta('Por tipo de ataque', { titulo: 'Qué es cada tipo', contenido: ayudaTipos },
     bloque('Lo que detectó la IA', TIPOS_IA), bloque('Lo que la IA no detectó', TIPOS_SIN_IA));
 }
 
@@ -435,7 +439,7 @@ function realesYFalsos(x) {
 }
 
 function precision(x) {
-  return tarjeta('Precisión de cada modelo', { titulo: 'Cómo se lee la precisión', abrir: () => hojaPrecision(x) },
+  return tarjeta('Precisión de cada modelo', { titulo: 'Cómo se lee la precisión', contenido: () => ayudaPrecision(x) },
     botonTocable(`res-cobertura${r.revision === 'revisadas' ? ' elegida' : ''}`, r.revision === 'revisadas', () => elegirRevision('revisadas'),
       el('span', {}, 'Revisadas'), el('strong', {}, `${porciento(x.revisadas, x.total) || '0 %'} · ${x.revisadas} de ${x.total}`)),
     el('div', { class: 'res-filas' }, x.precision.map((p) => botonTocable(`res-precision${r.metodo === p.m.id ? ' elegida' : ''}`, r.metodo === p.m.id, () => elegirModelo(p.m.id),
@@ -448,7 +452,7 @@ function precision(x) {
 function equipos(x) {
   const maximo = Math.max(1, ...x.equipos.map((q) => q.n));
   return tarjeta('Equipos con más alertas', null,
-    el('p', { class: 'res-nota arriba' }, 'Como destino. Solo en el tablero: no va en lo que se comparte.'),
+    el('p', { class: 'res-nota arriba' }, 'Como destino. No se incluye al compartir.'),
     x.equipos.length ? el('div', { class: 'res-filas' }, x.equipos.map((q) => filaDeBarra({ clase: 'equipo', etiqueta: q.nombre, valor: q.n, lleno: (95 * q.n) / maximo })))
       : el('p', { class: 'res-nota' }, 'Sin alertas en el período.'));
 }
@@ -598,24 +602,20 @@ function hojaFiltros() {
   pintar();
 }
 
-function hojaAyuda(titulo, cuerpo) {
-  abrirHoja({ titulo, cuerpo, acciones: [{ texto: 'Entendido', tipo: 'principal', alHacer: (h) => h.cerrar() }] });
-}
-
-function hojaTipos() {
+function ayudaTipos() {
   const fila = (t) => el('p', { class: 'res-ayuda-tipo' }, el('i', { class: 'punto', style: `background:var(--${severidadDe(t)})` }),
     el('span', {}, el('b', {}, `${TIPOS[t]}.`), ` ${DESCRIPCION_TIPO[t]}`));
-  hojaAyuda('Qué es cada tipo', [
-    el('p', { class: 'res-bloque-titulo' }, 'LO QUE DETECTÓ LA IA'),
+  return [
+    el('p', { class: 'res-bloque-titulo' }, 'Lo que detectó la IA'),
     el('p', { class: 'res-ayuda-texto' }, 'La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.'),
     TIPOS_IA.map(fila),
     el('hr', { class: 'res-divisor' }),
-    el('p', { class: 'res-bloque-titulo' }, 'LO QUE LA IA NO DETECTÓ'),
+    el('p', { class: 'res-bloque-titulo' }, 'Lo que la IA no detectó'),
     el('p', { class: 'res-ayuda-texto' }, 'Lo marcaron los otros dos detectores de Zonda.'),
     TIPOS_SIN_IA.map(fila),
     el('hr', { class: 'res-divisor' }),
-    el('p', { class: 'res-ayuda-texto' }, 'El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque.'),
-  ]);
+    el('p', { class: 'res-ayuda-texto' }, 'El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidades.'),
+  ];
 }
 
 /** Lo que dice el recuadro azul de la ayuda de la precisión: la primera regla que corresponde. */
@@ -645,7 +645,7 @@ function recuadroPrecision(x) {
   }[r.revision];
 }
 
-function hojaPrecision(x) {
+function ayudaPrecision(x) {
   const ejemplo = x.precision.find((p) => p.total >= 2);
   const frase = !ejemplo ? '' : ` ${{
     ia: `Por ejemplo, la IA tiene ${ejemplo.parte} de ${ejemplo.total}: marcó ${ejemplo.total} alertas que ya revisaste y ${ejemplo.parte} ${plural(ejemplo.parte, 'era un ataque', 'eran ataques')}.`,
@@ -653,14 +653,14 @@ function hojaPrecision(x) {
     reglas: `Por ejemplo, las reglas tienen ${ejemplo.parte} de ${ejemplo.total}: marcaron ${ejemplo.total} alertas que ya revisaste y ${ejemplo.parte} ${plural(ejemplo.parte, 'era un ataque', 'eran ataques')}.`,
   }[ejemplo.m.id]}`;
   const bloque = (titulo, texto) => el('div', { class: 'res-ayuda-bloque' }, el('h4', {}, titulo), el('p', {}, texto));
-  hojaAyuda('Cómo se lee la precisión', [
+  return [
     bloque('Precisión', `De las alertas que marcó un modelo y ya revisaste, cuántas eran ataques reales.${frase}`),
     bloque('Cobertura de revisión', 'Cuántas alertas del período ya revisaste.'),
     bloque('Los tres modelos', 'La IA compara el tráfico con lo normal de tu red. Los umbrales cuentan conexiones a un mismo servicio en 60 segundos. Las reglas miran si ese servicio está autorizado.'),
     bloque('¿Por qué 30 revisiones?', 'Con pocas, un par de casos mueven mucho el porcentaje. Las barras claras tienen menos de 30 revisiones: todavía no se pueden comparar.'),
     el('p', { class: 'res-recuadro' }, recuadroPrecision(x)),
     el('p', { class: 'res-ayuda-texto' }, 'Se calcula con las alertas que tiene el servidor de esta red.'),
-  ]);
+  ];
 }
 
 // ---- Compartir: la imagen de la app, siempre en claro, y el PDF, que es el reporte A4 de reporte.js ----

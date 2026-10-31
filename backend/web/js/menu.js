@@ -57,6 +57,9 @@ export function configurarMenu() {
       ev.preventDefault();
       const siguiente = ev.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
       items[siguiente].focus();
+    } else if (ev.key === 'Home' || ev.key === 'End') {
+      ev.preventDefault();
+      items[ev.key === 'Home' ? 0 : items.length - 1].focus();
     } else if (ev.key === 'Tab') {
       cerrarMenu();
     }

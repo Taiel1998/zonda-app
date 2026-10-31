@@ -16,7 +16,17 @@ document.addEventListener('keydown', (evento) => {
  * Abre una hoja. `acciones`: [{ texto, tipo: 'principal' | 'secundario' | 'peligro' | 'texto', alHacer, deshabilitado }].
  * Devuelve { cerrar, pintar }: `pintar` cambia el contenido (para las hojas de dos pasos).
  */
+/** Detrás de una hoja o del detalle no se puede llegar con Tab: el resto queda inerte (aria-modal no alcanza). */
+export function actualizarFondo() {
+  const velos = [...document.querySelectorAll('#hojas > .hoja-velo')];
+  velos.forEach((v, i) => { v.inert = i < velos.length - 1; });
+  const detalle = document.getElementById('detalle');
+  detalle.inert = velos.length > 0;
+  document.getElementById('tablero').inert = velos.length > 0 || !detalle.hidden;
+}
+
 export function abrirHoja(contenido) {
+  const abridor = document.activeElement;
   const velo = el('div', { class: 'hoja-velo' });
   const caja = el('div', { class: 'hoja', role: 'dialog', 'aria-modal': 'true', tabindex: '-1' });
   velo.append(caja);
@@ -28,6 +38,8 @@ export function abrirHoja(contenido) {
       hoja.cerrado = true;
       velo.remove();
       abiertas.splice(abiertas.indexOf(hoja), 1);
+      actualizarFondo();
+      if (abridor && abridor.isConnected && !abridor.closest('[inert]')) abridor.focus({ preventScroll: true });
       if (alCerrar) alCerrar(motivo);
     },
     pintar(nuevo) {
@@ -55,6 +67,7 @@ export function abrirHoja(contenido) {
   velo.addEventListener('mousedown', (evento) => { if (evento.target === velo) hoja.cerrar('afuera'); });
   document.getElementById('hojas').append(velo);
   abiertas.push(hoja);
+  actualizarFondo();
   hoja.pintar(contenido);
   return hoja;
 }

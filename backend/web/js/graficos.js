@@ -75,9 +75,10 @@ function ejeTiempo(c, desde, hasta, conMarcas = false) {
       margin: conMarcas ? 17 : 8,
       // Con segundos en los rangos cortos; en los de más de medio día, la fecha en cada medianoche.
       formatter: (valor) => {
-        if (largo > 2 * 86400e3) return dia(valor);
         const fecha = new Date(valor);
-        if (largo > 12 * 3600e3 && fecha.getHours() === 0 && fecha.getMinutes() === 0) return dia(valor);
+        const medianoche = fecha.getHours() === 0 && fecha.getMinutes() === 0;
+        if (largo > 3 * 86400e3) return medianoche ? dia(valor) : '';
+        if (largo > 12 * 3600e3 && medianoche) return dia(valor);
         return largo <= 10 * 60e3 ? horaConSegundos(valor) : hora(valor);
       },
     },

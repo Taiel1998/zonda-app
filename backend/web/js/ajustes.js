@@ -223,7 +223,7 @@ function seccionGeneral() {
       dato('Red', `${red} · ${location.host}`),
       dato('Este navegador', `${yo ? nombrePersona(yo) : 'Tablero web'} · ${PERFILES[e.perfil] || ''}${vence}`,
         el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => alSalir() }, 'Salir')),
-      dato('Servidor de alertas', `Versión ${e.salud ? e.salud.version : '–'} · HTTPS con el certificado de la red`),
+      dato('Servidor de alertas', `Versión ${e.salud ? e.salud.version : '–'} · ${location.protocol === 'https:' ? 'HTTPS con el certificado de la red' : 'sin cifrar (HTTP)'}`),
       dato('Tema', null, selector({
         etiqueta: 'Tema', opciones: { claro: 'Claro', oscuro: 'Oscuro' }, valor: tema, foco: 'tema',
         alCambiar: (valor) => { if (valor !== tema) alCambiarTema(); pintarAjustes(); },
@@ -256,7 +256,7 @@ function seccionPersonas() {
       el('td', { class: 'accion' }, editable ? el('button', { type: 'button', class: 'boton-texto peligro', onclick: () => quitarPersona(p) }, 'Quitar') : null));
   });
   return [
-    cabecera('Personas', 'Quiénes usan Zonda en esta red. Los administradores cambian la configuración y suman gente.',
+    cabecera('Personas', 'Quiénes usan Zonda en esta red. Los administradores cambian la configuración y agregan personas.',
       admin ? el('button', { type: 'button', class: 'boton-principal boton-chico', onclick: hojaAgregarPersona }, 'Agregar persona') : null),
     tabla(['Nombre', 'Dispositivo', 'Perfil', 'Usó Zonda', ''], filas),
     admin ? barraCambios('personas') : notaSoloAdmin(),

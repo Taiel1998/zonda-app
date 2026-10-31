@@ -112,7 +112,7 @@ async function entrar(evento) {
     error.hidden = false;
     error.textContent = falla.estado === 400 ? 'Ese código no existe. Revisá las letras o pedí uno nuevo.'
       : falla.estado === 410 ? 'Ese código venció o ya se usó. Pedí uno nuevo.'
-        : falla.estado === 0 ? 'El servidor no contesta. Revisá que esté andando.'
+        : falla.estado === 0 ? 'El servidor no contesta. Revisá que la computadora del servidor esté encendida y que estés en la red de la empresa.'
           : (falla.message || 'No se pudo entrar.');
   } finally {
     boton.disabled = false;
@@ -196,6 +196,11 @@ function pintarEnVivo() {
   indicador.dataset.estado = e.servidorCaido || segundos > 60 ? 'caido' : segundos > 15 ? 'lento' : 'ok';
   texto.textContent = e.servidorCaido ? `Sin respuesta desde las ${horaConSegundos(e.ultimaRespuesta)}`
     : segundos <= 2 ? 'En vivo · recién' : `En vivo · hace ${segundos} s`;
+  // Con la actualización apagada los gráficos quedan quietos: la cabecera no dice «En vivo», como en Grafana.
+  if (!e.servidorCaido && segundos <= 60 && cadaCuanto() === Infinity) {
+    indicador.dataset.estado = 'pausa';
+    texto.textContent = 'Actualización apagada';
+  }
   const banda = $('banda-error');
   banda.hidden = !(e.servidorCaido || segundos > 60);
   banda.textContent = 'El servidor de alertas no contesta. El tablero muestra lo último que recibió y sigue intentando.';
@@ -207,7 +212,11 @@ function cambiarVista(vista, { mantenerPanel = false } = {}) {
   if (!mantenerPanel) salirDeGrande();
   cerrarInspector();
   e.vista = vista;
-  for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.setAttribute('aria-selected', String(boton.dataset.vista === vista));
+  for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) {
+    if (boton.dataset.vista === vista) boton.setAttribute('aria-current', 'page');
+    else boton.removeAttribute('aria-current');
+  }
+  document.title = `${{ vivo: 'En vivo', alertas: 'Alertas', resumen: 'Resumen', ajustes: 'Ajustes' }[vista]} · Zonda`;
   for (const nombre of ['vivo', 'alertas', 'resumen', 'ajustes']) $(`vista-${nombre}`).hidden = nombre !== vista;
   if (vista === 'alertas') pintarAlertas();
   if (vista === 'resumen') pintarResumen();
@@ -329,6 +338,7 @@ async function cargarAreas() {
 async function arrancarTablero() {
   $('ingreso').hidden = true;
   $('tablero').hidden = false;
+  document.title = 'En vivo · Zonda';
   e.perfil = e.acceso.perfil;
   e.miId = e.acceso.dispositivoId || null;
   vaciar($('red-actual'), e.acceso.red ? e.acceso.red.nombre : 'Red', el('small', {}, `${e.acceso.persona || 'Tablero web'} · ${e.perfil === 'administrador' ? 'administrador' : 'analista'}`));
@@ -372,6 +382,7 @@ function iniciar() {
   $('boton-salir').addEventListener('click', salir);
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.addEventListener('click', () => cambiarVista(boton.dataset.vista));
   $('ver-mas').addEventListener('click', verMas);
+  $('ver-todas-alertas').addEventListener('click', () => cambiarVista('alertas'));
   $('velo').addEventListener('click', cerrarDetalle);
   document.addEventListener('keydown', alApretarTecla);
   document.addEventListener('visibilitychange', alCambiarVisibilidad);

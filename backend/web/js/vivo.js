@@ -82,7 +82,7 @@ export function pintarEstado() {
     const semaforo = $(`semaforo-${id}`);
     if (!semaforo) continue;
     semaforo.dataset.estado = luz;
-    semaforo.setAttribute('aria-label', NOMBRE_ESTADO[pieza.estado] || 'Sin datos');
+    semaforo.setAttribute('aria-label', `${$(`pieza-${id}`).querySelector('.pieza-titulo').textContent}: ${(NOMBRE_ESTADO[pieza.estado] || 'Sin datos').toLowerCase()}`);
     $(`punto-${id}`).style.background = COLOR_PUNTO[luz];
     $(`dato-${id}`).textContent = pieza.dato;
   }
@@ -515,14 +515,20 @@ export function pintarLeyendas() {
 export function pintarUltimas() {
   const lista = [...e.alertas.values()].sort((a, b) => Date.parse(b.inicio) - Date.parse(a.inicio)).slice(0, 8);
   const ahora = ahoraServidor();
+  // Se arma cada 30 s: si el foco estaba en una alerta, vuelve a la misma.
+  const enfocada = $('ultimas-alertas').contains(document.activeElement) ? document.activeElement.dataset.id : null;
   vaciar($('ultimas-alertas'), lista.length ? lista.map((a) => el('li', {},
-    el('button', { type: 'button', class: e.nuevas.has(a.id) ? 'nueva' : null, onclick: () => abrirDetalle(a.id) },
+    el('button', { type: 'button', class: e.nuevas.has(a.id) ? 'nueva' : null, dataset: { id: a.id }, onclick: () => abrirDetalle(a.id) },
       chipSeveridad(a.severidad),
       el('span', { class: 'feed-tipo' }, tipoCorto(a)),
       el('span', { class: 'feed-par' }, `${nombreEquipo(a, 'origen')} → ${nombreEquipo(a, 'destino')} · ${(a.servicio || '').toUpperCase()}`),
       el('span', { class: 'feed-hora', title: fechaHora(Date.parse(a.inicio)) }, haceCuanto(Date.parse(a.inicio), ahora)),
       el('span', { class: 'feed-estado' }, chipEstado(a.estadoRevision)))))
     : el('li', { class: 'nota' }, 'Todavía no hay alertas.'));
+  if (enfocada) {
+    const boton = $('ultimas-alertas').querySelector(`[data-id="${CSS.escape(enfocada)}"]`);
+    if (boton) boton.focus({ preventScroll: true });
+  }
 }
 
 let relojAviso = null;
