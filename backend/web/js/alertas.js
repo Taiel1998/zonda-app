@@ -9,7 +9,7 @@ import {
   chipEstado, chipSeveridad, comentarioPropuesto, e, esAdmin, guardarAlerta, mandar, metodosDe, nombreEquipo, nombrePersona,
   pedir, responsableId, servicioCorto, servicioDe, tipoCorto,
 } from './comun.js';
-import { abrirHoja, avisoInferior } from './hojas.js';
+import { abrirHoja, actualizarFondo, avisoInferior } from './hojas.js';
 import { bajarArchivo, csvDe, nombreConFecha } from './compartir.js';
 import { alternarAyuda, cerrarAyuda } from './ayuda.js';
 import { origenBloqueado, seccionBloqueo } from './bloqueo.js';
@@ -121,14 +121,15 @@ function textoResponsable() {
   return 'Responsable';
 }
 
+/** Cada chip abre la hoja de su filtro: el lector lo anuncia como algo que abre un diálogo, no como un interruptor. */
 function chip(texto, activo, alTocar) {
-  return el('button', { type: 'button', class: 'chip-filtro', 'aria-pressed': String(Boolean(activo)), onclick: alTocar }, texto);
+  return el('button', { type: 'button', class: `chip-filtro${activo ? ' activo' : ''}`, 'aria-haspopup': 'dialog', onclick: alTocar }, texto);
 }
 
 export function pintarAlertas() {
   const severidades = f.severidades.size ? ORDEN_SEVERIDAD.filter((s) => f.severidades.has(s)).map((s) => NIVEL[s]).join(', ') : 'Severidad';
   vaciar($('filtros-alertas'),
-    chip(FILTRO_ESTADO[f.estado], true, hojaEstado),
+    chip(f.estado === 'todas' ? 'Estado' : FILTRO_ESTADO[f.estado], f.estado !== 'todas', hojaEstado),
     chip(severidades, f.severidades.size, hojaSeveridad),
     chip(cantidadMasFiltros() ? `Más filtros (${cantidadMasFiltros()})` : 'Más filtros', cantidadMasFiltros(), hojaMasFiltros),
     chip(textoResponsable(), f.responsable !== 'todas', hojaResponsableFiltro),
@@ -139,25 +140,42 @@ export function pintarAlertas() {
   const sinRevisar = lista.filter((a) => a.estadoRevision === 'sin_revisar').length;
   vaciar($('resumen-filtros-alertas'), el('strong', {}, `${numero(lista.length)} ${lista.length === 1 ? 'alerta' : 'alertas'}`), ` ${fraseRango(f.rango)} · ${numero(sinRevisar)} sin revisar · las más nuevas primero`);
   const cuerpo = $('tabla-alertas').tBodies[0];
+  // Si el foco estaba en una fila, vuelve a la misma alerta después de armar la tabla de nuevo.
+  const enfocada = cuerpo.contains(document.activeElement) ? document.activeElement.closest('tr[data-id]') : null;
   vaciar(cuerpo, lista.slice(0, limite).map((a) => {
     const quien = responsableId(a);
-    return el('tr', { class: 'clic', tabindex: '0', onclick: () => abrirDetalle(a.id), onkeydown: (ev) => { if (ev.key === 'Enter') abrirDetalle(a.id); } },
+    // El estado va al lado de la severidad, así nunca queda cortado; el puerto, en el detalle.
+    return el('tr', {
+      class: 'clic', tabindex: '0', dataset: { id: a.id }, onclick: () => abrirDetalle(a.id),
+      onkeydown: (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrirDetalle(a.id); } },
+    },
       el('td', {}, chipSeveridad(a.severidad)),
+      el('td', {}, chipEstado(a.estadoRevision)),
       el('td', {}, el('strong', {}, tipoCorto(a))),
       el('td', { class: 'par' }, `${nombreEquipo(a, 'origen')} → ${nombreEquipo(a, 'destino')}`),
-      el('td', { class: 'secundario', 'data-etiqueta': 'Servicio' }, servicioDe(a)),
+      el('td', { class: 'secundario', 'data-etiqueta': 'Servicio' }, servicioCorto(a.servicio)),
       el('td', { class: 'secundario', 'data-etiqueta': 'Empezó' }, fechaHora(Date.parse(a.inicio), ahoraServidor())),
       el('td', { class: 'num', 'data-etiqueta': 'Conexiones' }, numero(a.cantidadFlujos)),
-      el('td', {}, el('span', { class: 'metodos' }, METODOS.map((m) => el('span', { class: `metodo${a.veredictos[m.id] ? ' si' : ''}`, title: `${m.nombre}: ${a.veredictos[m.id] ? 'anómalo' : 'normal'}` }, m.corto)))),
-      el('td', {}, quien ? chipResponsable(a.asignacion.responsable) : el('span', { class: 'secundario' }, 'Sin asignar')),
-      el('td', {}, chipEstado(a.estadoRevision)));
+      el('td', {}, el('span', { class: 'metodos', 'aria-label': textoMetodos(a) }, METODOS.map((m) => el('span', { class: `metodo${a.veredictos[m.id] ? ' si' : ''}`, title: `${m.nombre}: ${a.veredictos[m.id] ? 'anómalo' : 'normal'}`, 'aria-hidden': 'true' }, m.corto)))),
+      el('td', {}, quien ? chipResponsable(a.asignacion.responsable) : el('span', { class: 'secundario' }, 'Sin asignar')));
   }));
+  if (enfocada) {
+    const fila = cuerpo.querySelector(`tr[data-id="${CSS.escape(enfocada.dataset.id)}"]`);
+    if (fila) fila.focus({ preventScroll: true });
+  }
   $('vacio-alertas').hidden = lista.length > 0;
   $('vacio-alertas').textContent = 'Ninguna alerta con estos filtros. Cambiá o limpiá los filtros.';
   $('ver-mas').hidden = lista.length <= limite;
 }
 
 export function verMas() { limite += 50; pintarAlertas(); }
+
+/** Lo que el lector de pantalla dice de los métodos: cuáles marcaron, no solo el color. */
+function textoMetodos(a) {
+  const marcaron = METODOS.filter((m) => a.veredictos[m.id]).map((m) => m.nombre.toLowerCase());
+  if (!marcaron.length) return 'Ningún método marcó';
+  return `Marcaron: ${marcaron.length === 1 ? marcaron[0] : `${marcaron.slice(0, -1).join(', ')} y ${marcaron[marcaron.length - 1]}`}`;
+}
 
 /** Toda la lista con los filtros y el horario de arriba, no solo lo que se ve; los métodos y la revisión, en palabras. */
 function bajarCsvAlertas() {
@@ -317,18 +335,29 @@ function lecturas(v) {
 /** El único «?» del detalle, con los textos de la app: las conexiones y los tres métodos, en un globito. */
 function alternarAyudaDetalle(ev) {
   alternarAyuda(ev.currentTarget, 'Qué significa cada dato', [
-    el('p', {}, el('b', {}, 'Conexiones en 60 s:'), ' cuántas veces el origen se conectó a este servicio en un minuto.'),
     el('p', {}, el('b', {}, 'Conexiones en total:'), ' todas las de estos dos equipos, hasta que pasan 15 minutos sin ninguna.'),
+    el('p', {}, el('b', {}, 'Conexiones en 60 s:'), ' cuántas veces el origen se conectó a este servicio en un minuto.'),
     el('p', {}, el('b', {}, 'Modelo de IA:'), ' aprendió el tráfico normal de tu red y marca lo que se aleja de eso.'),
-    el('p', {}, el('b', {}, 'Umbrales:'), ' marcan si hay más conexiones a un servicio por minuto que en un día normal.'),
-    el('p', {}, el('b', {}, 'Reglas:'), ' marcan los servicios que no están en la lista de autorizados.'),
+    el('p', {}, el('b', {}, 'Umbrales estadísticos:'), ' marcan si hay más conexiones a un servicio por minuto que en un día normal.'),
+    el('p', {}, el('b', {}, 'Reglas estáticas:'), ' marcan los servicios que no están en la lista de autorizados.'),
     el('p', {}, 'Alcanza con que uno marque para que haya alerta.'),
   ]);
 }
 
+/** «Detectada por IA y umbrales», como la app (detalle_detectada_por). */
+function detectadaPor(a) {
+  const nombres = { ia: 'IA', umbrales: 'umbrales', reglas: 'reglas' };
+  const marcaron = METODOS.filter((m) => a.veredictos[m.id]).map((m) => nombres[m.id]);
+  return marcaron.length < 2 ? marcaron.join('') || 'ningún método' : `${marcaron.slice(0, -1).join(', ')} y ${marcaron[marcaron.length - 1]}`;
+}
+
+// Lo que tenía el foco al abrir el detalle: al cerrarlo, el foco vuelve ahí (o a la fila de la misma alerta).
+let abridorDetalle = null;
+
 export function abrirDetalle(id, enfocar = true) {
   const a = e.alertas.get(id);
   if (!a) return;
+  if (enfocar && $('detalle').hidden) abridorDetalle = document.activeElement;
   // El «?» se vuelve a armar: su globito quedaría suelto.
   cerrarAyuda();
   e.detalleAbierto = id;
@@ -357,7 +386,7 @@ export function abrirDetalle(id, enfocar = true) {
             type: 'button', class: 'boton-ayuda', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-controls': 'ayuda-flotante',
             'aria-label': 'Qué significa cada dato', title: 'Qué significa cada dato', onclick: alternarAyudaDetalle,
           }, '?')),
-        el('p', {}, a.tipoAtaque && a.confianzaTipo != null ? `Lo tipificó la segunda etapa con una confianza del ${numero(a.confianzaTipo * 100, 0)} %.` : 'Sin tipo de la segunda etapa: lo vieron las reglas o los umbrales.')),
+        el('p', {}, `Detectada por ${detectadaPor(a)}.`)),
       el('button', { type: 'button', class: 'boton-icono', 'aria-label': 'Cerrar el detalle', onclick: cerrarDetalle }, icono('cruz'))),
     el('div', { class: 'recorrido' },
       el('div', {}, el('strong', {}, nombreEquipo(a, 'origen')), el('span', {}, a.origenIp)),
@@ -398,6 +427,7 @@ export function abrirDetalle(id, enfocar = true) {
         : el('p', { class: 'nota' }, 'Todavía nadie la revisó.')));
   $('velo').hidden = false;
   panel.hidden = false;
+  actualizarFondo();
   if (enfocar) panel.querySelector('.boton-icono').focus();
 }
 
@@ -427,9 +457,15 @@ function lineasHistorial(a) {
 
 export function cerrarDetalle() {
   cerrarAyuda();
+  const id = e.detalleAbierto;
   e.detalleAbierto = null;
   $('detalle').hidden = true;
   $('velo').hidden = true;
+  actualizarFondo();
+  const volver = abridorDetalle && abridorDetalle.isConnected ? abridorDetalle
+    : id ? document.querySelector(`#tablero [data-id="${CSS.escape(id)}"]`) : null;
+  abridorDetalle = null;
+  if (volver) volver.focus({ preventScroll: true });
 }
 
 // ---- Revisar: dos pasos, Deshacer y el conflicto ----
@@ -546,7 +582,7 @@ function hojaAsignar(a) {
   const valores = Object.fromEntries(personas.map((p) => [p.id, `${nombrePersona(p)}${p.vos ? ' (vos)' : ''}`]));
   abrirHoja({
     titulo: 'Asignar a',
-    subtitulo: 'Le llega un aviso por Telegram y la ve en Estado.',
+    subtitulo: 'Le llega un aviso por Telegram y la ve en la app, en Estado.',
     cuerpo: [el('div', { class: 'opciones' }, opcionUnica(valores, () => elegido, (id) => { elegido = id; }))],
     acciones: [
       responsableId(a) ? { texto: 'Sacar la asignación', tipo: 'texto', alHacer: (h) => { h.cerrar(); asignar(a, null); } } : null,

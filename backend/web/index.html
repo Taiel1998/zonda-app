@@ -24,7 +24,7 @@
     <button class="boton-principal" id="boton-entrar" type="submit">Entrar</button>
     <div class="ingreso-error" id="ingreso-error" role="alert" hidden></div>
     <div class="ingreso-red" id="ingreso-red"></div>
-    <div class="ingreso-ayuda">El código lo genera un administrador: desde la app, en Ajustes → Personas → Agregar persona, o en la notebook del servidor con <code>zonda pair</code>. Vence a los 10 minutos.</div>
+    <div class="ingreso-ayuda">El código lo genera un administrador: desde la app, en Ajustes → Personas → Agregar persona, o en la computadora del servidor con <code>zonda pair</code>. Vence a los 10 minutos.</div>
   </form>
 </main>
 
@@ -34,11 +34,11 @@
       <img src="img/logo_zonda.png" alt="">
       <span class="marca-nombre">Zonda</span>
     </a>
-    <nav class="pestanias" role="tablist" aria-label="Vistas del tablero">
-      <button class="pestania" role="tab" id="pestania-vivo" data-vista="vivo" aria-selected="true" aria-controls="vista-vivo">En vivo</button>
-      <button class="pestania" role="tab" id="pestania-alertas" data-vista="alertas" aria-selected="false" aria-controls="vista-alertas">Alertas</button>
-      <button class="pestania" role="tab" id="pestania-resumen" data-vista="resumen" aria-selected="false" aria-controls="vista-resumen">Resumen</button>
-      <button class="pestania" role="tab" id="pestania-ajustes" data-vista="ajustes" aria-selected="false" aria-controls="vista-ajustes">Ajustes</button>
+    <nav class="pestanias" aria-label="Vistas del tablero">
+      <button class="pestania" type="button" id="pestania-vivo" data-vista="vivo" aria-current="page">En vivo</button>
+      <button class="pestania" type="button" id="pestania-alertas" data-vista="alertas">Alertas</button>
+      <button class="pestania" type="button" id="pestania-resumen" data-vista="resumen">Resumen</button>
+      <button class="pestania" type="button" id="pestania-ajustes" data-vista="ajustes">Ajustes</button>
     </nav>
     <div class="cabecera-derecha">
       <span class="en-vivo" id="en-vivo" data-estado="ok"><span class="punto" aria-hidden="true"></span><span id="en-vivo-texto">Conectando…</span></span>
@@ -53,7 +53,8 @@
   <main class="contenido">
     <div class="banda-error" id="banda-error" role="status" hidden></div>
 
-    <section id="vista-vivo" role="tabpanel" aria-labelledby="pestania-vivo">
+    <section id="vista-vivo" aria-labelledby="titulo-vista-vivo">
+      <h1 class="oculto-visual" id="titulo-vista-vivo">En vivo</h1>
       <div class="filtros barra-horario barra-fija">
         <div class="barra-tiempo" id="barra-tiempo" role="toolbar" aria-label="Horario">
           <div class="grupo-botones">
@@ -149,7 +150,7 @@
 
           <article class="tarjeta c-2" aria-labelledby="titulo-ahora">
             <p class="kpi-etiqueta" id="titulo-ahora">Conexiones por segundo</p>
-            <div class="kpi-heroe" id="conexiones-ahora">–</div>
+            <div class="kpi-valor" id="conexiones-ahora">–</div>
             <div class="kpi-detalle" id="conexiones-ahora-detalle">Promedio de los últimos 30 segundos</div>
           </article>
 
@@ -258,6 +259,7 @@
                 <h3 class="tarjeta-titulo">Últimas alertas</h3>
                 <p class="tarjeta-sub">Las más nuevas primero. Tocá una para ver el detalle.</p>
               </div>
+              <div class="tarjeta-acciones"><button class="boton-texto" type="button" id="ver-todas-alertas">Ver todas</button></div>
             </div>
             <ul class="feed" id="ultimas-alertas"></ul>
           </article>
@@ -265,7 +267,8 @@
       </div>
     </section>
 
-    <section id="vista-alertas" role="tabpanel" aria-labelledby="pestania-alertas" hidden>
+    <section id="vista-alertas" aria-labelledby="titulo-vista-alertas" hidden>
+      <h1 class="oculto-visual" id="titulo-vista-alertas">Alertas</h1>
       <div class="filtros barra-filtros barra-fija">
         <div class="filtros-chips" id="filtros-alertas"></div>
         <div class="barra-tiempo" id="barra-tiempo-alertas" role="toolbar" aria-label="Horario de las alertas">
@@ -284,7 +287,7 @@
       <article class="tarjeta">
         <div class="tabla-envoltura">
           <table class="tabla" id="tabla-alertas">
-            <thead><tr><th>Severidad</th><th>Tipo</th><th>Origen → destino</th><th>Servicio</th><th>Empezó</th><th class="num">Conexiones</th><th>Métodos</th><th>Responsable</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Severidad</th><th>Estado</th><th>Tipo</th><th>Origen → destino</th><th>Servicio</th><th>Empezó</th><th class="num">Conexiones</th><th>Métodos</th><th>Responsable</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -293,23 +296,25 @@
       </article>
     </section>
 
-    <section id="vista-resumen" role="tabpanel" aria-labelledby="pestania-resumen" hidden>
+    <section id="vista-resumen" aria-labelledby="titulo-vista-resumen" hidden>
+      <h1 class="oculto-visual" id="titulo-vista-resumen">Resumen</h1>
       <!-- Como el Resumen de la app (resumen.js): el período y los filtros, la línea de la red y las piezas. -->
       <div class="res-barra-superior barra-fija" id="resumen-barra" role="toolbar" aria-label="Período, filtros y compartir"></div>
       <p class="res-linea" id="resumen-linea"></p>
       <div id="resumen-cuerpo"></div>
     </section>
 
-    <section id="vista-ajustes" role="tabpanel" aria-labelledby="pestania-ajustes" hidden>
+    <section id="vista-ajustes" aria-labelledby="titulo-vista-ajustes" hidden>
+      <h1 class="oculto-visual" id="titulo-vista-ajustes">Ajustes</h1>
       <div class="ajustes" id="ajustes"></div>
     </section>
   </main>
 
-  <nav class="barra-inferior" id="barra-inferior" role="tablist" aria-label="Vistas del tablero">
-    <button type="button" role="tab" data-vista="vivo" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>En vivo</button>
-    <button type="button" role="tab" data-vista="alertas" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alertas</button>
-    <button type="button" role="tab" data-vista="resumen" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>Resumen</button>
-    <button type="button" role="tab" data-vista="ajustes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
+  <nav class="barra-inferior" id="barra-inferior" aria-label="Vistas del tablero">
+    <button type="button" data-vista="vivo" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>En vivo</button>
+    <button type="button" data-vista="alertas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alertas</button>
+    <button type="button" data-vista="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>Resumen</button>
+    <button type="button" data-vista="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
   </nav>
 </div>
 
@@ -318,7 +323,7 @@
 <div class="velo" id="velo-inspector" hidden></div>
 <aside class="inspector" id="inspector" role="dialog" aria-modal="true" aria-labelledby="inspector-titulo" tabindex="-1" hidden></aside>
 <div class="menu-flotante" id="menu-flotante" role="menu" hidden></div>
-<div class="ayuda-flotante" id="ayuda-flotante" role="dialog" hidden></div>
+<div class="ayuda-flotante" id="ayuda-flotante" role="dialog" tabindex="-1" hidden></div>
 <div class="globito-flotante" id="globito-marca" role="tooltip" hidden></div>
 <div class="aviso" id="aviso" role="status" hidden></div>
 <div id="hojas"></div>

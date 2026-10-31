@@ -42,6 +42,8 @@ export function alternarAyuda(boton, titulo, parrafos) {
   colocar(boton.getBoundingClientRect());
   boton.setAttribute('aria-expanded', 'true');
   abierta = { boton };
+  // El lector de pantalla lee el globito al recibir el foco; Esc o Tab lo cierran y el foco vuelve al «?».
+  g.focus({ preventScroll: true });
 }
 
 export function configurarAyuda() {
@@ -49,5 +51,6 @@ export function configurarAyuda() {
     if (abierta && !globo().contains(ev.target) && !abierta.boton.contains(ev.target)) cerrarAyuda();
   });
   window.addEventListener('resize', () => cerrarAyuda());
-  window.addEventListener('scroll', () => cerrarAyuda(), { passive: true, capture: true });
+  window.addEventListener('scroll', (ev) => { if (!(ev.target instanceof Node && globo().contains(ev.target))) cerrarAyuda(); }, { passive: true, capture: true });
+  globo().addEventListener('keydown', (ev) => { if (ev.key === 'Tab') { ev.preventDefault(); cerrarAyuda(true); } });
 }
