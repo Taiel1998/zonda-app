@@ -102,6 +102,8 @@ fun ResumenScreen(
     val alcance = rememberCoroutineScope()
     val capa = rememberGraphicsLayer()
     var paraCompartir by remember { mutableStateOf<ResumenParaCompartir?>(null) }
+    // Hay dos botones de compartir: un segundo toque mientras se arman los archivos los borraba a medio escribir.
+    var preparando by remember { mutableStateOf(false) }
     // La app elegida para compartir: el aviso "Resumen enviado por …" se da al volver de ella.
     var enviadoA by rememberSaveable { mutableStateOf<DestinoCompartir?>(null) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -149,7 +151,8 @@ fun ResumenScreen(
             },
             alCompartir = {
                 val actual = estado.resumen
-                if (actual != null) {
+                if (actual != null && !preparando) {
+                    preparando = true
                     alcance.launch {
                         try {
                             paraCompartir = prepararParaCompartir(
@@ -163,6 +166,8 @@ fun ResumenScreen(
                         } catch (e: Exception) {
                             // Sin espacio en la caché o sin la capa todavía dibujada: se avisa y no se abre la hoja.
                             viewModel.compartirFallo()
+                        } finally {
+                            preparando = false
                         }
                     }
                 }
