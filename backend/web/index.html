@@ -285,7 +285,7 @@
       <article class="tarjeta">
         <div class="tabla-envoltura">
           <table class="tabla" id="tabla-alertas">
-            <thead><tr><th>Severidad</th><th>Estado</th><th>Tipo</th><th>Origen → destino</th><th>Servicio</th><th>Empezó</th><th class="num">Conexiones</th><th>Métodos</th><th>Responsable</th></tr></thead>
+            <thead><tr><th data-orden="severidad"><button class="orden" type="button" data-orden="severidad" title="Ordenar por severidad">Severidad</button></th><th>Estado</th><th>Tipo</th><th>Origen → destino</th><th>Servicio</th><th data-orden="empezo" aria-sort="descending"><button class="orden" type="button" data-orden="empezo" title="Ordenar por la hora en que empezó">Empezó</button></th><th class="num" data-orden="conexiones"><button class="orden" type="button" data-orden="conexiones" title="Ordenar por conexiones">Conexiones</button></th><th>Métodos</th><th>Responsable</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>

@@ -877,6 +877,22 @@ html { scrollbar-gutter: stable; }
 }
 .tabla td { padding: 9px 8px; border-bottom: 1px solid var(--borde); vertical-align: middle; white-space: nowrap; }
 .tabla td.num, .tabla th.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Los encabezados que ordenan la lista, como las tablas de Grafana. La flecha va en el hueco entre columnas, así
+   la tabla no se ensancha; se ve en la columna elegida y, tenue, al pasar el mouse o con el foco. */
+.tabla th .orden {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.tabla th .orden svg { position: absolute; left: 100%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 2px; stroke-width: 2.5; opacity: 0; }
+.tabla th .orden:hover svg, .tabla th .orden:focus-visible svg { opacity: 0.45; }
+.tabla th[aria-sort] { color: var(--texto); }
+.tabla th[aria-sort] .orden svg { opacity: 1; }
+.tabla th[aria-sort="ascending"] .orden svg { transform: rotate(180deg); }
 .tabla tbody tr.clic { cursor: pointer; }
 .tabla tbody tr.clic:hover { background: var(--superficie-2); }
 .tabla .par { white-space: nowrap; }
