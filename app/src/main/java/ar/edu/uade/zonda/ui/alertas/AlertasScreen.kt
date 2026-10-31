@@ -1,6 +1,6 @@
 package ar.edu.uade.zonda.ui.alertas
 
-import android.content.Context
+import android.content.res.Resources
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,7 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -107,10 +107,10 @@ fun AlertasContenido(
     zona: ZoneId = ZoneId.systemDefault(),
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     LaunchedEffect(estado.aviso) {
         val aviso = estado.aviso ?: return@LaunchedEffect
-        snackbar.showSnackbar(textoDelAviso(contexto, aviso, zona))
+        snackbar.showSnackbar(textoDelAviso(recursos, aviso, zona))
         alAvisoMostrado()
     }
 
@@ -284,7 +284,7 @@ private fun resumen(lista: ContenidoAlertas.Lista, estado: AlertasUiState, zona:
     if (filtro.metodos.isNotEmpty()) partes += filtro.metodos.sorted().map { stringResource(it.nombreEnFiltro()) }.joinToString(", ")
     val fechas = filtro.fechas
     partes += if (fechas != null) {
-        fechas.textosDelChip(LocalContext.current.resources).first().texto
+        fechas.textosDelChip(LocalResources.current).first().texto
     } else {
         stringResource(filtro.periodo.enResumen() ?: R.string.periodo_ultimos_30d)
     }
@@ -312,12 +312,12 @@ private fun adjetivos(severidades: List<Severidad>, cantidad: Int): String {
     return if (palabras.size == 1) palabras.single() else palabras.dropLast(1).joinToString(", ") + " y " + palabras.last()
 }
 
-private fun textoDelAviso(contexto: Context, aviso: AvisoAlertas, zona: ZoneId): String = when (aviso) {
+private fun textoDelAviso(recursos: Resources, aviso: AvisoAlertas, zona: ZoneId): String = when (aviso) {
     is AvisoAlertas.Sincronizado -> when {
         // Figma: "Sincronizado · dom 27/09 · 02:15" al tocar sincronizar (RF01, criterio 5).
-        aviso.manual -> contexto.getString(R.string.aviso_sincronizado_hora, Formato.dia(aviso.hora, zona), Formato.hora(aviso.hora, zona))
-        aviso.altasNuevas > 0 -> contexto.resources.getQuantityString(R.plurals.aviso_sincronizado_con_altas, aviso.nuevas, aviso.nuevas, aviso.altasNuevas)
-        else -> contexto.resources.getQuantityString(R.plurals.aviso_sincronizado_nuevas, aviso.nuevas, aviso.nuevas)
+        aviso.manual -> recursos.getString(R.string.aviso_sincronizado_hora, Formato.dia(aviso.hora, zona), Formato.hora(aviso.hora, zona))
+        aviso.altasNuevas > 0 -> recursos.getQuantityString(R.plurals.aviso_sincronizado_con_altas, aviso.nuevas, aviso.nuevas, aviso.altasNuevas)
+        else -> recursos.getQuantityString(R.plurals.aviso_sincronizado_nuevas, aviso.nuevas, aviso.nuevas)
     }
-    is AvisoAlertas.Error -> contexto.getString(aviso.error.mensaje())
+    is AvisoAlertas.Error -> recursos.getString(aviso.error.mensaje())
 }

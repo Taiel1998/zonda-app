@@ -20,7 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -128,7 +128,7 @@ private fun OpcionResultado(titulo: String, detalle: String, color: Color, elegi
 @Composable
 private fun PasoMotivo(formulario: FormularioRevision, resultado: ResultadoRevision, alerta: Alerta, acciones: AccionesDetalle) {
     val titulo = if (resultado == ResultadoRevision.ATAQUE_REAL) R.string.revisar_paso2_titulo_ataque else R.string.revisar_paso2_titulo_falso
-    val recursos = LocalContext.current.resources
+    val recursos = LocalResources.current
     Text(text = stringResource(titulo), style = MaterialTheme.typography.tituloHoja)
     Text(text = stringResource(R.string.revisar_paso_2_de_2), style = MaterialTheme.typography.etiquetaBarra, color = MaterialTheme.colorScheme.primary)
     Text(

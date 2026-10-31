@@ -28,7 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -90,17 +90,17 @@ fun EquiposContenido(
     alAvisoMostrado: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     val alcance = rememberCoroutineScope()
 
     LaunchedEffect(estado.aviso) {
         val aviso = estado.aviso ?: return@LaunchedEffect
         alAvisoMostrado()
         val texto = when (aviso) {
-            is AvisoEquipos.Guardado -> contexto.getString(R.string.equipos_guardado, aviso.equipo)
-            is AvisoEquipos.Error -> contexto.getString(aviso.error.mensaje())
+            is AvisoEquipos.Guardado -> recursos.getString(R.string.equipos_guardado, aviso.equipo)
+            is AvisoEquipos.Error -> recursos.getString(aviso.error.mensaje())
         }
-        alcance.launch { snackbar.showSnackbar(message = texto, actionLabel = contexto.getString(R.string.aviso_ok), duration = SnackbarDuration.Short) }
+        alcance.launch { snackbar.showSnackbar(message = texto, actionLabel = recursos.getString(R.string.aviso_ok), duration = SnackbarDuration.Short) }
     }
 
     Scaffold(

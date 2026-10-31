@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -404,7 +405,7 @@ fun ChipDeFechas(fechas: RangoResumen?, alTocar: () -> Unit, modifier: Modifier 
         ChipConIcono(texto = stringResource(R.string.resumen_fechas), icono = R.drawable.ic_calendario, elegido = false, alTocar = alTocar, modifier = modifier)
         return
     }
-    val recursos = LocalContext.current.resources
+    val recursos = LocalResources.current
     val textos = remember(fechas, recursos) { fechas.textosDelChip(recursos) }
     val medidor = rememberTextMeasurer()
     val estilo = MaterialTheme.typography.opcion

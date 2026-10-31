@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -102,11 +103,12 @@ class AccionesPersonas(
 fun PersonasScreen(viewModel: PersonasViewModel, alVolver: () -> Unit, alAbrirCodigo: () -> Unit) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
+    val recursos = LocalResources.current
     val confirmacion = LocalConfirmacionDelDueno.current ?: remember(contexto) { contexto.actividad()?.let(::ConfirmacionConHuella) }
     fun conHuella(detalle: String, accion: () -> Unit) = confirmarConHuella(
         pide = true,
         confirmacion = confirmacion,
-        titulo = contexto.getString(R.string.huella_titulo),
+        titulo = recursos.getString(R.string.huella_titulo),
         detalle = detalle,
         alConfirmar = accion,
         alNoPoder = viewModel::sinBloqueoDePantalla,
@@ -125,8 +127,8 @@ fun PersonasScreen(viewModel: PersonasViewModel, alVolver: () -> Unit, alAbrirCo
                 if (formulario == null || formulario.nombre.isBlank() || formulario.generando) {
                     viewModel.generarCodigo()
                 } else {
-                    val perfil = contexto.getString(formulario.perfil.etiqueta()).lowercase()
-                    conHuella(contexto.getString(R.string.huella_sumar, formulario.nombre.trim(), perfil), viewModel::generarCodigo)
+                    val perfil = recursos.getString(formulario.perfil.etiqueta()).lowercase()
+                    conHuella(recursos.getString(R.string.huella_sumar, formulario.nombre.trim(), perfil), viewModel::generarCodigo)
                 }
             },
             alAbrirCodigo = {
@@ -135,14 +137,14 @@ fun PersonasScreen(viewModel: PersonasViewModel, alVolver: () -> Unit, alAbrirCo
             },
             alCambiarPerfil = { persona, perfil ->
                 val texto = if (perfil.esAdministrador) R.string.huella_hacer_administrador else R.string.huella_pasar_a_analista
-                conHuella(contexto.getString(texto, persona.nombreVisible)) { viewModel.cambiarPerfil(persona, perfil) }
+                conHuella(recursos.getString(texto, persona.nombreVisible)) { viewModel.cambiarPerfil(persona, perfil) }
             },
             alCambiarPermisoBloqueo = { persona, puede ->
                 val texto = if (puede) R.string.huella_dar_permiso else R.string.huella_sacar_permiso
-                conHuella(contexto.getString(texto, persona.nombreVisible)) { viewModel.cambiarPermisoBloqueo(persona, puede) }
+                conHuella(recursos.getString(texto, persona.nombreVisible)) { viewModel.cambiarPermisoBloqueo(persona, puede) }
             },
             alQuitar = { persona ->
-                conHuella(contexto.getString(R.string.huella_quitar, persona.nombreVisible)) { viewModel.quitar(persona) }
+                conHuella(recursos.getString(R.string.huella_quitar, persona.nombreVisible)) { viewModel.quitar(persona) }
             },
             alAvisoMostrado = viewModel::avisoMostrado,
         ),
@@ -157,7 +159,7 @@ fun PersonasContenido(
     ahora: Instant = Instant.now(),
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     val alcance = rememberCoroutineScope()
     var elegidaId by rememberSaveable { mutableStateOf<String?>(null) }
     var aQuitarId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -169,20 +171,20 @@ fun PersonasContenido(
         val aviso = estado.aviso ?: return@LaunchedEffect
         acciones.alAvisoMostrado()
         val texto = when (aviso) {
-            is AvisoPersonas.PerfilCambiado -> contexto.getString(
+            is AvisoPersonas.PerfilCambiado -> recursos.getString(
                 if (aviso.perfil.esAdministrador) R.string.personas_ahora_administrador else R.string.personas_ahora_analista,
                 aviso.nombre,
             )
-            is AvisoPersonas.PermisoBloqueoCambiado -> contexto.getString(
+            is AvisoPersonas.PermisoBloqueoCambiado -> recursos.getString(
                 if (aviso.puedeBloquear) R.string.personas_ahora_bloquea else R.string.personas_ahora_pide_aprobacion,
                 aviso.nombre,
             )
-            is AvisoPersonas.Quitada -> contexto.getString(R.string.personas_quitada, aviso.nombre)
-            is AvisoPersonas.Error -> contexto.getString(aviso.error.mensaje())
-            AvisoPersonas.SinBloqueoDePantalla -> contexto.getString(R.string.personas_sin_bloqueo_de_pantalla)
+            is AvisoPersonas.Quitada -> recursos.getString(R.string.personas_quitada, aviso.nombre)
+            is AvisoPersonas.Error -> recursos.getString(aviso.error.mensaje())
+            AvisoPersonas.SinBloqueoDePantalla -> recursos.getString(R.string.personas_sin_bloqueo_de_pantalla)
         }
         // Consumir el aviso cambia la clave de este efecto: se muestra en otro alcance para no cortarlo.
-        alcance.launch { snackbar.showSnackbar(message = texto, actionLabel = contexto.getString(R.string.aviso_ok), duration = SnackbarDuration.Short) }
+        alcance.launch { snackbar.showSnackbar(message = texto, actionLabel = recursos.getString(R.string.aviso_ok), duration = SnackbarDuration.Short) }
     }
 
     Scaffold(

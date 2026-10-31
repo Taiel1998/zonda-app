@@ -9,7 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -46,16 +46,16 @@ fun AvisoRevisasteEnLasListas(ventana: VentanaDeshacer, navController: NavHostCo
 @Composable
 fun AvisoRevisaste(revision: RevisionPorDeshacer?, alDeshacer: () -> Unit, modifier: Modifier = Modifier) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     LaunchedEffect(revision) {
         if (revision == null) return@LaunchedEffect
-        val texto = contexto.getString(
+        val texto = recursos.getString(
             if (revision.conConexion) R.string.aviso_revisaste else R.string.aviso_revisaste_sin_conexion,
             revision.alerta,
         )
         val resultado = snackbar.showSnackbar(
             message = texto,
-            actionLabel = contexto.getString(R.string.aviso_deshacer),
+            actionLabel = recursos.getString(R.string.aviso_deshacer),
             duration = SnackbarDuration.Indefinite,
         )
         if (resultado == SnackbarResult.ActionPerformed) alDeshacer()

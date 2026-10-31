@@ -9,7 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
@@ -39,7 +39,7 @@ fun HojaPrecision(resumen: ResumenActividad, alCerrar: () -> Unit, altas: Set<Ti
  */
 @Composable
 fun ColumnScope.ContenidoHojaPrecision(resumen: ResumenActividad, alCerrar: () -> Unit, altas: Set<TipoAtaque> = emptySet()) {
-    val recursos = LocalContext.current.resources
+    val recursos = LocalResources.current
     Text(text = stringResource(R.string.precision_ayuda), style = MaterialTheme.typography.tituloHoja)
     val definicion = stringResource(R.string.precision_texto_precision)
     val ejemplo = ejemploDePrecision(resumen, recursos)

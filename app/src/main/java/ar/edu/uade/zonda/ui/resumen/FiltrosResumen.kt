@@ -24,7 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -146,7 +146,7 @@ fun ColumnScope.ContenidoFiltrosResumen(
     alMostrar: (FiltroResumen) -> Unit,
     alVerEnLista: (FiltroResumen) -> Unit,
 ) {
-    val recursos = LocalContext.current.resources
+    val recursos = LocalResources.current
     var borrador by remember(filtro) { mutableStateOf(filtro) }
     val quedan = cuantas(borrador)
 

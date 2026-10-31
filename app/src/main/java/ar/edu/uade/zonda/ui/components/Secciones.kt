@@ -28,11 +28,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.ui.theme.Tono
 import ar.edu.uade.zonda.ui.theme.Tonos
@@ -182,11 +185,12 @@ fun Interruptor(activo: Boolean, modifier: Modifier = Modifier, alCambiar: ((Boo
         modifier = modifier
             .then(toque)
             .size(width = 52.dp, height = 32.dp)
-            .background(fondo, CircleShape),
+            // El color y la posición del círculo se leen al dibujar y al ubicar: la animación no recompone en cada cuadro.
+            .drawBehind { drawRoundRect(color = fondo, cornerRadius = CornerRadius(size.minDimension / 2)) },
     ) {
         Box(
             modifier = Modifier
-                .offset(x = circulo, y = 4.dp)
+                .offset { IntOffset(circulo.roundToPx(), 4.dp.roundToPx()) }
                 .size(24.dp)
                 .background(if (activo) colores.onPrimary else colores.surface, CircleShape),
         )
