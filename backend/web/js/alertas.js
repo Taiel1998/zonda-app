@@ -3,7 +3,7 @@
 // conflicto cuando otra persona revisó después, y el responsable con las reglas de cada perfil. Además, la
 // lista con sus filtros se baja en CSV.
 
-import { el, fechaCsv, fechaHora, horaConSegundos, icono, isoConZona, nuevoId, numero, vaciar } from './util.js';
+import { cambiarUrl, el, fechaCsv, fechaHora, horaConSegundos, icono, isoConZona, nuevoId, numero, vaciar } from './util.js';
 import {
   $, ESTADOS, METODOS, MOTIVOS, MOTIVOS_POR_RESULTADO, NIVEL, ORDEN_SEVERIDAD, RESULTADOS, ahoraServidor, avisarCambio,
   chipEstado, chipSeveridad, comentarioPropuesto, e, esAdmin, guardarAlerta, mandar, metodosDe, nombreEquipo, nombrePersona,
@@ -352,11 +352,20 @@ function detectadaPor(a) {
 
 // Lo que tenía el foco al abrir el detalle: al cerrarlo, el foco vuelve ahí (o a la fila de la misma alerta).
 let abridorDetalle = null;
+// Si abrir el detalle dejó una entrada en el historial: cerrarlo es volver atrás, así Atrás no sale del tablero.
+let entradaPropia = false;
 
-export function abrirDetalle(id, enfocar = true) {
+/** La alerta abierta va en la dirección (`alerta=`): Atrás cierra el detalle, como en la app, y el enlace se comparte.
+    `sinHistoria` es para cuando lo abre o lo cierra el mismo botón Atrás. */
+export function abrirDetalle(id, enfocar = true, { sinHistoria = false } = {}) {
   const a = e.alertas.get(id);
   if (!a) return;
   if (enfocar && $('detalle').hidden) abridorDetalle = document.activeElement;
+  if (!sinHistoria && new URLSearchParams(location.search).get('alerta') !== id) {
+    const nueva = $('detalle').hidden;
+    cambiarUrl({ alerta: id }, { nueva });
+    if (nueva) entradaPropia = true;
+  }
   // El «?» se vuelve a armar: su globito quedaría suelto.
   cerrarAyuda();
   e.detalleAbierto = id;
@@ -452,9 +461,13 @@ function lineasHistorial(a) {
   return lineas.sort((x, y) => y.cuando - x.cuando);
 }
 
-export function cerrarDetalle() {
+export function cerrarDetalle({ sinHistoria = false } = {}) {
   cerrarAyuda();
   const id = e.detalleAbierto;
+  if (sinHistoria) entradaPropia = false;
+  else if (new URLSearchParams(location.search).get('alerta')) {
+    if (entradaPropia) { entradaPropia = false; history.back(); } else cambiarUrl({ alerta: null });
+  }
   e.detalleAbierto = null;
   $('detalle').hidden = true;
   $('velo').hidden = true;

@@ -2,7 +2,7 @@
 // Usa la misma API y el mismo acceso que un teléfono: se entra con un código de pareo de un solo uso y el
 // navegador queda como un dispositivo más, con su perfil y su vencimiento.
 
-import { api, borrarAcceso, guardarAcceso, horaConSegundos, icono, leerAcceso, vaciar, el } from './util.js';
+import { api, borrarAcceso, cambiarUrl, guardarAcceso, horaConSegundos, icono, leerAcceso, vaciar, el } from './util.js';
 import { $, alCambiarAlertas, cuandoExpire, e } from './comun.js';
 import {
   actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
@@ -249,6 +249,8 @@ function cambiarVista(vista, { mantenerPanel = false } = {}) {
     else boton.removeAttribute('aria-current');
   }
   document.title = `${{ vivo: 'En vivo', alertas: 'Alertas', resumen: 'Resumen', ajustes: 'Ajustes' }[vista]} · Zonda`;
+  // La vista queda en la dirección: al recargar o al compartir el enlace se abre la misma.
+  cambiarUrl({ vista: vista === 'vivo' ? null : vista });
   for (const nombre of ['vivo', 'alertas', 'resumen', 'ajustes']) $(`vista-${nombre}`).hidden = nombre !== vista;
   if (vista === 'alertas') pintarAlertas();
   if (vista === 'resumen') pintarResumen();
@@ -321,6 +323,11 @@ function alCambiar(nuevas) {
     avisarNuevas(nuevas);
     avisarEnLaCompu(nuevas);
   }
+  if (alertaDelEnlace && e.alertas.has(alertaDelEnlace)) {
+    const id = alertaDelEnlace;
+    alertaDelEnlace = null;
+    abrirDetalle(id, true, { sinHistoria: true });
+  }
 }
 
 /** La barra de arriba de cada vista queda fija debajo de la cabecera (estilos.css); ya pegada, lleva una línea abajo. */
@@ -338,6 +345,18 @@ function irAlInicio(ev) {
   ev.preventDefault();
   cerrarDetalle();
   cambiarVista('vivo');
+}
+
+// La alerta del enlace se abre cuando llegan las alertas (la primera sincronización).
+let alertaDelEnlace = null;
+
+/** Atrás y Adelante del navegador abren o cierran el detalle; la vista no cambia. */
+function alNavegar() {
+  if (!e.acceso) return;
+  const alerta = new URLSearchParams(location.search).get('alerta');
+  if (alerta && e.alertas.has(alerta)) abrirDetalle(alerta, true, { sinHistoria: true });
+  else if (!alerta && e.detalleAbierto) cerrarDetalle({ sinHistoria: true });
+  cambiarUrl({ vista: e.vista === 'vivo' ? null : e.vista });
 }
 
 /** Las sin revisar de una severidad en la lista de Alertas: los contadores de En vivo y el aviso de varias altas. */
@@ -422,6 +441,7 @@ function iniciar() {
   $('velo').addEventListener('click', cerrarDetalle);
   document.addEventListener('keydown', alApretarTecla);
   document.addEventListener('visibilitychange', alCambiarVisibilidad);
+  window.addEventListener('popstate', alNavegar);
   window.addEventListener('scroll', marcarBarrasPegadas, { passive: true });
   $('sin-revisar').addEventListener('click', (ev) => {
     const contador = ev.target.closest('[data-severidad]');
@@ -437,6 +457,9 @@ function iniciar() {
   if (e.acceso) {
     arrancarTablero();
     if (panelDeLaUrl) verEnGrande(panelDeLaUrl);
+    const enlace = new URLSearchParams(location.search);
+    if (['alertas', 'resumen', 'ajustes'].includes(enlace.get('vista')) && !panelDeLaUrl) cambiarVista(enlace.get('vista'));
+    alertaDelEnlace = enlace.get('alerta');
   } else {
     mostrarIngreso();
   }
