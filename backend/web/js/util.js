@@ -4,10 +4,27 @@
 const CLAVE_ACCESO = 'zonda.tablero.acceso';
 
 export class ErrorApi extends Error {
-  constructor(estado, detalle) {
+  constructor(estado, detalle, datos = null) {
     super(detalle || `Error ${estado}`);
     this.estado = estado;
+    // El cuerpo de la respuesta: el 409 de una revisión trae la revisión ajena y la alerta.
+    this.datos = datos;
   }
+}
+
+/** Un identificador al azar para accionId: la misma acción reenviada no se aplica dos veces. */
+export function nuevoId() {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return `w-${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** La hora de ahora en ISO 8601 con la zona del navegador, como manda la app "revisadaEn". */
+export function isoConZona(fecha = new Date()) {
+  const desfase = -fecha.getTimezoneOffset();
+  const signo = desfase >= 0 ? '+' : '-';
+  const dos = (n) => String(Math.floor(Math.abs(n))).padStart(2, '0');
+  return `${fecha.getFullYear()}-${dos(fecha.getMonth() + 1)}-${dos(fecha.getDate())}T${dos(fecha.getHours())}:${dos(fecha.getMinutes())}:${dos(fecha.getSeconds())}${signo}${dos(desfase / 60)}:${dos(desfase % 60)}`;
 }
 
 export function leerAcceso() {
@@ -53,7 +70,7 @@ export async function api(ruta, { token, metodo = 'GET', cuerpo, espera = 10000 
   try { datos = await respuesta.json(); } catch (_) { /* sin cuerpo */ }
   if (!respuesta.ok) {
     const detalle = datos && typeof datos.detail === 'string' ? datos.detail : null;
-    throw new ErrorApi(respuesta.status, detalle);
+    throw new ErrorApi(respuesta.status, detalle, datos && datos.detail);
   }
   return datos;
 }
@@ -181,6 +198,11 @@ const TRAZOS = {
   umbral: '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-7"/><path d="M3 8h18" stroke-dasharray="2 3"/>',
   regla: '<path d="M9 11V7a3 3 0 0 1 6 0v4"/><rect x="5" y="11" width="14" height="10" rx="2"/>',
   pregunta: '<circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4"/><path d="M12 17h.01"/>',
+  filtro: '<path d="M3 5h18"/><path d="M6 12h12"/><path d="M10 19h4"/>',
+  persona: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  mas: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+  enviar: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+  salir: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
 };
 export function icono(nombre) {
   const plantilla = document.createElement('template');

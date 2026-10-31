@@ -39,6 +39,8 @@
     <nav class="pestanias" role="tablist" aria-label="Vistas del tablero">
       <button class="pestania" role="tab" id="pestania-vivo" data-vista="vivo" aria-selected="true" aria-controls="vista-vivo">En vivo</button>
       <button class="pestania" role="tab" id="pestania-alertas" data-vista="alertas" aria-selected="false" aria-controls="vista-alertas">Alertas</button>
+      <button class="pestania" role="tab" id="pestania-resumen" data-vista="resumen" aria-selected="false" aria-controls="vista-resumen">Resumen</button>
+      <button class="pestania" role="tab" id="pestania-ajustes" data-vista="ajustes" aria-selected="false" aria-controls="vista-ajustes">Ajustes</button>
     </nav>
     <div class="cabecera-derecha">
       <span class="en-vivo" id="en-vivo" data-estado="ok"><span class="punto" aria-hidden="true"></span><span id="en-vivo-texto">Conectando…</span></span>
@@ -160,24 +162,44 @@
     </section>
 
     <section id="vista-alertas" role="tabpanel" aria-labelledby="pestania-alertas" hidden>
-      <div class="filtros">
+      <div class="filtros" id="filtros-alertas"></div>
+      <p class="resumen-filtros" id="resumen-filtros-alertas"></p>
+      <article class="tarjeta">
+        <div class="tabla-envoltura">
+          <table class="tabla" id="tabla-alertas">
+            <thead><tr><th>Severidad</th><th>Tipo</th><th>Origen → destino</th><th>Servicio</th><th>Empezó</th><th class="num">Flujos</th><th>Métodos</th><th>Responsable</th><th>Estado</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="vacio-lista" id="vacio-alertas" hidden></div>
+        <div class="tabla-mas"><button class="boton-secundario" id="ver-mas" type="button" hidden>Ver más</button></div>
+      </article>
+    </section>
+
+    <section id="vista-resumen" role="tabpanel" aria-labelledby="pestania-resumen" hidden>
+      <div class="filtros no-imprimir">
         <span class="filtros-etiqueta" id="etiqueta-periodo">Período</span>
         <div class="segmentado" id="periodos" role="group" aria-labelledby="etiqueta-periodo">
           <button type="button" data-dias="7" aria-pressed="true">7 días</button>
-          <button type="button" data-dias="14" aria-pressed="false">14 días</button>
           <button type="button" data-dias="30" aria-pressed="false">30 días</button>
+          <button type="button" data-dias="fechas" aria-pressed="false">Fechas</button>
         </div>
-        <span class="filtros-etiqueta">Severidad</span>
-        <div class="chips" id="filtro-severidad"></div>
-        <span class="filtros-etiqueta">Estado</span>
-        <div class="chips" id="filtro-estado"></div>
+        <div class="filtros-activos" id="filtros-resumen"></div>
+        <div class="descargas">
+          <button class="boton-secundario" id="descargar-imagen" type="button">Descargar imagen</button>
+          <button class="boton-secundario" id="descargar-pdf" type="button">Guardar PDF</button>
+        </div>
       </div>
 
+      <div id="resumen-imprimible">
       <div class="grilla">
-        <article class="tarjeta c-3"><p class="kpi-etiqueta">Alertas en el período</p><div class="kpi-valor" id="kpi-total">–</div><div class="kpi-detalle" id="kpi-total-detalle"></div></article>
-        <article class="tarjeta c-3"><p class="kpi-etiqueta">Sin revisar</p><div class="kpi-valor" id="kpi-sin-revisar">–</div><div class="kpi-detalle" id="kpi-sin-revisar-detalle"></div></article>
-        <article class="tarjeta c-3"><p class="kpi-etiqueta">Cobertura de revisión</p><div class="kpi-valor" id="kpi-cobertura">–</div><div class="kpi-detalle" id="kpi-cobertura-detalle"></div></article>
-        <article class="tarjeta c-3"><p class="kpi-etiqueta">Confirmadas como ataque real</p><div class="kpi-valor" id="kpi-reales">–</div><div class="kpi-detalle" id="kpi-reales-detalle"></div></article>
+        <article class="tarjeta c-12" id="tarjeta-metricas">
+          <div class="tarjeta-cabecera">
+            <div><h2 class="tarjeta-titulo" id="titulo-resumen">Resumen</h2><p class="tarjeta-sub" id="sub-resumen"></p></div>
+          </div>
+          <div class="metricas" id="metricas-resumen"></div>
+          <p class="nota-resumen no-imprimir">Tocá una cifra o una barra de «Por tipo de ataque» para filtrar todo el resumen.</p>
+        </article>
 
         <article class="tarjeta c-7" id="tarjeta-por-dia">
           <div class="tarjeta-cabecera">
@@ -198,7 +220,7 @@
           <div class="tabla-grafico" id="tabla-por-tipo" hidden></div>
         </article>
 
-        <article class="tarjeta c-6" id="tarjeta-equipos">
+        <article class="tarjeta c-6 no-imprimir" id="tarjeta-equipos">
           <div class="tarjeta-cabecera">
             <div><h2 class="tarjeta-titulo">Equipos con más alertas</h2><p class="tarjeta-sub">Como destino del tráfico, los ocho primeros.</p></div>
             <div class="tarjeta-acciones"><button class="boton-tabla" type="button" data-tabla="equipos" aria-pressed="false">Tabla</button></div>
@@ -216,26 +238,34 @@
           <div class="tabla-grafico" id="tabla-acierto" hidden></div>
         </article>
 
-        <article class="tarjeta c-12">
+        <article class="tarjeta c-12" id="tarjeta-revision">
           <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Alertas</h2><p class="tarjeta-sub" id="sub-tabla-alertas"></p></div>
+            <div><h2 class="tarjeta-titulo">Revisión</h2><p class="tarjeta-sub">Qué tan rápido y qué tan bien se revisa, como el Resumen de la app.</p></div>
           </div>
-          <div class="tabla-envoltura">
-            <table class="tabla" id="tabla-alertas">
-              <thead><tr><th>Severidad</th><th>Tipo</th><th>Origen → destino</th><th>Servicio</th><th>Empezó</th><th class="num">Flujos</th><th>Métodos</th><th>Estado</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-          <div class="tabla-mas"><button class="boton-secundario" id="ver-mas" type="button" hidden>Ver más</button></div>
+          <div class="metricas" id="metricas-revision"></div>
         </article>
       </div>
+      <p class="nota-resumen" id="pie-resumen">Generado con Zonda · no incluye IPs ni nombres de equipos</p>
+      </div>
+    </section>
+
+    <section id="vista-ajustes" role="tabpanel" aria-labelledby="pestania-ajustes" hidden>
+      <div class="ajustes" id="ajustes"></div>
     </section>
   </main>
+
+  <nav class="barra-inferior" id="barra-inferior" role="tablist" aria-label="Vistas del tablero">
+    <button type="button" role="tab" data-vista="vivo" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>En vivo</button>
+    <button type="button" role="tab" data-vista="alertas" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alertas</button>
+    <button type="button" role="tab" data-vista="resumen" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>Resumen</button>
+    <button type="button" role="tab" data-vista="ajustes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
+  </nav>
 </div>
 
 <div class="velo" id="velo" hidden></div>
 <aside class="detalle" id="detalle" role="dialog" aria-modal="true" aria-labelledby="detalle-titulo" hidden></aside>
 <div class="aviso" id="aviso" role="status" hidden></div>
+<div id="hojas"></div>
 
 </body>
 </html>
