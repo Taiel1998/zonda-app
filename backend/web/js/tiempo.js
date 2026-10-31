@@ -407,16 +407,33 @@ export function pintarBarra() {
   $('actualizar-cada').classList.toggle('apagada', !cada.ms);
 }
 
+function ponerActualizacion(ms) {
+  e.actualizar = ms;
+  escribirUrl();
+  pintarBarra();
+}
+
 function elegirActualizacion() {
   abrirMenu($('actualizar-cada'), ACTUALIZAR.map((a) => ({
     texto: a.ms ? `Cada ${a.texto}` : 'Apagada',
     marcado: a.ms === e.actualizar,
-    accion: () => {
-      e.actualizar = a.ms;
-      escribirUrl();
-      pintarBarra();
-    },
+    accion: () => ponerActualizacion(a.ms),
   })));
+}
+
+/** El ⋮ del teléfono: lo que en la computadora son botones de la barra, en un menú, con la barra en una fila. */
+function masOpciones() {
+  abrirMenu($('tiempo-mas'), [
+    { texto: 'Actualizar ahora', icono: 'actualizar', accion: () => alActualizar() },
+    { texto: 'Alejar: el doble de tiempo', icono: 'alejar', accion: alejar },
+    { texto: 'Copiar el enlace', icono: 'enlace', accion: copiarEnlace },
+    { separador: true },
+    ...ACTUALIZAR.map((a) => ({
+      texto: a.ms ? `Actualizar cada ${a.texto}` : 'Actualización apagada',
+      marcado: a.ms === e.actualizar,
+      accion: () => ponerActualizacion(a.ms),
+    })),
+  ]);
 }
 
 async function copiarEnlace() {
@@ -449,5 +466,6 @@ export function configurarTiempo({ alCambiarRango, actualizarAhora }) {
   $('boton-actualizar').addEventListener('click', () => alActualizar());
   $('actualizar-cada').addEventListener('click', elegirActualizacion);
   $('copiar-enlace').addEventListener('click', copiarEnlace);
+  $('tiempo-mas').addEventListener('click', masOpciones);
   pintarBarra();
 }

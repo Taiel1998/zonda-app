@@ -330,6 +330,8 @@ html { scrollbar-gutter: stable; }
 .filtros-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .barra-tiempo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; position: relative; }
 .grupo-botones { display: inline-flex; }
+/* El ⋮ del horario es solo del teléfono (abajo). */
+#tiempo-mas { display: none; }
 .grupo-botones > .boton-barra + .boton-barra { margin-left: -1px; }
 .grupo-botones > .boton-barra:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .grupo-botones > .boton-barra:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
@@ -442,6 +444,13 @@ html { scrollbar-gutter: stable; }
 @media (max-width: 720px) {
   .barra-tiempo { margin-left: 0; }
   .texto-boton { display: none; }
+  /* El horario de En vivo en una sola fila, como la app ocupa poco arriba: el rango con sus flechas y un ⋮ con
+     actualizar, alejar, copiar el enlace y cada cuánto se actualiza. */
+  #barra-tiempo { flex-wrap: nowrap; width: 100%; }
+  #barra-tiempo > .grupo-botones:first-child { flex: 1; min-width: 0; }
+  #barra-tiempo .boton-rango { flex: 1; justify-content: center; }
+  #tiempo-alejar, #grupo-actualizar, #copiar-enlace { display: none; }
+  #tiempo-mas { display: inline-flex; flex: none; }
   .barra-fija { margin: -8px -16px 10px; padding: 8px 16px; }
   /* Los filtros de Alertas en una sola fila que se corre de costado, como en la app: la barra fija ocupa menos. */
   .barra-filtros .filtros-chips { flex: 0 0 calc(100% + 32px); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
