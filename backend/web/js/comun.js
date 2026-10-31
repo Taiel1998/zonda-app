@@ -1,14 +1,7 @@
 // El estado compartido del tablero y lo que usan todas las vistas: los textos y las reglas de la app
-// (motivos, comentarios propuestos, perfiles), los pedidos a la API y los gráficos con su vista en tabla.
+// (motivos, comentarios propuestos, perfiles), los pedidos a la API y los gráficos con sus datos.
 
-import { api, ErrorApi, el, vaciar } from './util.js';
-
-export const VENTANAS = {
-  '15m': { segundos: 900, paso: 5, cada: 5000, nota: 'Barras de 5 segundos · se actualiza cada 5 segundos', texto: 'estos 15 minutos' },
-  '1h': { segundos: 3600, paso: 15, cada: 5000, nota: 'Barras de 15 segundos · se actualiza cada 5 segundos', texto: 'la última hora' },
-  '24h': { segundos: 86400, paso: 300, cada: 30000, nota: 'Barras de 5 minutos · se actualiza cada 30 segundos', texto: 'las últimas 24 horas' },
-  '7d': { segundos: 604800, paso: 3600, cada: 60000, nota: 'Barras de una hora · se actualiza cada minuto', texto: 'los últimos 7 días' },
-};
+import { api, ErrorApi, el } from './util.js';
 
 export const TIPOS = {
   fuerza_bruta: 'Fuerza bruta',
@@ -54,7 +47,12 @@ export const e = {
   perfil: null,
   miId: null,
   vista: 'vivo',
-  ventana: '15m',
+  // El horario del tablero (tiempo.js), como en Grafana, y cada cuánto se actualiza (0: apagada).
+  rango: { desde: 'now-15m', hasta: 'now' },
+  actualizar: 5000,
+  panelGrande: null,
+  // Los servicios que deja ver la leyenda de las conexiones por servicio (null: todos).
+  serviciosVisibles: null,
   alertas: new Map(),
   cursor: null,
   sincronizada: false,
@@ -64,6 +62,10 @@ export const e = {
   trafico: null,
   ahora: null,
   pares: null,
+  // Los gráficos chicos del estado del sistema: el tráfico del sensor y los latidos de la última hora, y
+  // cuánto tardó el servidor en contestar cada consulta de /salud desde que se abrió el tablero.
+  piezas: null,
+  respuestas: [],
   personas: [],
   equipos: [],
   severidades: {},
@@ -74,7 +76,6 @@ export const e = {
   servidorCaido: false,
   graficos: {},
   tablas: {},
-  tablasVisibles: new Set(),
   areas: [],
   detalleAbierto: null,
 };
@@ -160,12 +161,15 @@ export function comentarioPropuesto(motivo, a) {
   }[motivo] || '';
 }
 
-// ---- Gráficos y su vista en tabla ----
+// ---- Gráficos y sus datos ----
 
+/** Dibuja un gráfico o lo actualiza. Uno que todavía no existe no se arma mientras no se ve (en una fila
+    plegada o en otra vista): se arma cuando se vuelve a pintar a la vista. */
 export function dibujar(nombre, opciones, alCambiarTamano) {
   const contenedor = $(`grafico-${nombre}`);
   if (!contenedor || !window.echarts) return null;
   let grafico = e.graficos[nombre];
+  if (!grafico && !contenedor.clientWidth) return null;
   if (!grafico) {
     grafico = window.echarts.init(contenedor, null, { renderer: 'canvas' });
     e.graficos[nombre] = grafico;
@@ -177,29 +181,8 @@ export function dibujar(nombre, opciones, alCambiarTamano) {
   return grafico;
 }
 
-export function pintarTabla(nombre) {
-  const datos = e.tablas[nombre];
-  const lugar = $(`tabla-${nombre}`);
-  if (!datos || !lugar) return;
-  const desdeNumericas = datos.columnas.length - datos.numericas;
-  vaciar(lugar, datos.filas.length ? el('table', { class: 'tabla' },
-    el('thead', {}, el('tr', {}, datos.columnas.map((col, i) => el('th', { class: i >= desdeNumericas ? 'num' : null }, col)))),
-    el('tbody', {}, datos.filas.slice(0, 500).map((fila) => el('tr', {}, fila.map((celda, i) => el('td', { class: i >= desdeNumericas ? 'num' : null }, celda))))))
-    : el('p', { class: 'nota' }, 'No hay datos para mostrar.'));
-}
-
-export function alternarTabla(boton) {
-  const nombre = boton.dataset.tabla;
-  const mostrar = !e.tablasVisibles.has(nombre);
-  if (mostrar) e.tablasVisibles.add(nombre); else e.tablasVisibles.delete(nombre);
-  boton.setAttribute('aria-pressed', String(mostrar));
-  boton.textContent = mostrar ? 'Gráfico' : 'Tabla';
-  $(`grafico-${nombre}`).hidden = mostrar;
-  $(`tabla-${nombre}`).hidden = !mostrar;
-  if (mostrar) pintarTabla(nombre);
-  else if (e.graficos[nombre]) e.graficos[nombre].resize();
-}
-
-export function refrescarTablas(...nombres) {
-  for (const nombre of nombres) if (e.tablasVisibles.has(nombre)) pintarTabla(nombre);
-}
+// Los datos de cada gráfico quedan en e.tablas ({ columnas, numericas, filas } y, si hace falta, `csv` con
+// los valores sin unidades); el inspector de paneles.js los muestra y los baja en CSV.
+let alRefrescarTablas = () => {};
+export function cuandoRefresquenTablas(funcion) { alRefrescarTablas = funcion; }
+export function refrescarTablas(...nombres) { alRefrescarTablas(nombres); }

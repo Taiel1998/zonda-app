@@ -3,7 +3,7 @@
 // tenue y sin cortar, barras de a lo sumo 24 px con la punta redondeada, una separación de 2 px del
 // color de la superficie entre segmentos, y el texto siempre en los colores de texto, nunca en el de la serie.
 
-import { bitsPorSegundo, ejeNumero, escapar, fechaHora, hora, horaConSegundos, dia, numero, tasa } from './util.js';
+import { bitsPorSegundo, ejeNumero, escapar, fechaHora, hora, horaConSegundos, dia, numero } from './util.js';
 
 /** Los servicios del gráfico de conexiones, siempre en este orden y con este color (el color sigue al
     servicio, nunca a su lugar en el ranking). El orden está validado para daltonismo en claro y oscuro. */
@@ -29,7 +29,7 @@ export function colores() {
   const estilo = getComputedStyle(document.documentElement);
   const leer = (nombre) => estilo.getPropertyValue(nombre).trim();
   const c = {};
-  for (const nombre of ['--superficie', '--superficie-2', '--texto', '--texto-2', '--texto-3', '--grilla', '--eje', '--borde', '--verde', '--arista',
+  for (const nombre of ['--superficie', '--superficie-2', '--texto', '--texto-2', '--texto-3', '--grilla', '--eje', '--borde', '--borde-fuerte', '--verde', '--arista',
     '--alta', '--media', '--baja', '--serie-1', '--serie-2', '--serie-3', '--serie-4', '--serie-otros', '--neutro']) {
     c[nombre] = leer(nombre);
   }
@@ -55,7 +55,8 @@ function base(c) {
   };
 }
 
-function ejeTiempo(c, desde, hasta) {
+/** El eje de las horas; con `conMarcas`, deja lugar entre la línea y las horas para las marcas de las alertas. */
+function ejeTiempo(c, desde, hasta, conMarcas = false) {
   const largo = hasta - desde;
   return {
     type: 'time',
@@ -68,9 +69,38 @@ function ejeTiempo(c, desde, hasta) {
       color: c['--texto-2'],
       fontSize: 12,
       hideOverlap: true,
-      formatter: (valor) => (largo > 2 * 86400e3 ? dia(valor) : hora(valor)),
+      margin: conMarcas ? 17 : 8,
+      // Con segundos en los rangos cortos; en los de más de medio día, la fecha en cada medianoche.
+      formatter: (valor) => {
+        if (largo > 2 * 86400e3) return dia(valor);
+        const fecha = new Date(valor);
+        if (largo > 12 * 3600e3 && fecha.getHours() === 0 && fecha.getMinutes() === 0) return dia(valor);
+        return largo <= 10 * 60e3 ? horaConSegundos(valor) : hora(valor);
+      },
     },
     axisPointer: { show: true, type: 'line', lineStyle: { color: c['--texto-3'], width: 1, type: 'solid' }, label: { show: false } },
+  };
+}
+
+/** Un color de la paleta con transparencia, para el tramo que se marca al arrastrar. */
+function conAlfa(color, alfa) {
+  const hex = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!hex) return color;
+  const n = parseInt(hex[1], 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alfa})`;
+}
+
+/** El pincel de los gráficos de tiempo: arrastrar marca un tramo y el tablero se acerca a él (tiempo.js). */
+function pincel(c) {
+  return {
+    xAxisIndex: 0,
+    brushType: 'lineX',
+    brushMode: 'single',
+    transformable: false,
+    brushStyle: { color: conAlfa(c['--verde'], 0.14), borderColor: c['--verde'], borderWidth: 1 },
+    outOfBrush: { colorAlpha: 1 },
+    throttleType: 'debounce',
+    throttleDelay: 0,
   };
 }
 
@@ -114,85 +144,145 @@ function apilar(series, tiempos) {
 }
 
 /**
- * Conexiones por segundo, apiladas por servicio, con una línea en cada alerta que empezó en la ventana.
- * datos: { tiempos (ms), porGrupo: {id: [por segundo]}, paso (s), desde, hasta, alertas: [{t, severidad, texto}] }
+ * Las alertas, como las marcas de Grafana pero sin la línea vertical: un triángulo chico debajo del eje, del
+ * color de la severidad, en el momento en que empezó cada una. Las más graves quedan arriba. No entra en el
+ * globito del eje: el suyo lo arma vivo.js, que también abre la alerta al tocar la marca (el de ECharts se
+ * repetiría en los tres gráficos de tiempo, que comparten el cursor).
+ * marcas: [{id, t, severidad}]
  */
-export function opcionesConexiones(c, datos) {
-  const series = GRUPOS.map((g) => ({ grupo: g, valores: datos.porGrupo[g.id], datos: new Array(datos.tiempos.length) }));
-  apilar(series, datos.tiempos);
-  const alertasEnTramo = new Map();
-  for (const alerta of datos.alertas) {
-    const i = Math.floor((alerta.t - datos.desde) / (datos.paso * 1000));
-    if (!alertasEnTramo.has(i)) alertasEnTramo.set(i, []);
-    alertasEnTramo.get(i).push(alerta);
+function serieMarcas(c, marcas) {
+  const orden = marcas.slice().sort((a, b) => (PESO[a.severidad] || 0) - (PESO[b.severidad] || 0) || a.t - b.t || (a.id < b.id ? -1 : 1));
+  return {
+    id: 'marcas',
+    name: 'Alertas',
+    type: 'custom',
+    z: 5,
+    clip: false,
+    animation: false,
+    tooltip: { show: false },
+    data: orden.map((m) => ({ value: [m.t, 0], id: m.id })),
+    encode: { x: 0, y: 1 },
+    renderItem: (params, api) => {
+      const m = orden[params.dataIndex];
+      const [x, y] = api.coord([api.value(0), 0]);
+      return {
+        type: 'group',
+        children: [
+          // Un recuadro invisible más grande que la marca, para que sea fácil de apuntar.
+          { type: 'rect', shape: { x: x - 7, y: y + 1, width: 14, height: 12 }, style: { fill: 'rgba(0,0,0,0)' } },
+          { type: 'polygon', shape: { points: [[x, y + 2.5], [x - 5.5, y + 11], [x + 5.5, y + 11]] }, style: { fill: c[`--${m.severidad}`], stroke: c['--superficie'], lineWidth: 1 } },
+        ],
+      };
+    },
+  };
+}
+
+/**
+ * Las conexiones de cada barra por servicio: una línea por servicio y una sola escala, como un panel de
+ * Grafana; la leyenda en tabla (vivo.js) deja ver uno solo o sumar y sacar servicios. El globito da cada
+ * servicio que se ve, el total del tramo y las alertas que empezaron en él; debajo del eje, las marcas.
+ * datos: { tiempos (ms), porGrupo: {id: [del tramo]}, conexiones: [del tramo], paso (s), desde, hasta,
+ *          grupos: [los ids que se ven], marcas: [como en serieMarcas] }
+ */
+export function opcionesServicios(c, datos) {
+  const grupos = GRUPOS.filter((g) => datos.grupos.includes(g.id));
+  const marcasEnTramo = new Map();
+  for (const m of datos.marcas) {
+    const i = Math.floor((m.t - datos.desde) / (datos.paso * 1000));
+    if (!marcasEnTramo.has(i)) marcasEnTramo.set(i, []);
+    marcasEnTramo.get(i).push(m);
   }
-  const conEtiqueta = datos.alertas.length <= 6;
-  const totales = datos.tiempos.map((_, i) => GRUPOS.reduce((suma, g) => suma + datos.porGrupo[g.id][i], 0));
-  const opciones = {
+  return {
     ...base(c),
-    grid: { left: 8, right: 16, top: 30, bottom: 6, containLabel: true },
-    xAxis: ejeTiempo(c, datos.desde, datos.hasta),
-    yAxis: ejeValor(c, ejeNumero, totales, 1),
+    grid: { left: 8, right: 16, top: 16, bottom: 6, containLabel: true },
+    brush: pincel(c),
+    xAxis: ejeTiempo(c, datos.desde, datos.hasta, true),
+    yAxis: { ...ejeValor(c, ejeNumero, grupos.flatMap((g) => datos.porGrupo[g.id]), 1), minInterval: 1 },
     tooltip: {
       ...base(c).tooltip,
       trigger: 'axis',
       axisPointer: { type: 'line', lineStyle: { color: c['--texto-3'] } },
       formatter: (params) => {
-        const t = params[0].axisValue;
-        const i = Math.round((t - datos.desde) / (datos.paso * 1000));
+        if (!params.length) return '';
+        const i = Math.round((params[0].axisValue - datos.desde) / (datos.paso * 1000));
         if (i < 0 || i >= datos.tiempos.length) return '';
-        let total = 0;
-        const filas = GRUPOS.map((g) => {
-          const v = datos.porGrupo[g.id][i];
-          total += v;
-          return filaGlobito(c[g.color], tasa(v), g.nombre);
-        }).reverse();
-        let html = `<div class="globito"><div class="globito-titulo">${escapar(tramoDe(datos.tiempos[i], datos.paso))}</div>${filas.join('')}`;
-        html += `<div class="globito-separador"></div><div class="globito-fila"><span></span><b>${escapar(tasa(total))}</b><em>conexiones por segundo</em></div>`;
-        for (const alerta of alertasEnTramo.get(i) || []) {
-          html += `<div class="globito-separador"></div>${filaGlobito(c[`--${alerta.severidad}`], alerta.nivel, alerta.texto, true)}`;
+        let html = `<div class="globito"><div class="globito-titulo">${escapar(tramoDe(datos.tiempos[i], datos.paso))}</div>`;
+        for (const g of grupos) html += filaGlobito(c[g.color], numero(datos.porGrupo[g.id][i]), g.nombre);
+        const total = datos.conexiones[i];
+        html += `<div class="globito-separador"></div><div class="globito-fila"><span></span><b>${escapar(numero(total))}</b><em>${total === 1 ? 'conexión en total' : 'conexiones en total'}</em></div>`;
+        // Las alertas iguales del mismo tramo (el mismo tipo y el mismo par) van en una sola fila, con ×N.
+        const iguales = new Map();
+        for (const m of marcasEnTramo.get(i) || []) {
+          const clave = `${m.severidad}|${m.tipo}|${m.par}`;
+          if (iguales.has(clave)) iguales.get(clave).veces += 1;
+          else iguales.set(clave, { m, veces: 1 });
+        }
+        if (iguales.size) html += '<div class="globito-separador"></div>';
+        for (const { m, veces } of iguales.values()) {
+          const texto = `${m.tipo} · ${m.par}`;
+          html += filaGlobito(c[`--${m.severidad}`], m.nivel, veces > 1 ? `${texto} ×${veces}` : texto, true);
         }
         return `${html}</div>`;
       },
     },
-    series: series.map((s, j) => ({
-      name: s.grupo.nombre,
-      type: 'bar',
-      stack: 'conexiones',
-      barMaxWidth: 24,
-      barMinWidth: 1,
-      data: s.datos,
-      itemStyle: { color: c[s.grupo.color], borderColor: c['--superficie'], borderWidth: datos.tiempos.length > 300 ? 0 : 1 },
-      emphasis: { disabled: true },
-      markLine: j !== 0 ? undefined : {
-        silent: true,
-        symbol: ['none', 'circle'],
+    series: [
+      serieMarcas(c, datos.marcas),
+      ...grupos.map((g) => ({
+        id: `servicio-${g.id}`,
+        name: g.nombre,
+        type: 'line',
+        showSymbol: false,
         symbolSize: 8,
-        animation: false,
-        data: datos.alertas.map((a) => ({
-          xAxis: a.t,
-          lineStyle: { color: c[`--${a.severidad}`], width: 1.5, type: 'solid', opacity: 0.9 },
-          itemStyle: { color: c[`--${a.severidad}`], borderColor: c['--superficie'], borderWidth: 2 },
-          label: {
-            show: conEtiqueta,
-            position: 'end',
-            formatter: a.corto,
-            color: c['--texto'],
-            fontSize: 12,
-            fontWeight: 600,
-            fontFamily: FUENTE,
-            backgroundColor: c['--superficie'],
-            padding: [2, 4],
-            borderRadius: 4,
-          },
-        })),
-      },
-    })),
+        lineStyle: { width: 2, color: c[g.color], cap: 'round', join: 'round' },
+        itemStyle: { color: c[g.color], borderColor: c['--superficie'], borderWidth: 2 },
+        data: datos.tiempos.map((t, i) => [t, datos.porGrupo[g.id][i]]),
+      })),
+    ],
   };
-  return opciones;
 }
 
-/** Un solo indicador en el tiempo (tráfico o sin respuesta), en el verde de la marca: sin leyenda, el título lo nombra. */
+/**
+ * Un gráfico chico para las piezas del estado del sistema: sin ejes ni grilla, solo la línea de base, y
+ * el valor de cada punto en el globito. Con `paso`, cada barra es un tramo de ese largo. Con `ejes` (el
+ * panel en grande), lleva las horas abajo y los valores a la izquierda.
+ * datos: { desde, hasta (ms), puntos: [[t (ms), valor o null]] }
+ */
+export function opcionesMini(c, datos, { tipo, color, nombre, formato = (v) => numero(v), paso = 0, maximo, ejes = false } = {}) {
+  const serie = tipo === 'linea'
+    ? { type: 'line', showSymbol: false, symbolSize: 5, lineStyle: { width: 1.5, color }, itemStyle: { color }, areaStyle: { color, opacity: 0.12 }, data: datos.puntos }
+    : { type: 'bar', barMaxWidth: ejes ? 12 : 5, barMinWidth: 1, itemStyle: { color, borderRadius: [2, 2, 0, 0] }, data: datos.puntos, emphasis: { disabled: true } };
+  return {
+    ...base(c),
+    animation: false,
+    grid: ejes ? { left: 8, right: 12, top: 10, bottom: 4, containLabel: true } : { left: 0, right: 0, top: 4, bottom: 1 },
+    xAxis: ejes ? ejeTiempo(c, datos.desde, datos.hasta) : {
+      type: 'time',
+      min: datos.desde,
+      max: datos.hasta,
+      axisLine: { show: true, lineStyle: { color: c['--eje'] } },
+      axisTick: { show: false },
+      axisLabel: { show: false },
+      splitLine: { show: false },
+    },
+    yAxis: ejes ? { ...ejeValor(c, (v) => formato(v), null), max: maximo, minInterval: tipo === 'linea' ? 0 : 1 } : { type: 'value', min: 0, max: maximo, show: false },
+    tooltip: {
+      ...base(c).tooltip,
+      trigger: 'axis',
+      axisPointer: { type: 'line', lineStyle: { color: c['--texto-3'] } },
+      formatter: (params) => {
+        const punto = params[0];
+        if (!punto) return '';
+        const [t, valor] = punto.value;
+        const titulo = paso ? `${hora(t)} a ${hora(t + paso * 1000)}` : horaConSegundos(t);
+        return `<div class="globito"><div class="globito-titulo">${escapar(titulo)}</div>${filaGlobito(color, valor == null ? 'Sin respuesta' : formato(valor), valor == null ? '' : nombre)}</div>`;
+      },
+    },
+    series: [{ name: nombre, ...serie }],
+  };
+}
+
+/** Un solo indicador en el tiempo (tráfico o sin respuesta), en el verde de la marca: sin leyenda, el título
+    lo nombra. Con `marcas`, lleva debajo del eje las de las alertas, como el de las conexiones por servicio. */
 export function opcionesSerieSimple(c, datos, { tipo, formato, nombre }) {
   const color = c['--verde'];
   const serie = tipo === 'linea'
@@ -214,100 +304,99 @@ export function opcionesSerieSimple(c, datos, { tipo, formato, nombre }) {
       data: datos.tiempos.map((t, i) => [t, datos.valores[i] > 0 ? datos.valores[i] : null]),
       emphasis: { disabled: true },
     };
+  const marcas = datos.marcas || null;
   return {
     ...base(c),
     grid: { left: 8, right: 16, top: 16, bottom: 6, containLabel: true },
-    xAxis: ejeTiempo(c, datos.desde, datos.hasta),
-    yAxis: ejeValor(c, tipo === 'linea' ? formato : ejeNumero, datos.valores, tipo === 'linea' ? 1000 : 1),
+    brush: pincel(c),
+    xAxis: ejeTiempo(c, datos.desde, datos.hasta, Boolean(marcas)),
+    // Las barras cuentan conexiones: el eje va de a números enteros.
+    yAxis: tipo === 'linea' ? ejeValor(c, formato, datos.valores, 1000) : { ...ejeValor(c, ejeNumero, datos.valores, 1), minInterval: 1 },
     tooltip: {
       ...base(c).tooltip,
       trigger: 'axis',
       formatter: (params) => {
-        const t = params[0].axisValue;
-        const i = Math.round((t - datos.desde) / (datos.paso * 1000));
+        if (!params.length) return '';
+        const i = Math.round((params[0].axisValue - datos.desde) / (datos.paso * 1000));
         if (i < 0 || i >= datos.tiempos.length) return '';
         return `<div class="globito"><div class="globito-titulo">${escapar(tramoDe(datos.tiempos[i], datos.paso))}</div>${filaGlobito(color, formato(datos.valores[i]), nombre)}</div>`;
       },
     },
-    series: [{ name: nombre, ...serie }],
+    series: [...(marcas ? [serieMarcas(c, marcas)] : []), { id: 'valores', name: nombre, ...serie }],
   };
 }
 
 export const formatoBits = (v) => bitsPorSegundo(v);
 
 /**
- * Quién habla con quién: los equipos en columnas por área, flechas del origen al destino.
- * datos: { areas: [{nombre, nodos: [{id, nombre, ip, conexiones, forma}]}], aristas: [{origen, destino, conexiones, fallidas, bytes, servicios, severidad, alertaTexto}] }
+ * Comunicaciones entre áreas como el «Node graph» de Grafana, que se parece al de Neo4j: un círculo por
+ * equipo, del color de su área y más grande con más conexiones, con un anillo del color de su alerta más
+ * grave; y una flecha del origen al destino, más gruesa con más conexiones y del color de la alerta del par.
+ * Las posiciones vienen de mapa.js, de 0 a 1 del recuadro; dos anclas invisibles en las esquinas hacen que
+ * ECharts no las estire. Con un equipo o una flecha elegidos, lo que no tiene que ver queda apagado y las
+ * flechas de lo elegido dicen sus servicios; sin nada elegido, eso pasa al pasar el mouse.
+ * datos: { nodos: [{id, nombre, ip, area, conexiones, severidad, nivel, alertaTexto}],
+ *          aristas: [{origen, destino, origenNombre, destinoNombre, conexiones, fallidas, servicios, severidad, nivel, alertaTexto, etiqueta}],
+ *          posiciones: Map(id → [u, v]), colorDe: (área) → variable del color, ancho, alto,
+ *          elegido: {tipo: 'nodo', id} o {tipo: 'arista', clave} o null, encendidos: Set de ids o null }
  */
-export function opcionesMapa(c, datos) {
-  // Las posiciones van en píxeles del recuadro, con dos anclas invisibles en las esquinas: así ECharts no
-  // estira las coordenadas para llenarlo y los círculos siguen siendo círculos.
-  const ancho = Math.max(320, datos.ancho || 800);
-  const alto = Math.max(240, datos.alto || 380);
-  const margenX = Math.min(90, ancho * 0.08);
-  const columnas = datos.areas.length;
-  const xDe = (columna) => (columnas <= 1 ? ancho / 2 : margenX + (columna * (ancho - 2 * margenX)) / (columnas - 1));
-  const filasMax = Math.max(1, ...datos.areas.map((a) => a.nodos.length));
-  const arriba = 70;
-  const abajo = alto - 56;
-  const altoFila = filasMax > 1 ? Math.min(120, (abajo - arriba) / (filasMax - 1)) : 0;
-  const nodos = [
-    { id: 'ancla:1', name: '', x: 0, y: 0, symbolSize: 0, label: { show: false }, tooltip: { show: false }, emphasis: { disabled: true } },
-    { id: 'ancla:2', name: '', x: ancho, y: alto, symbolSize: 0, label: { show: false }, tooltip: { show: false }, emphasis: { disabled: true } },
-  ];
-  const maxConexiones = Math.max(1, ...datos.areas.flatMap((a) => a.nodos.map((n) => n.conexiones)));
-  datos.areas.forEach((area, columna) => {
-    nodos.push({
-      id: `area:${area.nombre}`,
-      name: area.nombre,
-      x: xDe(columna),
-      y: 22,
-      symbolSize: 1,
-      itemStyle: { color: 'transparent', borderWidth: 0 },
-      label: { show: true, position: 'inside', formatter: area.nombre, color: c['--texto-2'], fontSize: 12.5, fontWeight: 600 },
-      tooltip: { show: false },
-      emphasis: { disabled: true },
-    });
-    const centro = (arriba + abajo) / 2;
-    const primero = centro - ((area.nodos.length - 1) * altoFila) / 2;
-    area.nodos.forEach((nodo, fila) => {
-      const tamano = 16 + 18 * (Math.log1p(nodo.conexiones) / Math.log1p(maxConexiones));
-      nodos.push({
-        id: nodo.id,
-        name: nodo.nombre,
-        x: xDe(columna),
-        y: primero + fila * altoFila,
-        symbol: nodo.forma,
-        symbolSize: nodo.forma === 'roundRect' ? [tamano * 1.15, tamano * 0.9] : tamano,
-        value: nodo.conexiones,
-        itemStyle: { color: c['--superficie'], borderColor: c['--texto-2'], borderWidth: 2 },
-        label: {
-          show: true,
-          position: 'bottom',
-          distance: 6,
-          formatter: `{n|${nodo.nombre}}${nodo.nombre !== nodo.ip ? `\n{ip|${nodo.ip}}` : ''}`,
-          rich: {
-            n: { color: c['--texto'], fontSize: 12.5, fontWeight: 600, fontFamily: FUENTE, lineHeight: 17 },
-            ip: { color: c['--texto-2'], fontSize: 11.5, fontFamily: FUENTE, lineHeight: 15 },
-          },
-        },
-        datos: nodo,
-      });
-    });
-  });
+export function opcionesGrafo(c, datos) {
+  const { ancho, alto, elegido, encendidos } = datos;
+  const maxNodo = Math.max(1, ...datos.nodos.map((n) => n.conexiones));
   const maxArista = Math.max(1, ...datos.aristas.map((a) => a.conexiones));
-  const aristas = datos.aristas.map((a) => ({
-    source: a.origen,
-    target: a.destino,
-    value: a.conexiones,
-    lineStyle: {
-      width: 1.5 + 4.5 * (Math.log1p(a.conexiones) / Math.log1p(maxArista)),
-      color: a.severidad ? c[`--${a.severidad}`] : c['--arista'],
-      opacity: a.severidad ? 0.95 : 0.8,
-      curveness: 0.16,
-    },
-    datos: a,
-  }));
+  const limpio = (texto) => String(texto).replace(/[{}|]/g, '');
+  const nodoElegido = elegido && elegido.tipo === 'nodo' ? elegido.id : null;
+  const ancla = (id, x, y) => ({ id, name: '', x, y, symbolSize: 0, draggable: false, label: { show: false }, tooltip: { show: false }, emphasis: { disabled: true } });
+  const nodos = [ancla('ancla:1', 0, 0), ancla('ancla:2', ancho, alto)];
+  for (const n of datos.nodos) {
+    const [u, v] = datos.posiciones.get(n.id) || [0.5, 0.5];
+    const apagado = Boolean(encendidos) && !encendidos.has(n.id);
+    const alfa = apagado ? 0.3 : 1;
+    nodos.push({
+      id: n.id,
+      name: n.nombre,
+      x: u * ancho,
+      y: v * alto,
+      symbol: 'circle',
+      symbolSize: 22 + 16 * Math.sqrt(n.conexiones / maxNodo),
+      value: n.conexiones,
+      itemStyle: {
+        color: c[datos.colorDe(n.area)],
+        borderColor: n.severidad ? c[`--${n.severidad}`] : c['--superficie'],
+        borderWidth: n.severidad ? 3.5 : 2,
+        opacity: apagado ? 0.2 : 1,
+        shadowBlur: n.id === nodoElegido ? 18 : 0,
+        shadowColor: conAlfa(c['--verde'], 0.7),
+      },
+      label: {
+        show: true,
+        position: 'bottom',
+        distance: 5,
+        formatter: n.nombre !== n.ip ? `{n|${limpio(n.nombre)}}\n{ip|${limpio(n.ip)}}` : `{n|${limpio(n.ip)}}`,
+        backgroundColor: conAlfa(c['--superficie'], apagado ? 0 : 0.8),
+        padding: [1, 3],
+        borderRadius: 4,
+        rich: {
+          n: { color: conAlfa(c['--texto'], alfa), fontSize: 12.5, fontWeight: 600, fontFamily: FUENTE, lineHeight: 16, align: 'center' },
+          ip: { color: conAlfa(c['--texto-2'], alfa), fontSize: 11.5, fontFamily: FUENTE, lineHeight: 15, align: 'center' },
+        },
+      },
+      datos: n,
+    });
+  }
+  const aristas = datos.aristas.map((a) => {
+    const encendida = !elegido || (nodoElegido ? a.origen === nodoElegido || a.destino === nodoElegido : elegido.clave === `${a.origen}>${a.destino}`);
+    const grosor = 1.2 + 4 * (Math.log1p(a.conexiones) / Math.log1p(maxArista));
+    return {
+      source: a.origen,
+      target: a.destino,
+      value: a.conexiones,
+      symbolSize: [0, 7 + grosor * 1.5],
+      lineStyle: { width: grosor, color: a.severidad ? c[`--${a.severidad}`] : c['--arista'], opacity: encendida ? (a.severidad ? 0.95 : 0.75) : 0.07 },
+      label: { show: Boolean(elegido) && encendida, formatter: limpio(a.etiqueta) },
+      datos: a,
+    };
+  });
   return {
     ...base(c),
     tooltip: {
@@ -316,6 +405,7 @@ export function opcionesMapa(c, datos) {
       formatter: (p) => {
         if (p.dataType === 'edge') {
           const a = p.data.datos;
+          if (!a) return '';
           let html = `<div class="globito"><div class="globito-titulo">${escapar(a.origenNombre)} → ${escapar(a.destinoNombre)}</div>`;
           html += `<div class="globito-fila"><span></span><b>${escapar(numero(a.conexiones))}</b><em>conexiones</em></div>`;
           html += `<div class="globito-fila"><span></span><b>${escapar(numero(a.fallidas))}</b><em>sin respuesta</em></div>`;
@@ -325,24 +415,31 @@ export function opcionesMapa(c, datos) {
         }
         const n = p.data.datos;
         if (!n) return '';
-        return `<div class="globito"><div class="globito-titulo">${escapar(n.nombre)}</div><div class="globito-nota">${escapar(n.ip)} · ${escapar(n.area)}</div><div class="globito-fila"><span></span><b>${escapar(numero(n.conexiones))}</b><em>conexiones en la ventana</em></div></div>`;
+        let html = `<div class="globito"><div class="globito-titulo">${escapar(n.nombre)}</div><div class="globito-nota">${escapar(n.ip)} · ${escapar(n.area)}</div>`;
+        html += `<div class="globito-fila"><span></span><b>${escapar(numero(n.conexiones))}</b><em>conexiones</em></div>`;
+        if (n.severidad) html += `<div class="globito-separador"></div>${filaGlobito(c[`--${n.severidad}`], n.nivel, n.alertaTexto, true)}`;
+        return `${html}</div>`;
       },
     },
     series: [{
+      id: 'grafo',
       type: 'graph',
       layout: 'none',
       left: 0,
       right: 0,
       top: 0,
       bottom: 0,
-      roam: false,
-      nodeScaleRatio: 0,
+      roam: true,
+      scaleLimit: { min: 0.5, max: 3 },
+      nodeScaleRatio: 0.5,
+      draggable: true,
+      autoCurveness: true,
       edgeSymbol: ['none', 'arrow'],
-      edgeSymbolSize: [0, 9],
+      edgeLabel: { fontSize: 11.5, fontFamily: FUENTE, color: c['--texto'], backgroundColor: conAlfa(c['--superficie'], 0.9), padding: [1, 4], borderRadius: 4 },
       data: nodos,
       links: aristas,
-      emphasis: { focus: 'adjacency', lineStyle: { opacity: 1 } },
-      blur: { itemStyle: { opacity: 0.35 }, lineStyle: { opacity: 0.15 }, label: { opacity: 0.4 } },
+      emphasis: elegido ? { focus: 'none', scale: 1.06 } : { focus: 'adjacency', scale: 1.08, edgeLabel: { show: true } },
+      blur: { itemStyle: { opacity: 0.2 }, lineStyle: { opacity: 0.07 }, label: { opacity: 0.3 } },
       animationDurationUpdate: 300,
     }],
   };

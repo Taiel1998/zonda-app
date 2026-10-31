@@ -1,13 +1,21 @@
-// El tablero web de Zonda (decisiones 49 y 50): la vista de escritorio de la red, con lo mismo que la app.
+// El tablero web de Zonda (decisiones 49, 50 y 53): la vista de escritorio de la red, con lo mismo que la app.
 // Usa la misma API y el mismo acceso que un teléfono: se entra con un código de pareo de un solo uso y el
 // navegador queda como un dispositivo más, con su perfil y su vencimiento.
 
 import { api, borrarAcceso, guardarAcceso, horaConSegundos, icono, leerAcceso, vaciar, el } from './util.js';
-import { $, VENTANAS, alCambiarAlertas, alternarTabla, cuandoExpire, e } from './comun.js';
-import { actualizarAhora, actualizarPares, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarLeyendas, pintarMapa, pintarSinRevisar, pintarTrafico, pintarUltimas } from './vivo.js';
+import { $, alCambiarAlertas, cuandoExpire, e } from './comun.js';
+import {
+  actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
+  pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
+} from './vivo.js';
+import { actualizarPares, configurarMapa, pintarMapa, soltarElegido } from './mapa.js';
 import { abrirDetalle, cerrarDetalle, pintarAlertas, sincronizarAlertas, verMas } from './alertas.js';
 import { cambiarPeriodo, descargarImagen, guardarPdf, pintarResumen } from './resumen.js';
 import { actualizarAjustes, actualizarPersonas, configurarAjustes, pintarAjustes } from './ajustes.js';
+import { cadaCuanto, cerrarSelector, configurarTiempo, leerUrl, pintarBarra } from './tiempo.js';
+import { cerrarInspector, configurarPaneles, salirDeGrande, teclaDePanel, verEnGrande } from './paneles.js';
+import { cerrarMenu, configurarMenu } from './menu.js';
+import { configurarFilas, filaAbierta } from './filas.js';
 
 const CLAVE_TEMA = 'zonda.tablero.tema';
 const tareas = {};
@@ -32,11 +40,21 @@ function cambiarTema() {
   const tema = document.documentElement.dataset.tema === 'oscuro' ? 'claro' : 'oscuro';
   try { localStorage.setItem(CLAVE_TEMA, tema); } catch (_) { /* solo por esta vez */ }
   aplicarTema(tema);
-  for (const grafico of Object.values(e.graficos)) grafico.clear();
+  // Al limpiar un gráfico se pierde el pincel de arrastrar para acercar: tiempo.js lo vuelve a armar.
+  for (const grafico of Object.values(e.graficos)) { grafico.clear(); grafico.zondaPincel = false; }
   pintarLeyendas();
   pintarTrafico();
   pintarMapa();
+  pintarGraficosPiezas();
   if (e.vista === 'resumen') pintarResumen();
+}
+
+/** El único «?» de la tarjeta del estado del sistema: abre y cierra su ayuda. */
+function alternarAyudaEstado() {
+  const boton = $('boton-ayuda-estado');
+  const abierta = boton.getAttribute('aria-expanded') === 'true';
+  boton.setAttribute('aria-expanded', String(!abierta));
+  $('ayuda-estado').hidden = abierta;
 }
 
 // ---- Ingreso ----
@@ -121,8 +139,11 @@ const TAREAS = {
   salud: { cada: () => 5000, correr: actualizarSalud },
   alertas: { cada: () => 5000, correr: sincronizarAlertas },
   ahora: { cada: () => 5000, correr: actualizarAhora },
-  trafico: { cada: () => VENTANAS[e.ventana].cada, correr: actualizarTrafico },
-  pares: { cada: () => Math.max(10000, VENTANAS[e.ventana].cada), correr: actualizarPares },
+  piezas: { cada: () => 30000, correr: actualizarPiezas },
+  // El tráfico y el mapa, cada lo que se eligió en la barra del horario (nunca, si está apagada). Como en
+  // Grafana, el mapa no se pide mientras su fila está plegada; al desplegarla, se pide en el momento.
+  trafico: { cada: () => cadaCuanto(), correr: actualizarTrafico },
+  pares: { cada: () => (filaAbierta('comunicaciones') ? Math.max(10000, cadaCuanto()) : Infinity), correr: actualizarPares },
   personas: { cada: () => (e.vista === 'ajustes' ? 15000 : 60000), correr: () => (e.vista === 'ajustes' ? actualizarAjustes() : actualizarPersonas()) },
 };
 
@@ -142,12 +163,15 @@ function tic() {
   const ahora = Date.now();
   for (const [nombre, tarea] of Object.entries(TAREAS)) {
     const estado = tareas[nombre] || (tareas[nombre] = { ultima: 0, corriendo: false });
-    if (estado.corriendo || ahora - estado.ultima < tarea.cada()) continue;
+    // La primera vez corre siempre, aunque la actualización automática esté apagada.
+    if (estado.corriendo || (estado.ultima && ahora - estado.ultima < tarea.cada())) continue;
     estado.corriendo = true;
     estado.ultima = ahora;
     tarea.correr().catch(() => { /* se muestra en el indicador y se reintenta en la vuelta siguiente */ }).finally(() => { estado.corriendo = false; });
   }
   pintarEnVivo();
+  // El dato de cada pieza del estado cuenta los segundos («Última revisión hace 12 s»).
+  pintarEstado();
 }
 
 function pintarEnVivo() {
@@ -169,7 +193,9 @@ function pintarEnVivo() {
 
 // ---- Vistas ----
 
-function cambiarVista(vista) {
+function cambiarVista(vista, { mantenerPanel = false } = {}) {
+  if (!mantenerPanel) salirDeGrande();
+  cerrarInspector();
   e.vista = vista;
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.setAttribute('aria-selected', String(boton.dataset.vista === vista));
   for (const nombre of ['vivo', 'alertas', 'resumen', 'ajustes']) $(`vista-${nombre}`).hidden = nombre !== vista;
@@ -177,19 +203,59 @@ function cambiarVista(vista) {
   if (vista === 'resumen') pintarResumen();
   if (vista === 'ajustes') { pintarAjustes(); actualizarAjustes().catch(() => {}); }
   window.scrollTo(0, 0);
-  requestAnimationFrame(() => { for (const grafico of Object.values(e.graficos)) grafico.resize(); });
+  requestAnimationFrame(() => {
+    for (const grafico of Object.values(e.graficos)) grafico.resize();
+    // Los gráficos de En vivo que no se pudieron armar mientras no se veían.
+    if (vista === 'vivo') pintarVivo();
+  });
 }
 
-function cambiarVentana(ventana) {
-  e.ventana = ventana;
-  for (const boton of $('ventanas').querySelectorAll('button')) boton.setAttribute('aria-pressed', String(boton.dataset.ventana === ventana));
-  $('nota-ventana').textContent = VENTANAS[ventana].nota;
-  for (const nombre of ['conexiones', 'trafico', 'fallidas', 'mapa']) $(`grafico-${nombre}`).classList.add('cargando');
+/** Los gráficos de En vivo, con el tamaño que tienen ahora (al volver a la vista o al desplegar una fila). */
+function pintarVivo() {
+  pintarGraficosPiezas();
+  pintarTrafico();
+  pintarMapa();
+}
+
+/** Al desplegar una fila se dibuja lo suyo; la del mapa, además, lo pide en el momento. */
+function alCambiarFila(fila, abierta) {
+  if (!abierta) return;
+  pintarVivo();
+  if (fila === 'comunicaciones') {
+    tareas.pares = { ultima: Date.now(), corriendo: false };
+    actualizarPares().catch(() => {});
+  }
+}
+
+const CON_HORARIO = ['servicios', 'volumen', 'fallidas', 'mapa'];
+
+/** Cambió el horario (o se tocó Actualizar): se piden ya el tráfico y el mapa, y los relojes arrancan de nuevo. */
+function actualizarHorario() {
+  for (const nombre of CON_HORARIO) $(`grafico-${nombre}`).classList.add('cargando');
   Promise.allSettled([actualizarTrafico(), actualizarPares()]).finally(() => {
-    for (const nombre of ['conexiones', 'trafico', 'fallidas', 'mapa']) $(`grafico-${nombre}`).classList.remove('cargando');
+    for (const nombre of CON_HORARIO) $(`grafico-${nombre}`).classList.remove('cargando');
   });
   tareas.trafico = { ultima: Date.now(), corriendo: false };
   tareas.pares = { ultima: Date.now(), corriendo: false };
+}
+
+function actualizarTodo() {
+  actualizarHorario();
+  actualizarPiezas().catch(() => {});
+  actualizarSalud().catch(() => {});
+}
+
+/** Esc cierra lo de más arriba: el menú, el selector del horario, los datos de un panel, el detalle de una
+    alerta, lo elegido en el mapa y por último el panel en grande. */
+function alApretarTecla(ev) {
+  if (ev.key === 'Escape') {
+    if (document.querySelector('.hoja-velo')) return;
+    if (cerrarMenu(true) || cerrarSelector(true) || cerrarInspector()) { ev.preventDefault(); return; }
+    if (e.detalleAbierto) { cerrarDetalle(); return; }
+    if (soltarElegido() || salirDeGrande()) ev.preventDefault();
+    return;
+  }
+  if (!document.querySelector('.hoja-velo') && $('detalle').hidden && teclaDePanel(ev)) ev.preventDefault();
 }
 
 /** Cuando cambian las alertas (sincronización, una revisión o un responsable), se vuelve a pintar lo que las muestra. */
@@ -232,30 +298,49 @@ function iniciar() {
   cuandoExpire(terminarSesion);
   alCambiarAlertas(alCambiar);
   configurarAjustes({ salir, cambiarTema });
+  const panelDeLaUrl = leerUrl();
+  configurarMenu();
+  configurarFilas({ alCambiar: alCambiarFila });
+  configurarMapa();
+  configurarTiempo({ alCambiarRango: actualizarHorario, actualizarAhora: actualizarTodo });
+  configurarPaneles({
+    // El mapa y el estado del sistema se arman según el tamaño del panel; los otros gráficos se ajustan solos.
+    alAgrandar: (nombre) => {
+      if (nombre === 'mapa') pintarMapa();
+      if (nombre === 'estado') pintarGraficosPiezas();
+    },
+    irAVista: (vista) => { if (e.vista !== vista) cambiarVista(vista, { mantenerPanel: true }); },
+  });
   $('form-ingreso').addEventListener('submit', entrar);
   $('codigo').addEventListener('input', (ev) => {
     const valor = normalizarCodigo(ev.target.value);
     if (valor !== ev.target.value) ev.target.value = valor;
   });
   $('boton-tema').addEventListener('click', cambiarTema);
+  $('boton-ayuda-estado').addEventListener('click', alternarAyudaEstado);
   $('boton-salir').addEventListener('click', salir);
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.addEventListener('click', () => cambiarVista(boton.dataset.vista));
-  for (const boton of $('ventanas').querySelectorAll('button')) boton.addEventListener('click', () => cambiarVentana(boton.dataset.ventana));
   for (const boton of $('periodos').querySelectorAll('button')) boton.addEventListener('click', () => cambiarPeriodo(boton.dataset.dias));
-  for (const boton of document.querySelectorAll('.boton-tabla')) boton.addEventListener('click', () => alternarTabla(boton));
   $('ver-mas').addEventListener('click', verMas);
   $('descargar-imagen').addEventListener('click', descargarImagen);
   $('descargar-pdf').addEventListener('click', guardarPdf);
   $('velo').addEventListener('click', cerrarDetalle);
-  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && e.detalleAbierto && !document.querySelector('.hoja-velo')) cerrarDetalle(); });
+  document.addEventListener('keydown', alApretarTecla);
   document.addEventListener('visibilitychange', () => {
     if (!e.acceso) return;
     if (document.hidden) detenerTicker(); else arrancarTicker();
   });
   setInterval(() => { if (e.acceso && e.alertas.size) pintarUltimas(); }, 30000);
+  // El nombre de un rango que termina ahora no cambia, pero sí sus horas (en el globito del botón).
+  setInterval(() => { if (e.acceso) pintarBarra(); }, 30000);
 
   e.acceso = leerAcceso();
-  if (e.acceso) arrancarTablero(); else mostrarIngreso();
+  if (e.acceso) {
+    arrancarTablero();
+    if (panelDeLaUrl) verEnGrande(panelDeLaUrl);
+  } else {
+    mostrarIngreso();
+  }
 }
 
 iniciar();
