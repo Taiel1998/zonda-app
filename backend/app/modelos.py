@@ -751,3 +751,24 @@ class InformeFirewall(BaseModel):
 class InformeResultado(BaseModel):
     aplicados: int
     rechazados: int
+
+
+class MinutoLatidos(BaseModel):
+    """Un minuto del historial de latidos del análisis en vivo (decisión 52)."""
+
+    minuto: int
+    # Con el ciclo de 20 segundos, tres por minuto si el análisis anduvo todo el minuto.
+    latidos: int
+    flujos: int
+    perdidaCaptura: float | None
+    zeekActivo: bool
+
+
+class SerieLatidos(BaseModel):
+    """GET /latidos: los latidos de la ventana [desde, hasta) por minuto. Solo vienen los minutos con
+    latidos: un minuto que falta es un rato en que el análisis no anduvo."""
+
+    desde: int
+    hasta: int
+    horaServidor: str
+    minutos: list[MinutoLatidos]

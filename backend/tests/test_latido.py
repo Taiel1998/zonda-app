@@ -625,3 +625,50 @@ def test_el_texto_de_la_perdida_lleva_coma_decimal_hora_local_y_fecha_si_no_es_d
         "<b>Sensor viendo todo de nuevo</b>\nLa pérdida de captura bajó al 0,0 % en la medición de las 18:45.\n"
         "Red: Oficina &lt;central&gt;"
     )
+
+
+# ---- GET /latidos: el historial del análisis en vivo para el tablero web (decisión 52) ----
+
+
+def test_cada_latido_queda_en_el_historial_y_se_lee_por_minuto(cli):
+    auth = cabecera(parear(cli))
+    for flujos in (10, 20, 30):
+        latir(cli, flujos=flujos)
+    respuesta = cli.get("/latidos", headers=auth)
+    assert respuesta.status_code == 200, respuesta.text
+    minutos = respuesta.json()["minutos"]
+    # Los tres pueden caer en dos minutos si la prueba cruza el cambio de minuto.
+    assert sum(m["latidos"] for m in minutos) == 3
+    assert sum(m["flujos"] for m in minutos) == 60
+    assert all(m["zeekActivo"] for m in minutos)
+    assert all(m["minuto"] % 60 == 0 for m in minutos)
+
+
+def test_el_historial_guarda_la_perdida_y_si_zeek_anduvo(cli):
+    auth = cabecera(parear(cli))
+    latir(cli, zeekActivo=False, **con_perdida(2.5))
+    minuto = cli.get("/latidos", headers=auth).json()["minutos"][-1]
+    assert minuto["zeekActivo"] is False
+    assert minuto["perdidaCaptura"] == 2.5
+
+
+def test_el_historial_pide_un_dispositivo_pareado(cli):
+    assert cli.get("/latidos").status_code == 401
+    assert cli.get("/latidos", headers=cabecera("token-falso")).status_code == 401
+
+
+def test_el_historial_borra_lo_de_mas_de_una_semana(cli):
+    base = cli.app.state.base
+    viejo = int(datetime.now(timezone.utc).timestamp()) - 8 * 86400
+    with base.transaccion() as con:
+        con.execute("INSERT INTO latidos (t, flujos, zeek_activo) VALUES (?, 5, 1)", (viejo,))
+    latir(cli)
+    with base.transaccion() as con:
+        assert con.execute("SELECT COUNT(*) FROM latidos WHERE t = ?", (viejo,)).fetchone()[0] == 0
+        assert con.execute("SELECT COUNT(*) FROM latidos").fetchone()[0] == 1
+
+
+def test_una_ventana_al_reves_o_de_mas_de_una_semana_da_422(cli):
+    auth = cabecera(parear(cli))
+    assert cli.get("/latidos?desde=2000&hasta=1000", headers=auth).status_code == 422
+    assert cli.get(f"/latidos?desde=0&hasta={8 * 86400}", headers=auth).status_code == 422

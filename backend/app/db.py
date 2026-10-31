@@ -243,6 +243,17 @@ CREATE TABLE IF NOT EXISTS avisos_bloqueos (
     enviado_en TEXT NOT NULL,
     PRIMARY KEY (bloqueo_id, evento, chat_id)
 );
+
+-- Un latido del análisis en vivo por ciclo, para el gráfico del estado del sistema del tablero
+-- (decisión 52). t es la hora del servidor en que llegó, en segundos desde 1970 (UTC); se guarda lo
+-- mismo que el tráfico (dias_trafico). El último latido sigue también en meta, para GET /salud.
+CREATE TABLE IF NOT EXISTS latidos (
+    t INTEGER NOT NULL,
+    flujos INTEGER NOT NULL DEFAULT 0,
+    zeek_activo INTEGER NOT NULL DEFAULT 0,
+    perdida REAL
+);
+CREATE INDEX IF NOT EXISTS latidos_t ON latidos (t);
 """
 
 

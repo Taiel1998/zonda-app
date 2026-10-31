@@ -48,6 +48,7 @@ from .modelos import (
     IngestaResultado,
     LatidoEntrada,
     LatidoResultado,
+    MinutoLatidos,
     PaginaAlertas,
     ParDeTrafico,
     PareoEntrada,
@@ -59,6 +60,7 @@ from .modelos import (
     Revision,
     RevisionEntrada,
     Salud,
+    SerieLatidos,
     SerieTrafico,
     Severidad,
     SeveridadesEntrada,
@@ -675,8 +677,29 @@ def ingesta_latido(entrada: LatidoEntrada, request: Request, _: None = Depends(v
         if datos[campo] is not None:
             datos[campo] = _a_utc(datos[campo])
     with _base(request).transaccion() as con:
-        recibido = latido.guardar(con, datos)
+        recibido = latido.guardar(con, datos, request.app.state.config.dias_trafico)
     return LatidoResultado(recibidoEn=recibido)
+
+
+@router.get("/latidos", response_model=SerieLatidos)
+def ver_latidos(
+    request: Request,
+    dispositivo: sqlite3.Row = Depends(dispositivo_actual),
+    desde: int | None = None,
+    hasta: int | None = None,
+) -> SerieLatidos:
+    """Los latidos del análisis en vivo por minuto, para el gráfico del estado del sistema del tablero
+    (decisión 52). `desde` y `hasta` en segundos desde 1970; sin `desde`, la última hora; como mucho, una
+    semana. Un minuto que no viene es un rato en que el análisis no anduvo."""
+    # Sin `hasta`, hasta el segundo de ahora inclusive: el latido de recién también cuenta.
+    hasta = int(ahora().timestamp()) + 1 if hasta is None else hasta
+    desde = hasta - 3600 if desde is None else desde
+    if desde >= hasta:
+        raise HTTPException(status_code=422, detail="La ventana está al revés: desde tiene que ser anterior a hasta")
+    if hasta - desde > 7 * 86400:
+        raise HTTPException(status_code=422, detail="La ventana pasa de una semana")
+    minutos = latido.por_minuto(_base(request).conexion(), desde, hasta)
+    return SerieLatidos(desde=desde, hasta=hasta, horaServidor=iso(ahora()), minutos=[MinutoLatidos(**m) for m in minutos])
 
 
 # ---- Tráfico del sensor para el tablero web (decisión 49) ----
