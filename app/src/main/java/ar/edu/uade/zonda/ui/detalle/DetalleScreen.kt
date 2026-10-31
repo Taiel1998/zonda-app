@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -497,7 +499,11 @@ private fun Encabezado(alerta: Alerta, estado: EstadoRevision, enCola: Boolean, 
                 if (envio == EstadoEnvio.ERROR) IndicadorEnvio(envio)
             }
         }
-        Text(text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}", style = MaterialTheme.typography.encabezado)
+        Text(
+            text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}",
+            style = MaterialTheme.typography.encabezado,
+            modifier = Modifier.semantics { heading() },
+        )
         Text(
             text = listOf(
                 Formato.servicioProtocoloYPuerto(alerta.servicio, alerta.protocolo, alerta.puerto),

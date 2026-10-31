@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Alerta
@@ -205,7 +207,7 @@ fun ColumnScope.ContenidoHojaBloqueo(formulario: FormularioBloqueo, alerta: Aler
         AccionBloqueo.DESBLOQUEAR -> Triple(stringResource(R.string.bloqueo_hoja_desbloquear, equipo), stringResource(R.string.bloqueo_desbloquear), stringResource(R.string.bloqueo_ejemplo_desbloquear))
         AccionBloqueo.RECHAZAR -> Triple(stringResource(R.string.bloqueo_hoja_rechazar, equipo), stringResource(R.string.bloqueo_rechazar), stringResource(R.string.bloqueo_ejemplo_rechazar))
     }
-    Text(text = titulo, style = MaterialTheme.typography.tituloHoja)
+    Text(text = titulo, style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     // Hasta desbloquear se puede elegir siempre; la línea pasa a ámbar para que se vea que no vence solo.
     val sinVencimiento = formulario.conDuracion && formulario.duracion == DuracionBloqueo.HASTA_DESBLOQUEAR
     queSeCorta(formulario, alerta)?.let {

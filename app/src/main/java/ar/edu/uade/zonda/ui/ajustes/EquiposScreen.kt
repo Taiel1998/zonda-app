@@ -30,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
@@ -183,7 +185,7 @@ private fun FilaEquipo(equipo: EquipoDeLaRed, alTocar: (() -> Unit)?) {
  */
 @Composable
 fun ColumnScope.ContenidoHojaImportancia(equipo: EquipoDeLaRed, alElegir: (Importancia) -> Unit) {
-    Text(text = equipo.nombre, style = MaterialTheme.typography.tituloHoja)
+    Text(text = equipo.nombre, style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Text(text = equipo.ip, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Importancia.entries.forEach { importancia ->

@@ -26,6 +26,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -85,9 +87,11 @@ fun EtiquetaConAyuda(
     estilo: TextStyle,
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
+    /** El término es el título de una sección: TalkBack lo anuncia como encabezado (en el texto, no en la fila). */
+    encabezado: Boolean = false,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = texto, style = estilo, color = color)
+        Text(text = texto, style = estilo, color = color, modifier = if (encabezado) Modifier.semantics { heading() } else Modifier)
         AyudaGlobito(termino = texto, ayuda = ayuda)
     }
 }

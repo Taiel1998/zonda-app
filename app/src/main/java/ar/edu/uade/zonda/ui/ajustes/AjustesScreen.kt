@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -401,7 +403,7 @@ fun AjustesContenido(
  */
 @Composable
 fun ColumnScope.ContenidoHojaTema(elegido: Tema, alElegir: (Tema) -> Unit) {
-    Text(text = stringResource(R.string.ajustes_tema), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(R.string.ajustes_tema), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Tema.entries.forEach { tema ->
             FilaRadio(

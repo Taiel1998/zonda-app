@@ -28,6 +28,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathBuilder
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
@@ -59,7 +62,13 @@ fun BarraEstado(
         ) {
             LogoZonda(tamanio = 28.dp)
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text = stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { heading() },
+            )
             // Los botones son de 48 para el toque, pero los íconos van a 36 uno del otro, como el Figma.
             Row(horizontalArrangement = Arrangement.spacedBy((-12).dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = alAbrirResumen) {
@@ -73,7 +82,9 @@ fun BarraEstado(
                 if (alSincronizar != null) {
                     IconButton(onClick = alSincronizar, enabled = !sincronizando) {
                         if (sincronizando) {
-                            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                            // Mientras gira, el botón sigue con nombre: TalkBack dice "Sincronizar ahora, desactivado".
+                            val descripcion = stringResource(R.string.accion_sincronizar)
+                            CircularProgressIndicator(modifier = Modifier.size(22.dp).semantics { contentDescription = descripcion }, strokeWidth = 2.dp)
                         } else {
                             Icon(
                                 imageVector = Icons.Filled.Sync,

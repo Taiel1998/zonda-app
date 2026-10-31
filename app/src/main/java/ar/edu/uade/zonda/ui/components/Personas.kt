@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Importancia
@@ -45,7 +47,9 @@ fun Avatar(inicial: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(30.dp)
-            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+            // La inicial es decorativa: el nombre ya está al lado y TalkBack no tiene que decir "T".
+            .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
         Text(text = inicial, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -114,7 +118,7 @@ fun FilaPersona(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (alTocar != null) Modifier.clickable(onClick = alTocar) else Modifier)
+            .then(if (alTocar != null) Modifier.clickable(role = Role.Button, onClick = alTocar) else Modifier)
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),

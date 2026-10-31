@@ -39,6 +39,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
@@ -267,7 +269,7 @@ fun PersonasContenido(
  */
 @Composable
 fun ColumnScope.ContenidoHojaAgregarPersona(formulario: FormularioPersona, acciones: AccionesPersonas) {
-    Text(text = stringResource(R.string.personas_agregar), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(R.string.personas_agregar), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     CampoTexto(
         valor = formulario.nombre,
         alCambiar = acciones.alCambiarNombre,
@@ -316,7 +318,7 @@ fun ColumnScope.ContenidoHojaPersona(
     alQuitar: () -> Unit,
     alCambiarPermisoBloqueo: (Boolean) -> Unit = {},
 ) {
-    Text(text = persona.nombreVisible, style = MaterialTheme.typography.tituloHoja)
+    Text(text = persona.nombreVisible, style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Text(text = detalleDePersona(persona, ahora, zona), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     if (persona.perfil.esAdministrador) {
         AccionDePersona(Icons.Outlined.Person, stringResource(R.string.personas_pasar_a_analista), MaterialTheme.colorScheme.primary) {

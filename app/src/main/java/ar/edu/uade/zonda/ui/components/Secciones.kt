@@ -33,6 +33,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -71,6 +73,7 @@ fun Panel(
 /** El título chico gris de una sección ("Red", "Avisos", "Conexión"), con su "?" si tiene [ayuda]. */
 @Composable
 fun TituloSeccion(texto: String, modifier: Modifier = Modifier, ayuda: String? = null) {
+    // Encabezado para TalkBack: se salta de sección en sección ("Red", "Avisos", "Datos del flujo").
     if (ayuda != null) {
         EtiquetaConAyuda(
             texto = texto,
@@ -78,9 +81,15 @@ fun TituloSeccion(texto: String, modifier: Modifier = Modifier, ayuda: String? =
             estilo = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = modifier,
+            encabezado = true,
         )
     } else {
-        Text(text = texto, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier)
+        Text(
+            text = texto,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier.semantics { heading() },
+        )
     }
 }
 
@@ -120,7 +129,7 @@ fun FilaNavegable(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = alTocar)
+            .clickable(role = Role.Button, onClick = alTocar)
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

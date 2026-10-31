@@ -54,6 +54,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -317,6 +318,8 @@ private fun LazyListScope.datosDeLaRed(
             text = stringResource(ayudaDeLosContadores(elegida)),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // Al tocar un contador o el semáforo cambia a "Mostrando solo altas sin revisar...": TalkBack lo anuncia.
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
     item {
@@ -529,7 +532,9 @@ private fun EncabezadoLista(titulo: String, alVerTodas: (() -> Unit)?) {
             text = titulo,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .semantics { heading() },
         )
         if (alVerTodas != null) {
             val descripcion = stringResource(R.string.estado_ver_todas_descripcion)

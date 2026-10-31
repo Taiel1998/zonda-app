@@ -34,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
@@ -122,10 +124,13 @@ fun AlertasContenido(
                 titulo = stringResource(R.string.destino_alertas),
                 acciones = {
                     if (estado.sincronizando) {
+                        // Reemplaza al botón mientras sincroniza: con nombre, TalkBack no se queda sin qué decir.
+                        val descripcion = stringResource(R.string.accion_sincronizar)
                         CircularProgressIndicator(
                             modifier = Modifier
                                 .padding(end = 16.dp)
-                                .size(22.dp),
+                                .size(22.dp)
+                                .semantics { contentDescription = descripcion },
                             strokeWidth = 2.dp,
                         )
                     } else {
