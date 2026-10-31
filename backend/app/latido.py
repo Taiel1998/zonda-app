@@ -1,9 +1,11 @@
 """Latido del análisis en vivo: el pipeline del laboratorio avisa al final de cada ciclo que sigue
 andando, aunque no haya episodios, y el servidor se da cuenta si deja de hacerlo.
 
-El último latido se guarda en la tabla meta, sin tablas nuevas: `latido` con lo que mandó el sensor y
-`latido_recibido_en` con la hora del servidor, que es la que mide la frescura (el reloj de la VM puede
-no coincidir con el de la notebook). GET /salud lo usa para la tarjeta "Estado del sistema" de la app.
+El último latido se guarda en la tabla meta: `latido` con lo que mandó el sensor y `latido_recibido_en`
+con la hora del servidor, que es la que mide la frescura (el reloj de la VM puede no coincidir con el de
+la notebook). GET /salud lo usa para la tarjeta "Estado del sistema" de la app. Además, cada latido queda
+en la tabla `latidos` una semana (decisión 52): GET /latidos los da por minuto para el gráfico del
+análisis en vivo del tablero web, donde un hueco es un rato en que el análisis no anduvo.
 
 El vigía revisa cada pocos segundos la edad del latido: si pasa del límite (2 minutos), avisa por
 Telegram que el análisis se detuvo, una sola vez, y cuando vuelve, que volvió. Con el mismo criterio
@@ -42,13 +44,34 @@ TEXTO_NORMAL = "<b>Sensor viendo todo de nuevo</b>\nLa pérdida de captura bajó
 LINEA_SIMULADA = "\n(Prueba: pérdida simulada en el laboratorio.)"
 
 
-def guardar(con: sqlite3.Connection, datos: dict) -> str:
+def guardar(con: sqlite3.Connection, datos: dict, dias: int = 7) -> str:
     """Guarda el último latido (lo que mandó el sensor, con las fechas ya en UTC) y la hora del
-    servidor en que llegó, que devuelve."""
-    recibido = iso(ahora())
+    servidor en que llegó, que devuelve. También lo suma al historial y borra lo de más de `dias` días."""
+    momento = ahora()
+    recibido = iso(momento)
     Base.escribir_meta(con, "latido", json.dumps(datos))
     Base.escribir_meta(con, "latido_recibido_en", recibido)
+    segundos = int(momento.timestamp())
+    con.execute(
+        "INSERT INTO latidos (t, flujos, zeek_activo, perdida) VALUES (?, ?, ?, ?)",
+        (segundos, datos.get("flujos") or 0, 1 if datos.get("zeekActivo") else 0, datos.get("perdidaCaptura")),
+    )
+    con.execute("DELETE FROM latidos WHERE t < ?", (segundos - dias * 86400,))
     return recibido
+
+
+def por_minuto(con: sqlite3.Connection, desde: int, hasta: int) -> list[dict]:
+    """Los latidos de [desde, hasta) por minuto: cuántos llegaron, cuántos flujos revisaron, la mayor
+    pérdida de captura que informaron y si Zeek anduvo en todos. Solo los minutos con latidos."""
+    filas = con.execute(
+        "SELECT t - t % 60 AS minuto, COUNT(*) AS latidos, SUM(flujos) AS flujos, MAX(perdida) AS perdida, "
+        "MIN(zeek_activo) AS zeek FROM latidos WHERE t >= ? AND t < ? GROUP BY minuto ORDER BY minuto",
+        (desde, hasta),
+    )
+    return [
+        {"minuto": f["minuto"], "latidos": f["latidos"], "flujos": f["flujos"], "perdidaCaptura": f["perdida"], "zeekActivo": bool(f["zeek"])}
+        for f in filas
+    ]
 
 
 def _ve_parcialmente(datos: dict, cfg: Config) -> bool:
