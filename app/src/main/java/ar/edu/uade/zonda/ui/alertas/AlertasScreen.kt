@@ -316,7 +316,7 @@ private fun textoDelAviso(contexto: Context, aviso: AvisoAlertas, zona: ZoneId):
     is AvisoAlertas.Sincronizado -> when {
         // Figma: "Sincronizado · dom 27/09 · 02:15" al tocar sincronizar (RF01, criterio 5).
         aviso.manual -> contexto.getString(R.string.aviso_sincronizado_hora, Formato.dia(aviso.hora, zona), Formato.hora(aviso.hora, zona))
-        aviso.altasNuevas > 0 -> contexto.getString(R.string.aviso_sincronizado_con_altas, aviso.nuevas, aviso.altasNuevas)
+        aviso.altasNuevas > 0 -> contexto.resources.getQuantityString(R.plurals.aviso_sincronizado_con_altas, aviso.nuevas, aviso.nuevas, aviso.altasNuevas)
         else -> contexto.resources.getQuantityString(R.plurals.aviso_sincronizado_nuevas, aviso.nuevas, aviso.nuevas)
     }
     is AvisoAlertas.Error -> contexto.getString(aviso.error.mensaje())

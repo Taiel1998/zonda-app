@@ -299,7 +299,7 @@ fun TarjetaDescarga(
             text = if (total != null) {
                 stringResource(R.string.descarga_progreso, descargadas, total)
             } else {
-                stringResource(R.string.descarga_sin_total, descargadas)
+                pluralStringResource(R.plurals.descarga_sin_total, descargadas, descargadas)
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

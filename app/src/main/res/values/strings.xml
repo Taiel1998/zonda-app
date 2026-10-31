@@ -186,7 +186,10 @@
         <item quantity="one">Sincronizado: %d alerta nueva.</item>
         <item quantity="other">Sincronizado: %d alertas nuevas.</item>
     </plurals>
-    <string name="aviso_sincronizado_con_altas">Sincronizado: %1$d nuevas, %2$d de severidad alta.</string>
+    <plurals name="aviso_sincronizado_con_altas">
+        <item quantity="one">Sincronizado: %1$d nueva, %2$d de severidad alta.</item>
+        <item quantity="other">Sincronizado: %1$d nuevas, %2$d de severidad alta.</item>
+    </plurals>
 
     <!-- Errores (informe, sección 14.3) -->
     <string name="error_sin_conexion">Sin conexión. Se muestran los datos guardados.</string>
@@ -581,7 +584,10 @@
     <string name="contador_descripcion">%1$d sin revisar de severidad %2$s</string>
     <string name="descarga_titulo">Descargando alertas…</string>
     <string name="descarga_progreso">%1$d de %2$d · últimos 30 días · solo la primera vez</string>
-    <string name="descarga_sin_total">%1$d alertas · últimos 30 días · solo la primera vez</string>
+    <plurals name="descarga_sin_total">
+        <item quantity="one">%1$d alerta · últimos 30 días · solo la primera vez</item>
+        <item quantity="other">%1$d alertas · últimos 30 días · solo la primera vez</item>
+    </plurals>
     <!-- Para el raro caso de rojo o amarillo sin la hora de la última alerta (la lista todavía no llegó). -->
     <string name="semaforo_actualizado">Actualizado %1$s</string>
 
