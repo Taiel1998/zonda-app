@@ -161,6 +161,9 @@ html { scrollbar-gutter: stable; }
   font-variant-numeric: tabular-nums;
 }
 .campo-codigo:focus { outline: 2px solid var(--verde); outline-offset: 0; border-color: transparent; }
+/* El ejemplo, tenue y más fino: grande, centrado y con el mismo peso parecía un código ya escrito. */
+.campo-codigo::placeholder { color: var(--texto-3); font-weight: 400; opacity: 0.55; }
+.ingreso-etiqueta { display: block; font-size: 13px; font-weight: 500; color: var(--texto-2); margin: 0 0 6px; }
 
 .boton-principal {
   width: 100%;
@@ -327,6 +330,8 @@ html { scrollbar-gutter: stable; }
 .filtros-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .barra-tiempo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; position: relative; }
 .grupo-botones { display: inline-flex; }
+/* El ⋮ del horario es solo del teléfono (abajo). */
+#tiempo-mas { display: none; }
 .grupo-botones > .boton-barra + .boton-barra { margin-left: -1px; }
 .grupo-botones > .boton-barra:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .grupo-botones > .boton-barra:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
@@ -439,6 +444,13 @@ html { scrollbar-gutter: stable; }
 @media (max-width: 720px) {
   .barra-tiempo { margin-left: 0; }
   .texto-boton { display: none; }
+  /* El horario de En vivo en una sola fila, como la app ocupa poco arriba: el rango con sus flechas y un ⋮ con
+     actualizar, alejar, copiar el enlace y cada cuánto se actualiza. */
+  #barra-tiempo { flex-wrap: nowrap; width: 100%; }
+  #barra-tiempo > .grupo-botones:first-child { flex: 1; min-width: 0; }
+  #barra-tiempo .boton-rango { flex: 1; justify-content: center; }
+  #tiempo-alejar, #grupo-actualizar, #copiar-enlace { display: none; }
+  #tiempo-mas { display: inline-flex; flex: none; }
   .barra-fija { margin: -8px -16px 10px; padding: 8px 16px; }
   /* Los filtros de Alertas en una sola fila que se corre de costado, como en la app: la barra fija ocupa menos. */
   .barra-filtros .filtros-chips { flex: 0 0 calc(100% + 32px); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
@@ -691,6 +703,18 @@ html { scrollbar-gutter: stable; }
 .pieza-dato { font-size: 13.5px; color: var(--texto-2); margin: 2px 0 8px 18px; }
 .pieza-pie { font-size: 12px; color: var(--texto-3); margin-top: 4px; }
 .grafico.mini { height: 64px; }
+/* Sin datos, el gráfico chico dice por qué en el medio, como los paneles grandes con .vacio. */
+.mini-envoltura { position: relative; }
+.vacio-mini {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--texto-3);
+  font-size: 12.5px;
+  pointer-events: none;
+}
 .semaforo {
   display: inline-flex; align-items: center; gap: 5px; flex: none;
   background: #2c2c2a; border-radius: 999px; padding: 4px 6px;
@@ -862,6 +886,22 @@ html { scrollbar-gutter: stable; }
 }
 .tabla td { padding: 9px 8px; border-bottom: 1px solid var(--borde); vertical-align: middle; white-space: nowrap; }
 .tabla td.num, .tabla th.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Los encabezados que ordenan la lista, como las tablas de Grafana. La flecha va en el hueco entre columnas, así
+   la tabla no se ensancha; se ve en la columna elegida y, tenue, al pasar el mouse o con el foco. */
+.tabla th .orden {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.tabla th .orden svg { position: absolute; left: 100%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 2px; stroke-width: 2.5; opacity: 0; }
+.tabla th .orden:hover svg, .tabla th .orden:focus-visible svg { opacity: 0.45; }
+.tabla th[aria-sort] { color: var(--texto); }
+.tabla th[aria-sort] .orden svg { opacity: 1; }
+.tabla th[aria-sort="ascending"] .orden svg { transform: rotate(180deg); }
 .tabla tbody tr.clic { cursor: pointer; }
 .tabla tbody tr.clic:hover { background: var(--superficie-2); }
 .tabla .par { white-space: nowrap; }

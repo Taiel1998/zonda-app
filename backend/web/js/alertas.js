@@ -105,10 +105,31 @@ function pasa(a, horario, conChip) {
   return true;
 }
 
+// El orden de la lista, como las tablas de Grafana: se toca el encabezado (Severidad, Empezó o Conexiones) y,
+// tocándolo otra vez, se da vuelta. De fábrica, las más nuevas primero; a igual valor, también.
+const ORDENES = {
+  severidad: { valor: (a) => ORDEN_SEVERIDAD.length - ORDEN_SEVERIDAD.indexOf(a.severidad), frases: ['las más graves primero', 'las menos graves primero'] },
+  empezo: { valor: (a) => Date.parse(a.inicio), frases: ['las más nuevas primero', 'las más viejas primero'] },
+  conexiones: { valor: (a) => a.cantidadFlujos, frases: ['las de más conexiones primero', 'las de menos conexiones primero'] },
+};
+const orden = { columna: 'empezo', descendente: true };
+
+function comparar(x, y) {
+  const { valor } = ORDENES[orden.columna];
+  return (valor(y) - valor(x)) * (orden.descendente ? 1 : -1) || Date.parse(y.inicio) - Date.parse(x.inicio);
+}
+
+function ordenarPor(columna) {
+  if (orden.columna === columna) orden.descendente = !orden.descendente;
+  else Object.assign(orden, { columna, descendente: true });
+  pintarAlertas();
+}
+
+/** Con los filtros y el horario, en el orden elegido; el CSV sale en el mismo orden. */
 export function alertasFiltradas() {
   const horario = rangoActual(f.rango);
   const conChip = serviciosConChip();
-  return [...e.alertas.values()].filter((a) => pasa(a, horario, conChip)).sort((x, y) => Date.parse(y.inicio) - Date.parse(x.inicio));
+  return [...e.alertas.values()].filter((a) => pasa(a, horario, conChip)).sort(comparar);
 }
 
 const cantidadMasFiltros = () => f.servicios.size + (f.otrosServicios ? 1 : 0) + f.destinos.size + f.metodos.size;
@@ -138,7 +159,14 @@ export function pintarAlertas() {
   pintarBarraAlertas();
   const lista = alertasFiltradas();
   const sinRevisar = lista.filter((a) => a.estadoRevision === 'sin_revisar').length;
-  vaciar($('resumen-filtros-alertas'), el('strong', {}, `${numero(lista.length)} ${lista.length === 1 ? 'alerta' : 'alertas'}`), ` ${fraseRango(f.rango)} · ${numero(sinRevisar)} sin revisar · las más nuevas primero`);
+  // Hasta la primera sincronización la lista no está vacía: está cargando.
+  if (!e.sincronizada) vaciar($('resumen-filtros-alertas'), 'Cargando las alertas…');
+  else vaciar($('resumen-filtros-alertas'), el('strong', {}, `${numero(lista.length)} ${lista.length === 1 ? 'alerta' : 'alertas'}`), ` ${fraseRango(f.rango)} · ${numero(sinRevisar)} sin revisar · ${ORDENES[orden.columna].frases[orden.descendente ? 0 : 1]}`);
+  // Solo la columna elegida lleva aria-sort, y su flecha (estilos.css) dice para qué lado.
+  for (const th of $('tabla-alertas').tHead.querySelectorAll('th[data-orden]')) {
+    if (th.dataset.orden === orden.columna) th.setAttribute('aria-sort', orden.descendente ? 'descending' : 'ascending');
+    else th.removeAttribute('aria-sort');
+  }
   const cuerpo = $('tabla-alertas').tBodies[0];
   // Si el foco estaba en una fila, vuelve a la misma alerta después de armar la tabla de nuevo.
   const enfocada = cuerpo.contains(document.activeElement) ? document.activeElement.closest('tr[data-id]') : null;
@@ -163,7 +191,7 @@ export function pintarAlertas() {
     const fila = cuerpo.querySelector(`tr[data-id="${CSS.escape(enfocada.dataset.id)}"]`);
     if (fila) fila.focus({ preventScroll: true });
   }
-  $('vacio-alertas').hidden = lista.length > 0;
+  $('vacio-alertas').hidden = lista.length > 0 || !e.sincronizada;
   $('vacio-alertas').textContent = 'Ninguna alerta con estos filtros. Cambiá o limpiá los filtros.';
   $('ver-mas').hidden = lista.length <= limite;
 }
@@ -217,6 +245,10 @@ function ponerRangoAlertas(rango) {
 export function configurarAlertas() {
   for (const lugar of document.querySelectorAll('#barra-tiempo-alertas [data-icono], #alertas-csv [data-icono]')) lugar.prepend(icono(lugar.dataset.icono));
   $('alertas-csv').addEventListener('click', bajarCsvAlertas);
+  for (const boton of $('tabla-alertas').tHead.querySelectorAll('button[data-orden]')) {
+    boton.append(icono('abajo'));
+    boton.addEventListener('click', () => ordenarPor(boton.dataset.orden));
+  }
   selectorDeHorario({
     selector: $('selector-alertas'),
     boton: $('alertas-rango'),

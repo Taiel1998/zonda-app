@@ -44,6 +44,8 @@ function base(c) {
     animationDuration: 500,
     animationDurationUpdate: 350,
     tooltip: {
+      // Explícito: un gráfico que estuvo vacío (sinEjes) lo apaga, y al volver los datos tiene que prenderse.
+      show: true,
       confine: true,
       // Aparece y se va al instante, como en Grafana: con la transición de ECharts quedaba un globito a medio
       // borrar al sacar el mouse.
@@ -105,6 +107,18 @@ function pincel(c) {
     outOfBrush: { colorAlpha: 1 },
     throttleType: 'debounce',
     throttleDelay: 0,
+  };
+}
+
+/** Sin datos, el gráfico queda en blanco y su aviso (.vacio) dice por qué, como el «No data» de Grafana: sin ejes,
+    sin una escala inventada de 0 a 1 y sin marcas sueltas. */
+export function sinEjes(opciones) {
+  return {
+    ...opciones,
+    xAxis: { ...opciones.xAxis, show: false, axisPointer: { show: false } },
+    yAxis: { ...opciones.yAxis, show: false },
+    tooltip: { ...opciones.tooltip, show: false },
+    series: opciones.series.filter((s) => s.id !== 'marcas'),
   };
 }
 

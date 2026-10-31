@@ -498,6 +498,12 @@ export function pintarResumen() {
   asegurarSeveridades();
   const x = calcular();
   pintarBarra();
+  // Hasta la primera sincronización no se sabe si hubo alertas: «Sin alertas» diría que la red estuvo tranquila.
+  if (!e.sincronizada) {
+    $('resumen-linea').textContent = 'Cargando las alertas…';
+    vaciar($('resumen-cuerpo'));
+    return;
+  }
   $('resumen-linea').textContent = lineaDelResumen(x);
   if (!x.delPeriodo.length) {
     vaciar($('resumen-cuerpo'), vacio());
