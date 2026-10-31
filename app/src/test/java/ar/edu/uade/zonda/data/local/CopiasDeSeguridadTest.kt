@@ -20,6 +20,7 @@ class CopiasDeSeguridadTest {
         val aplicacion = leer("src/main/AndroidManifest.xml").getElementsByTagName("application").aLista().single()
 
         assertEquals("false", aplicacion.getAttributeNS(ANDROID, "allowBackup"))
+        assertEquals("false", aplicacion.getAttributeNS(ANDROID, "fullBackupContent"))
         assertEquals("@xml/reglas_de_extraccion", aplicacion.getAttributeNS(ANDROID, "dataExtractionRules"))
     }
 

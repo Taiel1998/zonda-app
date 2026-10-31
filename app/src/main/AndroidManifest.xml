@@ -24,12 +24,14 @@
 
     <!-- allowBackup en false: la base local y el token no van a ninguna copia de seguridad (RNF03).
          dataExtractionRules: lo mismo desde Android 12, donde allowBackup apaga la copia en la nube pero no el
-         pase de datos a un teléfono nuevo (res/xml/reglas_de_extraccion.xml).
+         pase de datos a un teléfono nuevo (res/xml/reglas_de_extraccion.xml); fullBackupContent lo dice
+         también para Android 8 a 11.
          networkSecurityConfig: solo HTTPS, también en Android 8 (RNF04; res/xml/network_security_config.xml). -->
     <application
         android:name=".ZondaApp"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/reglas_de_extraccion"
+        android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:networkSecurityConfig="@xml/network_security_config"
