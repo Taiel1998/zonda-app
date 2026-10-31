@@ -511,8 +511,8 @@ async function conectarTelegram() {
     subtitulo: `El enlace vence a las ${hora(Date.parse(vinculo.vence))}.`,
     cuerpo: [
       el('ol', { style: 'margin:0;padding-left:20px;display:grid;gap:6px' },
-        el('li', {}, 'Tocá «Abrir Telegram»: se abre el chat con el bot de Zonda.'),
-        el('li', {}, 'Tocá «Iniciar». El bot reconoce este navegador.'),
+        el('li', {}, 'Apretá «Abrir Telegram»: se abre el chat con el bot de Zonda.'),
+        el('li', {}, 'Apretá «Iniciar». El bot reconoce este navegador.'),
         el('li', {}, 'Volvé acá: se actualiza solo.')),
     ],
     acciones: [

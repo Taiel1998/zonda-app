@@ -331,7 +331,7 @@ function hojaMasFiltros() {
   const destinosOrdenados = [...cuentaDestinos.entries()].sort((x, y) => y[1].n - x[1].n).slice(0, 12);
   hojaDeOpciones({
     titulo: 'Más filtros',
-    subtitulo: 'Podés elegir varios en cada grupo. Tocá uno elegido para sacarlo.',
+    subtitulo: 'Podés elegir varios en cada grupo. Para sacar uno, elegilo de nuevo.',
     grupos: [
       { titulo: 'Servicio', opciones: [...opcionMultiple(conChip.map((s) => ({ id: s, nombre: servicioCorto(s) })), servicios), ...(e.alertas.size && new Set([...e.alertas.values()].map((a) => a.servicio)).size > conChip.length ? opcionMultiple([{ id: '__otros', nombre: 'Los demás' }], otros) : [])] },
       { titulo: 'Equipo destino', opciones: opcionMultiple(destinosOrdenados.map(([ip, d]) => ({ id: ip, nombre: d.nombre === ip ? ip : `${d.nombre}` })), destinos) },

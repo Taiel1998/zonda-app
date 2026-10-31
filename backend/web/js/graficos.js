@@ -277,7 +277,7 @@ export function opcionesAlertasTiempo(c, datos) {
           return filaGlobito(c[s.color], numero(n), n === 1 ? s.nombre.toLowerCase() : `${s.nombre.toLowerCase()}s`, true);
         });
         const tipos = datos.porTipo[i].map((x) => `<div class="globito-fila"><span></span><b>${escapar(numero(x.n))}</b><em>${escapar(x.tipo)}</em></div>`);
-        return `${html}${filas.join('')}<div class="globito-separador"></div>${tipos.join('')}<div class="globito-nota">Tocá la barra para verlas en la lista.</div></div>`;
+        return `${html}${filas.join('')}<div class="globito-separador"></div>${tipos.join('')}<div class="globito-nota">Elegí la barra para verlas en la lista.</div></div>`;
       },
     },
     // Sin alertas, la barra queda vacía (null). Los segmentos van sin borde: en una semana cada barra mide
