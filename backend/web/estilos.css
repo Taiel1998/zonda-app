@@ -206,7 +206,8 @@ button { cursor: pointer; }
   border-bottom: 1px solid var(--borde);
 }
 
-.marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.marca { display: flex; align-items: center; gap: 12px; min-width: 0; color: inherit; text-decoration: none; border-radius: 10px; }
+.marca:focus-visible { outline: 2px solid var(--verde); outline-offset: 4px; }
 .marca img { width: 36px; height: 36px; border-radius: 9px; }
 .marca-nombre { font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
 
@@ -296,11 +297,9 @@ button { cursor: pointer; }
   margin-bottom: 18px;
 }
 .filtros-etiqueta { font-size: 14px; color: var(--texto-2); }
-.filtros-nota { font-size: 13px; color: var(--texto-3); margin-left: auto; }
 
 /* ---- El horario, como la barra de tiempo de Grafana ---- */
 
-.barra-horario .filtros-nota { margin-left: 0; }
 /* La barra de arriba de En vivo, Alertas y Resumen queda fija debajo de la cabecera al bajar, para cambiar el
    horario sin volver arriba; ya pegada, lleva una línea abajo (tablero.js le pone la clase). */
 .barra-fija {
@@ -1184,67 +1183,78 @@ button { cursor: pointer; }
 .res-compartir svg { width: 16px; height: 16px; }
 .res-linea { font-size: 13px; color: var(--texto-2); margin: 0 0 14px; }
 
-.res-grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+/* Las tarjetas de una misma fila tienen la misma altura: no quedan huecos debajo de la más corta. */
+.res-grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
 .res-ancho { grid-column: 1 / -1; }
 @media (max-width: 1100px) { .res-grilla { grid-template-columns: minmax(0, 1fr); } }
 
-.res-pieza { display: grid; gap: 10px; }
-.res-totales { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.res-metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.res-cifra, .res-metrica {
+/* Los cinco indicadores, como una fila de paneles «Stat» de Grafana: todos iguales, sin bloques de color; el
+   color queda para un punto chico cuando hay algo pendiente. Tocarlos filtra, como en la app. */
+.res-indicadores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.res-indicador {
   display: grid;
   align-content: start;
   gap: 2px;
-  border: 0;
+  min-width: 0;
+  border: 1px solid var(--borde-fuerte);
   border-radius: 12px;
+  background: var(--superficie);
+  padding: 12px 14px;
   text-align: left;
   color: var(--texto);
+  cursor: pointer;
 }
-/* En la app la tarjeta del total es crema sobre blanco; acá la página ya es crema, así que va blanca con borde. */
-.res-cifra { padding: 11px 12px; background: var(--superficie); box-shadow: inset 0 0 0 1px var(--borde); }
-.res-cifra strong, .res-metrica strong { font-size: 22px; font-weight: 600; line-height: 1.25; }
-.res-cifra span { font-size: 12px; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.res-cifra.revisadas { background: var(--verde-claro); }
-.res-cifra.revisadas strong { color: var(--verde-texto); }
-.res-cifra.sin-revisar { background: var(--media-fondo); }
-.res-cifra.sin-revisar strong { color: var(--media-texto); }
-.res-metrica { padding: 10px 12px; background: transparent; }
-.res-metrica strong { color: var(--verde-texto); }
-.res-metrica-nombre { font-size: 12.5px; font-weight: 500; }
-.res-metrica-detalle { font-size: 12px; color: var(--texto-2); }
-.res-cifra[aria-pressed="true"], .res-metrica[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--verde); }
+.res-indicador:hover { border-color: var(--texto-3); }
+.res-indicador[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--verde); border-color: transparent; }
+.res-indicador-nombre { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--texto-2); }
+.res-indicador-nombre .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+.res-indicador strong { font-size: 26px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; }
+.res-indicador-detalle { font-size: 12px; color: var(--texto-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1250px) { .res-indicador strong { font-size: 22px; } }
 
-.res-tarjeta { background: var(--superficie); border: 1px solid var(--borde-fuerte); border-radius: 12px; padding: 14px 16px; }
+.res-tarjeta { display: flex; flex-direction: column; background: var(--superficie); border: 1px solid var(--borde-fuerte); border-radius: 12px; padding: 14px 16px; }
 .res-titulo { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13.5px; font-weight: 600; color: var(--texto-2); }
 .res-ayuda { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 50%; padding: 0; background: transparent; color: var(--verde-texto); }
 .res-ayuda svg { width: 20px; height: 20px; }
 
-.res-barras { display: flex; align-items: flex-end; min-height: 128px; }
+/* Las barras llenan el alto que deja la tarjeta de al lado, sobre una línea de base; el número va solo arriba de
+   las que tienen alertas. Finas (hasta 24 px), con la punta redondeada. */
+.res-barras { flex: 1 1 auto; display: flex; align-items: stretch; min-height: 170px; }
 .res-columna {
   flex: 1 1 0;
   min-width: 0;
   display: grid;
-  justify-items: center;
-  gap: 4px;
+  grid-template-rows: minmax(0, 1fr) auto;
   border: 0;
   border-radius: 8px;
   background: transparent;
   padding: 0;
   color: var(--texto);
+  cursor: pointer;
 }
-.res-columna-n { font-size: 11.5px; font-weight: 500; }
-.res-columna-etiqueta { font-size: 11.5px; color: var(--texto-2); white-space: nowrap; }
+.res-columna-pista { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 0; border-bottom: 1px solid var(--borde-fuerte); }
+.res-columna-n { font-size: 11.5px; font-weight: 500; margin-bottom: 3px; }
+.res-columna-etiqueta { padding-top: 6px; font-size: 11.5px; color: var(--texto-2); white-space: nowrap; text-align: center; }
 .res-barras.muchas .res-columna-n, .res-barras.muchas .res-columna-etiqueta { font-size: 9.5px; }
-.res-barra { display: block; width: min(100%, 28px); border-radius: 3px 3px 0 0; background: var(--barra-resumen); }
+.res-barra { display: block; width: min(70%, 24px); border-radius: 4px 4px 0 0; background: var(--barra-resumen); }
 .res-barra.hoy { background: var(--verde); }
-.res-barra.cero { background: var(--borde-fuerte); border-radius: 1px; }
+.res-barra.cero { height: 0; }
+.res-columna:hover .res-columna-pista { background: var(--superficie-2); }
 .res-columna.elegida { box-shadow: 0 0 0 2px var(--superficie), 0 0 0 4px var(--verde); }
 .res-columna.apagada { opacity: 0.35; }
 .res-frase { margin: 10px 0 0; font-size: 12.5px; line-height: 1.3; color: var(--texto-2); }
 
 .res-bloque { display: grid; gap: 8px; }
 .res-bloque + .res-bloque { border-top: 1px solid var(--borde-fuerte); margin-top: 10px; padding-top: 10px; }
-.res-bloque-titulo { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; color: var(--texto-2); }
+.res-bloque-titulo { margin: 0; font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.res-sin-alertas { margin: 0; font-size: 12.5px; line-height: 1.35; color: var(--texto-3); }
+/* Reales y falsos positivos: una sola barra partida, con un hueco de 2 px entre las dos partes, y su leyenda. */
+.res-partida { display: flex; gap: 2px; height: 12px; border-radius: 6px; overflow: hidden; background: var(--neutro); }
+.res-partida i { display: block; height: 100%; }
+.res-partida-leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
+.res-leyenda-item { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 8px; background: transparent; padding: 4px 6px; margin: -4px -6px; font-size: 13.5px; color: var(--texto); cursor: pointer; }
+.res-leyenda-item .punto { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.res-leyenda-item[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--verde); }
 .res-filas { display: grid; gap: 10px; }
 .res-fila {
   display: grid;
@@ -1283,15 +1293,17 @@ button { cursor: pointer; }
   gap: 8px;
   width: 100%;
   border: 0;
-  border-radius: 8px;
-  background: var(--pagina);
-  padding: 8px 10px;
+  border-bottom: 1px solid var(--borde);
+  border-radius: 0;
+  background: transparent;
+  padding: 2px 0 10px;
   margin-bottom: 10px;
   font-size: 13.5px;
   font-weight: 500;
-  color: var(--texto);
+  color: var(--texto-2);
+  cursor: pointer;
 }
-.res-cobertura strong { color: var(--verde-texto); font-weight: 600; }
+.res-cobertura strong { color: var(--texto); font-weight: 600; }
 .res-precision {
   display: grid;
   grid-template-columns: 160px minmax(40px, 1fr) 46px 64px;
@@ -1328,27 +1340,101 @@ button { cursor: pointer; }
 
 @media (max-width: 720px) {
   .res-compartir { margin-left: 0; width: 100%; justify-content: center; }
-  .res-cifra span { white-space: normal; font-size: 11.5px; }
+  /* Los indicadores de a dos; el total arriba, a todo el ancho. */
+  .res-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .res-indicador:first-child { grid-column: 1 / -1; }
+  .res-indicador-detalle { white-space: normal; }
   .res-fila { grid-template-columns: minmax(0, 150px) minmax(30px, 1fr) 30px; }
   .res-precision { grid-template-columns: 120px minmax(30px, 1fr) 42px 54px; font-size: 13px; }
 }
 
 /* ---- Ajustes ---- */
 
-.ajustes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
-.filas { list-style: none; margin: 8px 0 0; padding: 0; }
-.filas > li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 12px;
+/* ---- Ajustes, como la administración de Grafana (ajustes.js): el menú de secciones a la izquierda y la
+   sección elegida a la derecha, con tablas que se editan en el lugar. ---- */
+.ajustes { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 20px; align-items: start; max-width: 1180px; margin: 0 auto; }
+.ajustes-menu { display: grid; gap: 2px; position: sticky; top: calc(var(--alto-cabecera) + 16px); }
+.ajustes-menu button {
+  display: flex;
   align-items: center;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--borde);
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--texto-2);
+  cursor: pointer;
 }
-.filas > li:last-child { border-bottom: 0; }
-.filas .titulo-fila { font-weight: 600; font-size: 14.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.filas .detalle-fila { grid-column: 1; font-size: 13px; color: var(--texto-2); }
-.filas .acciones-fila { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.ajustes-menu button:hover { background: var(--superficie-2); color: var(--texto); }
+.ajustes-menu button[aria-selected="true"] { background: var(--verde-claro); color: var(--verde-texto); font-weight: 600; }
+.ajustes-pendientes { min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--media-fondo); color: var(--media-texto); font-size: 12px; font-weight: 600; text-align: center; }
+.ajustes-panel { padding: 20px 22px; }
+.seccion-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.seccion-titulo { font-size: 17px; font-weight: 600; margin: 0; }
+.seccion-sub { font-size: 13px; color: var(--texto-2); margin: 3px 0 0; }
+.seccion-acciones { display: flex; gap: 8px; flex: none; }
+.seccion-acciones .boton-principal { width: auto; margin: 0; }
+.ajustes-datos { margin: 0; }
+.ajustes-dato { display: grid; grid-template-columns: 190px minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--borde); }
+.ajustes-dato:last-child { border-bottom: 0; }
+.ajustes-dato dt { font-size: 13.5px; font-weight: 600; color: var(--texto); }
+.ajustes-dato dd { margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--texto-2); min-width: 0; }
+.buscar-tabla {
+  width: min(100%, 360px);
+  height: 36px;
+  padding: 0 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 9px;
+  background: var(--superficie-2);
+  color: var(--texto);
+  font-size: 14px;
+}
+.buscar-tabla:focus, .select-tabla:focus { outline: 2px solid var(--verde); outline-offset: 0; border-color: transparent; }
+.select-tabla {
+  height: 32px;
+  min-width: 150px;
+  padding: 0 8px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 8px;
+  background: var(--superficie-2);
+  color: var(--texto);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.tabla-ajustes td { padding: 8px 10px; }
+.tabla-ajustes tbody tr:last-child td { border-bottom: 0; }
+.tabla-ajustes tr.cambiada td { background: var(--media-fondo); }
+.tabla-ajustes td.accion { text-align: right; width: 1%; }
+.tabla-ajustes td.envolver { white-space: normal; min-width: 180px; }
+.etiqueta.vos { margin-left: 8px; }
+.boton-texto.peligro { color: var(--alta-texto); }
+.ajustes-leyenda { margin: 10px 0 0; }
+/* Lo que se cambió y no se guardó: pegado abajo mientras se baja por una tabla larga. */
+.barra-cambios {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px -22px -20px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--borde);
+  border-radius: 0 0 var(--radio) var(--radio);
+  background: var(--superficie);
+}
+.barra-cambios > span { flex: 1; font-size: 13.5px; color: var(--texto-2); }
+.barra-cambios .boton-principal { width: auto; margin: 0; }
+.ajustes-bloque + .ajustes-bloque { border-top: 1px solid var(--borde); margin-top: 20px; padding-top: 18px; }
+.bloque-titulo { font-size: 14.5px; font-weight: 600; margin: 0; }
+.ajustes-bloque .tabla-envoltura { margin-top: 10px; }
+.lista-cambios { margin: 0; padding-left: 18px; display: grid; gap: 2px; font-size: 14px; color: var(--texto-2); }
 .etiqueta {
   display: inline-block;
   font-size: 12px;
@@ -1361,7 +1447,6 @@ button { cursor: pointer; }
 }
 .etiqueta.admin { background: var(--verde-claro); color: var(--verde-texto); }
 .etiqueta.critico { background: var(--info-fondo); color: var(--info-texto); }
-.registro-motivo { font-size: 13px; color: var(--texto-2); font-style: italic; }
 .solo-admin-nota { font-size: 12.5px; color: var(--texto-3); margin: 6px 0 0; }
 
 /* ---- Teléfono: barra inferior como la app, una columna, detalle y hojas a pantalla completa ---- */
@@ -1413,13 +1498,30 @@ button { cursor: pointer; }
   .feed-estado { grid-column: 3; grid-row: 2; }
   .fila + .fila { margin-top: 20px; }
   .filtros { gap: 8px; }
-  .filtros-nota { margin-left: 0; width: 100%; }
   .segmentado { max-width: 100%; overflow-x: auto; }
   .contadores { gap: 6px; }
   .contador { padding: 8px; }
   .contador-numero { font-size: 24px; }
   .piezas { grid-template-columns: 1fr; }
-  .ajustes { grid-template-columns: 1fr; }
+  /* Ajustes: las secciones en una fila que se corre de costado y las tablas como tarjetas, como la lista de alertas. */
+  .ajustes { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .ajustes-menu { position: static; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
+  .ajustes-menu::-webkit-scrollbar { display: none; }
+  .ajustes-menu button { flex: none; width: auto; border: 1px solid var(--borde-fuerte); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+  .ajustes-menu button[aria-selected="true"] { border-color: transparent; }
+  .ajustes-panel { padding: 16px 14px; }
+  .seccion-cabecera { flex-wrap: wrap; }
+  .ajustes-dato { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .buscar-tabla { width: 100%; }
+  .tabla-ajustes thead { display: none; }
+  .tabla-ajustes, .tabla-ajustes tbody, .tabla-ajustes tr, .tabla-ajustes td { display: block; }
+  .tabla-ajustes tr { border: 1px solid var(--borde); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+  .tabla-ajustes td, .tabla-ajustes tbody tr:last-child td { border: 0; padding: 3px 0; white-space: normal; }
+  .tabla-ajustes td[data-etiqueta]::before { content: attr(data-etiqueta) " · "; color: var(--texto-3); font-size: 12.5px; }
+  .tabla-ajustes td.accion { text-align: left; width: auto; }
+  .tabla-ajustes tr.cambiada { background: var(--media-fondo); }
+  .tabla-ajustes tr.cambiada td { background: transparent; }
+  .barra-cambios { bottom: 72px; margin: 12px -14px -16px; padding: 12px 14px; flex-wrap: wrap; }
   .detalle { width: 100vw; padding: 16px 16px 90px; border-left: 0; }
   .hoja-velo { place-items: end stretch; padding: 0; }
   .hoja { width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); }
