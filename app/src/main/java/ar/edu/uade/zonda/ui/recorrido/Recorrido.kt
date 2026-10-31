@@ -19,7 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -34,6 +34,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -149,7 +153,12 @@ fun CapaRecorrido(
     alOmitir: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LaunchedEffect(paso) { registro.actual = paso.objetivo }
+    // Al terminar u omitir el recorrido no queda ningún objetivo pedido: si quedaba el último, cada vez que
+    // esa pantalla se abría se desplazaba sola hasta él (Avisos en Ajustes, o Revisar en el detalle).
+    DisposableEffect(paso) {
+        registro.actual = paso.objetivo
+        onDispose { registro.actual = null }
+    }
     val objetivo = registro.posicionDe(paso.objetivo)
     Box(
         modifier = modifier
@@ -229,7 +238,15 @@ fun TarjetaRecorrido(paso: PasoRecorrido, alSiguiente: () -> Unit, alOmitir: () 
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
-            Text(text = stringResource(paso.titulo), style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold))
+            // Encabezado, y se anuncia al tocar "Siguiente": la tarjeta cambia de lugar y de texto.
+            Text(
+                text = stringResource(paso.titulo),
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
+                modifier = Modifier.semantics {
+                    heading()
+                    liveRegion = LiveRegionMode.Polite
+                },
+            )
             Text(text = stringResource(paso.texto), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (paso == PasoRecorrido.SEMAFORO) ColoresDelSemaforo()
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
