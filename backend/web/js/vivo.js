@@ -551,7 +551,7 @@ export function pintarUltimas() {
       el('span', { class: 'feed-par' }, `${nombreEquipo(a, 'origen')} → ${nombreEquipo(a, 'destino')} · ${(a.servicio || '').toUpperCase()}`),
       el('span', { class: 'feed-hora', title: fechaHora(Date.parse(a.inicio)) }, haceCuanto(Date.parse(a.inicio), ahora)),
       el('span', { class: 'feed-estado' }, chipEstado(a.estadoRevision)))))
-    : el('li', { class: 'nota' }, 'Todavía no hay alertas.'));
+    : el('li', { class: 'nota' }, e.sincronizada ? 'Todavía no hay alertas.' : 'Cargando las alertas…'));
   if (enfocada) {
     const boton = $('ultimas-alertas').querySelector(`[data-id="${CSS.escape(enfocada)}"]`);
     if (boton) boton.focus({ preventScroll: true });

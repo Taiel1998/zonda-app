@@ -158,7 +158,9 @@ export function pintarAlertas() {
   pintarBarraAlertas();
   const lista = alertasFiltradas();
   const sinRevisar = lista.filter((a) => a.estadoRevision === 'sin_revisar').length;
-  vaciar($('resumen-filtros-alertas'), el('strong', {}, `${numero(lista.length)} ${lista.length === 1 ? 'alerta' : 'alertas'}`), ` ${fraseRango(f.rango)} · ${numero(sinRevisar)} sin revisar · ${ORDENES[orden.columna].frases[orden.descendente ? 0 : 1]}`);
+  // Hasta la primera sincronización la lista no está vacía: está cargando.
+  if (!e.sincronizada) vaciar($('resumen-filtros-alertas'), 'Cargando las alertas…');
+  else vaciar($('resumen-filtros-alertas'), el('strong', {}, `${numero(lista.length)} ${lista.length === 1 ? 'alerta' : 'alertas'}`), ` ${fraseRango(f.rango)} · ${numero(sinRevisar)} sin revisar · ${ORDENES[orden.columna].frases[orden.descendente ? 0 : 1]}`);
   // Solo la columna elegida lleva aria-sort, y su flecha (estilos.css) dice para qué lado.
   for (const th of $('tabla-alertas').tHead.querySelectorAll('th[data-orden]')) {
     if (th.dataset.orden === orden.columna) th.setAttribute('aria-sort', orden.descendente ? 'descending' : 'ascending');
@@ -188,7 +190,7 @@ export function pintarAlertas() {
     const fila = cuerpo.querySelector(`tr[data-id="${CSS.escape(enfocada.dataset.id)}"]`);
     if (fila) fila.focus({ preventScroll: true });
   }
-  $('vacio-alertas').hidden = lista.length > 0;
+  $('vacio-alertas').hidden = lista.length > 0 || !e.sincronizada;
   $('vacio-alertas').textContent = 'Ninguna alerta con estos filtros. Cambiá o limpiá los filtros.';
   $('ver-mas').hidden = lista.length <= limite;
 }
