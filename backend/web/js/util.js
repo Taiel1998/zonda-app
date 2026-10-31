@@ -173,6 +173,19 @@ export function escapar(texto) {
 }
 
 /** Un elemento con atributos e hijos; el texto va siempre como texto, nunca como HTML. */
+/** Cambia parámetros de la dirección sin recargar (null los saca). Con `nueva`, deja una entrada para el botón
+    Atrás, como al abrir el detalle de una alerta. */
+export function cambiarUrl(cambios, { nueva = false } = {}) {
+  const p = new URLSearchParams(location.search);
+  for (const [clave, valor] of Object.entries(cambios)) {
+    if (valor === null || valor === undefined) p.delete(clave);
+    else p.set(clave, valor);
+  }
+  const url = `${location.pathname}?${p.toString()}`;
+  if (nueva) history.pushState(null, '', url);
+  else history.replaceState(null, '', url);
+}
+
 export function el(etiqueta, atributos = {}, ...hijos) {
   const nodo = document.createElement(etiqueta);
   for (const [clave, valor] of Object.entries(atributos)) {
