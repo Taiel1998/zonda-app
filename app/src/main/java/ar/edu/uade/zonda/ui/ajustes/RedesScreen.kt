@@ -108,7 +108,8 @@ fun RedesContenido(
 
     LaunchedEffect(estado.aviso) {
         val aviso = estado.aviso ?: return@LaunchedEffect
-        if (aviso !is AvisoAjustes.RedActivada && aviso !is AvisoAjustes.DispositivoQuitado) return@LaunchedEffect
+        // Lo que pasa en esta pantalla; el error es el de quitar el dispositivo (el último administrador).
+        if (aviso !is AvisoAjustes.RedActivada && aviso !is AvisoAjustes.DispositivoQuitado && aviso !is AvisoAjustes.Error) return@LaunchedEffect
         alAvisoMostrado()
         if (aviso is AvisoAjustes.DispositivoQuitado && !aviso.quedanRedes) {
             alQuedarSinRedes()
@@ -188,7 +189,9 @@ private fun TarjetaRed(
 ) {
     val red = conEstado.red
     var menu by remember { mutableStateOf(false) }
+    // La variante seleccionable: TalkBack dice cuál es la red activa, que antes se veía solo por el círculo.
     Surface(
+        selected = activa,
         onClick = alActivar,
         shape = RoundedCornerShape(12.dp),
         color = if (activa) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,

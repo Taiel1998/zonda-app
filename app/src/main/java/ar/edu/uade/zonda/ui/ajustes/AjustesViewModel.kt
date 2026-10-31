@@ -169,7 +169,13 @@ class AjustesViewModel(
         viewModelScope.launch {
             val activa = redes.observarRedActiva().first()?.id
             val id = redId ?: activa ?: return@launch
-            quitarDispositivo.invoke(id)
+            try {
+                quitarDispositivo.invoke(id)
+            } catch (e: ErrorZonda) {
+                // El último administrador de un equipo con más gente: el servidor no lo deja y no se borró nada.
+                controles.update { it.copy(aviso = AvisoAjustes.Error(e)) }
+                return@launch
+            }
             val restantes = redes.observarRedes().first()
             if (id == activa) restantes.firstOrNull()?.let { redes.activar(it.id) }
             controles.update { it.copy(aviso = AvisoAjustes.DispositivoQuitado(quedanRedes = restantes.isNotEmpty())) }
@@ -186,16 +192,19 @@ class AjustesViewModel(
         }
     }
 
+    // Sin borrador, el cambio parte de lo guardado: "Configurar mis avisos" de la introducción abre la pantalla
+    // sin pasar por empezarAEditarAvisos, y después de que Android cierra la app el borrador ya no está.
+
     fun cambiarAvisoDelBorrador(severidad: Severidad, modo: ModoAviso) {
-        controles.update { it.copy(borradorAvisos = it.borradorAvisos?.con(severidad, modo)) }
+        controles.update { it.copy(borradorAvisos = (it.borradorAvisos ?: estado.value.avisos).con(severidad, modo)) }
     }
 
     fun cambiarNotificacionDelBorrador(severidad: Severidad, modo: ModoNotificacion) {
-        controles.update { it.copy(borradorNotificaciones = it.borradorNotificaciones?.con(severidad, modo)) }
+        controles.update { it.copy(borradorNotificaciones = (it.borradorNotificaciones ?: estado.value.notificaciones).con(severidad, modo)) }
     }
 
     fun cambiarRecordatorioDelBorrador(prendido: Boolean) {
-        controles.update { it.copy(borradorNotificaciones = it.borradorNotificaciones?.copy(recordatorio = prendido)) }
+        controles.update { it.copy(borradorNotificaciones = (it.borradorNotificaciones ?: estado.value.notificaciones).copy(recordatorio = prendido)) }
     }
 
     fun descartarBorradorAvisos() {
@@ -228,7 +237,8 @@ class AjustesViewModel(
     }
 
     fun cambiarSeveridadDelBorrador(tipo: TipoAtaque, severidad: Severidad) {
-        controles.update { it.copy(borradorSeveridades = it.borradorSeveridades?.con(tipo, severidad)) }
+        // Sin borrador (Android cerró la app con la pantalla abierta), se parte de las de la red, como arriba.
+        controles.update { it.copy(borradorSeveridades = (it.borradorSeveridades ?: estado.value.severidades).con(tipo, severidad)) }
     }
 
     fun descartarBorrador() {

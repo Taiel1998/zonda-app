@@ -38,6 +38,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
+import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Red
 import ar.edu.uade.zonda.domain.model.Tema
@@ -200,7 +201,9 @@ fun AjustesContenido(
         val (texto, accion) = textoDelAviso(contexto, aviso)
         alcance.launch {
             val resultado = snackbar.showSnackbar(message = texto, actionLabel = accion, duration = SnackbarDuration.Short)
-            if (aviso is AvisoAjustes.Error && resultado == SnackbarResult.ActionPerformed) acciones.alSincronizar()
+            if (aviso is AvisoAjustes.Error && aviso.error !is ErrorZonda.UltimoAdministrador && resultado == SnackbarResult.ActionPerformed) {
+                acciones.alSincronizar()
+            }
         }
     }
 
@@ -478,6 +481,7 @@ fun textoDelAviso(contexto: Context, aviso: AvisoAjustes): Pair<String, String?>
         AvisoAjustes.DatosBorrados -> contexto.getString(R.string.ajustes_datos_borrados) to ok
         is AvisoAjustes.DispositivoQuitado -> contexto.getString(R.string.ajustes_dispositivo_quitado) to ok
         is AvisoAjustes.RedActivada -> contexto.getString(R.string.aviso_red_activa, aviso.nombre) to ok
-        is AvisoAjustes.Error -> contexto.getString(aviso.error.mensaje()) to contexto.getString(R.string.error_reintentar)
+        // Al último administrador, reintentar no le sirve: tiene que hacer administrador a otra persona antes.
+        is AvisoAjustes.Error -> contexto.getString(aviso.error.mensaje()) to if (aviso.error is ErrorZonda.UltimoAdministrador) ok else contexto.getString(R.string.error_reintentar)
     }
 }

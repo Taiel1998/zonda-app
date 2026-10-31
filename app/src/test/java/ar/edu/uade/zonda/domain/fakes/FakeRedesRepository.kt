@@ -40,6 +40,9 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
     var errorAlVerificar: ErrorZonda? = null
     var errorAlParear: ErrorZonda? = null
 
+    /** El error del servidor al quitar este dispositivo, como el 409 del último administrador. */
+    var errorAlQuitar: ErrorZonda? = null
+
     /** Si no es null, el pareo espera hasta que la prueba lo complete (para ver los pasos intermedios). */
     var esperaAlParear: CompletableDeferred<Unit>? = null
 
@@ -109,6 +112,7 @@ class FakeRedesRepository(iniciales: List<Red> = emptyList()) : RedesRepository 
     }
 
     override suspend fun quitarDispositivo(redId: String) {
+        errorAlQuitar?.let { throw it }
         redesQuitadas += redId
         redes.value = redes.value.filter { it.id != redId }
     }
