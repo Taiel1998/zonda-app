@@ -12,6 +12,7 @@ from . import personas as gente
 from . import registro
 from . import trafico
 from .asignaciones import asignaciones_de, asignar, responsable_de
+from .bloqueos import estado_firewall
 from .auth import (
     administrador_actual,
     ahora,
@@ -151,12 +152,14 @@ def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
 @router.get("/salud", response_model=Salud)
 def salud(request: Request, authorization: Annotated[str | None, Header()] = None) -> Salud:
     """Sin token sirve para verificar el servidor antes de parear. Con token, informa su vencimiento (401
-    si venció) y cómo está la cadena: el sensor, el análisis en vivo y el servidor (Estado del sistema)."""
+    si venció) y cómo está la cadena: el sensor, el análisis en vivo, el servidor y el firewall (Estado
+    del sistema)."""
     base = _base(request)
     con = base.conexion()
     cfg = request.app.state.config
     token_vence = None
     sistema = None
+    firewall = None
     token = token_de_cabecera(authorization)
     if token is not None:
         dispositivo = buscar_dispositivo(con, token)
@@ -164,6 +167,7 @@ def salud(request: Request, authorization: Annotated[str | None, Header()] = Non
             raise HTTPException(status_code=401, detail="El token venció o fue revocado")
         token_vence = dispositivo["vence_en"]
         sistema = latido.estado_del_sistema(base, cfg)
+        firewall = estado_firewall(base, cfg)
     cantidad = con.execute("SELECT COUNT(*) FROM alertas").fetchone()[0]
     return Salud(
         version=VERSION,
@@ -172,6 +176,7 @@ def salud(request: Request, authorization: Annotated[str | None, Header()] = Non
         red={"id": cfg.red_id, "nombre": cfg.red_nombre},
         tokenVence=token_vence,
         sistema=sistema,
+        firewall=firewall,
     )
 
 

@@ -81,7 +81,7 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
 
 | Ruta | Recibe → devuelve | Errores |
 |---|---|---|
-| `GET /salud` | nada → `version`, `hora`, `alertas` (cantidad), `red`; con token, también `tokenVence` y `sistema` (cómo están el sensor, el análisis en vivo y el servidor; sin token, `null`) | 401 si el token venció |
+| `GET /salud` | nada → `version`, `hora`, `alertas` (cantidad), `red`; con token, también `tokenVence`, `sistema` (cómo están el sensor, el análisis en vivo y el servidor) y `firewall` (si está habilitado y conectado, su última consulta y su lista de «nunca bloquear»; decisión 51); sin token, `null` | 401 si el token venció |
 | `GET /estado` | token → `sinRevisar {alta, media, baja}`, `ultimoFlujoProcesado`, `horaServidor` | 401 |
 | `GET /alertas?desde=&severidad=&servicio=&destino=&metodo=&estado=` | cursor → `alertas` nuevas o modificadas, `cursorSiguiente`, `hayMas`; sin cursor trae solo los últimos 30 días y suma `total` | 401, 410 cursor de otra instalación |
 | `GET /alertas/{id}` | id → la alerta con sus veredictos e `historial` | 401, 404 |

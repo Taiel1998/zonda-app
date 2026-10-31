@@ -174,6 +174,16 @@ class EstadoSistema(BaseModel):
     perdidaLimite: float
 
 
+class EstadoFirewall(BaseModel):
+    # Los bloqueos se prenden al conectar un firewall (ZONDA_FIREWALL_TOKEN); si no, la red queda en modo de observación.
+    habilitado: bool
+    # El firewall preguntó hace menos de ZONDA_FIREWALL_LIMITE segundos.
+    conectado: bool
+    ultimaConsulta: str | None
+    # Lo que el firewall nunca bloquea (redes CIDR), según su último informe: la app no ofrece el botón ahí.
+    nuncaBloquear: list[str]
+
+
 class Salud(BaseModel):
     version: str
     hora: str
@@ -182,6 +192,8 @@ class Salud(BaseModel):
     tokenVence: str | None
     # Solo con un token válido: sin token, /salud no dice nada del laboratorio.
     sistema: EstadoSistema | None = None
+    # También solo con token: el firewall, para la pieza «Firewall» de Estado del sistema (decisión 51).
+    firewall: EstadoFirewall | None = None
 
 
 class Contadores(BaseModel):
@@ -643,16 +655,6 @@ class Bloqueo(BaseModel):
     terminadoPor: str | None
     terminadoEn: str | None
     detalle: str | None
-
-
-class EstadoFirewall(BaseModel):
-    # Los bloqueos se prenden al conectar un firewall (ZONDA_FIREWALL_TOKEN); si no, la red queda en modo de observación.
-    habilitado: bool
-    # El firewall preguntó hace menos de ZONDA_FIREWALL_LIMITE segundos.
-    conectado: bool
-    ultimaConsulta: str | None
-    # Lo que el firewall nunca bloquea (redes CIDR), según su último informe: la app no ofrece el botón ahí.
-    nuncaBloquear: list[str]
 
 
 class ListaBloqueos(BaseModel):

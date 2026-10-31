@@ -73,6 +73,18 @@ def test_sin_firewall_conectado_los_bloqueos_estan_apagados(cliente, auth):
     assert cliente.get("/firewall/bloqueos", headers=FIREWALL).status_code == 503
 
 
+def test_salud_con_token_dice_como_esta_el_firewall_para_la_pieza_de_estado(cliente, auth):
+    def firewall():
+        return cliente.get("/salud", headers=auth).json()["firewall"]
+
+    assert cliente.get("/salud").json()["firewall"] is None
+    assert (firewall()["habilitado"], firewall()["conectado"], firewall()["ultimaConsulta"]) == (True, False, None)
+    lo_que_bloquea_el_firewall(cliente)
+    assert (firewall()["conectado"], firewall()["ultimaConsulta"] is not None) == (True, True)
+    cliente.app.state.config.firewall_token = ""
+    assert firewall()["habilitado"] is False
+
+
 def test_un_administrador_bloquea_desde_el_telefono_y_el_firewall_lo_aplica(cliente, auth):
     alerta = primera_alta(cliente, auth)
 
