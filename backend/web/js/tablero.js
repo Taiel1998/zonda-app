@@ -6,20 +6,26 @@ import { api, borrarAcceso, guardarAcceso, horaConSegundos, icono, leerAcceso, v
 import { $, alCambiarAlertas, cuandoExpire, e } from './comun.js';
 import {
   actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
-  pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
+  configurarVivo, pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
 } from './vivo.js';
 import { actualizarPares, configurarMapa, pintarMapa, soltarElegido } from './mapa.js';
-import { abrirDetalle, cerrarDetalle, pintarAlertas, sincronizarAlertas, verMas } from './alertas.js';
-import { cambiarPeriodo, descargarImagen, guardarPdf, pintarResumen } from './resumen.js';
+import {
+  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verMas, verSinRevisar,
+} from './alertas.js';
+import { avisarEnLaCompu, avisosActivados, configurarAvisos } from './avisos.js';
+import { pintarResumen } from './resumen.js';
 import { actualizarAjustes, actualizarPersonas, configurarAjustes, pintarAjustes } from './ajustes.js';
 import { cadaCuanto, cerrarSelector, configurarTiempo, leerUrl, pintarBarra } from './tiempo.js';
 import { cerrarInspector, configurarPaneles, salirDeGrande, teclaDePanel, verEnGrande } from './paneles.js';
 import { cerrarMenu, configurarMenu } from './menu.js';
+import { alternarAyuda, cerrarAyuda, configurarAyuda } from './ayuda.js';
 import { configurarFilas, filaAbierta } from './filas.js';
 
 const CLAVE_TEMA = 'zonda.tablero.tema';
 const tareas = {};
 let ticker = null;
+// Con el tablero oculto y los avisos de esta compu activados, trae las alertas (alCambiarVisibilidad).
+let vigia = null;
 
 // ---- Tema ----
 
@@ -49,12 +55,9 @@ function cambiarTema() {
   if (e.vista === 'resumen') pintarResumen();
 }
 
-/** El único «?» de la tarjeta del estado del sistema: abre y cierra su ayuda. */
+/** El único «?» de la tarjeta del estado del sistema: abre y cierra su globito, con el texto de index.html. */
 function alternarAyudaEstado() {
-  const boton = $('boton-ayuda-estado');
-  const abierta = boton.getAttribute('aria-expanded') === 'true';
-  boton.setAttribute('aria-expanded', String(!abierta));
-  $('ayuda-estado').hidden = abierta;
+  alternarAyuda($('boton-ayuda-estado'), 'Qué muestra cada pieza', [...$('ayuda-estado').content.cloneNode(true).children]);
 }
 
 // ---- Ingreso ----
@@ -124,6 +127,7 @@ async function salir() {
 
 function terminarSesion(mensaje) {
   detenerTicker();
+  clearInterval(vigia);
   borrarAcceso();
   e.acceso = null;
   e.alertas.clear();
@@ -158,16 +162,22 @@ function arrancarTicker() {
   tic();
 }
 
+function correr(nombre) {
+  const estado = tareas[nombre] || (tareas[nombre] = { ultima: 0, corriendo: false });
+  if (estado.corriendo) return;
+  estado.corriendo = true;
+  estado.ultima = Date.now();
+  TAREAS[nombre].correr().catch(() => { /* se muestra en el indicador y se reintenta en la vuelta siguiente */ }).finally(() => { estado.corriendo = false; });
+}
+
 function tic() {
   if (!e.acceso) return;
   const ahora = Date.now();
   for (const [nombre, tarea] of Object.entries(TAREAS)) {
-    const estado = tareas[nombre] || (tareas[nombre] = { ultima: 0, corriendo: false });
+    const estado = tareas[nombre];
     // La primera vez corre siempre, aunque la actualización automática esté apagada.
-    if (estado.corriendo || (estado.ultima && ahora - estado.ultima < tarea.cada())) continue;
-    estado.corriendo = true;
-    estado.ultima = ahora;
-    tarea.correr().catch(() => { /* se muestra en el indicador y se reintenta en la vuelta siguiente */ }).finally(() => { estado.corriendo = false; });
+    if (estado && estado.ultima && ahora - estado.ultima < tarea.cada()) continue;
+    correr(nombre);
   }
   pintarEnVivo();
   // El dato de cada pieza del estado cuenta los segundos («Última revisión hace 12 s»).
@@ -227,7 +237,7 @@ function alCambiarFila(fila, abierta) {
   }
 }
 
-const CON_HORARIO = ['servicios', 'volumen', 'fallidas', 'mapa'];
+const CON_HORARIO = ['servicios', 'alertas-tiempo', 'volumen', 'fallidas', 'mapa'];
 
 /** Cambió el horario (o se tocó Actualizar): se piden ya el tráfico y el mapa, y los relojes arrancan de nuevo. */
 function actualizarHorario() {
@@ -250,7 +260,7 @@ function actualizarTodo() {
 function alApretarTecla(ev) {
   if (ev.key === 'Escape') {
     if (document.querySelector('.hoja-velo')) return;
-    if (cerrarMenu(true) || cerrarSelector(true) || cerrarInspector()) { ev.preventDefault(); return; }
+    if (cerrarAyuda(true) || cerrarMenu(true) || cerrarSelector(true) || cerrarInspector()) { ev.preventDefault(); return; }
     if (e.detalleAbierto) { cerrarDetalle(); return; }
     if (soltarElegido() || salirDeGrande()) ev.preventDefault();
     return;
@@ -266,7 +276,35 @@ function alCambiar(nuevas) {
   if (e.vista === 'alertas') pintarAlertas();
   if (e.vista === 'resumen') pintarResumen();
   if (e.detalleAbierto && e.alertas.has(e.detalleAbierto) && !$('detalle').hidden) abrirDetalle(e.detalleAbierto, false);
-  if (nuevas.length) avisarNuevas(nuevas);
+  if (nuevas.length) {
+    avisarNuevas(nuevas);
+    avisarEnLaCompu(nuevas);
+  }
+}
+
+/** La barra de arriba de cada vista queda fija debajo de la cabecera (estilos.css); ya pegada, lleva una línea abajo. */
+function marcarBarrasPegadas() {
+  const tope = document.querySelector('.cabecera').offsetHeight;
+  for (const barra of document.querySelectorAll('.barra-fija')) {
+    barra.classList.toggle('pegada', window.scrollY > 0 && barra.getBoundingClientRect().top <= tope + 1);
+  }
+}
+
+/** Las sin revisar de una severidad en la lista de Alertas: los contadores de En vivo y el aviso de varias altas. */
+function abrirSinRevisar(severidad) {
+  verSinRevisar(severidad);
+  cambiarVista('alertas');
+}
+
+/** Con el tablero oculto no se pide ni se dibuja nada; con los avisos de esta compu activados, las alertas se
+    siguen trayendo cada 20 s para avisar las altas (el navegador puede espaciarlo hasta un minuto). */
+function alCambiarVisibilidad() {
+  if (!e.acceso) return;
+  clearInterval(vigia);
+  vigia = null;
+  if (!document.hidden) { arrancarTicker(); return; }
+  detenerTicker();
+  if (avisosActivados()) vigia = setInterval(() => { if (e.acceso) correr('alertas'); }, 20000);
 }
 
 async function cargarAreas() {
@@ -300,14 +338,17 @@ function iniciar() {
   configurarAjustes({ salir, cambiarTema });
   const panelDeLaUrl = leerUrl();
   configurarMenu();
+  configurarAyuda();
   configurarFilas({ alCambiar: alCambiarFila });
   configurarMapa();
   configurarTiempo({ alCambiarRango: actualizarHorario, actualizarAhora: actualizarTodo });
+  configurarAlertas();
   configurarPaneles({
-    // El mapa y el estado del sistema se arman según el tamaño del panel; los otros gráficos se ajustan solos.
+    // El mapa y las piezas del estado del sistema (que en grande llevan ejes) se arman según el tamaño del
+    // panel; los otros gráficos se ajustan solos.
     alAgrandar: (nombre) => {
       if (nombre === 'mapa') pintarMapa();
-      if (nombre === 'estado') pintarGraficosPiezas();
+      if (['sensor', 'analisis', 'servidor'].includes(nombre)) pintarGraficosPiezas();
     },
     irAVista: (vista) => { if (e.vista !== vista) cambiarVista(vista, { mantenerPanel: true }); },
   });
@@ -320,16 +361,17 @@ function iniciar() {
   $('boton-ayuda-estado').addEventListener('click', alternarAyudaEstado);
   $('boton-salir').addEventListener('click', salir);
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.addEventListener('click', () => cambiarVista(boton.dataset.vista));
-  for (const boton of $('periodos').querySelectorAll('button')) boton.addEventListener('click', () => cambiarPeriodo(boton.dataset.dias));
   $('ver-mas').addEventListener('click', verMas);
-  $('descargar-imagen').addEventListener('click', descargarImagen);
-  $('descargar-pdf').addEventListener('click', guardarPdf);
   $('velo').addEventListener('click', cerrarDetalle);
   document.addEventListener('keydown', alApretarTecla);
-  document.addEventListener('visibilitychange', () => {
-    if (!e.acceso) return;
-    if (document.hidden) detenerTicker(); else arrancarTicker();
+  document.addEventListener('visibilitychange', alCambiarVisibilidad);
+  window.addEventListener('scroll', marcarBarrasPegadas, { passive: true });
+  $('sin-revisar').addEventListener('click', (ev) => {
+    const contador = ev.target.closest('[data-severidad]');
+    if (contador) abrirSinRevisar(contador.dataset.severidad);
   });
+  configurarAvisos({ abrirDetalle: (id) => abrirDetalle(id), abrirLista: abrirSinRevisar });
+  configurarVivo({ verAlertas: (desde, hasta) => { verAlertasEntre(desde, hasta); cambiarVista('alertas'); } });
   setInterval(() => { if (e.acceso && e.alertas.size) pintarUltimas(); }, 30000);
   // El nombre de un rango que termina ahora no cambia, pero sí sus horas (en el globito del botón).
   setInterval(() => { if (e.acceso) pintarBarra(); }, 30000);

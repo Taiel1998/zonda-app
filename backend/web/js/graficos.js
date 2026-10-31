@@ -45,6 +45,9 @@ function base(c) {
     animationDurationUpdate: 350,
     tooltip: {
       confine: true,
+      // Aparece y se va al instante, como en Grafana: con la transición de ECharts quedaba un globito a medio
+      // borrar al sacar el mouse.
+      transitionDuration: 0,
       backgroundColor: c['--superficie'],
       borderColor: c['--borde'],
       borderWidth: 1,
@@ -128,19 +131,6 @@ function tramoDe(t, paso) {
   if (paso >= 3600) return `${fechaHora(t)} a ${hora(t + paso * 1000)}`;
   if (paso >= 60) return `${fechaHora(t)} a ${hora(t + paso * 1000)}`;
   return `${horaConSegundos(t)} a ${horaConSegundos(t + paso * 1000)}`;
-}
-
-/** Barras apiladas con la punta redondeada solo en el segmento de arriba de cada barra. */
-function apilar(series, tiempos) {
-  const n = tiempos.length;
-  for (let i = 0; i < n; i += 1) {
-    let arriba = -1;
-    series.forEach((s, j) => { if (s.valores[i] > 0) arriba = j; });
-    series.forEach((s, j) => {
-      const valor = s.valores[i] > 0 ? s.valores[i] : null;
-      s.datos[i] = j === arriba ? { value: [tiempos[i], valor], itemStyle: { borderRadius: [4, 4, 0, 0] } } : [tiempos[i], valor];
-    });
-  }
 }
 
 /**
@@ -238,6 +228,57 @@ export function opcionesServicios(c, datos) {
         data: datos.tiempos.map((t, i) => [t, datos.porGrupo[g.id][i]]),
       })),
     ],
+  };
+}
+
+/**
+ * Las alertas que empezaron en cada barra, apiladas por severidad con las altas abajo, con el mismo eje y el
+ * mismo cursor que los gráficos de tráfico, como un panel de barras de Grafana. Las marcas se tapan cuando
+ * caen varias juntas; acá se cuentan. El globito da cuántas hay de cada severidad y de cada tipo de ataque;
+ * tocar una barra abre esas alertas en la lista (vivo.js).
+ * datos: { tiempos (ms), paso (s), desde, hasta, porSeveridad: {alta: [], media: [], baja: []},
+ *          porTipo: [[{ tipo, n }] de cada barra, de mayor a menor] }
+ */
+export function opcionesAlertasTiempo(c, datos) {
+  const totales = datos.tiempos.map((_, i) => SEVERIDADES.reduce((suma, s) => suma + datos.porSeveridad[s.id][i], 0));
+  return {
+    ...base(c),
+    grid: { left: 8, right: 16, top: 12, bottom: 6, containLabel: true },
+    brush: pincel(c),
+    xAxis: ejeTiempo(c, datos.desde, datos.hasta),
+    yAxis: { ...ejeValor(c, ejeNumero, totales, 1), minInterval: 1 },
+    tooltip: {
+      ...base(c).tooltip,
+      trigger: 'axis',
+      axisPointer: { type: 'line', lineStyle: { color: c['--texto-3'] } },
+      formatter: (params) => {
+        if (!params.length) return '';
+        const i = Math.floor((params[0].axisValue - datos.tiempos[0]) / (datos.paso * 1000));
+        if (i < 0 || i >= datos.tiempos.length) return '';
+        const html = `<div class="globito"><div class="globito-titulo">${escapar(tramoDe(datos.tiempos[i], datos.paso))}</div>`;
+        if (!totales[i]) return `${html}<div class="globito-nota">Sin alertas</div></div>`;
+        const filas = SEVERIDADES.filter((s) => datos.porSeveridad[s.id][i]).map((s) => {
+          const n = datos.porSeveridad[s.id][i];
+          return filaGlobito(c[s.color], numero(n), n === 1 ? s.nombre.toLowerCase() : `${s.nombre.toLowerCase()}s`, true);
+        });
+        const tipos = datos.porTipo[i].map((x) => `<div class="globito-fila"><span></span><b>${escapar(numero(x.n))}</b><em>${escapar(x.tipo)}</em></div>`);
+        return `${html}${filas.join('')}<div class="globito-separador"></div>${tipos.join('')}<div class="globito-nota">Tocá la barra para verlas en la lista.</div></div>`;
+      },
+    },
+    // Sin alertas, la barra queda vacía (null). Los segmentos van sin borde: en una semana cada barra mide
+    // pocos píxeles y el borde se comería el color.
+    series: SEVERIDADES.map((s) => ({
+      id: `alertas-${s.id}`,
+      name: s.nombre,
+      type: 'bar',
+      stack: 'alertas',
+      barMaxWidth: 24,
+      barMinWidth: 2,
+      itemStyle: { color: c[s.color], borderRadius: 1 },
+      emphasis: { disabled: true },
+      // Cada barra va en el medio de su tramo: las de 3 horas cubren de 0 a 3, no empiezan en 0.
+      data: datos.tiempos.map((t, i) => [t + datos.paso * 500, datos.porSeveridad[s.id][i] || null]),
+    })),
   };
 }
 
@@ -441,93 +482,6 @@ export function opcionesGrafo(c, datos) {
       emphasis: elegido ? { focus: 'none', scale: 1.06 } : { focus: 'adjacency', scale: 1.08, edgeLabel: { show: true } },
       blur: { itemStyle: { opacity: 0.2 }, lineStyle: { opacity: 0.07 }, label: { opacity: 0.3 } },
       animationDurationUpdate: 300,
-    }],
-  };
-}
-
-/** Alertas por día, apiladas por severidad (los colores de severidad, siempre con su nombre en la leyenda). */
-export function opcionesPorDia(c, datos) {
-  const series = SEVERIDADES.slice().reverse().map((s) => ({ sev: s, valores: datos.porSeveridad[s.id], datos: new Array(datos.dias.length) }));
-  const indices = datos.dias.map((_, i) => i);
-  apilar(series, indices);
-  for (const s of series) s.datos = s.datos.map((d) => (Array.isArray(d) ? d[1] : { value: d.value[1], itemStyle: d.itemStyle }));
-  const totales = datos.dias.map((_, i) => SEVERIDADES.reduce((suma, s) => suma + datos.porSeveridad[s.id][i], 0));
-  return {
-    ...base(c),
-    grid: { left: 8, right: 12, top: 16, bottom: 6, containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: datos.dias.map((d) => dia(d)),
-      axisLine: { lineStyle: { color: c['--eje'] } },
-      axisTick: { show: false },
-      splitLine: { show: false },
-      axisLabel: { color: c['--texto-2'], fontSize: 12, hideOverlap: true },
-      axisPointer: { show: true, type: 'shadow', shadowStyle: { color: c['--neutro'], opacity: 0.5 }, label: { show: false } },
-    },
-    yAxis: { ...ejeValor(c, (v) => numero(v), totales, 4), minInterval: 1 },
-    tooltip: {
-      ...base(c).tooltip,
-      trigger: 'axis',
-      formatter: (params) => {
-        const i = params[0].dataIndex;
-        if (i === undefined || i < 0) return '';
-        const filas = SEVERIDADES.map((s) => filaGlobito(c[s.color], numero(datos.porSeveridad[s.id][i]), s.nombre));
-        const total = SEVERIDADES.reduce((suma, s) => suma + datos.porSeveridad[s.id][i], 0);
-        return `<div class="globito"><div class="globito-titulo">${escapar(datos.etiquetas[i])}</div>${filas.join('')}<div class="globito-separador"></div><div class="globito-fila"><span></span><b>${escapar(numero(total))}</b><em>alertas</em></div></div>`;
-      },
-    },
-    series: series.map((s) => ({
-      name: s.sev.nombre,
-      type: 'bar',
-      stack: 'severidad',
-      barMaxWidth: 24,
-      data: s.datos,
-      itemStyle: { color: c[s.sev.color], borderColor: c['--superficie'], borderWidth: 1 },
-      emphasis: { disabled: true },
-    })),
-  };
-}
-
-/** Barras horizontales de una sola serie, de mayor a menor, con el valor en la punta. */
-export function opcionesBarrasH(c, datos, { formato = (v) => numero(v), maximo, globito } = {}) {
-  const color = c['--verde'];
-  const etiquetas = datos.etiquetas.slice().reverse();
-  const valores = datos.valores.slice().reverse();
-  const textos = (datos.textos || datos.valores.map((v) => formato(v))).slice().reverse();
-  return {
-    ...base(c),
-    grid: { left: 8, right: 96, top: 6, bottom: 6, containLabel: true },
-    xAxis: { type: 'value', min: 0, max: maximo, show: false },
-    yAxis: {
-      type: 'category',
-      data: etiquetas,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { color: c['--texto'], fontSize: 13, fontFamily: FUENTE, width: 190, overflow: 'truncate' },
-    },
-    tooltip: {
-      ...base(c).tooltip,
-      trigger: 'item',
-      formatter: (p) => `<div class="globito"><div class="globito-titulo">${escapar(p.name)}</div>${filaGlobito(color, globito ? globito(datos.etiquetas.length - 1 - p.dataIndex) : textos[p.dataIndex], datos.nombre || '')}</div>`,
-    },
-    series: [{
-      type: 'bar',
-      barMaxWidth: 18,
-      data: valores,
-      itemStyle: { color, borderRadius: [0, 4, 4, 0] },
-      showBackground: true,
-      backgroundStyle: { color: c['--neutro'], opacity: 0.5, borderRadius: [0, 4, 4, 0] },
-      label: {
-        show: true,
-        position: 'right',
-        distance: 8,
-        color: c['--texto'],
-        fontSize: 13,
-        fontWeight: 600,
-        fontFamily: FUENTE,
-        formatter: (p) => textos[p.dataIndex],
-      },
-      emphasis: { itemStyle: { opacity: 0.85 } },
     }],
   };
 }

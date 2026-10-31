@@ -149,6 +149,13 @@ export function fechaHoraSegundos(ms, hoy = Date.now()) {
   return mismoDia ? horaConSegundos(ms) : `${dia(ms)} ${horaConSegundos(ms)}`;
 }
 
+/** «2026-10-31 06:15:05», la hora de este navegador para los CSV. */
+export function fechaCsv(ms) {
+  const f = new Date(ms);
+  const dos = (n) => String(n).padStart(2, '0');
+  return `${f.getFullYear()}-${dos(f.getMonth() + 1)}-${dos(f.getDate())} ${dos(f.getHours())}:${dos(f.getMinutes())}:${dos(f.getSeconds())}`;
+}
+
 export function haceCuanto(ms, ahora = Date.now()) {
   const segundos = Math.max(0, Math.round((ahora - ms) / 1000));
   if (segundos < 60) return `hace ${segundos} s`;
@@ -219,6 +226,10 @@ const TRAZOS = {
   descargar: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
   imagen: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
   volver: '<path d="M19 12H5"/><path d="m11 18-6-6 6-6"/>',
+  calendario: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
+  compartir: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/>',
+  copiar: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
 };
 export function icono(nombre) {
   const plantilla = document.createElement('template');

@@ -65,4 +65,6 @@ export function configurarMenu() {
     if (abierto && !abierto.menu.contains(ev.target) && !abierto.boton.contains(ev.target)) cerrarMenu();
   });
   window.addEventListener('resize', () => cerrarMenu());
+  // El menú de un botón de una barra fija no seguiría al botón al bajar la página: se cierra.
+  window.addEventListener('scroll', () => { if (abierto && abierto.boton.closest('.barra-fija')) cerrarMenu(); }, { passive: true });
 }

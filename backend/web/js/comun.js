@@ -60,6 +60,8 @@ export const e = {
   salud: null,
   conteo: null,
   trafico: null,
+  // Las alertas de cada barra del horario (vivo.js), para el panel «Alertas en el tiempo» y su toque.
+  alertasPorBarra: null,
   ahora: null,
   pares: null,
   // Los gráficos chicos del estado del sistema: el tráfico del sensor y los latidos de la última hora, y

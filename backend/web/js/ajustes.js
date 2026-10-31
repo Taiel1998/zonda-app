@@ -1,13 +1,14 @@
 // La vista Ajustes, como los de la app: esta red y este navegador, las personas (el administrador suma gente
 // con un código y su QR, cambia perfiles y quita), los equipos con su importancia, la severidad por tipo de
-// ataque, el registro de cambios y Telegram. El analista ve todo sin los botones de administrador; igual
-// el servidor controla cada cambio (403).
+// ataque, el registro de cambios, los avisos de esta compu y Telegram. El analista ve todo sin los botones
+// de administrador; igual el servidor controla cada cambio (403).
 
 import { el, fechaHora, haceCuanto, hora, numero, vaciar } from './util.js';
 import {
   $, IMPORTANCIAS, NIVEL, ORDEN_SEVERIDAD, PERFILES, TIPOS, ahoraServidor, e, esAdmin, mandar, nombrePersona, pedir,
 } from './comun.js';
 import { abrirHoja, avisoInferior, confirmar } from './hojas.js';
+import { apagarAvisos, avisoDePrueba, estadoAvisos, permitirAvisos } from './avisos.js';
 
 const ORDEN_TIPOS_SEVERIDAD = ['fuerza_bruta', 'escaneo', 'ddos', 'probable_falsa_alarma', 'sin_tipificar', 'servicio_no_autorizado', 'volumen_inusual'];
 const MODOS_AVISO = { sonido: 'Con sonido', vibracion: 'Sin sonido', sin_aviso: 'Sin aviso' };
@@ -62,6 +63,7 @@ export function pintarAjustes() {
     tarjetaPersonas(),
     tarjetaEquipos(),
     tarjetaSeveridades(),
+    tarjetaAvisos(),
     tarjetaTelegram(),
     tarjetaRegistro());
 }
@@ -243,6 +245,31 @@ function hojaSeveridades() {
       },
     ],
   });
+}
+
+// ---- Avisos en esta compu (avisos.js), como las notificaciones de la app ----
+
+function tarjetaAvisos() {
+  const estado = estadoAvisos();
+  if (estado === 'imposibles') return tarjeta('Avisos en esta compu', 'Este navegador no puede mostrar avisos.');
+  if (estado === 'bloqueados') {
+    return tarjeta('Avisos en esta compu', 'Sin permiso, el tablero no puede mostrar avisos. Sigue funcionando; podés permitirlos desde el candado de la barra de direcciones.');
+  }
+  if (estado === 'apagados') {
+    return tarjeta('Avisos en esta compu', 'El navegador muestra un aviso cuando llega una alerta alta y el tablero no está a la vista. Te va a pedir confirmar el permiso.',
+      el('div', { class: 'acciones-detalle' }, el('button', {
+        type: 'button', class: 'boton-principal',
+        onclick: async () => {
+          const quedo = await permitirAvisos();
+          if (quedo === 'activados') avisoInferior('Los avisos están permitidos.');
+          pintarAjustes();
+        },
+      }, 'Permitir avisos')));
+  }
+  return tarjeta('Avisos en esta compu', 'Los avisos están permitidos: llegan las alertas altas cuando el tablero no está a la vista.',
+    el('div', { class: 'acciones-detalle' },
+      el('button', { type: 'button', class: 'boton-secundario', onclick: () => { if (!avisoDePrueba()) avisoInferior('Este navegador no mostró el aviso.'); } }, 'Mandar un aviso de prueba'),
+      el('button', { type: 'button', class: 'boton-texto', onclick: () => { apagarAvisos(); pintarAjustes(); } }, 'Apagar')));
 }
 
 // ---- Telegram de este navegador ----
