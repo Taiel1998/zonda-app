@@ -371,7 +371,6 @@ export function pintarTrafico() {
   if (!g || esperarArrastre(pintarTrafico)) return;
   const c = colores();
   const frase = fraseRango();
-  $('nota-paso').textContent = `Cada barra: ${nombrePaso(g.paso)}`;
 
   // Los tres gráficos de tiempo llevan las mismas marcas de alertas. En el de servicios van los que tuvieron
   // conexiones en el horario y, de esos, los que deja ver la leyenda. Las conexiones y las sin respuesta van

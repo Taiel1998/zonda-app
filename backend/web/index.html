@@ -30,10 +30,10 @@
 
 <div id="tablero" hidden>
   <header class="cabecera">
-    <div class="marca">
+    <a class="marca" id="ir-al-inicio" href="index.html" title="Ir a En vivo" aria-label="Zonda: ir a En vivo">
       <img src="img/logo_zonda.png" alt="">
       <span class="marca-nombre">Zonda</span>
-    </div>
+    </a>
     <nav class="pestanias" role="tablist" aria-label="Vistas del tablero">
       <button class="pestania" role="tab" id="pestania-vivo" data-vista="vivo" aria-selected="true" aria-controls="vista-vivo">En vivo</button>
       <button class="pestania" role="tab" id="pestania-alertas" data-vista="alertas" aria-selected="false" aria-controls="vista-alertas">Alertas</button>
@@ -55,7 +55,6 @@
 
     <section id="vista-vivo" role="tabpanel" aria-labelledby="pestania-vivo">
       <div class="filtros barra-horario barra-fija">
-        <span class="filtros-nota" id="nota-paso"></span>
         <div class="barra-tiempo" id="barra-tiempo" role="toolbar" aria-label="Horario">
           <div class="grupo-botones">
             <button class="boton-barra" id="tiempo-atras" type="button" data-icono="izquierda" aria-label="Correr el horario para atrás" title="Correr el horario para atrás"></button>

@@ -290,6 +290,15 @@ function marcarBarrasPegadas() {
   }
 }
 
+/** El logo lleva a En vivo, arriba de todo, como el inicio de una página web; con Ctrl o la rueda, el navegador
+    abre el tablero en otra pestaña. */
+function irAlInicio(ev) {
+  if (ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
+  ev.preventDefault();
+  cerrarDetalle();
+  cambiarVista('vivo');
+}
+
 /** Las sin revisar de una severidad en la lista de Alertas: los contadores de En vivo y el aviso de varias altas. */
 function abrirSinRevisar(severidad) {
   verSinRevisar(severidad);
@@ -358,6 +367,7 @@ function iniciar() {
     if (valor !== ev.target.value) ev.target.value = valor;
   });
   $('boton-tema').addEventListener('click', cambiarTema);
+  $('ir-al-inicio').addEventListener('click', irAlInicio);
   $('boton-ayuda-estado').addEventListener('click', alternarAyudaEstado);
   $('boton-salir').addEventListener('click', salir);
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.addEventListener('click', () => cambiarVista(boton.dataset.vista));
