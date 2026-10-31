@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -171,7 +172,8 @@ private fun NombreDeTipo(tipo: TipoAtaque, modifier: Modifier = Modifier) {
 private fun TarjetaDeSeveridad(tipo: TipoAtaque, elegida: Severidad, alElegir: (Severidad) -> Unit) {
     Panel {
         NombreDeTipo(tipo)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Una severidad por tipo: TalkBack dice "1 de 3".
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.selectableGroup()) {
             Severidad.entries.forEach { severidad ->
                 Opcion(
                     texto = stringResource(severidad.etiqueta()),

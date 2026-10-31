@@ -11,6 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.ResumenActividad
@@ -40,7 +42,7 @@ fun HojaPrecision(resumen: ResumenActividad, alCerrar: () -> Unit, altas: Set<Ti
 @Composable
 fun ColumnScope.ContenidoHojaPrecision(resumen: ResumenActividad, alCerrar: () -> Unit, altas: Set<TipoAtaque> = emptySet()) {
     val recursos = LocalResources.current
-    Text(text = stringResource(R.string.precision_ayuda), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(R.string.precision_ayuda), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     val definicion = stringResource(R.string.precision_texto_precision)
     val ejemplo = ejemploDePrecision(resumen, recursos)
     BloqueDeAyuda(stringResource(R.string.precision_titulo_precision), if (ejemplo == null) definicion else "$definicion $ejemplo")

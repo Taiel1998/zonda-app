@@ -35,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -203,7 +205,7 @@ fun TelegramContenido(estado: TelegramUiState, acciones: AccionesTelegram, desde
 /** Conectar Telegram (Figma 50-942 y 66-4205): cómo se hace, qué viaja y "Abrir Telegram". */
 @Composable
 private fun ColumnScope.Conectar(estado: TelegramUiState, acciones: AccionesTelegram, bot: String) {
-    Text(text = stringResource(R.string.telegram_encabezado), style = MaterialTheme.typography.tituloPaso)
+    Text(text = stringResource(R.string.telegram_encabezado), style = MaterialTheme.typography.tituloPaso, modifier = Modifier.semantics { heading() })
     Panel {
         TituloSeccion(stringResource(R.string.telegram_como_se_hace))
         PasoDeTelegram(stringResource(R.string.telegram_paso_abrir, bot))
@@ -244,7 +246,7 @@ private fun PasoDeTelegram(texto: String) {
 /** Telegram conectado en el primer inicio (Figma 50-1003): la tarjeta verde con el candado y Continuar. */
 @Composable
 private fun ColumnScope.RecienConectado(estado: TelegramUiState, acciones: AccionesTelegram, bot: String) {
-    Text(text = stringResource(R.string.telegram_encabezado), style = MaterialTheme.typography.tituloPaso)
+    Text(text = stringResource(R.string.telegram_encabezado), style = MaterialTheme.typography.tituloPaso, modifier = Modifier.semantics { heading() })
     TarjetaTono(
         tono = Tonos.Baja,
         titulo = stringResource(R.string.telegram_conectado),

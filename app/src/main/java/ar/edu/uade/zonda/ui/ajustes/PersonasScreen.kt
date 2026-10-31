@@ -38,8 +38,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -289,7 +291,12 @@ fun ColumnScope.ContenidoHojaAgregarPersona(formulario: FormularioPersona, accio
         }
     }
     formulario.error?.let { error ->
-        Text(text = stringResource(error.mensaje()), style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.error)
+        Text(
+            text = stringResource(error.mensaje()),
+            style = MaterialTheme.typography.nota,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
     }
     LeyendaObligatorio()
     Row(modifier = Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

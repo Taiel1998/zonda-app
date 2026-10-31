@@ -49,6 +49,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -172,7 +175,10 @@ private fun ColumnScope.Visor(qrNoValido: Boolean, alLeer: (String) -> Unit, alI
         style = MaterialTheme.typography.titleSmall,
         color = Color.White,
         textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth(),
+        // Con un QR que no es de Zonda cambia a "Ese QR no es de Zonda...": TalkBack lo anuncia.
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { liveRegion = LiveRegionMode.Polite },
     )
     Box(modifier = Modifier.size(LadoVisor)) {
         val forma = RoundedCornerShape(20.dp)
