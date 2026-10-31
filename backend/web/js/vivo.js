@@ -7,6 +7,7 @@ import {
 } from './util.js';
 import {
   GRUPOS, SEVERIDADES, colores, formatoBits, grupoDe, opcionesAlertasTiempo, opcionesMini, opcionesSerieSimple, opcionesServicios,
+  sinEjes,
 } from './graficos.js';
 import {
   $, ESTADOS, NIVEL, ORDEN_SEVERIDAD, ahoraServidor, chipEstado, chipSeveridad, dibujar, e, nombreEquipo, pedir,
@@ -152,6 +153,8 @@ export function pintarGraficosPiezas() {
     const valores = minutos.map((t) => latidos.get(t) || 0);
     dibujar('pieza-analisis', opcionesMini(c, { ...ventana, puntos: minutos.map((t, i) => [t * 1000, valores[i]]) },
       { tipo: 'barras', color: c['--verde'], nombre: 'revisiones', paso: 60, maximo: Math.max(3, ...valores), ejes: e.panelGrande === 'analisis' }));
+    avisoMini('sensor', porMinuto.some((v) => v > 0) ? '' : 'Sin conexiones en la última hora');
+    avisoMini('analisis', valores.some((v) => v > 0) ? '' : 'Sin revisiones en la última hora');
     e.tablas.sensor = tablaPorMinuto(minutos, porMinuto, 'Conexiones');
     e.tablas.analisis = tablaPorMinuto(minutos, valores, 'Revisiones');
     refrescarTablas('sensor', 'analisis');
@@ -159,11 +162,23 @@ export function pintarGraficosPiezas() {
   pintarGraficoServidor();
 }
 
+/** El aviso en el medio de un gráfico chico sin datos (sin texto, se esconde). */
+function avisoMini(id, texto) {
+  const aviso = $(`vacio-pieza-${id}`);
+  aviso.hidden = !texto;
+  aviso.textContent = texto;
+}
+
 /** El gráfico chico del servidor: cuánto tardó en contestarle a este navegador, desde que se abrió. Sus
     datos son cada consulta, con la hora y lo que tardó. */
 function pintarGraficoServidor() {
   const c = colores();
   const ahora = Date.now();
+  avisoMini('servidor', e.respuestas.some((r) => r.ms != null) ? '' : 'Sin respuestas');
+  // Los datos son de este navegador: hasta que pasa una hora, la línea no llena el gráfico y el pie dice
+  // desde cuándo hay.
+  const primera = e.respuestas.length ? e.respuestas[0].t : ahora;
+  $('pie-servidor').textContent = ahora - primera < 3540e3 ? `Respuesta en milisegundos, desde las ${hora(primera)}` : 'Respuesta en milisegundos';
   dibujar('pieza-servidor', opcionesMini(c, { desde: ahora - 3600e3, hasta: ahora, puntos: e.respuestas.map((r) => [r.t, r.ms]) },
     { tipo: 'linea', color: c['--serie-1'], nombre: 'de respuesta', formato: (v) => `${numero(v)} ms`, ejes: e.panelGrande === 'servidor' }));
   e.tablas.servidor = {
@@ -388,10 +403,14 @@ export function pintarTrafico() {
   }
   const bits = g.bytes.map((b) => (b * 8) / g.paso);
   const comunes = { tiempos: g.tiempos, paso: g.paso, desde: g.desde, hasta: g.hasta, marcas };
+  const total = g.conexiones.reduce((a, b) => a + b, 0);
+  const bytesTotal = g.bytes.reduce((a, b) => a + b, 0);
+  const sinTrafico = !total && !bytesTotal;
+  const blanco = (opciones, vacio) => (vacio ? sinEjes(opciones) : opciones);
   const graficos = [
-    dibujar('servicios', opcionesServicios(c, { ...comunes, porGrupo: g.porGrupo, conexiones: g.conexiones, grupos: visibles })),
-    dibujar('volumen', opcionesSerieSimple(c, { ...comunes, valores: bits }, { tipo: 'linea', formato: formatoBits, nombre: 'de tráfico' })),
-    dibujar('fallidas', opcionesSerieSimple(c, { ...comunes, valores: g.fallidas }, { tipo: 'barras', formato: (v) => numero(v), nombre: 'sin respuesta' })),
+    dibujar('servicios', blanco(opcionesServicios(c, { ...comunes, porGrupo: g.porGrupo, conexiones: g.conexiones, grupos: visibles }), sinTrafico)),
+    dibujar('volumen', blanco(opcionesSerieSimple(c, { ...comunes, valores: bits }, { tipo: 'linea', formato: formatoBits, nombre: 'de tráfico' }), sinTrafico)),
+    dibujar('fallidas', blanco(opcionesSerieSimple(c, { ...comunes, valores: g.fallidas }, { tipo: 'barras', formato: (v) => numero(v), nombre: 'sin respuesta' }), sinTrafico)),
   ];
   for (const grafico of graficos) {
     if (!grafico) continue;
@@ -401,20 +420,20 @@ export function pintarTrafico() {
   // Las alertas de cada barra, contadas: las marcas se tapan cuando caen varias juntas.
   const barras = alertasPorBarra(g);
   e.alertasPorBarra = barras;
-  const graficoAlertas = dibujar('alertas-tiempo', opcionesAlertasTiempo(c, { tiempos: barras.tiempos, paso: barras.paso, desde: g.desde, hasta: g.hasta, porSeveridad: barras.porSeveridad, porTipo: barras.porTipo }));
+  const totalAlertas = barras.totales.reduce((a, b) => a + b, 0);
+  const graficoAlertas = dibujar('alertas-tiempo', blanco(opcionesAlertasTiempo(c, { tiempos: barras.tiempos, paso: barras.paso, desde: g.desde, hasta: g.hasta, porSeveridad: barras.porSeveridad, porTipo: barras.porTipo }), !totalAlertas));
   if (graficoAlertas) {
     prepararGraficoDeTiempo(graficoAlertas);
     prepararAlertasTiempo(graficoAlertas);
   }
   $('sub-alertas-tiempo').textContent = `Las alertas que empezaron en cada barra de ${nombrePaso(barras.paso)}, por severidad. Tocá una barra para verlas en la lista.`;
-  const totalAlertas = barras.totales.reduce((a, b) => a + b, 0);
   $('vacio-alertas-tiempo').hidden = totalAlertas > 0;
+  $('leyenda-alertas-tiempo').hidden = !totalAlertas;
+  $('leyenda-marcas').hidden = sinTrafico;
   $('vacio-alertas-tiempo').textContent = `Ninguna alerta ${frase}.`;
   pintarLeyendaServicios(g, presentes);
 
-  const total = g.conexiones.reduce((a, b) => a + b, 0);
   const fallidas = g.fallidas.reduce((a, b) => a + b, 0);
-  const bytesTotal = g.bytes.reduce((a, b) => a + b, 0);
   $('sin-respuesta').textContent = numero(fallidas);
   $('sin-respuesta-detalle').textContent = total ? `${porcentaje(fallidas, total)} de ${numero(total)} conexiones ${frase}` : `Ninguna conexión ${frase}`;
   $('trafico-ahora-detalle').textContent = `${bytes(bytesTotal)} ${frase}`;
@@ -422,9 +441,10 @@ export function pintarTrafico() {
 
   const aviso = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor. El sensor lo manda cada 5 segundos.'
     : `No hubo tráfico ${frase}. Lo último que vio el sensor fue ${cuandoFue(g.ultimoTramo * 1000)}.`;
-  for (const id of ['vacio-servicios', 'vacio-volumen']) {
-    $(id).hidden = total > 0 || bytesTotal > 0;
-    $(id).textContent = aviso;
+  const corto = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor.' : `No hubo tráfico ${frase}.`;
+  for (const [id, texto] of [['vacio-servicios', aviso], ['vacio-volumen', corto], ['vacio-fallidas', corto]]) {
+    $(id).hidden = !sinTrafico;
+    $(id).textContent = texto;
   }
 
   // Los datos de los tres gráficos: en la tabla, las barras con tráfico, de la más nueva a la más vieja; en
