@@ -198,7 +198,7 @@ function hojaBloqueo(a, accion, actual = null) {
         conDuracion ? el('div', { class: 'grupo-opciones' },
           el('p', {}, accion === 'duracion' ? '¿Por cuánto tiempo, desde ahora?' : '¿Por cuánto tiempo?'),
           el('div', { class: 'opciones', role: 'radiogroup' }, DURACIONES.map((d) => el('button', {
-            type: 'button', class: 'chip-filtro', role: 'radio', 'aria-checked': String(duracion === d.segundos), 'aria-pressed': String(duracion === d.segundos),
+            type: 'button', class: `chip-filtro${duracion === d.segundos ? ' activo' : ''}`, role: 'radio', 'aria-checked': String(duracion === d.segundos),
             onclick: () => { duracion = d.segundos; pintar(); },
           }, d.nombre)))) : null,
         el('label', { class: 'campo' }, el('span', {}, 'Motivo', el('span', { class: 'asterisco' }, ' *')), texto, falta,
