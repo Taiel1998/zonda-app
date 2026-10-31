@@ -7,8 +7,8 @@ import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.mlkit.vision.MlKitAnalyzer
-import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.border
@@ -236,7 +236,7 @@ private fun VistaCamaraQr(alLeer: (String) -> Unit, modifier: Modifier = Modifie
         val ejecutor = ContextCompat.getMainExecutor(contexto)
         controlador.setImageAnalysisAnalyzer(
             ejecutor,
-            MlKitAnalyzer(listOf(lector), CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED, ejecutor) { resultado ->
+            MlKitAnalyzer(listOf(lector), ImageAnalysis.COORDINATE_SYSTEM_VIEW_REFERENCED, ejecutor) { resultado ->
                 resultado.getValue(lector)?.firstNotNullOfOrNull { it.rawValue }?.let { alLeerActual(it) }
             },
         )
