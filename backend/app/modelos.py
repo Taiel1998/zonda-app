@@ -7,6 +7,7 @@ dos, de la más alta de las dos (cambio 9).
 """
 
 import ipaddress
+import json
 from datetime import datetime
 from typing import Literal
 
@@ -25,7 +26,7 @@ TipoDispositivo = Literal["telefono", "navegador"]
 # Qué tan importante es un equipo de la red (decisión 41): sube o baja un nivel la severidad de sus alertas.
 Importancia = Literal["critico", "normal", "poco_importante"]
 # Lo que anota el registro de cambios (decisión 40), con los bloqueos del firewall (decisión 51).
-TipoCambio = Literal["severidad", "importancia", "persona_nueva", "perfil", "persona_quitada", "bloqueo", "desbloqueo"]
+TipoCambio = Literal["severidad", "importancia", "persona_nueva", "perfil", "persona_quitada", "bloqueo", "desbloqueo", "permiso_bloqueo"]
 # Los motivos del Figma (pantallas "revisar: ataque real" y "revisar: falso positivo").
 Motivo = Literal[
     "escalado_al_proveedor",
@@ -286,6 +287,9 @@ class Persona(BaseModel):
     # telefono o navegador (el tablero web, decisión 51): a un navegador no se le asigna una alerta, porque no
     # recibe el aviso de la asignación; la app lo muestra aparte en Personas.
     tipo: Literal["telefono", "navegador"] = "telefono"
+    # «Bloqueos» (decisión 51): true si bloquea en el acto (un administrador siempre; un analista, si un
+    # administrador lo pasó a «Bloquea»); false si pide aprobación.
+    puedeBloquear: bool = False
 
 
 class CodigoPersonaEntrada(BaseModel):
@@ -316,6 +320,12 @@ class CodigoPersona(BaseModel):
 
 class PerfilEntrada(BaseModel):
     perfil: Perfil
+
+
+class PermisoBloqueoEntrada(BaseModel):
+    """«Bloqueos» de un analista (decisión 51): true si bloquea en el acto, false si pide aprobación."""
+
+    puedeBloquear: bool
 
 
 class Equipo(BaseModel):
@@ -754,6 +764,55 @@ class InformeFirewall(BaseModel):
 class InformeResultado(BaseModel):
     aplicados: int
     rechazados: int
+
+
+# ---- Llaves de acceso del tablero web (decisión 51) ----
+
+# Lo más grande que puede ser lo que manda la computadora al crear la llave o al firmar (una firma RSA de
+# Windows Hello, en JSON, anda por los 2 KB).
+MAXIMO_CREDENCIAL = 16_000
+
+
+class EstadoLlave(BaseModel):
+    """La llave de acceso de este navegador: si la tiene y si todavía la puede crear (al parearse)."""
+
+    tiene: bool
+    puedeCrear: bool
+
+
+class OpcionesLlave(BaseModel):
+    """Lo que el navegador le pasa a navigator.credentials (create o get) y el desafío con el que vuelve."""
+
+    desafioId: str
+    opciones: dict
+
+
+class LlaveNueva(BaseModel):
+    """La llave que creó la computadora (lo que devuelve navigator.credentials.create, en JSON)."""
+
+    desafioId: str = Field(min_length=1, max_length=64)
+    credencial: dict
+
+    @field_validator("credencial")
+    @classmethod
+    def credencial_chica(cls, valor: dict) -> dict:
+        if len(json.dumps(valor)) > MAXIMO_CREDENCIAL:
+            raise ValueError("La credencial es demasiado grande")
+        return valor
+
+
+class AccionLlave(BaseModel):
+    """Lo que la llave va a confirmar, igual a lo que después se manda: {"tipo": "bloquear", "alertaId": "a-1",
+    "duracion": 3600}."""
+
+    accion: dict[str, str | int | bool | None]
+
+    @field_validator("accion")
+    @classmethod
+    def accion_chica(cls, valor: dict) -> dict:
+        if not 1 <= len(valor) <= 8 or "tipo" not in valor or any(len(k) > 32 or (isinstance(v, str) and len(v) > 128) for k, v in valor.items()):
+            raise ValueError("La acción lleva su tipo y como mucho ocho datos cortos")
+        return valor
 
 
 class MinutoLatidos(BaseModel):

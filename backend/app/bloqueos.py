@@ -1,7 +1,8 @@
 """Bloqueos del origen de una alerta en el firewall (decisión 51), siempre con una persona que decide.
 
-Un administrador bloquea desde su teléfono el origen de una alerta, con un motivo y una duración; un analista
-o el tablero web lo piden, y lo aprueba un administrador desde su teléfono. El servidor no guarda ninguna clave
+Quien bloquea (un administrador, o un analista con «Bloquea») lo hace en el acto, con un motivo y una
+duración, desde su teléfono o desde el tablero con la llave de esa computadora (llaves.py); un analista con
+«Pide aprobación» o el tablero sin llave lo piden, y lo aprueba alguien que bloquea. El servidor no guarda ninguna clave
 del firewall: el agente del firewall pregunta cada pocos segundos qué tiene que bloquear (GET
 /firewall/bloqueos, con su propio token), lo valida contra su lista de «nunca bloquear» y sus topes, lo aplica
 y cuenta qué hizo (POST /firewall/informe). Un bloqueo dura 1 o 24 horas, o hasta que alguien lo desbloquea;
@@ -20,8 +21,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
-from . import registro
-from .auth import administrador_actual, ahora, dispositivo_actual, iso, nombre_de
+from . import llaves, registro
+from .auth import ahora, dispositivo_actual, iso, nombre_de
 from .config import Config
 from .db import Base
 from .modelos import (
@@ -36,13 +37,14 @@ from .modelos import (
     ListaFirewall,
     MotivoEntrada,
 )
+from .personas import puede_bloquear
 
 router = APIRouter()
 
-# Lo que está en el firewall: aprobado (todavía no dijo que lo aplicó) y aplicado. Un pedido espera a un
-# administrador; rechazado, desbloqueado y vencido ya terminaron.
+# Lo que está en el firewall: aprobado (todavía no dijo que lo aplicó) y aplicado. Un pedido espera a alguien
+# que bloquea; rechazado, desbloqueado y vencido ya terminaron.
 EN_EL_FIREWALL = ("aprobado", "aplicado")
-# Un pedido que ningún administrador aprobó en una hora deja de valer: el ataque pudo haber cambiado.
+# Un pedido que nadie aprobó en una hora deja de valer: el ataque pudo haber cambiado.
 PEDIDO_VALE = timedelta(hours=1)
 # Quién figura cuando el que rechaza un bloqueo es el firewall.
 AUTOR_FIREWALL = "Firewall"
@@ -137,10 +139,23 @@ def estado_firewall(base: Base, cfg: Config) -> EstadoFirewall:
     return EstadoFirewall(habilitado=bool(cfg.firewall_token), conectado=conectado, ultimaConsulta=ultima, nuncaBloquear=nunca_bloquear(base))
 
 
-def lo_hace_efectivo(dispositivo: sqlite3.Row) -> bool:
-    """Un bloqueo solo lo hace efectivo un administrador desde su teléfono. El tablero web y los analistas lo
-    piden: bloquear es lo único que corta tráfico, y el acceso de un navegador dura 90 días en esa computadora."""
-    return dispositivo["perfil"] == "administrador" and dispositivo["tipo"] == "telefono"
+def lo_hace_efectivo(request: Request, dispositivo: sqlite3.Row, accion: dict) -> bool:
+    """Un bloqueo solo lo hace efectivo alguien que bloquea (un administrador, o un analista con «Bloquea», el de
+    guardia): desde su teléfono, que pide la huella, o desde el tablero con la llave de esa computadora, que
+    confirma [accion]. Sin la llave, el tablero lo pide, igual que un analista con «Pide aprobación»: bloquear
+    corta tráfico, y el acceso de un navegador dura 90 días en esa computadora. Se llama antes de abrir la
+    transacción: la llave se revisa en las suyas."""
+    if not puede_bloquear(dispositivo):
+        return False
+    return dispositivo["tipo"] == "telefono" or llaves.confirmada(request, dispositivo, accion)
+
+
+def quien_bloquea(dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> sqlite3.Row:
+    """Dependencia de FastAPI para rechazar un pedido y para desbloquear: alguien que bloquea. 403 a un analista
+    con «Pide aprobación»."""
+    if not puede_bloquear(dispositivo):
+        raise HTTPException(status_code=403, detail="Lo hace alguien que puede bloquear")
+    return dispositivo
 
 
 def texto_duracion(duracion: int | None) -> str:
@@ -184,13 +199,15 @@ def listar(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actu
 
 @router.post("/bloqueos", response_model=Bloqueo, status_code=201)
 def bloquear(entrada: BloqueoEntrada, request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> Bloqueo:
-    """Bloquea el origen de una alerta. Un administrador desde su teléfono lo deja aprobado en el acto; un
-    analista o el tablero web lo piden. Idempotente por accionId. 404 sin la alerta; 409 si ese equipo ya
-    tiene un bloqueo o un pedido, o con el tope de bloqueos activos; 422 si el origen no es un equipo o está en
-    la lista de «nunca bloquear»; 429 con demasiados en una hora; 503 si están apagados."""
+    """Bloquea el origen de una alerta. Quien bloquea lo deja aprobado en el acto, desde su teléfono o desde el
+    tablero con la llave de esa computadora; un analista con «Pide aprobación» o el tablero sin llave lo piden.
+    Idempotente por accionId. 403 si manda una llave que no confirma este bloqueo; 404 sin la alerta; 409 si
+    ese equipo ya tiene un bloqueo o un pedido, o con el tope de bloqueos activos; 422 si el origen no es un
+    equipo o está en la lista de «nunca bloquear»; 429 con demasiados en una hora; 503 si están apagados."""
     _exigir_prendidos(request)
     cfg = _config(request)
     base = _base(request)
+    efectivo = lo_hace_efectivo(request, dispositivo, {"tipo": "bloquear", "alertaId": entrada.alertaId, "duracion": entrada.duracion})
     with base.transaccion() as con:
         poner_al_dia(con)
         repetido = con.execute("SELECT * FROM bloqueos WHERE accion_id = ?", (entrada.accionId,)).fetchone()
@@ -216,7 +233,6 @@ def bloquear(entrada: BloqueoEntrada, request: Request, dispositivo: sqlite3.Row
         ).fetchone()[0]
         if recientes >= cfg.bloqueos_por_hora:
             raise HTTPException(status_code=429, detail="Demasiados bloqueos en una hora desde este dispositivo")
-        efectivo = lo_hace_efectivo(dispositivo)
         bloqueo_id = "b-" + uuid.uuid4().hex[:12]
         persona = nombre_de(dispositivo)
         aprobado = (dispositivo["id"], persona, iso(momento), _vence(momento, entrada.duracion)) if efectivo else (None, None, None, None)
@@ -244,12 +260,13 @@ def bloquear(entrada: BloqueoEntrada, request: Request, dispositivo: sqlite3.Row
 
 
 @router.post("/bloqueos/{bloqueo_id}/aprobacion", response_model=Bloqueo)
-def aprobar(bloqueo_id: str, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Bloqueo:
-    """Un administrador aprueba desde su teléfono un pedido de bloqueo: la duración corre desde ahora. 403
-    desde el tablero web; 409 si el pedido ya no está pendiente (lo aprobó otra persona, se rechazó o venció)."""
+def aprobar(bloqueo_id: str, request: Request, quien: sqlite3.Row = Depends(dispositivo_actual)) -> Bloqueo:
+    """Alguien que bloquea aprueba un pedido de bloqueo, desde su teléfono o con la llave de su computadora: la
+    duración corre desde ahora. 403 a quien pide aprobación y al tablero sin llave; 409 si el pedido ya no está
+    pendiente (lo aprobó otra persona, se rechazó o venció)."""
     _exigir_prendidos(request)
-    if administrador["tipo"] != "telefono":
-        raise HTTPException(status_code=403, detail="Un bloqueo se aprueba desde el teléfono de un administrador")
+    if not lo_hace_efectivo(request, quien, {"tipo": "aprobar", "bloqueoId": bloqueo_id}):
+        raise HTTPException(status_code=403, detail="Un bloqueo se aprueba desde el teléfono o con la llave de alguien que puede bloquear")
     base = _base(request)
     with base.transaccion() as con:
         poner_al_dia(con)
@@ -261,47 +278,52 @@ def aprobar(bloqueo_id: str, request: Request, administrador: sqlite3.Row = Depe
         momento = ahora()
         con.execute(
             "UPDATE bloqueos SET estado = 'aprobado', aprobado_por_id = ?, aprobado_por = ?, aprobado_en = ?, vence_en = ? WHERE id = ?",
-            (administrador["id"], nombre_de(administrador), iso(momento), _vence(momento, fila["duracion"]), bloqueo_id),
+            (quien["id"], nombre_de(quien), iso(momento), _vence(momento, fila["duracion"]), bloqueo_id),
         )
-        registro.anotar(con, "bloqueo", administrador, objeto=fila["ip"], nombre=_nombre_equipo(con, fila["ip"]), despues=texto_duracion(fila["duracion"]), motivo=fila["motivo"])
+        registro.anotar(con, "bloqueo", quien, objeto=fila["ip"], nombre=_nombre_equipo(con, fila["ip"]), despues=texto_duracion(fila["duracion"]), motivo=fila["motivo"])
         return bloqueo_dto(con, _bloqueo(con, bloqueo_id))
 
 
 @router.post("/bloqueos/{bloqueo_id}/rechazo", response_model=Bloqueo)
-def rechazar(bloqueo_id: str, entrada: MotivoEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Bloqueo:
-    """Un administrador rechaza un pedido de bloqueo, con su motivo. 409 si ya no está pendiente."""
+def rechazar(bloqueo_id: str, entrada: MotivoEntrada, request: Request, quien: sqlite3.Row = Depends(quien_bloquea)) -> Bloqueo:
+    """Alguien que bloquea rechaza un pedido de bloqueo, con su motivo. 409 si ya no está pendiente."""
     _exigir_prendidos(request)
     with _base(request).transaccion() as con:
         poner_al_dia(con)
         if _bloqueo(con, bloqueo_id)["estado"] != "pedido":
             raise HTTPException(status_code=409, detail=NO_PENDIENTE)
-        _terminar(con, bloqueo_id, "rechazado", administrador, entrada.motivo)
+        _terminar(con, bloqueo_id, "rechazado", quien, entrada.motivo)
         return bloqueo_dto(con, _bloqueo(con, bloqueo_id))
 
 
 @router.post("/bloqueos/{bloqueo_id}/desbloqueo", response_model=Bloqueo)
-def desbloquear(bloqueo_id: str, entrada: MotivoEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Bloqueo:
-    """Un administrador desbloquea antes del vencimiento, con su motivo; también desde el tablero web, porque
-    devuelve el tráfico. El firewall lo saca en su consulta siguiente. Si ya terminó, no cambia nada. 409 si
-    todavía es un pedido: un pedido se rechaza."""
+def desbloquear(bloqueo_id: str, entrada: MotivoEntrada, request: Request, quien: sqlite3.Row = Depends(quien_bloquea)) -> Bloqueo:
+    """Alguien que bloquea desbloquea antes del vencimiento, con su motivo; desde el tablero, con la llave de esa
+    computadora (403 sin ella), como en el teléfono con la huella: devolverle la red a un equipo infectado también
+    es una decisión. El firewall lo saca en su consulta siguiente. Si ya terminó, no cambia nada. 409 si todavía
+    es un pedido: un pedido se rechaza."""
     _exigir_prendidos(request)
+    llaves.exigir(request, quien, {"tipo": "desbloquear", "bloqueoId": bloqueo_id})
     with _base(request).transaccion() as con:
         poner_al_dia(con)
         fila = _bloqueo(con, bloqueo_id)
         if fila["estado"] == "pedido":
             raise HTTPException(status_code=409, detail="Todavía es un pedido: se rechaza, no se desbloquea")
         if fila["estado"] in EN_EL_FIREWALL:
-            _terminar(con, bloqueo_id, "desbloqueado", administrador, entrada.motivo)
-            registro.anotar(con, "desbloqueo", administrador, objeto=fila["ip"], nombre=_nombre_equipo(con, fila["ip"]), antes=texto_duracion(fila["duracion"]), motivo=entrada.motivo)
+            _terminar(con, bloqueo_id, "desbloqueado", quien, entrada.motivo)
+            registro.anotar(con, "desbloqueo", quien, objeto=fila["ip"], nombre=_nombre_equipo(con, fila["ip"]), antes=texto_duracion(fila["duracion"]), motivo=entrada.motivo)
         return bloqueo_dto(con, _bloqueo(con, bloqueo_id))
 
 
 @router.put("/bloqueos/{bloqueo_id}/duracion", response_model=Bloqueo)
-def cambiar_duracion(bloqueo_id: str, entrada: DuracionEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Bloqueo:
+def cambiar_duracion(bloqueo_id: str, entrada: DuracionEntrada, request: Request, quien: sqlite3.Row = Depends(dispositivo_actual)) -> Bloqueo:
     """Cuánto dura desde ahora un bloqueo vigente, con su motivo; sin duración queda hasta desbloquear. El
-    firewall lo vuelve a aplicar con la duración nueva; hasta que lo confirma, queda aprobado. 409 si no está
-    vigente."""
+    firewall lo vuelve a aplicar con la duración nueva; hasta que lo confirma, queda aprobado. Como bloquear,
+    lo hace alguien que bloquea, desde su teléfono o con la llave de su computadora: alargarlo también corta
+    tráfico (403 al tablero sin llave y a quien pide aprobación). 409 si no está vigente."""
     _exigir_prendidos(request)
+    if not lo_hace_efectivo(request, quien, {"tipo": "duracion", "bloqueoId": bloqueo_id, "duracion": entrada.duracion}):
+        raise HTTPException(status_code=403, detail="La duración se cambia desde el teléfono o con la llave de alguien que puede bloquear")
     with _base(request).transaccion() as con:
         poner_al_dia(con)
         fila = _bloqueo(con, bloqueo_id)
@@ -314,7 +336,7 @@ def cambiar_duracion(bloqueo_id: str, entrada: DuracionEntrada, request: Request
         registro.anotar(
             con,
             "bloqueo",
-            administrador,
+            quien,
             objeto=fila["ip"],
             nombre=_nombre_equipo(con, fila["ip"]),
             antes=texto_duracion(fila["duracion"]),

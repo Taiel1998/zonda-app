@@ -45,6 +45,9 @@ class Config:
     firewall_limite: int = 60
     max_bloqueos: int = 20
     bloqueos_por_hora: int = 10
+    # Direcciones del tablero, además de url_publica, desde las que vale una llave de acceso (decisión 51); por
+    # ejemplo http://localhost:8001 para probar. Una llave se ata al nombre: con una IP no funciona.
+    origenes_llave: list[str] = field(default_factory=list)
 
     @classmethod
     def desde_entorno(cls) -> "Config":
@@ -76,4 +79,5 @@ class Config:
             firewall_limite=int(leer("ZONDA_FIREWALL_LIMITE", "60")),
             max_bloqueos=int(leer("ZONDA_MAX_BLOQUEOS", "20")),
             bloqueos_por_hora=int(leer("ZONDA_BLOQUEOS_POR_HORA", "10")),
+            origenes_llave=[origen.strip() for origen in leer("ZONDA_ORIGENES_LLAVE", "").split(",") if origen.strip()],
         )

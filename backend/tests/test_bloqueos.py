@@ -9,7 +9,7 @@ import pytest
 from app.auth import ahora, iso
 from app.db import Base
 from tests.conftest import cabecera, todas_las_alertas
-from tests.test_perfiles_y_registro import sumar
+from tests.test_perfiles_y_registro import mi_id, sumar
 from tests.test_revision_y_severidades import primera_alta
 from tests.test_telegram import vincular
 
@@ -50,6 +50,15 @@ def de_origenes_distintos(cliente, auth, cuantas: int) -> list[dict]:
         elegidas.setdefault(alerta["origenIp"], alerta)
     assert len(elegidas) >= cuantas
     return list(elegidas.values())[:cuantas]
+
+
+def con_bloquea(cliente, auth, persona_id: str, puede: bool = True):
+    """Ajustes → Personas → «Bloqueos»: «Bloquea» (en el acto) o «Pide aprobación»."""
+    return cliente.put(f"/personas/{persona_id}/bloqueos", json={"puedeBloquear": puede}, headers=auth)
+
+
+def persona(cliente, auth, persona_id: str) -> dict:
+    return next(p for p in cliente.get("/personas", headers=auth).json() if p["id"] == persona_id)
 
 
 def parear_tablero(cliente, auth, tipo: str | None = "navegador") -> dict:
@@ -181,8 +190,9 @@ def test_un_analista_pide_y_lo_aprueba_un_administrador_desde_el_telefono(client
     assert (aprobado["estado"], aprobado["aprobadoPor"]) == ("aprobado", "Teléfono de prueba")
     assert alerta["origenIp"] in lo_que_bloquea_el_firewall(cliente)
     assert cliente.post(f"/bloqueos/{pedido['id']}/aprobacion", headers=auth).status_code == 409
-    # El analista tampoco desbloquea.
+    # Con «Pide aprobación», tampoco desbloquea ni cambia la duración.
     assert cliente.post(f"/bloqueos/{pedido['id']}/desbloqueo", json={"motivo": "Ya está"}, headers=laura).status_code == 403
+    assert cliente.put(f"/bloqueos/{pedido['id']}/duracion", json={"duracion": None, "motivo": "Más largo"}, headers=laura).status_code == 403
 
 
 def test_un_pedido_se_puede_rechazar_con_motivo(cliente, auth):
@@ -197,6 +207,71 @@ def test_un_pedido_se_puede_rechazar_con_motivo(cliente, auth):
     assert cliente.post(f"/bloqueos/{pedido['id']}/rechazo", json={"motivo": "Otra vez"}, headers=auth).status_code == 409
 
 
+def test_un_administrador_pasa_a_bloquea_al_analista_de_guardia(cliente, auth):
+    laura_id, laura = sumar(cliente, auth)
+    assert persona(cliente, auth, laura_id)["puedeBloquear"] is False
+    # Lo elige un administrador.
+    assert con_bloquea(cliente, laura, laura_id).status_code == 403
+
+    cambiada = con_bloquea(cliente, auth, laura_id)
+
+    assert cambiada.status_code == 200, cambiada.text
+    assert cambiada.json()["puedeBloquear"] is True
+    assert persona(cliente, auth, laura_id)["puedeBloquear"] is True
+    # Repetirlo no suma otra línea; volver a «Pide aprobación», sí.
+    con_bloquea(cliente, auth, laura_id)
+    con_bloquea(cliente, auth, laura_id, puede=False)
+    cambios = [c for c in cliente.get("/registro", params={"bloqueos": "true"}, headers=auth).json() if c["tipo"] == "permiso_bloqueo"]
+    assert [(c["nombre"], c["antes"], c["despues"], c["autor"]) for c in cambios] == [
+        ("Laura", "bloquea", "pide_aprobacion", "Teléfono de prueba"),
+        ("Laura", "pide_aprobacion", "bloquea", "Teléfono de prueba"),
+    ]
+    # La app 1.0.8 no conoce ese tipo: solo lo ve quien pide los bloqueos.
+    assert all(c["tipo"] != "permiso_bloqueo" for c in cliente.get("/registro", headers=auth).json())
+    # Un administrador siempre bloquea.
+    yo = mi_id(cliente, auth)
+    assert con_bloquea(cliente, auth, yo, puede=False).status_code == 409
+    assert persona(cliente, auth, yo)["puedeBloquear"] is True
+
+
+def test_el_analista_con_bloquea_lo_hace_desde_su_telefono_y_aprueba_pedidos(cliente, auth):
+    laura_id, laura = sumar(cliente, auth)
+    _, diego = sumar(cliente, auth, nombre="Diego", telefono="Teléfono de Diego")
+    con_bloquea(cliente, auth, laura_id)
+    primera, segunda, tercera = de_origenes_distintos(cliente, auth, 3)
+
+    bloqueo = bloquear(cliente, laura, primera["id"], duracion=86400).json()
+
+    assert (bloqueo["estado"], bloqueo["aprobadoPor"], bloqueo["duracion"]) == ("aprobado", "Laura", 86400)
+    assert primera["origenIp"] in lo_que_bloquea_el_firewall(cliente)
+    # Diego pide aprobación: lo pide, y lo aprueba Laura, que bloquea.
+    pedido = bloquear(cliente, diego, segunda["id"], accion="2").json()
+    assert pedido["estado"] == "pedido"
+    assert cliente.post(f"/bloqueos/{pedido['id']}/aprobacion", headers=diego).status_code == 403
+    assert cliente.post(f"/bloqueos/{pedido['id']}/aprobacion", headers=laura).json()["aprobadoPor"] == "Laura"
+    otro = bloquear(cliente, diego, tercera["id"], accion="3").json()
+    rechazado = cliente.post(f"/bloqueos/{otro['id']}/rechazo", json={"motivo": "Es el backup."}, headers=laura).json()
+    assert (rechazado["estado"], rechazado["terminadoPor"]) == ("rechazado", "Laura")
+    # Laura cambia la duración y desbloquea; Diego, no.
+    hasta = {"duracion": None, "motivo": "pc-rrhh queda aislada hasta formatearla."}
+    assert cliente.put(f"/bloqueos/{bloqueo['id']}/duracion", json=hasta, headers=diego).status_code == 403
+    assert cliente.put(f"/bloqueos/{bloqueo['id']}/duracion", json=hasta, headers=laura).json()["duracion"] is None
+    assert cliente.post(f"/bloqueos/{bloqueo['id']}/desbloqueo", json={"motivo": "Ya está"}, headers=diego).status_code == 403
+    assert cliente.post(f"/bloqueos/{bloqueo['id']}/desbloqueo", json={"motivo": "Formateada."}, headers=laura).json()["terminadoPor"] == "Laura"
+
+
+def test_al_cambiarle_el_perfil_vuelve_a_pedir_aprobacion(cliente, auth):
+    laura_id, laura = sumar(cliente, auth)
+    con_bloquea(cliente, auth, laura_id)
+
+    cliente.put(f"/personas/{laura_id}/perfil", json={"perfil": "administrador"}, headers=auth)
+    assert persona(cliente, auth, laura_id)["puedeBloquear"] is True
+    cliente.put(f"/personas/{laura_id}/perfil", json={"perfil": "analista"}, headers=auth)
+
+    assert persona(cliente, auth, laura_id)["puedeBloquear"] is False
+    assert bloquear(cliente, laura, primera_alta(cliente, auth)["id"]).json()["estado"] == "pedido"
+
+
 def test_desde_el_tablero_se_pide_y_se_confirma_en_el_celular(cliente, auth):
     navegador = parear_tablero(cliente, auth)
     alerta = primera_alta(cliente, auth)
@@ -206,9 +281,12 @@ def test_desde_el_tablero_se_pide_y_se_confirma_en_el_celular(cliente, auth):
     assert pedido["estado"] == "pedido"
     assert cliente.post(f"/bloqueos/{pedido['id']}/aprobacion", headers=navegador).status_code == 403
     assert cliente.post(f"/bloqueos/{pedido['id']}/aprobacion", headers=auth).json()["estado"] == "aprobado"
-    # Desbloquear sí se puede desde el tablero: devuelve el tráfico.
-    hecho = cliente.post(f"/bloqueos/{pedido['id']}/desbloqueo", json={"motivo": "Falsa alarma."}, headers=navegador).json()
-    assert (hecho["estado"], hecho["terminadoPor"]) == ("desbloqueado", "Taiel")
+    # Sin la llave de esa computadora, el tablero tampoco cambia la duración ni desbloquea (test_llaves.py).
+    hasta = {"duracion": None, "motivo": "Queda hasta formatearla."}
+    assert cliente.put(f"/bloqueos/{pedido['id']}/duracion", json=hasta, headers=navegador).status_code == 403
+    assert cliente.post(f"/bloqueos/{pedido['id']}/desbloqueo", json={"motivo": "Falsa alarma."}, headers=navegador).status_code == 403
+    hecho = cliente.post(f"/bloqueos/{pedido['id']}/desbloqueo", json={"motivo": "Falsa alarma."}, headers=auth).json()
+    assert (hecho["estado"], hecho["terminadoPor"]) == ("desbloqueado", "Teléfono de prueba")
 
 
 def test_un_tablero_que_no_dice_que_es_un_navegador_se_reconoce_por_su_nombre(cliente, auth):
@@ -236,8 +314,9 @@ def test_los_tableros_pareados_antes_quedan_como_navegadores(tmp_path):
     base = Base(ruta)
     base.iniciar()
 
-    tipos = {f["id"]: f["tipo"] for f in base.conexion().execute("SELECT id, tipo FROM dispositivos")}
-    assert tipos == {"d-moto": "telefono", "d-web": "navegador"}
+    filas = {f["id"]: (f["tipo"], f["puede_bloquear"]) for f in base.conexion().execute("SELECT id, tipo, puede_bloquear FROM dispositivos")}
+    # Además, nadie bloquea en el acto sin que un administrador lo elija.
+    assert filas == {"d-moto": ("telefono", 0), "d-web": ("navegador", 0)}
 
 
 def test_el_firewall_rechaza_lo_que_esta_en_su_lista_y_el_servidor_ya_no_lo_acepta(cliente, auth):
@@ -321,7 +400,7 @@ def test_lo_que_no_es_un_equipo_no_se_bloquea(cliente, auth, origen):
 def test_los_administradores_se_enteran_de_cada_bloqueo_por_telegram_sin_la_ip(cliente, auth, telegram, bot):
     vincular(cliente, auth, telegram, bot, chat_id=555)
     _, laura = sumar(cliente, auth)
-    # Laura es analista: no le llegan los avisos de los bloqueos.
+    # Laura es analista y pide aprobación: no le llegan los avisos de los bloqueos.
     vincular(cliente, laura, telegram, bot, chat_id=777)
     alerta = primera_alta(cliente, auth)
     servicio = alerta["servicio"].upper()
@@ -348,6 +427,21 @@ def test_los_administradores_se_enteran_de_cada_bloqueo_por_telegram_sin_la_ip(c
     assert not any(alerta["origenIp"] in texto for texto in avisos)
     if alerta["origenNombre"]:
         assert not any(alerta["origenNombre"] in texto for texto in avisos)
+
+
+def test_el_analista_con_bloquea_tambien_se_entera_por_telegram(cliente, auth, telegram, bot):
+    vincular(cliente, auth, telegram, bot, chat_id=555)
+    laura_id, laura = sumar(cliente, auth)
+    vincular(cliente, laura, telegram, bot, chat_id=777)
+    con_bloquea(cliente, auth, laura_id)
+    _, diego = sumar(cliente, auth, nombre="Diego", telefono="Teléfono de Diego")
+
+    bloquear(cliente, diego, primera_alta(cliente, auth)["id"])
+
+    # Le llega a los dos que pueden aprobarlo.
+    assert asyncio.run(bot.avisar_bloqueos()) == 2
+    assert {m["chat_id"] for m in telegram.enviados[-2:]} == {"555", "777"}
+    assert telegram.enviados[-1]["text"].endswith("</b>\nLo aprueba desde Zonda, en su teléfono, alguien que puede bloquear.")
 
 
 def test_el_firewall_que_no_aplica_un_bloqueo_se_avisa(cliente, auth, telegram, bot):

@@ -38,7 +38,10 @@ CREATE TABLE IF NOT EXISTS dispositivos (
     -- Cuándo usó la app por última vez (Ajustes → Personas).
     ultimo_uso TEXT,
     -- telefono o navegador (el tablero web): un bloqueo solo lo hace efectivo un teléfono (decisión 51).
-    tipo TEXT NOT NULL DEFAULT 'telefono'
+    tipo TEXT NOT NULL DEFAULT 'telefono',
+    -- «Bloqueos» de un analista (decisión 51): 1 si bloquea en el acto, como un administrador (se lo da un
+    -- administrador a quien hace guardia); 0 si pide aprobación. Vuelve a 0 cuando le cambian el perfil.
+    puede_bloquear INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS codigos_pareo (
@@ -254,6 +257,39 @@ CREATE TABLE IF NOT EXISTS latidos (
     perdida REAL
 );
 CREATE INDEX IF NOT EXISTS latidos_t ON latidos (t);
+
+-- La llave de acceso de cada computadora con el tablero web (decisión 51): solo la parte pública. La privada
+-- vive en el chip de seguridad de la computadora (Windows Hello) y nunca sale de ahí.
+CREATE TABLE IF NOT EXISTS llaves (
+    -- El id de la credencial, en base64url.
+    id TEXT PRIMARY KEY,
+    -- El navegador que la creó al parearse.
+    dispositivo_id TEXT NOT NULL REFERENCES dispositivos (id) ON DELETE CASCADE,
+    -- La clave pública en COSE, con la que el servidor revisa cada firma.
+    clave_publica BLOB NOT NULL,
+    -- El contador de firmas de la computadora (Windows Hello suele dejarlo en 0).
+    contador INTEGER NOT NULL DEFAULT 0,
+    -- El nombre del tablero con el que se creó (zonda-equipo.duckdns.org): la llave solo vale ahí.
+    rp_id TEXT NOT NULL,
+    creada_en TEXT NOT NULL,
+    usada_en TEXT
+);
+
+-- Cada desafío sirve para una sola cosa: crear la llave o confirmar una acción, la que se dijo al pedirlo.
+-- Vence a los dos minutos.
+CREATE TABLE IF NOT EXISTS desafios_llave (
+    id TEXT PRIMARY KEY,
+    dispositivo_id TEXT NOT NULL,
+    desafio BLOB NOT NULL,
+    -- registro o accion.
+    proposito TEXT NOT NULL,
+    -- La acción que confirma, en JSON con las claves ordenadas ({"alertaId": "a-1", "duracion": 3600, "tipo": "bloquear"}).
+    accion TEXT,
+    -- La dirección del tablero que lo pidió: la firma tiene que venir de la misma.
+    origen TEXT NOT NULL,
+    vence_en TEXT NOT NULL,
+    usado_en TEXT
+);
 """
 
 
@@ -315,6 +351,8 @@ class Base:
             con.execute("ALTER TABLE dispositivos ADD COLUMN tipo TEXT NOT NULL DEFAULT 'telefono'")
             # Los navegadores pareados antes de este campo se llaman «Tablero web · Chrome en Windows».
             con.execute("UPDATE dispositivos SET tipo = 'navegador' WHERE nombre LIKE 'Tablero web%'")
+        if "puede_bloquear" not in columnas:
+            con.execute("ALTER TABLE dispositivos ADD COLUMN puede_bloquear INTEGER NOT NULL DEFAULT 0")
         if "perfil" not in {fila[1] for fila in con.execute("PRAGMA table_info(codigos_pareo)")}:
             con.execute("ALTER TABLE codigos_pareo ADD COLUMN persona TEXT")
             con.execute("ALTER TABLE codigos_pareo ADD COLUMN perfil TEXT NOT NULL DEFAULT 'administrador'")

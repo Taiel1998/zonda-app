@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 
 from . import latido
+from . import llaves
 from . import personas as gente
 from . import registro
 from . import trafico
@@ -55,6 +56,7 @@ from .modelos import (
     PareoSalida,
     ParesTrafico,
     PerfilEntrada,
+    PermisoBloqueoEntrada,
     Persona,
     PuntoTrafico,
     Revision,
@@ -473,7 +475,9 @@ def personas(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_ac
 @router.post("/personas/codigo", response_model=CodigoPersona)
 def codigo_para_persona(entrada: CodigoPersonaEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> CodigoPersona:
     """Agregar persona: un código de un uso (10 minutos) con el nombre y el perfil de quien se suma, y lo
-    que lleva su QR. Al usarlo, queda en el registro a nombre de este administrador."""
+    que lleva su QR. Al usarlo, queda en el registro a nombre de este administrador. Desde el tablero, con la
+    llave de esa computadora (decisión 51): con ese código se entra a la red, y como administrador se bloquea."""
+    llaves.exigir(request, administrador, {"tipo": "sumar", "nombre": entrada.nombre, "perfil": entrada.perfil})
     cfg = request.app.state.config
     with _base(request).transaccion() as con:
         codigo, vence = crear_codigo_pareo(con, cfg.minutos_codigo, persona=entrada.nombre, perfil=entrada.perfil, creado_por=administrador["id"])
@@ -501,15 +505,30 @@ def _persona_activa(con: sqlite3.Connection, persona_id: str) -> sqlite3.Row:
 
 @router.put("/personas/{persona_id}/perfil", response_model=Persona)
 def cambiar_perfil(persona_id: str, entrada: PerfilEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Persona:
-    """Hacer administrador o pasar a analista. 409 si deja al equipo sin administrador."""
+    """Hacer administrador o pasar a analista; desde el tablero, con la llave de esa computadora (decisión 51).
+    409 si deja al equipo sin administrador."""
+    llaves.exigir(request, administrador, {"tipo": "perfil", "personaId": persona_id, "perfil": entrada.perfil})
     with _base(request).transaccion() as con:
         gente.cambiar_perfil(con, _persona_activa(con, persona_id), entrada.perfil, autor=administrador)
         return gente.persona_dto(_persona_activa(con, persona_id), vos=persona_id == administrador["id"])
 
 
+@router.put("/personas/{persona_id}/bloqueos", response_model=Persona)
+def cambiar_permiso_bloqueo(persona_id: str, entrada: PermisoBloqueoEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Persona:
+    """«Bloqueos» de un analista (decisión 51): true si bloquea en el acto, false si pide aprobación. Queda en
+    el registro de cambios; desde el tablero, con la llave de esa computadora. 409 para un administrador, que
+    siempre bloquea."""
+    llaves.exigir(request, administrador, {"tipo": "permiso_bloqueo", "personaId": persona_id, "puedeBloquear": entrada.puedeBloquear})
+    with _base(request).transaccion() as con:
+        gente.cambiar_permiso_bloqueo(con, _persona_activa(con, persona_id), entrada.puedeBloquear, autor=administrador)
+        return gente.persona_dto(_persona_activa(con, persona_id), vos=persona_id == administrador["id"])
+
+
 @router.delete("/personas/{persona_id}", status_code=204)
 def quitar_persona(persona_id: str, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Response:
-    """Quitar del equipo: revoca el token de ese teléfono. 409 si deja gente sin administrador."""
+    """Quitar del equipo: revoca el token de ese teléfono; desde el tablero, con la llave de esa computadora
+    (decisión 51). 409 si deja gente sin administrador."""
+    llaves.exigir(request, administrador, {"tipo": "quitar", "personaId": persona_id})
     with _base(request).transaccion() as con:
         gente.quitar(con, _persona_activa(con, persona_id), autor=administrador)
     return Response(status_code=204)

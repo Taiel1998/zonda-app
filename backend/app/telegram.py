@@ -155,7 +155,8 @@ DURACION_BLOQUEO = {3600: "1 h", 86400: "24 h"}
 def texto_de_bloqueo(
     evento: str, persona: str, duracion: int | None, severidad: str, servicio: str, deteccion: datetime, zona: tzinfo | None = None, hoy: date | None = None
 ) -> str:
-    """El aviso a los administradores de cada bloqueo (decisión 51), con la misma hora que el aviso de la alerta:
+    """El aviso a quienes bloquean (los administradores y los analistas con «Bloquea») de cada bloqueo
+    (decisión 51), con la misma hora que el aviso de la alerta:
 
         Taiel bloqueó el origen de una alerta ALTA · SSH · 09:51
         Por 1 h. Tocá para ver el detalle en Zonda.
@@ -169,7 +170,7 @@ def texto_de_bloqueo(
         hora = local.strftime("%d/%m %H:%M")
     titulo = TITULO_BLOQUEO[evento].format(persona=persona, alerta=f"{ETIQUETA_SEVERIDAD[severidad]} · {servicio.upper()} · {hora}")
     if evento == "pedido":
-        cuerpo = "Lo aprueba un administrador desde Zonda, en su teléfono."
+        cuerpo = "Lo aprueba desde Zonda, en su teléfono, alguien que puede bloquear."
     elif evento == "aprobado":
         cuanto = "Hasta que alguien lo desbloquee." if duracion is None else f"Por {DURACION_BLOQUEO.get(duracion, f'{duracion // 60} min')}."
         cuerpo = f"{cuanto} Tocá para ver el detalle en Zonda."
@@ -218,7 +219,7 @@ class AvisoDeAsignacion:
 
 @dataclass
 class AvisoDeBloqueo:
-    """Un aviso que falta mandar: un momento de un bloqueo, para un administrador con Telegram."""
+    """Un aviso que falta mandar: un momento de un bloqueo, para alguien que bloquea, con Telegram."""
 
     bloqueo_id: str
     evento: str
@@ -433,9 +434,10 @@ class BotTelegram:
         return pendientes
 
     async def avisar_bloqueos(self) -> int:
-        """Avisa a los administradores con Telegram cada bloqueo que se pide, se aprueba, se desbloquea o el
-        firewall no aplica (decisión 51), también a quien lo hizo: si el dispositivo no estaba en sus manos, se
-        entera. Devuelve cuántos mandó; lo que no sale se reintenta en la vuelta siguiente."""
+        """Avisa a quienes bloquean (los administradores y los analistas con «Bloquea»), si tienen Telegram, cada
+        bloqueo que se pide, se aprueba, se desbloquea o el firewall no aplica (decisión 51), también a quien lo
+        hizo: si el dispositivo no estaba en sus manos, se entera. Devuelve cuántos mandó; lo que no sale se
+        reintenta en la vuelta siguiente."""
         enviados = 0
         for pendiente in self._bloqueos_pendientes():
             try:
@@ -458,8 +460,8 @@ class BotTelegram:
         return enviados
 
     def _bloqueos_pendientes(self) -> list[AvisoDeBloqueo]:
-        """Cada momento de un bloqueo posterior al vínculo del chat de un administrador, sin su aviso. Un pedido
-        se avisa mientras sigue pendiente; el rechazo, solo el del firewall (el de un administrador lo decide él)."""
+        """Cada momento de un bloqueo posterior al vínculo del chat de alguien que bloquea, sin su aviso. Un
+        pedido se avisa mientras sigue pendiente; el rechazo, solo el del firewall (el de una persona lo decide ella)."""
         con = self.base.conexion()
         filas = con.execute(
             """
@@ -478,7 +480,7 @@ class BotTelegram:
                    a.inicio, a.servicio, a.tipo_ataque, a.veredicto_reglas, a.veredicto_umbrales, a.destino_ip
             FROM eventos e
             JOIN dispositivos d
-              ON d.perfil = 'administrador' AND d.telegram_chat_id IS NOT NULL AND d.revocado_en IS NULL AND d.vence_en > ?
+              ON (d.perfil = 'administrador' OR d.puede_bloquear = 1) AND d.telegram_chat_id IS NOT NULL AND d.revocado_en IS NULL AND d.vence_en > ?
              AND e.momento >= d.telegram_vinculado_en
             JOIN alertas a ON a.id = e.alerta_id
             WHERE NOT EXISTS (

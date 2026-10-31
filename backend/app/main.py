@@ -28,6 +28,7 @@ from .config import RAIZ, Config
 from .db import Base
 from .emisor import emitir_periodicamente
 from .latido import vigilar as vigilar_latido
+from .llaves import router as router_llaves
 from .rutas import VERSION, router
 from .semilla import cargar_si_vacia
 from .telegram import BotTelegram, ClienteTelegram
@@ -87,6 +88,7 @@ def crear_app(config: Config | None = None) -> FastAPI:
     )
     app.include_router(router)
     app.include_router(router_bloqueos)
+    app.include_router(router_llaves)
     app.mount("/panel", StaticFiles(directory=RAIZ / "web", html=True), name="panel")
 
     @app.middleware("http")
