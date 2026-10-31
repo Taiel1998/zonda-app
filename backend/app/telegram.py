@@ -559,6 +559,11 @@ class BotTelegram:
                     registro.warning("No se pudieron leer los mensajes del bot: %s", error)
                 await asyncio.sleep(error.reintentar_en or espera)
                 espera = min(espera * 2, 60)
+            except sqlite3.Error:
+                # La base trabada (un comando de zonda.cmd escribiendo, por ejemplo) no corta la escucha.
+                registro.exception("No se pudo leer o guardar por dónde van los mensajes del bot, se reintenta")
+                await asyncio.sleep(espera)
+                espera = min(espera * 2, 60)
 
     async def vigilar(self) -> None:
         while True:
