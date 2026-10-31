@@ -14,7 +14,8 @@ import {
 } from './alertas.js';
 import { avisarEnLaCompu, avisosActivados, configurarAvisos } from './avisos.js';
 import { pintarResumen } from './resumen.js';
-import { actualizarAjustes, actualizarPersonas, configurarAjustes, pintarAjustes } from './ajustes.js';
+import { actualizarAjustes, actualizarPersonas, cambiosSinGuardar, configurarAjustes, pintarAjustes } from './ajustes.js';
+import { confirmar } from './hojas.js';
 import { cadaCuanto, cerrarSelector, configurarTiempo, leerUrl, pintarBarra } from './tiempo.js';
 import { cerrarInspector, configurarPaneles, salirDeGrande, teclaDePanel, verEnGrande } from './paneles.js';
 import { cerrarMenu, configurarMenu } from './menu.js';
@@ -38,13 +39,40 @@ function aplicarTema(tema) {
   vaciar(boton, icono(tema === 'oscuro' ? 'sol' : 'luna'));
 }
 
-function temaGuardado() {
-  try { return localStorage.getItem(CLAVE_TEMA) === 'oscuro' ? 'oscuro' : 'claro'; } catch (_) { return 'claro'; }
+// El tema elegido: «claro», «oscuro» o, sin nada guardado, el del sistema, como la app (decisión 43).
+const oscuroDelSistema = window.matchMedia('(prefers-color-scheme: dark)');
+
+function temaElegido() {
+  try {
+    const guardado = localStorage.getItem(CLAVE_TEMA);
+    return guardado === 'claro' || guardado === 'oscuro' ? guardado : 'sistema';
+  } catch (_) { return 'sistema'; }
 }
 
+const temaQueToca = () => (temaElegido() === 'sistema' ? (oscuroDelSistema.matches ? 'oscuro' : 'claro') : temaElegido());
+
+function guardarTema(tema) {
+  try {
+    if (tema === 'sistema') localStorage.removeItem(CLAVE_TEMA);
+    else localStorage.setItem(CLAVE_TEMA, tema);
+  } catch (_) { /* solo por esta vez */ }
+}
+
+/** El botón de la cabecera pasa al otro tema y lo deja elegido. */
 function cambiarTema() {
   const tema = document.documentElement.dataset.tema === 'oscuro' ? 'claro' : 'oscuro';
-  try { localStorage.setItem(CLAVE_TEMA, tema); } catch (_) { /* solo por esta vez */ }
+  guardarTema(tema);
+  ponerTema(tema);
+}
+
+/** Ajustes → General: «Como el sistema», «Claro» u «Oscuro». */
+function elegirTema(tema) {
+  guardarTema(tema);
+  ponerTema(temaQueToca());
+}
+
+function ponerTema(tema) {
+  if (document.documentElement.dataset.tema === tema) return;
   aplicarTema(tema);
   // Al limpiar un gráfico se pierde el pincel de arrastrar para acercar: tiempo.js lo vuelve a armar.
   for (const grafico of Object.values(e.graficos)) { grafico.clear(); grafico.zondaPincel = false; }
@@ -121,6 +149,8 @@ async function entrar(evento) {
 }
 
 async function salir() {
+  const n = cambiosSinGuardar();
+  if (n && !await confirmar({ titulo: '¿Salir sin guardar?', texto: `${n === 1 ? 'Hay 1 cambio' : `Hay ${n} cambios`} sin guardar en Ajustes.`, aceptar: 'Salir igual', peligro: true })) return;
   try { await api('/dispositivos/actual', { token: e.acceso.token, metodo: 'DELETE' }); } catch (_) { /* igual se olvida el acceso */ }
   terminarSesion();
 }
@@ -190,6 +220,7 @@ function pintarEnVivo() {
   if (!e.ultimaRespuesta) {
     indicador.dataset.estado = e.servidorCaido ? 'caido' : 'lento';
     texto.textContent = e.servidorCaido ? 'El servidor no contesta' : 'Conectando…';
+    indicador.title = texto.textContent;
     return;
   }
   const segundos = Math.round((Date.now() - e.ultimaRespuesta) / 1000);
@@ -201,6 +232,7 @@ function pintarEnVivo() {
     indicador.dataset.estado = 'pausa';
     texto.textContent = 'Actualización apagada';
   }
+  indicador.title = texto.textContent;
   const banda = $('banda-error');
   banda.hidden = !(e.servidorCaido || segundos > 60);
   banda.textContent = 'El servidor de alertas no contesta. El tablero muestra lo último que recibió y sigue intentando.';
@@ -351,10 +383,14 @@ async function arrancarTablero() {
 }
 
 function iniciar() {
-  aplicarTema(temaGuardado());
+  aplicarTema(temaQueToca());
+  oscuroDelSistema.addEventListener('change', () => {
+    if (temaElegido() === 'sistema') ponerTema(temaQueToca());
+    if (e.vista === 'ajustes') pintarAjustes();
+  });
   cuandoExpire(terminarSesion);
   alCambiarAlertas(alCambiar);
-  configurarAjustes({ salir, cambiarTema });
+  configurarAjustes({ salir, elegirTema, temaElegido });
   const panelDeLaUrl = leerUrl();
   configurarMenu();
   configurarAyuda();

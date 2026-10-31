@@ -131,19 +131,19 @@
           </article>
 
           <article class="tarjeta c-6" aria-labelledby="titulo-sin-revisar">
-            <p class="kpi-etiqueta" id="titulo-sin-revisar">Alertas sin revisar</p>
+            <div class="kpi-cabecera"><p class="kpi-etiqueta" id="titulo-sin-revisar">Alertas sin revisar</p><span class="etiqueta-rango" title="Cuentan todas las alertas sin revisar, sin importar el horario">Todas</span></div>
             <div class="contadores" id="sin-revisar"></div>
             <p class="kpi-detalle">Tocá un contador para ver esas alertas.</p>
           </article>
 
           <article class="tarjeta c-2" aria-labelledby="titulo-ahora">
-            <p class="kpi-etiqueta" id="titulo-ahora">Conexiones por segundo</p>
+            <div class="kpi-cabecera"><p class="kpi-etiqueta" id="titulo-ahora">Conexiones por segundo</p><span class="etiqueta-rango" title="Los últimos 30 segundos, sin importar el horario">Ahora</span></div>
             <div class="kpi-valor" id="conexiones-ahora">–</div>
             <div class="kpi-detalle" id="conexiones-ahora-detalle">Promedio de los últimos 30 segundos</div>
           </article>
 
           <article class="tarjeta c-2" aria-labelledby="titulo-trafico-ahora">
-            <p class="kpi-etiqueta" id="titulo-trafico-ahora">Tráfico ahora</p>
+            <div class="kpi-cabecera"><p class="kpi-etiqueta" id="titulo-trafico-ahora">Tráfico ahora</p><span class="etiqueta-rango" title="Los últimos 30 segundos, sin importar el horario">Ahora</span></div>
             <div class="kpi-valor" id="trafico-ahora">–</div>
             <div class="kpi-detalle" id="trafico-ahora-detalle"></div>
           </article>
@@ -245,9 +245,9 @@
             <div class="tarjeta-cabecera">
               <div>
                 <h3 class="tarjeta-titulo">Últimas alertas</h3>
-                <p class="tarjeta-sub">Las más nuevas primero. Tocá una para ver el detalle.</p>
+                <p class="tarjeta-sub">Tocá una para ver el detalle.</p>
               </div>
-              <div class="tarjeta-acciones"><button class="boton-texto" type="button" id="ver-todas-alertas">Ver todas</button></div>
+              <div class="tarjeta-acciones"><span class="etiqueta-rango" title="Sin importar el horario">Las 8 más nuevas</span><button class="boton-texto" type="button" id="ver-todas-alertas">Ver todas</button></div>
             </div>
             <ul class="feed" id="ultimas-alertas"></ul>
           </article>

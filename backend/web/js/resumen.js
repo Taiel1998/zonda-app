@@ -453,7 +453,7 @@ function equipos(x) {
   const maximo = Math.max(1, ...x.equipos.map((q) => q.n));
   return tarjeta('Equipos con más alertas', null,
     el('p', { class: 'res-nota arriba' }, 'Como destino. No se incluye al compartir.'),
-    x.equipos.length ? el('div', { class: 'res-filas' }, x.equipos.map((q) => filaDeBarra({ clase: 'equipo', etiqueta: q.nombre, valor: q.n, lleno: (95 * q.n) / maximo })))
+    x.equipos.length ? el('div', { class: 'res-filas' }, x.equipos.map((q) => filaDeBarra({ clase: 'equipo', etiqueta: q.nombre, valor: q.n, lleno: (95 * q.n) / maximo, color: 'var(--barra-resumen)' })))
       : el('p', { class: 'res-nota' }, 'Sin alertas en el período.'));
 }
 
@@ -482,8 +482,8 @@ function pintarBarra() {
     chip('30 días', !r.fechas && r.periodo === '30d', () => cambiarPeriodo('30d')),
     chip(textoChipFechas(), Boolean(r.fechas), hojaFechas, 'calendario', conHora ? 'reloj' : null),
     chip(cantidad ? `Filtros (${cantidad})` : 'Filtros', cantidad > 0, hojaFiltros, 'filtro'),
-    el('button', { type: 'button', class: 'boton-principal res-compartir', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: (ev) => menuCompartir(ev.currentTarget) },
-      icono('compartir'), 'Compartir resumen'));
+    el('button', { type: 'button', class: 'boton-barra res-compartir', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': 'Compartir resumen', title: 'Compartir resumen', onclick: (ev) => menuCompartir(ev.currentTarget) },
+      icono('compartir'), el('span', { class: 'texto-boton' }, 'Compartir resumen')));
 }
 
 /** Las severidades por tipo se piden una vez, para el punto de color de cada tipo. */

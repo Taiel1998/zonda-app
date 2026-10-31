@@ -52,7 +52,7 @@ export function configurarFilas(opciones) {
     const boton = fila.querySelector('.fila-boton');
     const paneles = fila.querySelectorAll('.grilla > .tarjeta').length;
     boton.prepend(icono('abajo'));
-    boton.querySelector('.fila-cuenta').textContent = paneles === 1 ? '(1 panel)' : `(${paneles} paneles)`;
+    boton.querySelector('.fila-cuenta').textContent = paneles === 1 ? ' (1 panel)' : ` (${paneles} paneles)`;
     ponerFila(fila, !plegadas.has(fila.dataset.fila));
     boton.addEventListener('click', () => cambiarFila(fila, fila.classList.contains('plegada')));
   }

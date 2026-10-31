@@ -475,7 +475,7 @@ function costadoResumen(red) {
     el('h4', {}, 'Flechas'),
     el('ul', { class: 'mapa-llaves' },
       el('li', {}, el('i', { class: 'linea', style: 'background:var(--arista)' }), el('span', {}, 'Sin alerta')),
-      SEVERIDADES.map((s) => el('li', {}, el('i', { class: 'linea', style: `background:var(${s.color})` }), el('span', {}, `Alerta ${s.nombre.toLowerCase()}`)))),
+      SEVERIDADES.map((s) => el('li', {}, el('i', { class: `linea${s.id === 'baja' ? ' punteada' : ''}`, style: `background:var(${s.color})` }), el('span', {}, `Alerta ${s.nombre.toLowerCase()}`)))),
     el('p', { class: 'nota' }, 'Tocá un equipo o una flecha para ver el detalle.'),
   ];
 }

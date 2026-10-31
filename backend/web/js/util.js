@@ -182,7 +182,7 @@ export function el(etiqueta, atributos = {}, ...hijos) {
     else if (clave === 'dataset') Object.assign(nodo.dataset, valor);
     else nodo.setAttribute(clave, valor === true ? '' : valor);
   }
-  for (const hijo of hijos.flat()) {
+  for (const hijo of hijos.flat(Infinity)) {
     if (hijo === null || hijo === undefined || hijo === false) continue;
     nodo.append(hijo instanceof Node ? hijo : document.createTextNode(String(hijo)));
   }
@@ -190,7 +190,7 @@ export function el(etiqueta, atributos = {}, ...hijos) {
 }
 
 export function vaciar(nodo, ...hijos) {
-  nodo.replaceChildren(...hijos.flat().filter((h) => h !== null && h !== undefined && h !== false));
+  nodo.replaceChildren(...hijos.flat(Infinity).filter((h) => h !== null && h !== undefined && h !== false));
 }
 
 /** Un ícono de la librería chica del tablero, como SVG en línea (sin archivos de afuera). */

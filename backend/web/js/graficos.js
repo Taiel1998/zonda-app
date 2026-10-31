@@ -407,8 +407,9 @@ export function opcionesGrafo(c, datos) {
         borderColor: n.severidad ? c[`--${n.severidad}`] : c['--superficie'],
         borderWidth: n.severidad ? 3.5 : 2,
         opacity: apagado ? 0.2 : 1,
-        shadowBlur: n.id === nodoElegido ? 18 : 0,
-        shadowColor: conAlfa(c['--verde'], 0.7),
+        // El halo separa la alerta del color del área (un servidor rosa con alerta roja); el elegido, en verde.
+        shadowBlur: n.id === nodoElegido ? 18 : n.severidad ? 12 : 0,
+        shadowColor: n.id === nodoElegido ? conAlfa(c['--verde'], 0.7) : n.severidad ? conAlfa(c[`--${n.severidad}`], 0.8) : 'transparent',
       },
       label: {
         show: true,
@@ -434,7 +435,8 @@ export function opcionesGrafo(c, datos) {
       target: a.destino,
       value: a.conexiones,
       symbolSize: [0, 7 + grosor * 1.5],
-      lineStyle: { width: grosor, color: a.severidad ? c[`--${a.severidad}`] : c['--arista'], opacity: encendida ? (a.severidad ? 0.95 : 0.75) : 0.07 },
+      // La alerta baja va punteada: su verde no se confunde con el área RRHH.
+      lineStyle: { width: grosor, color: a.severidad ? c[`--${a.severidad}`] : c['--arista'], type: a.severidad === 'baja' ? 'dashed' : 'solid', opacity: encendida ? (a.severidad ? 0.95 : 0.75) : 0.07 },
       label: { show: Boolean(elegido) && encendida, formatter: limpio(a.etiqueta) },
       datos: a,
     };
