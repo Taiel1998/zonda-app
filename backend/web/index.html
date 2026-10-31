@@ -87,6 +87,7 @@
               <p><b>Sensor de red:</b> recibe una copia del tráfico de la red.</p>
               <p><b>Análisis en vivo:</b> revisa ese tráfico cada 20 s.</p>
               <p><b>Servidor de alertas:</b> guarda las alertas y avisa por Telegram.</p>
+              <p class="solo-firewall"><b>Firewall:</b> aplica los bloqueos que aprueba una persona; pregunta cada 10 s.</p>
               <p>Verde: funciona. Ámbar: el sensor pierde tráfico. Rojo: no funciona o no hay datos.</p>
               <p>Los gráficos son de la última hora: las conexiones y las revisiones de cada minuto, y cuánto tarda el servidor en contestarle a este navegador.</p>
             </template>
@@ -126,6 +127,17 @@
                 <div class="pieza-dato" id="dato-servidor">–</div>
                 <div class="grafico mini" id="grafico-pieza-servidor" role="img" aria-label="Tiempo de respuesta del servidor"></div>
                 <div class="pieza-pie">Respuesta en milisegundos</div>
+              </div>
+              <!-- Solo si la red tiene firewall (decisión 51): los equipos bloqueados o pedidos, cada uno abre su alerta. -->
+              <div class="pieza" id="pieza-firewall" hidden>
+                <div class="pieza-cabecera">
+                  <span class="pieza-nombre"><i class="punto" id="punto-firewall"></i><span class="pieza-titulo">Firewall</span></span>
+                  <span class="pieza-acciones">
+                    <span class="semaforo" id="semaforo-firewall" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                  </span>
+                </div>
+                <div class="pieza-dato" id="dato-firewall">–</div>
+                <ul class="lista-bloqueos" id="lista-bloqueos" aria-label="Bloqueos"></ul>
               </div>
             </div>
           </article>

@@ -20,6 +20,8 @@ import { cerrarInspector, configurarPaneles, salirDeGrande, teclaDePanel, verEnG
 import { cerrarMenu, configurarMenu } from './menu.js';
 import { alternarAyuda, cerrarAyuda, configurarAyuda } from './ayuda.js';
 import { configurarFilas, filaAbierta } from './filas.js';
+import { actualizarBloqueos, configurarBloqueos } from './bloqueo.js';
+import { actualizarLlave, ofrecerLlave } from './llave.js';
 
 const CLAVE_TEMA = 'zonda.tablero.tema';
 const tareas = {};
@@ -55,9 +57,12 @@ function cambiarTema() {
   if (e.vista === 'resumen') pintarResumen();
 }
 
-/** El único «?» de la tarjeta del estado del sistema: abre y cierra su globito, con el texto de index.html. */
+/** El único «?» de la tarjeta del estado del sistema: abre y cierra su globito, con el texto de index.html.
+    La línea del firewall va solo si la red tiene uno (decisión 51). */
 function alternarAyudaEstado() {
-  alternarAyuda($('boton-ayuda-estado'), 'Qué muestra cada pieza', [...$('ayuda-estado').content.cloneNode(true).children]);
+  const conFirewall = Boolean(e.salud && e.salud.firewall && e.salud.firewall.habilitado);
+  const parrafos = [...$('ayuda-estado').content.cloneNode(true).children].filter((p) => conFirewall || !p.classList.contains('solo-firewall'));
+  alternarAyuda($('boton-ayuda-estado'), 'Qué muestra cada pieza', parrafos);
 }
 
 // ---- Ingreso ----
@@ -130,6 +135,8 @@ function terminarSesion(mensaje) {
   clearInterval(vigia);
   borrarAcceso();
   e.acceso = null;
+  e.bloqueos = null;
+  e.llave = null;
   e.alertas.clear();
   e.cursor = null;
   e.sincronizada = false;
@@ -149,6 +156,8 @@ const TAREAS = {
   trafico: { cada: () => cadaCuanto(), correr: actualizarTrafico },
   pares: { cada: () => (filaAbierta('comunicaciones') ? Math.max(10000, cadaCuanto()) : Infinity), correr: actualizarPares },
   personas: { cada: () => (e.vista === 'ajustes' ? 15000 : 60000), correr: () => (e.vista === 'ajustes' ? actualizarAjustes() : actualizarPersonas()) },
+  // Los bloqueos del firewall (decisión 51): la tarjeta del detalle y la pieza «Firewall».
+  bloqueos: { cada: () => 15000, correr: actualizarBloqueos },
 };
 
 function detenerTicker() {
@@ -328,6 +337,8 @@ async function arrancarTablero() {
   pintarEstado();
   await cargarAreas();
   actualizarPersonas().catch(() => {});
+  // Recién pareado, ofrece crear la llave de esta computadora (decisión 51); después ya no se puede.
+  actualizarLlave().then(ofrecerLlave).catch(() => {});
   arrancarTicker();
 }
 
@@ -371,6 +382,11 @@ function iniciar() {
     if (contador) abrirSinRevisar(contador.dataset.severidad);
   });
   configurarAvisos({ abrirDetalle: (id) => abrirDetalle(id), abrirLista: abrirSinRevisar });
+  configurarBloqueos({
+    abrirAlerta: (id) => abrirDetalle(id),
+    // Un bloqueo que cambió se ve en el detalle abierto, como una revisión.
+    alCambiar: () => { if (e.detalleAbierto && e.alertas.has(e.detalleAbierto) && !$('detalle').hidden) abrirDetalle(e.detalleAbierto, false); },
+  });
   configurarVivo({ verAlertas: (desde, hasta) => { verAlertasEntre(desde, hasta); cambiarVista('alertas'); } });
   setInterval(() => { if (e.acceso && e.alertas.size) pintarUltimas(); }, 30000);
   // El nombre de un rango que termina ahora no cambia, pero sí sus horas (en el globito del botón).

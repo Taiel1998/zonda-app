@@ -12,6 +12,7 @@ import {
 import { abrirHoja, avisoInferior } from './hojas.js';
 import { bajarArchivo, csvDe, nombreConFecha } from './compartir.js';
 import { alternarAyuda, cerrarAyuda } from './ayuda.js';
+import { origenBloqueado, seccionBloqueo } from './bloqueo.js';
 import {
   RANGOS_ALERTAS, claveRango, esRelativo, fraseRango, horasDe, nombreRango, rangoActual, rangoCorrido, selectorDeHorario,
 } from './tiempo.js';
@@ -363,12 +364,14 @@ export function abrirDetalle(id, enfocar = true) {
       el('span', { class: 'flecha' }, icono('flecha')),
       el('div', { style: 'text-align:right' }, el('strong', {}, nombreEquipo(a, 'destino')), el('span', {}, a.destinoIp))),
     el('div', { class: 'acciones-detalle' },
-      el('button', { type: 'button', class: 'boton-principal', onclick: () => revisar(a) }, a.estadoRevision === 'sin_revisar' ? 'Revisar' : 'Cambiar la revisión')),
+      // Con el origen bloqueado, «Revisar» trae propuesto «Bloqueado manualmente», como en la app (decisión 51).
+      el('button', { type: 'button', class: 'boton-principal', onclick: () => revisar(a, origenBloqueado(a)) }, a.estadoRevision === 'sin_revisar' ? 'Revisar' : 'Cambiar la revisión')),
     el('section', { class: 'detalle-seccion' },
       el('h3', {}, 'Responsable'),
       el('div', { style: 'display:flex;align-items:center;gap:10px;justify-content:space-between' },
         quien ? chipResponsable(a.asignacion.responsable) : el('span', { class: 'nota' }, 'Sin asignar'),
         el('div', { style: 'display:flex;gap:6px' }, accionesResponsable))),
+    seccionBloqueo(a),
     el('section', { class: 'detalle-seccion' },
       el('dl', { class: 'datos' },
         el('div', {}, el('dt', {}, 'Servicio'), el('dd', {}, servicioDe(a))),
@@ -431,10 +434,12 @@ export function cerrarDetalle() {
 
 // ---- Revisar: dos pasos, Deshacer y el conflicto ----
 
-function revisar(a) {
-  let resultado = null;
-  let motivo = null;
-  let comentario = '';
+/** Con [bloqueado] (el origen ya está bloqueado en el firewall), abre en el paso 2 con «Ataque real» y «Bloqueado
+    manualmente» propuestos, como la app; «Volver» lleva al paso 1 para elegir otra cosa. */
+function revisar(a, bloqueado = false) {
+  let resultado = bloqueado ? 'ataque_real' : null;
+  let motivo = bloqueado ? 'bloqueado_manualmente' : null;
+  let comentario = bloqueado ? comentarioPropuesto('bloqueado_manualmente', a) : '';
   let comentarioTocado = false;
   const hoja = abrirHoja({ titulo: '', cuerpo: [] });
 
@@ -487,7 +492,8 @@ function revisar(a) {
     hoja.pintar(contenidoPaso2());
   }
 
-  paso1();
+  if (bloqueado) paso2();
+  else paso1();
 }
 
 /** Como la app: el aviso "Revisaste…" con Deshacer y, si nadie la deshace en 5 segundos, se manda. */
@@ -533,9 +539,11 @@ function conflicto(a, entrada, datos) {
 
 // ---- Responsable ----
 
+/** Como en la app, sin los navegadores del tablero: no reciben el aviso de la asignación (decisión 51). */
 function hojaAsignar(a) {
   let elegido = responsableId(a);
-  const valores = Object.fromEntries(e.personas.map((p) => [p.id, `${nombrePersona(p)}${p.vos ? ' (vos)' : ''}`]));
+  const personas = e.personas.filter((p) => p.tipo !== 'navegador');
+  const valores = Object.fromEntries(personas.map((p) => [p.id, `${nombrePersona(p)}${p.vos ? ' (vos)' : ''}`]));
   abrirHoja({
     titulo: 'Asignar a',
     subtitulo: 'Le llega un aviso por Telegram y la ve en Estado.',

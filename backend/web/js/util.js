@@ -43,11 +43,12 @@ export function borrarAcceso() {
   try { localStorage.removeItem(CLAVE_ACCESO); } catch (_) { /* nada que borrar */ }
 }
 
-/** Pide algo a la API del mismo servidor. Con `token`, va como en la app: Authorization: Bearer. */
-export async function api(ruta, { token, metodo = 'GET', cuerpo, espera = 10000 } = {}) {
+/** Pide algo a la API del mismo servidor. Con `token`, va como en la app: Authorization: Bearer. Con
+    `cabeceras`, además las que lleve el pedido, como la firma de la llave (X-Llave, decisión 51). */
+export async function api(ruta, { token, metodo = 'GET', cuerpo, espera = 10000, cabeceras: otras = {} } = {}) {
   const control = new AbortController();
   const reloj = setTimeout(() => control.abort(), espera);
-  const cabeceras = { Accept: 'application/json' };
+  const cabeceras = { Accept: 'application/json', ...otras };
   if (token) cabeceras.Authorization = `Bearer ${token}`;
   if (cuerpo !== undefined) cabeceras['Content-Type'] = 'application/json';
   let respuesta;
@@ -230,6 +231,10 @@ const TRAZOS = {
   compartir: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/>',
   copiar: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  // El bloqueo del origen (decisión 51): bloqueado, sin bloquear y pedido.
+  candado: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  'candado-abierto': '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.8-1.2"/>',
+  espera: '<path d="M6 2h12"/><path d="M6 22h12"/><path d="M7 2v4a5 5 0 0 0 10 0V2"/><path d="M7 22v-4a5 5 0 0 1 10 0v4"/>',
 };
 export function icono(nombre) {
   const plantilla = document.createElement('template');
