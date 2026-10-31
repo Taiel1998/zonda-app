@@ -590,6 +590,7 @@ button { cursor: pointer; }
 .grafico.alto { height: 340px; }
 .grafico.mapa { height: 460px; }
 .grafico.bajo { height: 230px; }
+.grafico.corto { height: 180px; }
 .grafico.cargando { opacity: 0.55; }
 
 .vacio {
@@ -638,13 +639,24 @@ button { cursor: pointer; }
   font: 600 13px/1 inherit; display: grid; place-items: center; cursor: pointer; padding: 0;
 }
 .boton-ayuda:hover, .boton-ayuda[aria-expanded="true"] { border-color: var(--texto); color: var(--texto); }
-.ayuda-estado {
-  font-size: 13px; color: var(--texto-2); background: var(--superficie-2);
-  border: 1px solid var(--borde); border-radius: 10px; padding: 10px 12px; margin: -4px 0 12px;
+/* El globito de cada «?» (ayuda.js): fijo al lado del botón, encima del detalle y de los menús. */
+.ayuda-flotante {
+  position: fixed;
+  z-index: 50;
+  width: min(340px, calc(100vw - 16px));
+  padding: 12px 14px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  box-shadow: var(--sombra-flotante);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--texto-2);
 }
-.ayuda-estado p { margin: 0 0 4px; }
-.ayuda-estado p:last-child { margin-bottom: 0; }
-.ayuda-estado b { color: var(--texto); font-weight: 600; }
+.ayuda-flotante p { margin: 0 0 6px; }
+.ayuda-flotante p:last-child { margin-bottom: 0; }
+.ayuda-flotante b { color: var(--texto); font-weight: 600; }
+.ayuda-flotante .ayuda-titulo { color: var(--texto); font-size: 13.5px; font-weight: 600; margin-bottom: 8px; }
 
 .piezas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .pieza {
@@ -869,7 +881,6 @@ button { cursor: pointer; }
 /* El único «?» del detalle de una alerta, al lado del tipo (como el del estado del sistema). */
 .titulo-con-ayuda { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; }
 .titulo-con-ayuda h2 { margin: 0; }
-#ayuda-detalle { margin: -6px 0 16px; }
 .detalle-cabecera .boton-icono { margin-left: auto; flex: none; }
 
 /* Los datos de un panel, como el inspector de Grafana: la tabla con su encabezado fijo y el botón del CSV. */

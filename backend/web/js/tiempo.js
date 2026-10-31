@@ -48,7 +48,10 @@ export const ACTUALIZAR = [
   { ms: 300000, valor: '5m', texto: '5 min' },
 ];
 
-const NOMBRE_PASO = { 5: '5 segundos', 10: '10 segundos', 15: '15 segundos', 30: '30 segundos', 60: '1 minuto', 300: '5 minutos', 900: '15 minutos', 3600: '1 hora' };
+const NOMBRE_PASO = {
+  5: '5 segundos', 10: '10 segundos', 15: '15 segundos', 30: '30 segundos', 60: '1 minuto', 300: '5 minutos', 900: '15 minutos',
+  1800: '30 minutos', 3600: '1 hora', 10800: '3 horas', 21600: '6 horas', 43200: '12 horas', 86400: '1 día',
+};
 
 let alCambiar = () => {};
 let alActualizar = () => {};

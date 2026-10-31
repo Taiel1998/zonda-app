@@ -6,16 +6,19 @@ import { api, borrarAcceso, guardarAcceso, horaConSegundos, icono, leerAcceso, v
 import { $, alCambiarAlertas, cuandoExpire, e } from './comun.js';
 import {
   actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
-  pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
+  configurarVivo, pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
 } from './vivo.js';
 import { actualizarPares, configurarMapa, pintarMapa, soltarElegido } from './mapa.js';
-import { abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verMas, verSinRevisar } from './alertas.js';
+import {
+  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verMas, verSinRevisar,
+} from './alertas.js';
 import { avisarEnLaCompu, avisosActivados, configurarAvisos } from './avisos.js';
 import { pintarResumen } from './resumen.js';
 import { actualizarAjustes, actualizarPersonas, configurarAjustes, pintarAjustes } from './ajustes.js';
 import { cadaCuanto, cerrarSelector, configurarTiempo, leerUrl, pintarBarra } from './tiempo.js';
 import { cerrarInspector, configurarPaneles, salirDeGrande, teclaDePanel, verEnGrande } from './paneles.js';
 import { cerrarMenu, configurarMenu } from './menu.js';
+import { alternarAyuda, cerrarAyuda, configurarAyuda } from './ayuda.js';
 import { configurarFilas, filaAbierta } from './filas.js';
 
 const CLAVE_TEMA = 'zonda.tablero.tema';
@@ -52,12 +55,9 @@ function cambiarTema() {
   if (e.vista === 'resumen') pintarResumen();
 }
 
-/** El único «?» de la tarjeta del estado del sistema: abre y cierra su ayuda. */
+/** El único «?» de la tarjeta del estado del sistema: abre y cierra su globito, con el texto de index.html. */
 function alternarAyudaEstado() {
-  const boton = $('boton-ayuda-estado');
-  const abierta = boton.getAttribute('aria-expanded') === 'true';
-  boton.setAttribute('aria-expanded', String(!abierta));
-  $('ayuda-estado').hidden = abierta;
+  alternarAyuda($('boton-ayuda-estado'), 'Qué muestra cada pieza', [...$('ayuda-estado').content.cloneNode(true).children]);
 }
 
 // ---- Ingreso ----
@@ -237,7 +237,7 @@ function alCambiarFila(fila, abierta) {
   }
 }
 
-const CON_HORARIO = ['servicios', 'volumen', 'fallidas', 'mapa'];
+const CON_HORARIO = ['servicios', 'alertas-tiempo', 'volumen', 'fallidas', 'mapa'];
 
 /** Cambió el horario (o se tocó Actualizar): se piden ya el tráfico y el mapa, y los relojes arrancan de nuevo. */
 function actualizarHorario() {
@@ -260,7 +260,7 @@ function actualizarTodo() {
 function alApretarTecla(ev) {
   if (ev.key === 'Escape') {
     if (document.querySelector('.hoja-velo')) return;
-    if (cerrarMenu(true) || cerrarSelector(true) || cerrarInspector()) { ev.preventDefault(); return; }
+    if (cerrarAyuda(true) || cerrarMenu(true) || cerrarSelector(true) || cerrarInspector()) { ev.preventDefault(); return; }
     if (e.detalleAbierto) { cerrarDetalle(); return; }
     if (soltarElegido() || salirDeGrande()) ev.preventDefault();
     return;
@@ -338,6 +338,7 @@ function iniciar() {
   configurarAjustes({ salir, cambiarTema });
   const panelDeLaUrl = leerUrl();
   configurarMenu();
+  configurarAyuda();
   configurarFilas({ alCambiar: alCambiarFila });
   configurarMapa();
   configurarTiempo({ alCambiarRango: actualizarHorario, actualizarAhora: actualizarTodo });
@@ -370,6 +371,7 @@ function iniciar() {
     if (contador) abrirSinRevisar(contador.dataset.severidad);
   });
   configurarAvisos({ abrirDetalle: (id) => abrirDetalle(id), abrirLista: abrirSinRevisar });
+  configurarVivo({ verAlertas: (desde, hasta) => { verAlertasEntre(desde, hasta); cambiarVista('alertas'); } });
   setInterval(() => { if (e.acceso && e.alertas.size) pintarUltimas(); }, 30000);
   // El nombre de un rango que termina ahora no cambia, pero sí sus horas (en el globito del botón).
   setInterval(() => { if (e.acceso) pintarBarra(); }, 30000);

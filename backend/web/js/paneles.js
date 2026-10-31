@@ -18,6 +18,7 @@ const GRAFICOS = {
   analisis: ['pieza-analisis'],
   servidor: ['pieza-servidor'],
   servicios: ['servicios'],
+  'alertas-tiempo': ['alertas-tiempo'],
   volumen: ['volumen'],
   fallidas: ['fallidas'],
   mapa: ['mapa'],

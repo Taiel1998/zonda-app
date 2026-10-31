@@ -11,6 +11,7 @@ import {
 } from './comun.js';
 import { abrirHoja, avisoInferior } from './hojas.js';
 import { bajarArchivo, csvDe, nombreConFecha } from './compartir.js';
+import { alternarAyuda, cerrarAyuda } from './ayuda.js';
 import {
   RANGOS_ALERTAS, claveRango, esRelativo, fraseRango, horasDe, nombreRango, rangoActual, rangoCorrido, selectorDeHorario,
 } from './tiempo.js';
@@ -61,6 +62,12 @@ function filtrosNuevos() {
 
 export const f = filtrosNuevos();
 let limite = 50;
+
+/** La lista con las alertas que empezaron en un tramo (una barra de «Alertas en el tiempo»), sin otros filtros. */
+export function verAlertasEntre(desde, hasta) {
+  Object.assign(f, filtrosNuevos(), { rango: { desde, hasta } });
+  limite = 50;
+}
 
 /** La lista con las sin revisar de una severidad, desde el principio: lo que cuenta su contador en En vivo y
     lo que abre el aviso de varias altas, como el enlace de la notificación de la app. */
@@ -306,16 +313,23 @@ function lecturas(v) {
   };
 }
 
+/** El único «?» del detalle, con los textos de la app: las conexiones y los tres métodos, en un globito. */
 function alternarAyudaDetalle(ev) {
-  const boton = ev.currentTarget;
-  const abierta = boton.getAttribute('aria-expanded') === 'true';
-  boton.setAttribute('aria-expanded', String(!abierta));
-  $('ayuda-detalle').hidden = abierta;
+  alternarAyuda(ev.currentTarget, 'Qué significa cada dato', [
+    el('p', {}, el('b', {}, 'Conexiones en 60 s:'), ' cuántas veces el origen se conectó a este servicio en un minuto.'),
+    el('p', {}, el('b', {}, 'Conexiones en total:'), ' todas las de estos dos equipos, hasta que pasan 15 minutos sin ninguna.'),
+    el('p', {}, el('b', {}, 'Modelo de IA:'), ' aprendió el tráfico normal de tu red y marca lo que se aleja de eso.'),
+    el('p', {}, el('b', {}, 'Umbrales:'), ' marcan si hay más conexiones a un servicio por minuto que en un día normal.'),
+    el('p', {}, el('b', {}, 'Reglas:'), ' marcan los servicios que no están en la lista de autorizados.'),
+    el('p', {}, 'Alcanza con que uno marque para que haya alerta.'),
+  ]);
 }
 
 export function abrirDetalle(id, enfocar = true) {
   const a = e.alertas.get(id);
   if (!a) return;
+  // El «?» se vuelve a armar: su globito quedaría suelto.
+  cerrarAyuda();
   e.detalleAbierto = id;
   e.nuevas.delete(id);
   const panel = $('detalle');
@@ -339,19 +353,11 @@ export function abrirDetalle(id, enfocar = true) {
         el('div', { class: 'titulo-con-ayuda' },
           el('h2', { id: 'detalle-titulo' }, tipoCorto(a)),
           el('button', {
-            type: 'button', class: 'boton-ayuda', 'aria-expanded': 'false', 'aria-controls': 'ayuda-detalle',
+            type: 'button', class: 'boton-ayuda', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-controls': 'ayuda-flotante',
             'aria-label': 'Qué significa cada dato', title: 'Qué significa cada dato', onclick: alternarAyudaDetalle,
           }, '?')),
         el('p', {}, a.tipoAtaque && a.confianzaTipo != null ? `Lo tipificó la segunda etapa con una confianza del ${numero(a.confianzaTipo * 100, 0)} %.` : 'Sin tipo de la segunda etapa: lo vieron las reglas o los umbrales.')),
       el('button', { type: 'button', class: 'boton-icono', 'aria-label': 'Cerrar el detalle', onclick: cerrarDetalle }, icono('cruz'))),
-    // El único «?» del detalle, con los textos de la app: las conexiones y los tres métodos.
-    el('div', { class: 'ayuda-estado', id: 'ayuda-detalle', hidden: true },
-      el('p', {}, el('b', {}, 'Conexiones en 60 s:'), ' cuántas veces el origen se conectó a este servicio en un minuto.'),
-      el('p', {}, el('b', {}, 'Conexiones en total:'), ' todas las de estos dos equipos, hasta que pasan 15 minutos sin ninguna.'),
-      el('p', {}, el('b', {}, 'Modelo de IA:'), ' aprendió el tráfico normal de tu red y marca lo que se aleja de eso.'),
-      el('p', {}, el('b', {}, 'Umbrales:'), ' marcan si hay más conexiones a un servicio por minuto que en un día normal.'),
-      el('p', {}, el('b', {}, 'Reglas:'), ' marcan los servicios que no están en la lista de autorizados.'),
-      el('p', {}, 'Alcanza con que uno marque para que haya alerta.')),
     el('div', { class: 'recorrido' },
       el('div', {}, el('strong', {}, nombreEquipo(a, 'origen')), el('span', {}, a.origenIp)),
       el('span', { class: 'flecha' }, icono('flecha')),
@@ -417,6 +423,7 @@ function lineasHistorial(a) {
 }
 
 export function cerrarDetalle() {
+  cerrarAyuda();
   e.detalleAbierto = null;
   $('detalle').hidden = true;
   $('velo').hidden = true;

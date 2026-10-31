@@ -6,7 +6,7 @@ import {
   bitsPorSegundo, bytes, el, fechaCsv, fechaHora, fechaHoraSegundos, haceCuanto, hora, horaConSegundos, icono, numero, porcentaje, tasa, vaciar,
 } from './util.js';
 import {
-  GRUPOS, SEVERIDADES, colores, formatoBits, grupoDe, opcionesMini, opcionesSerieSimple, opcionesServicios,
+  GRUPOS, SEVERIDADES, colores, formatoBits, grupoDe, opcionesAlertasTiempo, opcionesMini, opcionesSerieSimple, opcionesServicios,
 } from './graficos.js';
 import {
   $, ESTADOS, NIVEL, ORDEN_SEVERIDAD, ahoraServidor, chipEstado, chipSeveridad, dibujar, e, nombreEquipo, pedir,
@@ -16,6 +16,10 @@ import {
   claveRango, esRelativo, esperarArrastre, fraseRango, nombrePaso, pasoPara, prepararGraficoDeTiempo, rangoActual,
 } from './tiempo.js';
 import { abrirDetalle } from './alertas.js';
+
+// Tocar una barra de «Alertas en el tiempo» abre la lista de Alertas con ese horario (lo arma tablero.js).
+let verAlertasEntre = () => {};
+export function configurarVivo({ verAlertas }) { verAlertasEntre = verAlertas; }
 
 // ---- Estado del sistema y alertas sin revisar ----
 
@@ -297,6 +301,53 @@ function ocultarGlobitoMarca() {
   $('globito-marca').hidden = true;
 }
 
+// Las barras de «Alertas en el tiempo» tienen su propio largo, como un panel de Grafana con su intervalo:
+// como mucho unas 60 en el horario, así no quedan como rayitas (las del tráfico pueden ser 300).
+const PASOS_ALERTAS = [10, 30, 60, 300, 900, 1800, 3600, 10800, 21600, 43200, 86400];
+const pasoDeAlertas = (ms) => PASOS_ALERTAS.find((p) => ms / 1000 / p <= 60) || 86400;
+
+/** Las alertas que empezaron en cada barra del horario, por severidad y por tipo de ataque. Las barras arrancan
+    en la medianoche de este navegador: las de 3 horas van de 0 a 3, de 3 a 6, y así. */
+function alertasPorBarra(g) {
+  const paso = pasoDeAlertas(g.hasta - g.desde);
+  const largo = paso * 1000;
+  const medianoche = new Date(g.desde).setHours(0, 0, 0, 0);
+  const inicio = medianoche + Math.floor((g.desde - medianoche) / largo) * largo;
+  const tiempos = Array.from({ length: Math.max(1, Math.ceil((g.hasta - inicio) / largo)) }, (_, i) => inicio + i * largo);
+  const porSeveridad = Object.fromEntries(SEVERIDADES.map((s) => [s.id, new Array(tiempos.length).fill(0)]));
+  const tipos = tiempos.map(() => new Map());
+  for (const a of alertasEnVentana(g.desde, g.hasta)) {
+    const i = Math.floor((a.t - inicio) / largo);
+    if (i < 0 || i >= tiempos.length) continue;
+    porSeveridad[a.severidad][i] += 1;
+    const tipo = tipoCorto(a);
+    tipos[i].set(tipo, (tipos[i].get(tipo) || 0) + 1);
+  }
+  const porTipo = tipos.map((m) => [...m.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).map(([tipo, n]) => ({ tipo, n })));
+  const totales = tiempos.map((_, i) => SEVERIDADES.reduce((suma, s) => suma + porSeveridad[s.id][i], 0));
+  return { paso, tiempos, porSeveridad, porTipo, totales };
+}
+
+/** Tocar una barra (o el aire de su columna) abre sus alertas en la lista; arrastrar sigue siendo acercar. */
+function prepararAlertasTiempo(grafico) {
+  if (grafico.zondaAlertas) return;
+  grafico.zondaAlertas = true;
+  const zr = grafico.getZr();
+  let abajo = null;
+  zr.on('mousedown', (ev) => { abajo = [ev.offsetX, ev.offsetY]; });
+  zr.on('click', (ev) => {
+    const g = e.trafico;
+    const b = e.alertasPorBarra;
+    const punto = [ev.offsetX, ev.offsetY];
+    if (!g || !b || !abajo || Math.hypot(punto[0] - abajo[0], punto[1] - abajo[1]) > 4 || !grafico.containPixel('grid', punto)) return;
+    const largo = b.paso * 1000;
+    const i = Math.floor((grafico.convertFromPixel('grid', punto)[0] - b.tiempos[0]) / largo);
+    if (i < 0 || i >= b.tiempos.length || !b.totales[i]) return;
+    // La primera y la última barra pueden pasarse del horario: la lista muestra lo mismo que se contó.
+    verAlertasEntre(Math.max(b.tiempos[i], g.desde), Math.min(b.tiempos[i] + largo, g.hasta));
+  });
+}
+
 /** Pasar el mouse por la marca de una alerta la muestra; tocarla abre su detalle. */
 function prepararMarcas(grafico) {
   if (grafico.zondaMarcas) return;
@@ -346,6 +397,18 @@ export function pintarTrafico() {
     prepararGraficoDeTiempo(grafico);
     prepararMarcas(grafico);
   }
+  // Las alertas de cada barra, contadas: las marcas se tapan cuando caen varias juntas.
+  const barras = alertasPorBarra(g);
+  e.alertasPorBarra = barras;
+  const graficoAlertas = dibujar('alertas-tiempo', opcionesAlertasTiempo(c, { tiempos: barras.tiempos, paso: barras.paso, desde: g.desde, hasta: g.hasta, porSeveridad: barras.porSeveridad, porTipo: barras.porTipo }));
+  if (graficoAlertas) {
+    prepararGraficoDeTiempo(graficoAlertas);
+    prepararAlertasTiempo(graficoAlertas);
+  }
+  $('sub-alertas-tiempo').textContent = `Las alertas que empezaron en cada barra de ${nombrePaso(barras.paso)}, por severidad. Tocá una barra para verlas en la lista.`;
+  const totalAlertas = barras.totales.reduce((a, b) => a + b, 0);
+  $('vacio-alertas-tiempo').hidden = totalAlertas > 0;
+  $('vacio-alertas-tiempo').textContent = `Ninguna alerta ${frase}.`;
   pintarLeyendaServicios(g, presentes);
 
   const total = g.conexiones.reduce((a, b) => a + b, 0);
@@ -387,7 +450,15 @@ export function pintarTrafico() {
     filas: filas.filter((i) => g.fallidas[i]).map((i) => [horaTramo(g.tiempos[i], g.paso), numero(g.fallidas[i])]),
     csv: { columnas: ['Desde', 'Sin respuesta'], filas: todas.map((i) => [fechaCsv(g.tiempos[i]), g.fallidas[i]]) },
   };
-  refrescarTablas('servicios', 'volumen', 'fallidas');
+  const columnasAlertas = ['Desde', 'Alertas', ...SEVERIDADES.map((s) => `${s.nombre}s`)];
+  e.tablas['alertas-tiempo'] = {
+    columnas: columnasAlertas,
+    numericas: 1 + SEVERIDADES.length,
+    filas: barras.tiempos.map((_, i) => i).filter((i) => barras.totales[i]).reverse()
+      .map((i) => [horaTramo(barras.tiempos[i], barras.paso), numero(barras.totales[i]), ...SEVERIDADES.map((s) => numero(barras.porSeveridad[s.id][i]))]),
+    csv: { columnas: columnasAlertas, filas: barras.tiempos.map((t, i) => [fechaCsv(t), barras.totales[i], ...SEVERIDADES.map((s) => barras.porSeveridad[s.id][i])]) },
+  };
+  refrescarTablas('servicios', 'volumen', 'fallidas', 'alertas-tiempo');
 }
 
 function horaTramo(ms, paso) {
@@ -437,6 +508,7 @@ function tocarServicio(id, presentes, sumar) {
 export function pintarLeyendas() {
   vaciar($('leyenda-marcas'), el('span', {}, 'Alertas:'),
     SEVERIDADES.map((s) => el('span', {}, el('i', { class: 'triangulo', style: `border-bottom-color:var(${s.color})` }), s.nombre)));
+  vaciar($('leyenda-alertas-tiempo'), SEVERIDADES.map((s) => el('span', {}, el('i', { style: `background:var(${s.color})` }), s.nombre)));
 }
 
 // ---- Últimas alertas y el aviso de una nueva ----

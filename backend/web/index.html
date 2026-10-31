@@ -78,18 +78,18 @@
           <article class="tarjeta c-12" id="tarjeta-estado" aria-labelledby="titulo-estado">
             <div class="estado-cabecera">
               <h3 class="tarjeta-titulo" id="titulo-estado">Estado del sistema</h3>
-              <button class="boton-ayuda" type="button" id="boton-ayuda-estado" aria-expanded="false" aria-controls="ayuda-estado" aria-label="Qué muestra cada pieza" title="Qué muestra cada pieza">?</button>
+              <button class="boton-ayuda" type="button" id="boton-ayuda-estado" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Qué muestra cada pieza" title="Qué muestra cada pieza">?</button>
               <div class="tarjeta-acciones">
                 <span class="etiqueta-rango" title="Este panel muestra siempre la última hora">Última hora</span>
               </div>
             </div>
-            <div class="ayuda-estado" id="ayuda-estado" hidden>
+            <template id="ayuda-estado">
               <p><b>Sensor de red:</b> recibe una copia del tráfico de la red.</p>
               <p><b>Análisis en vivo:</b> revisa ese tráfico cada 20 s.</p>
               <p><b>Servidor de alertas:</b> guarda las alertas y avisa por Telegram.</p>
               <p>Verde: funciona. Ámbar: el sensor pierde tráfico. Rojo: no funciona o no hay datos.</p>
               <p>Los gráficos son de la última hora: las conexiones y las revisiones de cada minuto, y cuánto tarda el servidor en contestarle a este navegador.</p>
-            </div>
+            </template>
             <div class="piezas">
               <div class="pieza" id="pieza-sensor" data-panel="sensor">
                 <div class="pieza-cabecera">
@@ -171,6 +171,19 @@
             <div class="vacio" id="vacio-servicios" hidden></div>
             <div class="leyenda-tabla-envoltura"><table class="leyenda-tabla" id="leyenda-servicios" hidden></table></div>
             <div class="leyenda leyenda-marcas" id="leyenda-marcas"></div>
+          </article>
+
+          <article class="tarjeta c-12" id="tarjeta-alertas-tiempo" data-panel="alertas-tiempo">
+            <div class="tarjeta-cabecera">
+              <div>
+                <h3 class="tarjeta-titulo">Alertas en el tiempo</h3>
+                <p class="tarjeta-sub" id="sub-alertas-tiempo">Las alertas que empezaron en cada barra, por severidad. Tocá una barra para verlas en la lista.</p>
+              </div>
+              <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="alertas-tiempo" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Alertas en el tiempo" title="Menú del panel"></button></div>
+            </div>
+            <div class="grafico corto" id="grafico-alertas-tiempo" role="img" aria-label="Alertas de cada barra, por severidad"></div>
+            <div class="vacio" id="vacio-alertas-tiempo" hidden></div>
+            <div class="leyenda" id="leyenda-alertas-tiempo"></div>
           </article>
 
           <article class="tarjeta c-6" id="tarjeta-volumen" data-panel="volumen">
@@ -294,6 +307,7 @@
 <div class="velo" id="velo-inspector" hidden></div>
 <aside class="inspector" id="inspector" role="dialog" aria-modal="true" aria-labelledby="inspector-titulo" tabindex="-1" hidden></aside>
 <div class="menu-flotante" id="menu-flotante" role="menu" hidden></div>
+<div class="ayuda-flotante" id="ayuda-flotante" role="dialog" hidden></div>
 <div class="globito-flotante" id="globito-marca" role="tooltip" hidden></div>
 <div class="aviso" id="aviso" role="status" hidden></div>
 <div id="hojas"></div>
