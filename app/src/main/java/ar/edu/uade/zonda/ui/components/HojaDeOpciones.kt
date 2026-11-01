@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
@@ -201,7 +203,7 @@ fun <T> ContenidoHojaDeOpciones(
     alAplicar: (T) -> Unit,
 ) {
     var elegida by remember(seleccionada) { mutableStateOf(seleccionada) }
-    Text(text = titulo, style = MaterialTheme.typography.tituloHoja)
+    Text(text = titulo, style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         opciones.forEach { opcion ->
             FilaRadio(opcion = opcion, elegida = elegida == opcion.valor, alElegir = { elegida = opcion.valor })
@@ -235,7 +237,7 @@ fun <T> ContenidoHojaDeCasillas(
     alAplicar: (Set<T>) -> Unit,
 ) {
     var elegidas by remember(marcadas) { mutableStateOf(marcadas) }
-    Text(text = titulo, style = MaterialTheme.typography.tituloHoja)
+    Text(text = titulo, style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         opciones.forEach { opcion ->
             FilaCasilla(

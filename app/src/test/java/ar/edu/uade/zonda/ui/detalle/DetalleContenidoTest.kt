@@ -151,7 +151,7 @@ class DetalleContenidoTest {
         var cambiar = false
         dibujar(contenido(Fixtures.alerta("a-1", revision = revisionDelServidor)), AccionesDetalle(alRevisar = { cambiar = true }))
 
-        compose.onNodeWithText("Ataque real · sincronizada 11:16").assertIsDisplayed()
+        compose.onNodeWithText("Ataque real · enviada 11:16").assertIsDisplayed()
         compose.onNodeWithText("Se avisó al proveedor.").assertIsDisplayed()
         compose.onNodeWithText("Historial").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Enviada al servidor").performScrollTo().assertIsDisplayed()
@@ -189,7 +189,7 @@ class DetalleContenidoTest {
         val accion = Fixtures.accion(alertaId = "a-1").copy(estado = EstadoEnvio.CONFLICTO, revisionAjena = ajena)
         dibujar(contenido(alerta, accion), AccionesDetalle(alAplicarLaMia = { aplicada = true }, alQuedarmeConLaOtra = { mantenida = true }))
 
-        compose.onNodeWithText("Revisada desde otro teléfono").assertIsDisplayed()
+        compose.onNodeWithText("Revisada desde otro dispositivo").assertIsDisplayed()
         // La etiqueta muestra lo que quedó en el servidor: la revisión de Lucía.
         compose.onNodeWithText("FALSO POSITIVO").assertIsDisplayed()
         compose.onNodeWithText(
@@ -200,6 +200,21 @@ class DetalleContenidoTest {
         // "Celular Lucía" no entra en medio botón: queda "Mantener la otra".
         compose.onNodeWithText("Mantener la otra").performScrollTo().performClick()
         assertTrue(aplicada && mantenida)
+    }
+
+    @Test
+    fun `el conflicto nombra a la persona que reviso, no a su telefono`() {
+        val ajena = Fixtures.revision(resultado = ResultadoRevision.FALSO_POSITIVO, motivo = Motivo.TAREA_PROGRAMADA, origen = OrigenRevision.SERVIDOR)
+            .copy(autor = "Celular Lucía", persona = "Lucía", revisadaEn = Fixtures.AHORA.minus(Duration.ofMinutes(2)))
+        val alerta = Fixtures.alerta("a-1", revision = Fixtures.revision(), envio = EstadoEnvio.CONFLICTO)
+        val accion = Fixtures.accion(alertaId = "a-1").copy(estado = EstadoEnvio.CONFLICTO, revisionAjena = ajena)
+        dibujar(contenido(alerta, accion))
+
+        compose.onNodeWithText(
+            "Lucía la revisó como falso positivo a las 11:58 con el motivo “Tarea programada”, después de tu última sincronización.",
+        ).assertIsDisplayed()
+        // Con el nombre de la persona entra en medio botón, como el Figma 51-2586.
+        compose.onNodeWithText("Mantener la de Lucía").performScrollTo().assertIsDisplayed()
     }
 
     @Test

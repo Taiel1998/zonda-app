@@ -4,6 +4,7 @@ import ar.edu.uade.zonda.domain.fakes.FakePreferenciasRepository
 import ar.edu.uade.zonda.domain.model.ModoAviso
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.ReglaDispatcherPrincipal
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -35,5 +36,20 @@ class PrimerInicioViewModelTest {
         assertFalse(preferencias.primerInicio.value)
         viewModel.terminarIntroduccion()
         assertTrue(preferencias.primerInicio.value)
+    }
+
+    @Test
+    fun `dos cambios seguidos se guardan los dos aunque el primero tarde en escribirse`() = runTest {
+        val viewModel = PrimerInicioViewModel(preferencias)
+        val escritura = CompletableDeferred<Unit>()
+        preferencias.esperaAlGuardarAvisos = escritura
+
+        // Antes el segundo partía de lo que se veía, sin el primero, y al escribirse lo pisaba.
+        viewModel.cambiarAviso(Severidad.ALTA, ModoAviso.SIN_AVISO)
+        viewModel.cambiarAviso(Severidad.MEDIA, ModoAviso.SIN_AVISO)
+        escritura.complete(Unit)
+
+        assertEquals(ModoAviso.SIN_AVISO, preferencias.avisos.value.alta)
+        assertEquals(ModoAviso.SIN_AVISO, preferencias.avisos.value.media)
     }
 }

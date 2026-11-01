@@ -22,6 +22,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 
 /**
  * Repositorio de alertas en memoria para probar los casos de uso sin Room ni red.
@@ -74,8 +75,16 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
             )
         }
 
+    /** Si no es null, leer una alerta espera hasta que la prueba lo complete, como Room, que lee en otro hilo. */
+    var esperaAlLeerUna: CompletableDeferred<Unit>? = null
+
+    /** Las alertas que se le pidieron al servidor con [descargarDetalle], en orden. */
+    val detallesDescargados = mutableListOf<String>()
+
     override fun observarAlerta(redId: String, alertaId: String): Flow<Alerta?> =
-        alertas.map { lista -> lista.firstOrNull { it.redId == redId && it.id == alertaId } }
+        alertas
+            .onStart { esperaAlLeerUna?.await() }
+            .map { lista -> lista.firstOrNull { it.redId == redId && it.id == alertaId } }
 
     override fun observarCantidad(redId: String): Flow<Int> = alertas.map { lista -> lista.count { it.redId == redId } }
 
@@ -124,7 +133,12 @@ class FakeAlertasRepository(iniciales: List<Alerta> = emptyList()) : AlertasRepo
         delServidor[alertaId]?.let { reemplazar(it) }
     }
 
+    /** Si no es null, la descarga del detalle espera hasta que la prueba lo complete, como la red. */
+    var esperaAlDescargar: CompletableDeferred<Unit>? = null
+
     override suspend fun descargarDetalle(redId: String, alertaId: String): Alerta {
+        detallesDescargados += alertaId
+        esperaAlDescargar?.await()
         val remota = alertasRemotas[alertaId] ?: throw ErrorZonda.NoEncontrado()
         agregar(remota)
         return remota

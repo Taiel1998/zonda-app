@@ -186,7 +186,10 @@
         <item quantity="one">Sincronizado: %d alerta nueva.</item>
         <item quantity="other">Sincronizado: %d alertas nuevas.</item>
     </plurals>
-    <string name="aviso_sincronizado_con_altas">Sincronizado: %1$d nuevas, %2$d de severidad alta.</string>
+    <plurals name="aviso_sincronizado_con_altas">
+        <item quantity="one">Sincronizado: %1$d nueva, %2$d de severidad alta.</item>
+        <item quantity="other">Sincronizado: %1$d nuevas, %2$d de severidad alta.</item>
+    </plurals>
 
     <!-- Errores (informe, sección 14.3) -->
     <string name="error_sin_conexion">Sin conexión. Se muestran los datos guardados.</string>
@@ -201,7 +204,6 @@
     <string name="error_validacion">Revisá los datos ingresados.</string>
     <string name="error_telegram_no_disponible">El servidor de esta red todavía no tiene el bot de Telegram. Avisale al administrador.</string>
     <string name="error_telegram_sin_vincular">Telegram ya no está vinculado. Conectalo de nuevo.</string>
-    <string name="error_generico">Algo salió mal.</string>
     <!-- Severidades de la analista (corrección 2; Figma 468-3353) -->
     <string name="severidades_las_cambia">Las cambia un administrador: %1$s. Valen para todo el equipo.</string>
     <string name="severidades_las_cambia_sin_nombres">Las cambia un administrador. Valen para todo el equipo.</string>
@@ -223,7 +225,6 @@
     <string name="detalle_detectada_por">detectada por %1$s</string>
     <string name="detalle_cargando">Descargando el detalle…</string>
     <string name="detalle_no_disponible_titulo">No se pudo cargar la alerta</string>
-    <string name="detalle_no_disponible_sin_conexion">Sin conexión. Se va a descargar cuando vuelva la red.</string>
     <string name="detalle_datos_del_flujo">Datos del flujo</string>
     <string name="detalle_origen">Origen</string>
     <string name="detalle_destino">Destino</string>
@@ -251,7 +252,6 @@
     <string name="detalle_revision">Revisión</string>
     <string name="detalle_resultado">Resultado</string>
     <string name="detalle_motivo">Motivo</string>
-    <string name="detalle_este_telefono">Este teléfono</string>
     <string name="detalle_pendiente_de_envio">pendiente de envío</string>
     <string name="detalle_historial">Historial</string>
     <string name="detalle_revisar">Revisar</string>
@@ -259,7 +259,7 @@
     <string name="detalle_comentario">Comentario</string>
     <string name="detalle_quien">Quién</string>
     <string name="detalle_revisada">Revisada</string>
-    <string name="detalle_resultado_sincronizada">%1$s · sincronizada %2$s</string>
+    <string name="detalle_resultado_sincronizada">%1$s · enviada %2$s</string>
     <string name="detalle_pendiente_de_sincronizar">Pendiente de sincronizar</string>
     <string name="detalle_revision_pendiente_banner">Sin conexión · tu revisión se enviará al reconectar</string>
     <string name="accion_compartir">Compartir</string>
@@ -320,8 +320,8 @@
     <string name="aviso_revisaste">Revisaste %1$s.</string>
     <string name="aviso_revisaste_sin_conexion">Revisaste %1$s. Se envía cuando haya conexión.</string>
     <string name="aviso_deshacer">Deshacer</string>
-    <!-- Revisada desde otro teléfono (Figma 51-2497) -->
-    <string name="conflicto_titulo">Revisada desde otro teléfono</string>
+    <!-- Revisada desde otro teléfono (Figma 51-2497); "dispositivo" porque también pudo ser el tablero web -->
+    <string name="conflicto_titulo">Revisada desde otro dispositivo</string>
     <string name="conflicto_otra_persona">Otra persona</string>
     <string name="conflicto_texto">%1$s la revisó como %2$s a las %3$s con el motivo “%4$s”, después de tu última sincronización.</string>
     <string name="conflicto_tu_revision">Tu revisión (%1$s, %2$s) todavía no se aplicó. ¿Querés aplicarla igual?</string>
@@ -581,7 +581,10 @@
     <string name="contador_descripcion">%1$d sin revisar de severidad %2$s</string>
     <string name="descarga_titulo">Descargando alertas…</string>
     <string name="descarga_progreso">%1$d de %2$d · últimos 30 días · solo la primera vez</string>
-    <string name="descarga_sin_total">%1$d alertas · últimos 30 días · solo la primera vez</string>
+    <plurals name="descarga_sin_total">
+        <item quantity="one">%1$d alerta · últimos 30 días · solo la primera vez</item>
+        <item quantity="other">%1$d alertas · últimos 30 días · solo la primera vez</item>
+    </plurals>
     <!-- Para el raro caso de rojo o amarillo sin la hora de la última alerta (la lista todavía no llegó). -->
     <string name="semaforo_actualizado">Actualizado %1$s</string>
 
@@ -975,10 +978,10 @@
     <string name="precision_pie">Se calcula con las alertas guardadas en el teléfono, de los últimos 30 días.</string>
     <string name="resumen_vacio_titulo_7">Sin alertas en los últimos 7 días</string>
     <string name="resumen_vacio_titulo_30">Sin alertas en los últimos 30 días</string>
-    <string name="resumen_vacio_detalle_7">El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
-    <string name="resumen_vacio_detalle_30">El sensor siguió activo todo el mes. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
+    <string name="resumen_vacio_detalle_7">Podés compartir el resumen igual.</string>
+    <string name="resumen_vacio_detalle_30">Podés compartir el resumen igual.</string>
     <string name="resumen_vacio_titulo_fechas">Sin alertas en estas fechas</string>
-    <string name="resumen_vacio_detalle_fechas">El sensor siguió activo. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
+    <string name="resumen_vacio_detalle_fechas">Podés compartir el resumen igual.</string>
     <!-- La imagen que se comparte (Figma 107-4862): solo cantidades, sin IP ni nombres de equipos (RNF02) -->
     <string name="resumen_imagen_semanal">Resumen semanal</string>
     <string name="resumen_imagen_mensual">Resumen mensual</string>
@@ -1064,6 +1067,8 @@
     <string name="personas_nombre">Nombre</string>
     <string name="personas_nombre_ejemplo">Por ejemplo: Laura</string>
     <string name="personas_falta_nombre">Escribí el nombre de la persona.</string>
+    <!-- Como "Sin conexión: el bloqueo no se envió.": dice qué pasó con lo que se pidió. -->
+    <string name="personas_codigo_sin_conexion">Sin conexión: el código no se generó.</string>
     <string name="personas_perfil">Perfil</string>
     <string name="personas_generar_codigo">Generar código</string>
     <string name="personas_hacer_administrador">Hacer administrador</string>
@@ -1087,8 +1092,8 @@
     <string name="personas_quitada">%1$s ya no está en el equipo.</string>
     <string name="perfil_administrador">Administrador</string>
     <string name="perfil_analista">Analista</string>
-    <string name="perfil_administrador_detalle">Además cambia las severidades y suma o quita gente.</string>
-    <string name="perfil_analista_detalle">Revisa las alertas y elige sus avisos.</string>
+    <string name="perfil_administrador_detalle">Además bloquea, cambia las severidades y suma o quita gente.</string>
+    <string name="perfil_analista_detalle">Revisa las alertas, pide bloqueos y elige sus avisos.</string>
 
     <!-- Código para sumar a una persona (Figma 468-2735) -->
     <string name="codigo_titulo">Código para %1$s</string>

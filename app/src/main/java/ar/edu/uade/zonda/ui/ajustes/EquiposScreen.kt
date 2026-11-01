@@ -28,8 +28,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
@@ -90,17 +92,17 @@ fun EquiposContenido(
     alAvisoMostrado: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     val alcance = rememberCoroutineScope()
 
     LaunchedEffect(estado.aviso) {
         val aviso = estado.aviso ?: return@LaunchedEffect
         alAvisoMostrado()
         val texto = when (aviso) {
-            is AvisoEquipos.Guardado -> contexto.getString(R.string.equipos_guardado, aviso.equipo)
-            is AvisoEquipos.Error -> contexto.getString(aviso.error.mensaje())
+            is AvisoEquipos.Guardado -> recursos.getString(R.string.equipos_guardado, aviso.equipo)
+            is AvisoEquipos.Error -> recursos.getString(aviso.error.mensaje())
         }
-        alcance.launch { snackbar.showSnackbar(message = texto, actionLabel = contexto.getString(R.string.aviso_ok), duration = SnackbarDuration.Short) }
+        alcance.launch { snackbar.showSnackbar(message = texto, actionLabel = recursos.getString(R.string.aviso_ok), duration = SnackbarDuration.Short) }
     }
 
     Scaffold(
@@ -183,7 +185,7 @@ private fun FilaEquipo(equipo: EquipoDeLaRed, alTocar: (() -> Unit)?) {
  */
 @Composable
 fun ColumnScope.ContenidoHojaImportancia(equipo: EquipoDeLaRed, alElegir: (Importancia) -> Unit) {
-    Text(text = equipo.nombre, style = MaterialTheme.typography.tituloHoja)
+    Text(text = equipo.nombre, style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Text(text = equipo.ip, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Importancia.entries.forEach { importancia ->

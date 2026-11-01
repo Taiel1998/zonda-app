@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Qué datos de la app salen del teléfono desde Android 12 (RNF03): ninguno.
+
+    android:allowBackup="false" apaga la copia en la nube, pero desde Android 12 no frena el pase de datos a
+    un teléfono nuevo (por cable o por Wi-Fi). Ese pase se llevaba la base cifrada y los secretos guardados
+    con la clave del Keystore, que no viaja: en el teléfono nuevo no se podían descifrar y la app no abría
+    la base. Sin nada que copiar, en el teléfono nuevo se vuelve a parear, como en una instalación nueva.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </device-transfer>
+</data-extraction-rules>

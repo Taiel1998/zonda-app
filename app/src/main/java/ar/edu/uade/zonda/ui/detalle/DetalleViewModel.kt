@@ -460,9 +460,15 @@ class DetalleViewModel(
         }
     }
 
+    /**
+     * La descarga en curso. El arranque, la vuelta de la conexión y Reintentar pueden llegar casi juntos: la
+     * marca [descargando] se prende recién después de leer la base, así que no alcanzaba para frenar la segunda.
+     */
+    private var descarga: Job? = null
+
     private fun descargarSiFalta() {
-        viewModelScope.launch {
-            if (descargando.value) return@launch
+        if (descarga?.isActive == true) return
+        descarga = viewModelScope.launch {
             val red = redes.observarRedActiva().first() ?: return@launch
             if (obtenerDetalle.observar(red.id, alertaId).first() != null) return@launch
             descargando.value = true

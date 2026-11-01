@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -97,9 +98,12 @@ fun ResumenScreen(
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
+    val recursos = LocalResources.current
     val alcance = rememberCoroutineScope()
     val capa = rememberGraphicsLayer()
     var paraCompartir by remember { mutableStateOf<ResumenParaCompartir?>(null) }
+    // Hay dos botones de compartir: un segundo toque mientras se arman los archivos los borraba a medio escribir.
+    var preparando by remember { mutableStateOf(false) }
     // La app elegida para compartir: el aviso "Resumen enviado por …" se da al volver de ella.
     var enviadoA by rememberSaveable { mutableStateOf<DestinoCompartir?>(null) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -147,20 +151,23 @@ fun ResumenScreen(
             },
             alCompartir = {
                 val actual = estado.resumen
-                if (actual != null) {
+                if (actual != null && !preparando) {
+                    preparando = true
                     alcance.launch {
                         try {
                             paraCompartir = prepararParaCompartir(
                                 contexto = contexto,
                                 captura = capa.toImageBitmap(),
-                                nombreBase = nombreDelArchivo(actual.tramo, contexto.resources),
-                                texto = textoParaCompartir(actual, contexto.resources),
+                                nombreBase = nombreDelArchivo(actual.tramo, recursos),
+                                texto = textoParaCompartir(actual, recursos),
                             )
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
                             // Sin espacio en la caché o sin la capa todavía dibujada: se avisa y no se abre la hoja.
                             viewModel.compartirFallo()
+                        } finally {
+                            preparando = false
                         }
                     }
                 }
@@ -221,13 +228,13 @@ fun ResumenContenido(
     zona: ZoneId = ZoneId.systemDefault(),
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     val alcance = rememberCoroutineScope()
     LaunchedEffect(estado.aviso) {
         val aviso = estado.aviso ?: return@LaunchedEffect
         // Se consume enseguida y se muestra en otro alcance, para que consumirlo no lo corte.
         alAvisoMostrado()
-        val texto = textoDelAviso(aviso, contexto.resources)
+        val texto = textoDelAviso(aviso, recursos)
         alcance.launch { snackbar.showSnackbar(texto) }
     }
     val hayResumen = estado.resumen != null
@@ -364,7 +371,7 @@ private fun CuerpoDelResumen(
     alPedirAyuda: (AyudaResumen) -> Unit,
     zona: ZoneId,
 ) {
-    val recursos = LocalContext.current.resources
+    val recursos = LocalResources.current
     val altas = estado.altas
     Column(
         modifier = Modifier
@@ -473,7 +480,7 @@ private fun FilaDePeriodo(
 @Composable
 private fun LineaDelResumen(estado: ResumenUiState, resumen: ResumenActividad, zona: ZoneId) {
     Text(
-        text = lineaDelResumen(estado.red, resumen, estado.datosDe, estado.sinConexion, LocalContext.current.resources, zona),
+        text = lineaDelResumen(estado.red, resumen, estado.datosDe, estado.sinConexion, LocalResources.current, zona),
         style = MaterialTheme.typography.nota,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

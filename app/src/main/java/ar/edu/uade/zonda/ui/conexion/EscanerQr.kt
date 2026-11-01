@@ -7,8 +7,8 @@ import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.mlkit.vision.MlKitAnalyzer
-import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.border
@@ -49,6 +49,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -172,7 +175,10 @@ private fun ColumnScope.Visor(qrNoValido: Boolean, alLeer: (String) -> Unit, alI
         style = MaterialTheme.typography.titleSmall,
         color = Color.White,
         textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth(),
+        // Con un QR que no es de Zonda cambia a "Ese QR no es de Zonda...": TalkBack lo anuncia.
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { liveRegion = LiveRegionMode.Polite },
     )
     Box(modifier = Modifier.size(LadoVisor)) {
         val forma = RoundedCornerShape(20.dp)
@@ -236,7 +242,7 @@ private fun VistaCamaraQr(alLeer: (String) -> Unit, modifier: Modifier = Modifie
         val ejecutor = ContextCompat.getMainExecutor(contexto)
         controlador.setImageAnalysisAnalyzer(
             ejecutor,
-            MlKitAnalyzer(listOf(lector), CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED, ejecutor) { resultado ->
+            MlKitAnalyzer(listOf(lector), ImageAnalysis.COORDINATE_SYSTEM_VIEW_REFERENCED, ejecutor) { resultado ->
                 resultado.getValue(lector)?.firstNotNullOfOrNull { it.rawValue }?.let { alLeerActual(it) }
             },
         )

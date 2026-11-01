@@ -14,6 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Severidad
@@ -49,7 +51,7 @@ fun ColumnScope.ContenidoHojaMotivo(
     alGuardar: () -> Unit,
     cambios: @Composable ColumnScope.() -> Unit,
 ) {
-    Text(text = stringResource(R.string.motivo_titulo), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(R.string.motivo_titulo), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     cambios()
     CampoTexto(
         valor = motivo,

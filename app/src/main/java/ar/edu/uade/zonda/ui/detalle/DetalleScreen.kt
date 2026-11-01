@@ -1,7 +1,7 @@
 package ar.edu.uade.zonda.ui.detalle
 
-import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,7 +35,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -167,6 +170,7 @@ fun DetalleScreen(
     val aviso by viewModel.aviso.collectAsStateWithLifecycle()
     val cerrar by viewModel.cerrar.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
+    val recursos = LocalResources.current
     // Lo que corta o devuelve tráfico se confirma con la huella o el PIN del teléfono (decisión 51).
     val confirmacion = LocalConfirmacionDelDueno.current ?: remember(contexto) { contexto.actividad()?.let(::ConfirmacionConHuella) }
     val origen = (estado as? DetalleUiState.Contenido)?.alerta?.origen?.etiqueta.orEmpty()
@@ -206,8 +210,8 @@ fun DetalleScreen(
                 confirmarConHuella(
                     pide = true,
                     confirmacion = confirmacion,
-                    titulo = contexto.getString(R.string.huella_titulo),
-                    detalle = contexto.getString(R.string.huella_aprobar, origen),
+                    titulo = recursos.getString(R.string.huella_titulo),
+                    detalle = recursos.getString(R.string.huella_aprobar, origen),
                     alConfirmar = viewModel::aprobarBloqueo,
                     alNoPoder = viewModel::sinBloqueoDePantalla,
                 )
@@ -225,8 +229,8 @@ fun DetalleScreen(
                     confirmarConHuella(
                         pide = pideHuella(hoja.accion, puedeBloquear),
                         confirmacion = confirmacion,
-                        titulo = contexto.getString(R.string.huella_titulo),
-                        detalle = textoDeLaHuella(contexto, hoja, origen),
+                        titulo = recursos.getString(R.string.huella_titulo),
+                        detalle = textoDeLaHuella(recursos, hoja, origen),
                         alConfirmar = viewModel::confirmarBloqueo,
                         alNoPoder = viewModel::sinBloqueoDePantalla,
                     )
@@ -238,10 +242,10 @@ fun DetalleScreen(
 }
 
 /** Lo que dice el diálogo de la huella debajo del título: "Bloquear pc-rrhh · 1 hora". */
-private fun textoDeLaHuella(contexto: Context, hoja: FormularioBloqueo, origen: String): String = when (hoja.accion) {
-    AccionBloqueo.BLOQUEAR -> contexto.getString(R.string.huella_bloquear, origen, contexto.getString(hoja.duracion.titulo()))
-    AccionBloqueo.CAMBIAR_DURACION -> contexto.getString(R.string.huella_duracion, origen, contexto.getString(hoja.duracion.titulo()))
-    AccionBloqueo.DESBLOQUEAR -> contexto.getString(R.string.huella_desbloquear, origen)
+private fun textoDeLaHuella(recursos: Resources, hoja: FormularioBloqueo, origen: String): String = when (hoja.accion) {
+    AccionBloqueo.BLOQUEAR -> recursos.getString(R.string.huella_bloquear, origen, recursos.getString(hoja.duracion.titulo()))
+    AccionBloqueo.CAMBIAR_DURACION -> recursos.getString(R.string.huella_duracion, origen, recursos.getString(hoja.duracion.titulo()))
+    AccionBloqueo.DESBLOQUEAR -> recursos.getString(R.string.huella_desbloquear, origen)
     AccionBloqueo.RECHAZAR -> ""
 }
 
@@ -286,7 +290,7 @@ fun DetalleContenido(
     ahora: Instant = Instant.now(),
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     var asignando by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(aviso) {
@@ -294,15 +298,15 @@ fun DetalleContenido(
             is AvisoDetalle.Error -> {
                 // Si no se pudo bloquear, el servidor dice por qué con sus palabras ("Ese equipo ya tiene un bloqueo...").
                 val error = aviso.error
-                snackbar.showSnackbar((error as? ErrorZonda.BloqueoNoPosible)?.detalle ?: contexto.getString(error.mensaje()))
+                snackbar.showSnackbar((error as? ErrorZonda.BloqueoNoPosible)?.detalle ?: recursos.getString(error.mensaje()))
                 acciones.alAvisoMostrado()
             }
             AvisoDetalle.BloqueoSinConexion -> {
-                snackbar.showSnackbar(contexto.getString(R.string.bloqueo_sin_conexion))
+                snackbar.showSnackbar(recursos.getString(R.string.bloqueo_sin_conexion))
                 acciones.alAvisoMostrado()
             }
             AvisoDetalle.SinBloqueoDePantalla -> {
-                snackbar.showSnackbar(contexto.getString(R.string.bloqueo_sin_bloqueo_de_pantalla))
+                snackbar.showSnackbar(recursos.getString(R.string.bloqueo_sin_bloqueo_de_pantalla))
                 acciones.alAvisoMostrado()
             }
             null -> Unit
@@ -426,7 +430,7 @@ private fun CuerpoDetalle(
                 Veredictos(alerta)
                 // Con el origen bloqueado, la revisión viene propuesta como "Bloqueado manualmente" (decisión 51).
                 val bloqueada = estado.bloqueo?.actual?.estado?.enElFirewall == true
-                val recursos = LocalContext.current.resources
+                val recursos = LocalResources.current
                 BotonPrincipal(
                     texto = stringResource(R.string.detalle_revisar),
                     alTocar = {
@@ -460,7 +464,7 @@ private fun CuerpoDetalle(
                 Veredictos(alerta)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     BotonContorno(
-                        texto = textoMantener(ajena?.autor),
+                        texto = textoMantener(ajena?.persona ?: ajena?.autor),
                         alTocar = acciones.alQuedarmeConLaOtra,
                         modifier = Modifier.weight(1f),
                         relleno = RellenoBotonAngosto,
@@ -495,7 +499,11 @@ private fun Encabezado(alerta: Alerta, estado: EstadoRevision, enCola: Boolean, 
                 if (envio == EstadoEnvio.ERROR) IndicadorEnvio(envio)
             }
         }
-        Text(text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}", style = MaterialTheme.typography.encabezado)
+        Text(
+            text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}",
+            style = MaterialTheme.typography.encabezado,
+            modifier = Modifier.semantics { heading() },
+        )
         Text(
             text = listOf(
                 Formato.servicioProtocoloYPuerto(alerta.servicio, alerta.protocolo, alerta.puerto),
@@ -711,7 +719,8 @@ private fun TarjetaConflicto(ajena: Revision, propia: Revision?, zona: ZoneId) {
         add(
             stringResource(
                 R.string.conflicto_texto,
-                ajena.autor ?: stringResource(R.string.conflicto_otra_persona),
+                // La persona ("Lucía", decisión 39) y no su teléfono, como el tablero; los pareados antes de la 1.0.5 no la traen.
+                ajena.persona ?: ajena.autor ?: stringResource(R.string.conflicto_otra_persona),
                 stringResource(ajena.resultado.etiqueta()).lowercase(),
                 Formato.hora(ajena.hechaEn, zona),
                 stringResource(ajena.motivo.etiqueta()),

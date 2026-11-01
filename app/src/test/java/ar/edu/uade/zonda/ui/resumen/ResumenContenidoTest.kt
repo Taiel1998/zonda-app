@@ -291,7 +291,7 @@ class ResumenContenidoTest {
         dibujar(estado(resumen(lista = emptyList())), alCompartir = { compartido = true })
 
         compose.onNodeWithText("Sin alertas en los últimos 7 días").assertIsDisplayed()
-        compose.onNodeWithText("El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que la red estuvo tranquila.")
+        compose.onNodeWithText("Podés compartir el resumen igual.")
             .assertIsDisplayed()
         compose.onAllNodesWithText("Calculado con", substring = true).assertCountEquals(0)
         compose.onAllNodesWithText("Compartir resumen").onFirst().performClick()

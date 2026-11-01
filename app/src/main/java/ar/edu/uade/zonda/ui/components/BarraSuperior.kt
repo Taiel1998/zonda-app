@@ -23,6 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
@@ -46,7 +49,8 @@ fun BarraSuperior(
     acciones: @Composable RowScope.() -> Unit = {},
 ) {
     TopAppBar(
-        title = { Text(text = titulo, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        // TopAppBar no marca el título como encabezado: con TalkBack se llega a él saltando por títulos.
+        title = { Text(text = titulo, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }) },
         navigationIcon = {
             if (alVolver != null) {
                 IconButton(onClick = alVolver) {
@@ -93,7 +97,7 @@ fun AvisoInferior(datos: SnackbarData, modifier: Modifier = Modifier) {
             if (accion != null) {
                 Box(
                     modifier = Modifier
-                        .clickable(onClick = datos::performAction)
+                        .clickable(role = Role.Button, onClick = datos::performAction)
                         .padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
                 ) {
                     Text(text = accion, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.inversePrimary)

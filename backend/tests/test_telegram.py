@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 from datetime import date, datetime, timedelta, timezone
 
 import httpx
@@ -224,3 +225,32 @@ def test_el_token_no_aparece_en_los_errores_ni_en_la_configuracion(config):
     assert error.value.__suppress_context__
     config.telegram_token = "123:secreto"
     assert "secreto" not in repr(config)
+
+
+def test_la_escucha_del_bot_sigue_si_la_base_esta_trabada(bot, monkeypatch):
+    """Una base trabada (por ejemplo, con un comando de zonda.cmd escribiendo) no corta la escucha: el bot
+    espera y vuelve a preguntar. Antes la tarea se cortaba sin avisar y el bot dejaba de leer los mensajes."""
+    vueltas: list[int] = []
+
+    async def recibir_con_la_base_trabada() -> None:
+        vueltas.append(1)
+        raise sqlite3.OperationalError("database is locked")
+
+    class FinDeLaPrueba(Exception):
+        pass
+
+    esperas: list[float] = []
+
+    async def esperar(segundos: float) -> None:
+        esperas.append(segundos)
+        if len(esperas) == 2:
+            raise FinDeLaPrueba
+
+    monkeypatch.setattr(bot, "recibir", recibir_con_la_base_trabada)
+    monkeypatch.setattr("app.telegram.asyncio.sleep", esperar)
+    with pytest.raises(FinDeLaPrueba):
+        asyncio.run(bot.escuchar())
+
+    assert len(vueltas) == 2
+    # Espera cada vez más, como cuando Telegram no responde.
+    assert esperas == [1, 2]

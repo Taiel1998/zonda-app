@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,7 +30,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -96,13 +100,17 @@ fun TutorialScreen(alOmitir: () -> Unit, alTerminar: () -> Unit) {
                 text = stringResource(R.string.tutorial_paso, estadoPaginas.currentPage + 1, paginas.size),
                 style = MaterialTheme.typography.opcion,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
+                // "Siguiente" cambia de página: TalkBack anuncia el paso nuevo.
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
             )
+            // Con letra grande, "Omitir" crece en lugar de cortarse; con la de fábrica mide lo mismo.
             BotonEnlace(
                 texto = stringResource(R.string.tutorial_omitir),
                 alTocar = alOmitir,
                 relleno = PaddingValues(4.dp),
-                modifier = Modifier.height(25.dp),
+                modifier = Modifier.heightIn(min = 25.dp),
             )
         }
         HorizontalPager(state = estadoPaginas, verticalAlignment = Alignment.Top) { indice ->

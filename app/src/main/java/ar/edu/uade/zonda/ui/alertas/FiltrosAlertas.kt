@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
@@ -223,7 +226,7 @@ fun ContenidoMasFiltros(
     var destinos by remember(filtro) { mutableStateOf(filtro.destinos) }
     var metodos by remember(filtro) { mutableStateOf(filtro.metodos) }
 
-    Text(text = stringResource(R.string.filtro_mas_titulo), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(R.string.filtro_mas_titulo), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     if (opciones.servicios.isNotEmpty()) {
         GrupoDeChips(titulo = stringResource(R.string.filtro_servicio)) {
             // De a varios (decisión 47): cada chip suma o saca su servicio.
@@ -253,20 +256,22 @@ fun ContenidoMasFiltros(
     }
     // Figma 468-1921: "Cualquiera", "Asignadas a mí", "Sin asignar" y cada una de las otras personas.
     if (personas.isNotEmpty()) {
-        GrupoDeChips(titulo = stringResource(R.string.filtro_responsable)) {
-            ChipOpcion(stringResource(R.string.filtro_cualquiera), elegido = responsable == null, alTocar = { responsable = null })
+        // El responsable es de a uno (decisión 47): TalkBack lo anuncia como opción, no como casilla.
+        GrupoDeChips(titulo = stringResource(R.string.filtro_responsable), modifier = Modifier.selectableGroup()) {
+            ChipOpcion(stringResource(R.string.filtro_cualquiera), elegido = responsable == null, alTocar = { responsable = null }, rol = Role.RadioButton)
             if (miId != null) {
                 val mias = FiltroResponsable.AsignadasAMi(miId)
-                ChipOpcion(stringResource(R.string.filtro_asignadas_a_mi), elegido = responsable == mias, alTocar = { responsable = mias })
+                ChipOpcion(stringResource(R.string.filtro_asignadas_a_mi), elegido = responsable == mias, alTocar = { responsable = mias }, rol = Role.RadioButton)
             }
             ChipOpcion(
                 stringResource(R.string.filtro_sin_asignar),
                 elegido = responsable == FiltroResponsable.SinAsignar,
                 alTocar = { responsable = FiltroResponsable.SinAsignar },
+                rol = Role.RadioButton,
             )
             personas.filter { it.id != miId }.forEach { persona ->
                 val deEsa = FiltroResponsable.De(persona.id)
-                ChipOpcion(persona.nombreVisible, elegido = responsable == deEsa, alTocar = { responsable = deEsa })
+                ChipOpcion(persona.nombreVisible, elegido = responsable == deEsa, alTocar = { responsable = deEsa }, rol = Role.RadioButton)
             }
         }
     }

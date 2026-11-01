@@ -32,9 +32,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -154,7 +156,7 @@ private fun EfectosDeTelegram(estado: TelegramUiState, viewModel: TelegramViewMo
 @Composable
 fun TelegramContenido(estado: TelegramUiState, acciones: AccionesTelegram, desdeAjustes: Boolean) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     val alcance = rememberCoroutineScope()
     val bot = nombreDelBot(estado.red)
 
@@ -163,13 +165,13 @@ fun TelegramContenido(estado: TelegramUiState, acciones: AccionesTelegram, desde
         // El aviso se consume enseguida; se muestra en otro alcance para que consumirlo no lo corte.
         acciones.alAvisoMostrado()
         val texto = when (aviso) {
-            AvisoTelegram.PruebaEnviada -> contexto.getString(R.string.telegram_prueba_enviada, bot)
-            AvisoTelegram.Desvinculado -> contexto.getString(R.string.telegram_desvinculado)
-            AvisoTelegram.NoSeAbrio -> contexto.getString(R.string.telegram_no_se_abrio)
-            is AvisoTelegram.Error -> contexto.getString(aviso.error.mensaje())
+            AvisoTelegram.PruebaEnviada -> recursos.getString(R.string.telegram_prueba_enviada, bot)
+            AvisoTelegram.Desvinculado -> recursos.getString(R.string.telegram_desvinculado)
+            AvisoTelegram.NoSeAbrio -> recursos.getString(R.string.telegram_no_se_abrio)
+            is AvisoTelegram.Error -> recursos.getString(aviso.error.mensaje())
         }
         alcance.launch {
-            snackbar.showSnackbar(message = texto, actionLabel = contexto.getString(R.string.aviso_ok), duration = SnackbarDuration.Short)
+            snackbar.showSnackbar(message = texto, actionLabel = recursos.getString(R.string.aviso_ok), duration = SnackbarDuration.Short)
         }
     }
 
@@ -203,7 +205,7 @@ fun TelegramContenido(estado: TelegramUiState, acciones: AccionesTelegram, desde
 /** Conectar Telegram (Figma 50-942 y 66-4205): cómo se hace, qué viaja y "Abrir Telegram". */
 @Composable
 private fun ColumnScope.Conectar(estado: TelegramUiState, acciones: AccionesTelegram, bot: String) {
-    Text(text = stringResource(R.string.telegram_encabezado), style = MaterialTheme.typography.tituloPaso)
+    Text(text = stringResource(R.string.telegram_encabezado), style = MaterialTheme.typography.tituloPaso, modifier = Modifier.semantics { heading() })
     Panel {
         TituloSeccion(stringResource(R.string.telegram_como_se_hace))
         PasoDeTelegram(stringResource(R.string.telegram_paso_abrir, bot))
@@ -244,7 +246,7 @@ private fun PasoDeTelegram(texto: String) {
 /** Telegram conectado en el primer inicio (Figma 50-1003): la tarjeta verde con el candado y Continuar. */
 @Composable
 private fun ColumnScope.RecienConectado(estado: TelegramUiState, acciones: AccionesTelegram, bot: String) {
-    Text(text = stringResource(R.string.telegram_encabezado), style = MaterialTheme.typography.tituloPaso)
+    Text(text = stringResource(R.string.telegram_encabezado), style = MaterialTheme.typography.tituloPaso, modifier = Modifier.semantics { heading() })
     TarjetaTono(
         tono = Tonos.Baja,
         titulo = stringResource(R.string.telegram_conectado),

@@ -21,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.AccionResponsable
@@ -123,7 +125,7 @@ fun ColumnScope.ContenidoHojaAsignar(
     responsableId: String?,
     alElegir: (Persona?) -> Unit,
 ) {
-    Text(text = stringResource(R.string.asignar_titulo), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(R.string.asignar_titulo), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Text(text = stringResource(R.string.asignar_texto), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Column(modifier = Modifier.selectableGroup()) {
         personas.filterNot { it.navegador }.forEach { persona ->

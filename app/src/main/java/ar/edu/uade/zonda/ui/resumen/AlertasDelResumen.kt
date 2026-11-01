@@ -12,7 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -50,7 +50,7 @@ fun AlertasDelResumenContenido(
 ) {
     val resumen = estado.resumen
     val alertas = resumen?.alertas.orEmpty()
-    val recursos = LocalContext.current.resources
+    val recursos = LocalResources.current
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
