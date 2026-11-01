@@ -42,6 +42,7 @@ class PersonasYEquiposViewModelTest {
     private val taiel = Persona("d-1", "Taiel", "moto g(9) plus", Perfil.ADMINISTRADOR, null, vos = true)
     private val laura = Persona("d-2", "Laura", "Teléfono de Laura", Perfil.ANALISTA, null, vos = false)
     private val meli = Persona("d-3", "Meli", "Galaxy A54", Perfil.ADMINISTRADOR, null, vos = false)
+    private val chrome = Persona("d-7", null, "Tablero web · Chrome en Windows", Perfil.ADMINISTRADOR, null, vos = false, navegador = true)
 
     private fun TestScope.personas(): PersonasViewModel {
         val viewModel = PersonasViewModel(redes, GestionarPersonas(redes))
@@ -70,6 +71,28 @@ class PersonasYEquiposViewModelTest {
 
         assertEquals(listOf("Taiel", "Meli", "Laura"), estado.personas.map { it.nombreVisible })
         assertTrue(estado.esAdministrador)
+    }
+
+    @Test
+    fun `los navegadores del tablero van aparte de las personas`() = runTest {
+        redes.personas.value = listOf(laura, chrome, taiel)
+
+        val estado = personas().estado.value
+
+        assertEquals(listOf("Taiel", "Laura"), estado.personas.map { it.nombreVisible })
+        assertEquals(listOf("d-7"), estado.navegadores.map { it.id })
+    }
+
+    @Test
+    fun `quitarle el acceso a un navegador lo avisa con el nombre del navegador`() = runTest {
+        redes.personas.value = listOf(taiel, chrome)
+        val viewModel = personas()
+
+        viewModel.quitar(chrome)
+        runCurrent()
+
+        assertEquals(AvisoPersonas.NavegadorQuitado("Chrome en Windows"), viewModel.estado.value.aviso)
+        assertEquals(listOf("d-7"), redes.personasQuitadas)
     }
 
     @Test

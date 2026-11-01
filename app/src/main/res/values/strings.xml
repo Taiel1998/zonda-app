@@ -929,6 +929,8 @@
     <string name="resumen_chip_sin_revisar">Sin revisar</string>
     <string name="resumen_por_tipo">Por tipo de ataque</string>
     <string name="resumen_tipo_fuerza_bruta">Fuerza bruta (SSH, FTP)</string>
+    <!-- Los tipos sin alertas en el período, debajo de su bloque, como en el tablero web. -->
+    <string name="resumen_tipos_sin_alertas">Sin alertas: %1$s.</string>
     <string name="resumen_reales_y_falsos">Reales y falsos positivos (de las revisadas)</string>
     <string name="resumen_reales">Reales</string>
     <string name="resumen_falsos_positivos">Falsos positivos</string>
@@ -1058,6 +1060,12 @@
     </plurals>
     <string name="ajustes_registro">Registro de cambios</string>
     <string name="ajustes_registro_detalle">Quién cambió la configuración y por qué</string>
+    <!-- Las computadoras con el tablero web van aparte de las personas, como en el tablero. -->
+    <string name="ajustes_navegadores">Navegadores</string>
+    <plurals name="ajustes_navegadores_detalle">
+        <item quantity="one">%1$d computadora con el tablero web</item>
+        <item quantity="other">%1$d computadoras con el tablero web</item>
+    </plurals>
     <string name="ajustes_severidad_la_cambia">La cambia un administrador</string>
 
     <!-- Personas (Figma 468-2568, 468-2642 y 468-3010) -->
@@ -1096,6 +1104,15 @@
     <string name="perfil_administrador_detalle">Además bloquea, cambia las severidades y suma o quita gente.</string>
     <string name="perfil_analista_detalle">Revisa las alertas, pide bloqueos y elige sus avisos.</string>
 
+    <!-- Navegadores: las computadoras con el tablero web, con los textos del tablero -->
+    <string name="navegadores_titulo">Navegadores</string>
+    <string name="navegadores_intro">Las computadoras que abren el tablero web de %1$s. Cada una entra con su propio código, como un teléfono.</string>
+    <string name="navegadores_vacio">Todavía ningún navegador abrió el tablero.</string>
+    <string name="navegadores_quitar_titulo">¿Quitarle el acceso a %1$s?</string>
+    <string name="navegadores_quitar_texto">Ese navegador deja de ver el tablero y no puede volver a entrar sin un código nuevo.</string>
+    <string name="navegadores_quitar_confirmar">Quitar acceso</string>
+    <string name="navegadores_quitado">%1$s ya no tiene acceso al tablero.</string>
+
     <!-- Código para sumar a una persona (Figma 468-2735) -->
     <string name="codigo_titulo">Código para %1$s</string>
     <string name="codigo_intro">%1$s entra como %2$s. En su teléfono, conectado a la red de la empresa: Zonda → Escanear código QR.</string>
@@ -1128,6 +1145,13 @@
     <string name="registro_persona_nueva">Sumó a %1$s al equipo como %2$s</string>
     <string name="registro_persona_quitada">Quitó a %1$s del equipo</string>
     <string name="registro_se_quito">Quitó su teléfono del equipo</string>
+    <!-- Un navegador del tablero web no es una persona: "Sumó el navegador Chrome en Windows como administrador". -->
+    <string name="registro_el_navegador">el navegador %1$s</string>
+    <string name="registro_un_navegador">un navegador</string>
+    <string name="registro_navegador_nuevo">Sumó %1$s como %2$s</string>
+    <string name="registro_navegador_salio">Salió del tablero</string>
+    <string name="registro_navegador_quitado">Le quitó el acceso al navegador %1$s</string>
+    <string name="registro_navegador_quitado_sin_nombre">Le quitó el acceso a un navegador</string>
     <string name="registro_motivo">“%1$s”</string>
     <!-- Detalle: responsable y asignar (decisión 42; Figma 468-507, 468-726, 468-880 y 468-983) -->
     <string name="detalle_responsable">Responsable</string>
@@ -1278,6 +1302,7 @@
     <string name="huella_dar_permiso">Darle permiso de bloquear a %1$s</string>
     <string name="huella_sacar_permiso">Sacarle el permiso de bloquear a %1$s</string>
     <string name="huella_quitar">Quitar a %1$s del equipo</string>
+    <string name="huella_quitar_navegador">Quitarle el acceso a %1$s</string>
     <string name="personas_sin_bloqueo_de_pantalla">Para esto, el teléfono tiene que tener huella o PIN.</string>
     <string name="personas_navegador">Navegador</string>
     <string name="personas_bloquea">Bloquea</string>

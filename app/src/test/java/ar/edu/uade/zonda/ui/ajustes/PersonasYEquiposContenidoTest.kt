@@ -21,6 +21,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -44,6 +45,12 @@ class PersonasYEquiposContenidoTest {
     private val taiel = Persona("d-1", "Taiel", "moto g(9) plus", Perfil.ADMINISTRADOR, Fixtures.AHORA.minus(Duration.ofMinutes(30)), vos = true)
     private val meli = Persona("d-3", "Meli", "Galaxy A54", Perfil.ADMINISTRADOR, Fixtures.AHORA.minus(Duration.ofDays(1)), vos = false)
     private val laura = Persona("d-2", "Laura", "Teléfono de Laura", Perfil.ANALISTA, Fixtures.AHORA.minus(Duration.ofDays(3)), vos = false)
+
+    // Las computadoras con el tablero web; la primera se llamaba solo "Tablero web".
+    private val chrome = Persona(
+        "d-7", null, "Tablero web · Chrome en Windows", Perfil.ADMINISTRADOR, Fixtures.AHORA.minus(Duration.ofMinutes(30)), vos = false, navegador = true,
+    )
+    private val primerTablero = Persona("d-8", "Tablero web", "Tablero web", Perfil.ANALISTA, Fixtures.AHORA.minus(Duration.ofDays(2)), vos = false, navegador = true)
 
     private val equipos = listOf(
         EquipoDeLaRed("192.168.20.20", "srv-sueldos", Importancia.CRITICO),
@@ -81,6 +88,68 @@ class PersonasYEquiposContenidoTest {
         compose.onNodeWithText("Quién cambió la configuración y por qué").performClick()
         assertEquals("personas,equipos,registro", abiertas)
         compose.onNodeWithText("Qué ataques son altos, medios o bajos").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `ajustes cuenta solo a las personas y los navegadores van en su fila`() {
+        val estado = AjustesUiState(
+            redes = listOf(RedConEstado(red, ContadoresSinRevisar(0, 0, 0), alertasGuardadas = 0)),
+            redActiva = red,
+            personas = listOf(taiel, meli, laura, chrome, primerTablero),
+            equipos = equipos,
+        )
+        var abiertas = ""
+        compose.setContent {
+            ZondaTheme {
+                AjustesContenido(
+                    estado = estado,
+                    acciones = AccionesAjustes(alAbrirPersonas = { abiertas += "personas," }, alAbrirNavegadores = { abiertas += "navegadores" }),
+                    zona = utc,
+                    ahora = Fixtures.AHORA,
+                )
+            }
+        }
+
+        compose.onNodeWithText("3 personas · sos administrador").performClick()
+        compose.onNodeWithText("2 computadoras con el tablero web").performScrollTo().performClick()
+        assertEquals("personas,navegadores", abiertas)
+    }
+
+    @Test
+    fun `navegadores muestra cada computadora y el administrador le quita el acceso`() {
+        val quitados = mutableListOf<Persona>()
+        val estado = PersonasUiState(red = red, personas = listOf(taiel), navegadores = listOf(chrome, primerTablero))
+        compose.setContent {
+            ZondaTheme { NavegadoresContenido(estado = estado, alVolver = {}, alQuitar = { quitados += it }, zona = utc, ahora = Fixtures.AHORA) }
+        }
+
+        compose.onNodeWithText(
+            "Las computadoras que abren el tablero web de Oficina central. Cada una entra con su propio código, como un teléfono.",
+        ).assertIsDisplayed()
+        compose.onNodeWithText("Chrome en Windows").assertIsDisplayed()
+        compose.onNodeWithText("Administrador · hoy 11:30").assertIsDisplayed()
+        // La primera se llamaba solo "Tablero web".
+        compose.onNodeWithText("Navegador").assertIsDisplayed()
+        compose.onNodeWithText("Analista · hace 2 días").assertIsDisplayed()
+        compose.onNodeWithText("Chrome en Windows").performClick()
+        compose.onNodeWithText("¿Quitarle el acceso a Chrome en Windows?").assertIsDisplayed()
+        compose.onNodeWithText("Ese navegador deja de ver el tablero y no puede volver a entrar sin un código nuevo.").assertIsDisplayed()
+        compose.onNodeWithText("Quitar acceso").performClick()
+
+        assertEquals(listOf(chrome), quitados)
+    }
+
+    @Test
+    fun `la analista ve los navegadores sin poder quitarles el acceso`() {
+        var quitar = false
+        val estado = PersonasUiState(red = red.copy(perfil = Perfil.ANALISTA), personas = listOf(laura.copy(vos = true)), navegadores = listOf(chrome))
+        compose.setContent {
+            ZondaTheme { NavegadoresContenido(estado = estado, alVolver = {}, alQuitar = { quitar = true }, zona = utc, ahora = Fixtures.AHORA) }
+        }
+
+        compose.onNodeWithText("Chrome en Windows").performClick()
+        compose.onNodeWithText("¿Quitarle el acceso a Chrome en Windows?").assertDoesNotExist()
+        assertFalse(quitar)
     }
 
     @Test
@@ -249,5 +318,25 @@ class PersonasYEquiposContenidoTest {
 
         compose.onNodeWithText("Quitó su teléfono del equipo").assertIsDisplayed()
         compose.onNodeWithText("Quitó a Ramiro del equipo").assertIsDisplayed()
+    }
+
+    @Test
+    fun `el registro nombra a los navegadores del tablero como navegadores y no como personas`() {
+        val ahora: Instant = Fixtures.AHORA
+        val chromeEnWindows = "Tablero web · Chrome en Windows"
+        val registro = listOf(
+            CambioRegistro(5, ahora, TipoCambio.PERSONA_QUITADA, "d-7", chromeEnWindows, "d-7", chromeEnWindows, "administrador", null, null),
+            CambioRegistro(4, ahora, TipoCambio.PERSONA_QUITADA, "d-1", "Taiel", "d-9", "Tablero web · Edge en Windows", "analista", null, null),
+            CambioRegistro(3, ahora, TipoCambio.PERFIL, "d-1", "Taiel", "d-7", chromeEnWindows, "administrador", "analista", null),
+            CambioRegistro(2, ahora, TipoCambio.PERSONA_NUEVA, "d-1", "Taiel", "d-7", chromeEnWindows, null, "administrador", null),
+            CambioRegistro(1, ahora, TipoCambio.PERSONA_NUEVA, "d-1", "Taiel", "d-8", "Tablero web", null, "administrador", null),
+        )
+        compose.setContent { ZondaTheme { RegistroContenido(red = "Oficina central", registro = registro, alVolver = {}, zona = utc, ahora = ahora) } }
+
+        compose.onNodeWithText("Salió del tablero").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Le quitó el acceso al navegador Edge en Windows").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("El navegador Chrome en Windows pasó de administrador a analista").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Sumó el navegador Chrome en Windows como administrador").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Sumó un navegador como administrador").performScrollTo().assertIsDisplayed()
     }
 }

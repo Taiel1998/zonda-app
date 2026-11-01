@@ -204,6 +204,17 @@ class AsignadasYSemaforoTest {
     }
 
     @Test
+    fun `mas filtros no ofrece como responsable a los navegadores del tablero`() {
+        val tablero = Persona("d-7", null, "Tablero web · Chrome en Windows", Perfil.ADMINISTRADOR, null, vos = false, navegador = true)
+        val conTablero = contexto.copy(personas = Persona.ordenar(listOf(taiel, laura, meli, tablero)))
+        dibujarAlertas(AlertasUiState(contenido = ContenidoAlertas.Lista(listOf(deTaiel), sinRevisar = 1), contexto = conTablero))
+
+        compose.onNodeWithText("Más filtros").performScrollTo().performClick()
+        compose.onNodeWithText("Meli").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Tablero web · Chrome en Windows").assertDoesNotExist()
+    }
+
+    @Test
     fun `el filtro de responsable acepta lo que corresponde`() {
         val sinAsignar = Fixtures.alerta("a-5")
 

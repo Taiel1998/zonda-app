@@ -425,19 +425,66 @@ class ResumenContenidoTest {
     }
 
     @Test
-    fun `por tipo de ataque va en dos bloques, con los tipos en cero en gris y sin el bloque vacio`() {
-        // Fuerza bruta, escaneo y probable falsa alarma: lo que la IA no detectó queda en cero y se
-        // oculta con su título (cambio 14). "Sin tipo identificado", en cero, se ve en gris.
+    fun `por tipo de ataque va en dos bloques, con los tipos sin alertas en una linea y sin el bloque vacio`() {
+        // Fuerza bruta, escaneo y probable falsa alarma: lo que la IA no detectó no tuvo alertas y se
+        // oculta con su título (cambio 14). Los tipos sin alertas van juntos debajo de su bloque, como en
+        // el tablero web.
         dibujar(estado(resumen()))
 
         compose.onNodeWithText("LO QUE DETECTÓ LA IA").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Sin tipo identificado").performScrollTo().assertIsDisplayed()
-        assertEquals(TextoSecundario, colorDelTexto("Sin tipo identificado"))
         assertEquals(Texto, colorDelTexto("Fuerza bruta (SSH, FTP)"))
+        compose.onNodeWithText("Sin alertas: sin tipo identificado y denegación de servicio.").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Sin tipo identificado").assertCountEquals(0)
+        compose.onAllNodesWithText("Denegación de servicio").assertCountEquals(0)
         compose.onAllNodesWithText("LO QUE LA IA NO DETECTÓ").assertCountEquals(0)
         compose.onAllNodesWithText("Servicio no autorizado").assertCountEquals(0)
         compose.onAllNodesWithText("Volumen inusual").assertCountEquals(0)
         compose.onAllNodesWithText("Otros").assertCountEquals(0)
+    }
+
+    @Test
+    fun `con un filtro, los tipos que tuvieron alertas en el periodo siguen en su fila aunque queden en cero`() {
+        // Con fuerza bruta elegida, escaneo y probable falsa alarma quedan en cero, pero tuvieron alertas en
+        // la semana: siguen en gris y se pueden tocar para sumarlos. La línea no los nombra.
+        val tocadas = mutableListOf<ToqueResumen>()
+        dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA)))), alTocar = { tocadas += it })
+
+        compose.onNodeWithText("Escaneo de puertos").performScrollTo().assertIsDisplayed()
+        assertEquals(TextoSecundario, colorDelTexto("Escaneo de puertos"))
+        compose.onNodeWithText("Sin alertas: sin tipo identificado y denegación de servicio.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Probable falsa alarma").performScrollTo().performClick()
+
+        assertEquals(listOf(ToqueResumen.Tipo(TipoAtaque.PROBABLE_FALSA_ALARMA)), tocadas)
+    }
+
+    @Test
+    fun `un tipo elegido sin alertas en el periodo sigue en su fila para poder sacarlo`() {
+        // Pasa al cambiar de 30 a 7 días con un tipo elegido: "Tocá de nuevo para sacarlo" tiene que tener
+        // qué tocar.
+        val tocadas = mutableListOf<ToqueResumen>()
+        dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.DDOS)))), alTocar = { tocadas += it })
+
+        compose.onNodeWithText("Sin alertas: sin tipo identificado.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Denegación de servicio").performScrollTo().performClick()
+
+        assertEquals(listOf(ToqueResumen.Tipo(TipoAtaque.DDOS)), tocadas)
+    }
+
+    @Test
+    fun `la imagen de un periodo sin alertas nombra todos los tipos en una linea por bloque`() {
+        compose.setContent {
+            ZondaTheme {
+                ImagenResumen(resumen = resumen(lista = emptyList()), red = "Oficina central", datosDe = ahora, sinConexion = false, zona = utc)
+            }
+        }
+
+        compose.onNodeWithText("LO QUE DETECTÓ LA IA").assertExists()
+        compose.onNodeWithText(
+            "Sin alertas: fuerza bruta (SSH, FTP), sin tipo identificado, escaneo de puertos, denegación de servicio y probable falsa alarma.",
+        ).assertExists()
+        compose.onNodeWithText("LO QUE LA IA NO DETECTÓ").assertExists()
+        compose.onNodeWithText("Sin alertas: servicio no autorizado y volumen inusual.").assertExists()
+        compose.onAllNodesWithText("Escaneo de puertos").assertCountEquals(0)
     }
 
     @Test
@@ -451,9 +498,9 @@ class ResumenContenidoTest {
 
         compose.onNodeWithText("LO QUE LA IA NO DETECTÓ").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Servicio no autorizado").performScrollTo().assertIsDisplayed()
-        // Volumen inusual, en cero, queda en gris dentro del bloque.
-        compose.onNodeWithText("Volumen inusual").performScrollTo().assertIsDisplayed()
-        assertEquals(TextoSecundario, colorDelTexto("Volumen inusual"))
+        // Volumen inusual no tuvo alertas: va en la línea de abajo, no en una fila.
+        compose.onNodeWithText("Sin alertas: volumen inusual.").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Volumen inusual").assertCountEquals(0)
         // El punto de color también lo lee TalkBack.
         compose.onNode(hasText("Escaneo de puertos") and hasContentDescription("Severidad alta")).assertExists()
         compose.onNode(hasText("Probable falsa alarma") and hasContentDescription("Severidad baja")).assertExists()

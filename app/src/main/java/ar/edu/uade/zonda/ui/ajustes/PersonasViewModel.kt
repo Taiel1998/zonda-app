@@ -7,6 +7,7 @@ import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.navegadorDelNombre
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 import ar.edu.uade.zonda.domain.usecase.GestionarPersonas
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,11 +32,13 @@ data class FormularioPersona(
     val error: ErrorZonda? = null,
 )
 
-/** Estado de Personas y de "Código para Laura", que comparten el ViewModel. */
+/** Estado de Personas, de "Código para Laura" y de Navegadores, que comparten el ViewModel. */
 data class PersonasUiState(
     val red: Red? = null,
-    /** Vos primero, después los administradores y los analistas (Figma 468-2568). */
+    /** Vos primero, después los administradores y los analistas (Figma 468-2568), sin los navegadores. */
     val personas: List<Persona> = emptyList(),
+    /** Las computadoras con el tablero web: no son personas y van aparte, en Navegadores, como en el tablero. */
+    val navegadores: List<Persona> = emptyList(),
     /** La hoja "Agregar persona" abierta, o null. */
     val formulario: FormularioPersona? = null,
     /** El último código generado: lo muestra "Código para Laura". */
@@ -53,6 +56,9 @@ sealed interface AvisoPersonas {
     data class PerfilCambiado(val nombre: String, val perfil: Perfil) : AvisoPersonas
     data class PermisoBloqueoCambiado(val nombre: String, val puedeBloquear: Boolean) : AvisoPersonas
     data class Quitada(val nombre: String) : AvisoPersonas
+
+    /** "Chrome en Windows ya no tiene acceso al tablero."; [nombre] es null en los que se llamaban solo "Tablero web". */
+    data class NavegadorQuitado(val nombre: String?) : AvisoPersonas
     data class Error(val error: ErrorZonda) : AvisoPersonas
 
     /** El teléfono no tiene huella ni PIN: lo que da poder no sale sin confirmar (decisión 51). */
@@ -82,9 +88,11 @@ class PersonasViewModel(
     val estado: StateFlow<PersonasUiState> = redes.observarRedActiva().flatMapLatest { red ->
         val personas = if (red == null) flowOf(emptyList()) else redes.observarPersonas(red.id)
         combine(personas, controles) { lista, c ->
+            val (navegadores, gente) = Persona.ordenar(lista).partition { it.navegador }
             PersonasUiState(
                 red = red,
-                personas = Persona.ordenar(lista),
+                personas = gente,
+                navegadores = navegadores,
                 formulario = c.formulario,
                 codigo = c.codigo,
                 abrirCodigo = c.abrirCodigo,
@@ -168,10 +176,15 @@ class PersonasViewModel(
         controles.update { it.copy(aviso = AvisoPersonas.PermisoBloqueoCambiado(persona.nombreVisible, puedeBloquear)) }
     }
 
-    /** "Quitar del equipo", ya confirmado. */
+    /** "Quitar del equipo" o, a un navegador, "Quitar acceso", ya confirmado. */
     fun quitar(persona: Persona) = conRedActiva { redId ->
         gestionar.quitar(redId, persona.id)
-        controles.update { it.copy(aviso = AvisoPersonas.Quitada(persona.nombreVisible)) }
+        val aviso = if (persona.navegador) {
+            AvisoPersonas.NavegadorQuitado(navegadorDelNombre(persona.telefono))
+        } else {
+            AvisoPersonas.Quitada(persona.nombreVisible)
+        }
+        controles.update { it.copy(aviso = aviso) }
     }
 
     fun avisoMostrado() {

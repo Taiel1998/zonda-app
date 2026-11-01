@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.ui.ajustes
 
+import android.content.res.Resources
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -175,19 +176,7 @@ fun PersonasContenido(
     LaunchedEffect(estado.aviso) {
         val aviso = estado.aviso ?: return@LaunchedEffect
         acciones.alAvisoMostrado()
-        val texto = when (aviso) {
-            is AvisoPersonas.PerfilCambiado -> recursos.getString(
-                if (aviso.perfil.esAdministrador) R.string.personas_ahora_administrador else R.string.personas_ahora_analista,
-                aviso.nombre,
-            )
-            is AvisoPersonas.PermisoBloqueoCambiado -> recursos.getString(
-                if (aviso.puedeBloquear) R.string.personas_ahora_bloquea else R.string.personas_ahora_pide_aprobacion,
-                aviso.nombre,
-            )
-            is AvisoPersonas.Quitada -> recursos.getString(R.string.personas_quitada, aviso.nombre)
-            is AvisoPersonas.Error -> recursos.getString(aviso.error.mensaje())
-            AvisoPersonas.SinBloqueoDePantalla -> recursos.getString(R.string.personas_sin_bloqueo_de_pantalla)
-        }
+        val texto = textoDelAvisoDePersonas(aviso, recursos)
         // Consumir el aviso cambia la clave de este efecto: se muestra en otro alcance para no cortarlo.
         alcance.launch { snackbar.showSnackbar(message = texto, actionLabel = recursos.getString(R.string.aviso_ok), duration = SnackbarDuration.Short) }
     }
@@ -264,6 +253,23 @@ fun PersonasContenido(
             alCerrar = { aQuitarId = null },
         )
     }
+}
+
+/** El aviso inferior de Personas y de Navegadores, que comparten el ViewModel. */
+internal fun textoDelAvisoDePersonas(aviso: AvisoPersonas, recursos: Resources): String = when (aviso) {
+    is AvisoPersonas.PerfilCambiado -> recursos.getString(
+        if (aviso.perfil.esAdministrador) R.string.personas_ahora_administrador else R.string.personas_ahora_analista,
+        aviso.nombre,
+    )
+    is AvisoPersonas.PermisoBloqueoCambiado -> recursos.getString(
+        if (aviso.puedeBloquear) R.string.personas_ahora_bloquea else R.string.personas_ahora_pide_aprobacion,
+        aviso.nombre,
+    )
+    is AvisoPersonas.Quitada -> recursos.getString(R.string.personas_quitada, aviso.nombre)
+    is AvisoPersonas.NavegadorQuitado ->
+        recursos.getString(R.string.navegadores_quitado, aviso.nombre ?: recursos.getString(R.string.personas_navegador))
+    is AvisoPersonas.Error -> recursos.getString(aviso.error.mensaje())
+    AvisoPersonas.SinBloqueoDePantalla -> recursos.getString(R.string.personas_sin_bloqueo_de_pantalla)
 }
 
 /**

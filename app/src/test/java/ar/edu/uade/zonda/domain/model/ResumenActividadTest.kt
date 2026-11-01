@@ -208,7 +208,7 @@ class ResumenActividadTest {
     }
 
     @Test
-    fun `cada tipo de ataque tiene su fila, en el orden de la pantalla de severidades y aunque este en cero`() {
+    fun `cada tipo de ataque se cuenta, en el orden de la pantalla de severidades y aunque este en cero`() {
         val resumen = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc)
 
         // Cambio 14: sin "Otros"; primero lo que detectó la IA y después lo que no.
@@ -220,6 +220,28 @@ class ResumenActividadTest {
             resumen.porTipo.keys.toList(),
         )
         assertEquals(listOf(1, 0, 1, 1, 1, 1, 0), resumen.porTipo.values.toList())
+    }
+
+    @Test
+    fun `tienen fila los tipos con alertas en el periodo, aunque el filtro los deje en cero, y los elegidos`() {
+        val sinFiltro = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc)
+        // Sin tipo identificado no tuvo alertas, pero está elegido: se saca tocando su fila.
+        val conFiltro = ResumenActividad.calcular(
+            alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc, FiltroResumen(tipos = setOf(TipoAtaque.SIN_TIPIFICAR)),
+        )
+
+        assertEquals(
+            listOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.ESCANEO, TipoAtaque.DDOS, TipoAtaque.PROBABLE_FALSA_ALARMA, TipoAtaque.SERVICIO_NO_AUTORIZADO),
+            sinFiltro.tiposConFila.toList(),
+        )
+        assertEquals(0, conFiltro.total)
+        assertEquals(
+            listOf(
+                TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR, TipoAtaque.ESCANEO, TipoAtaque.DDOS,
+                TipoAtaque.PROBABLE_FALSA_ALARMA, TipoAtaque.SERVICIO_NO_AUTORIZADO,
+            ),
+            conFiltro.tiposConFila.toList(),
+        )
     }
 
     @Test

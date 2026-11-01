@@ -47,6 +47,7 @@ import ar.edu.uade.zonda.ui.ajustes.CodigoPersonaScreen
 import ar.edu.uade.zonda.ui.ajustes.CondicionesScreen
 import ar.edu.uade.zonda.ui.ajustes.DetallesTecnicosScreen
 import ar.edu.uade.zonda.ui.ajustes.EquiposScreen
+import ar.edu.uade.zonda.ui.ajustes.NavegadoresScreen
 import ar.edu.uade.zonda.ui.ajustes.PersonasScreen
 import ar.edu.uade.zonda.ui.ajustes.RedesScreen
 import ar.edu.uade.zonda.ui.ajustes.RegistroScreen
@@ -309,6 +310,7 @@ fun ZondaNavHost(
                             AjustesScreen(
                                 alAbrirRedes = { navController.navigate(Rutas.REDES) },
                                 alAbrirPersonas = { navController.navigate(Rutas.PERSONAS) },
+                                alAbrirNavegadores = { navController.navigate(Rutas.NAVEGADORES) },
                                 alAbrirEquipos = { navController.navigate(Rutas.EQUIPOS) },
                                 alAbrirRegistro = { navController.navigate(Rutas.REGISTRO) },
                                 alAbrirDetallesTecnicos = { navController.navigate(Rutas.DETALLES_TECNICOS) },
@@ -341,6 +343,9 @@ fun ZondaNavHost(
                             // Usa el ViewModel de Personas, que tiene el código recién generado.
                             val dueño = remember(entrada) { navController.getBackStackEntry(Rutas.PERSONAS) }
                             CodigoPersonaScreen(viewModel = personasViewModel(dueño), alVolver = { navController.popBackStack() })
+                        }
+                        composable(Rutas.NAVEGADORES) {
+                            NavegadoresScreen(viewModel = personasViewModel(), alVolver = { navController.popBackStack() })
                         }
                         composable(Rutas.EQUIPOS) {
                             EquiposScreen(alVolver = { navController.popBackStack() })
