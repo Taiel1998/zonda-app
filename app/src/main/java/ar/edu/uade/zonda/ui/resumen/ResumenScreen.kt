@@ -620,8 +620,10 @@ fun TarjetaGrafico(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, f
 /**
  * Por tipo de ataque (cambio 14; Figma 52-2629 y 100-8498): los dos bloques de la pantalla de
  * severidades, con sus nombres y su orden fijo, y cada tipo con el punto de la severidad que eligió la
- * red. Un tipo en cero queda en gris; un bloque entero en cero se oculta con su título, salvo que los
- * dos lo estén (con un filtro sin alertas). El ⓘ abre "Qué es cada tipo".
+ * red. Los tipos sin alertas en el período van juntos en una línea debajo de su bloque ("Sin alertas:
+ * escaneo de puertos."), como en el tablero web; uno que los filtros dejan en cero sigue en gris
+ * ([ResumenActividad.tiposConFila]). Un bloque sin alertas en el período se oculta con su título, salvo
+ * que los dos lo estén (la imagen de un período sin alertas). El ⓘ abre "Qué es cada tipo".
  */
 @Composable
 fun TarjetaTipos(
@@ -631,11 +633,13 @@ fun TarjetaTipos(
     /** El ⓘ abre "Qué es cada tipo"; en la imagen que se comparte no va (null). */
     alPedirAyuda: (() -> Unit)?,
 ) {
+    val recursos = LocalResources.current
     val maximo = resumen.porTipo.values.maxOrNull() ?: 0
+    val conFila = resumen.tiposConFila
     val bloques = listOf(
         R.string.tipos_bloque_ia to TipoAtaque.DETECTADOS_POR_LA_IA,
         R.string.tipos_bloque_sin_ia to TipoAtaque.NO_DETECTADOS_POR_LA_IA,
-    ).filter { (_, tipos) -> maximo == 0 || tipos.any { (resumen.porTipo[it] ?: 0) > 0 } }
+    ).filter { (_, tipos) -> conFila.isEmpty() || tipos.any { it in conFila } }
     TarjetaResumen(
         titulo = stringResource(R.string.resumen_por_tipo),
         espacioTitulo = 10.dp,
@@ -645,7 +649,8 @@ fun TarjetaTipos(
             bloques.forEachIndexed { indice, (titulo, tipos) ->
                 if (indice > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 TituloDeBloque(stringResource(titulo))
-                tipos.forEach { tipo ->
+                val (conSuFila, sinAlertas) = tipos.partition { it in conFila }
+                conSuFila.forEach { tipo ->
                     FilaTipo(
                         rotulo = stringResource(tipo.enFila()),
                         severidad = severidades.severidadDe(tipo),
@@ -654,6 +659,9 @@ fun TarjetaTipos(
                         elegida = tipo in resumen.filtro.tipos,
                         alTocar = { alTocar(ToqueResumen.Tipo(tipo)) },
                     )
+                }
+                if (sinAlertas.isNotEmpty()) {
+                    Text(text = lineaSinAlertas(sinAlertas, recursos), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

@@ -163,6 +163,14 @@ private fun enumerar(partes: List<String>, recursos: Resources): String = when (
 private fun String.minuscula(): String = replaceFirstChar { it.lowercase(LOCALE) }
 
 /**
+ * Los tipos de un bloque de "Por tipo de ataque" que no tuvieron alertas en el período, en una línea
+ * debajo de sus filas, como en el tablero web: "Sin alertas: sin tipo identificado y denegación de
+ * servicio."
+ */
+fun lineaSinAlertas(tipos: List<TipoAtaque>, recursos: Resources): String =
+    recursos.getString(R.string.resumen_tipos_sin_alertas, enumerar(tipos.map { recursos.getString(it.enFila()).minuscula() }, recursos))
+
+/**
  * Cada filtro puesto, con palabras y en el orden de la hoja (cuándo, tipo, revisión y modelo), un
  * grupo por clase: "sábado y domingo", "fuerza bruta y escaneo de puertos". Los tipos que la red tiene
  * en alta, si son justo esos, son "las altas". Con [conFecha], los días llevan la fecha (la lista y la

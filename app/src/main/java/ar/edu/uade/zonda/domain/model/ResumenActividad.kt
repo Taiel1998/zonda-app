@@ -283,7 +283,8 @@ data class ResumenActividad(
     val barras: List<BarraActividad>,
     /**
      * Cada tipo de ataque, en el orden de la pantalla de severidades y aunque esté en cero (cambio 14):
-     * un tipo en cero también dice algo ("esta semana no hubo DDoS").
+     * un tipo en cero también dice algo ("esta semana no hubo DDoS"). La tarjeta lo dice en la línea
+     * "Sin alertas: …" ([tiposConFila]).
      */
     val porTipo: Map<TipoAtaque, Int>,
     /** Métrica de éxito 1: tiempo mediano entre la creación de una alerta y su primera revisión. */
@@ -312,6 +313,17 @@ data class ResumenActividad(
     /** Por hora, por día o por semana. */
     val escala: EscalaBarra
         get() = rango.escala
+
+    /**
+     * Los tipos que van con su fila en "Por tipo de ataque", en el orden de la pantalla: los que tuvieron
+     * alertas en el período, aunque los filtros los dejen en cero (quedan en gris y se pueden tocar), y
+     * los elegidos en el filtro, que se sacan tocándolos. Los demás van juntos en "Sin alertas: …", como
+     * en el tablero web; esa línea nunca nombra un tipo que tuvo alertas en el período.
+     */
+    val tiposConFila: Set<TipoAtaque>
+        get() = TipoAtaque.EN_PANTALLA.filter { tipo ->
+            (porTipo[tipo] ?: 0) > 0 || tipo in filtro.tipos || delPeriodo.any { tipo in it.tiposDeAtaque }
+        }.toSet()
 
     /**
      * Cuántas alertas quedarían con [otro] rango y los mismos filtros, menos los días elegidos, que eran

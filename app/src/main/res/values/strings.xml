@@ -928,6 +928,8 @@
     <string name="resumen_chip_sin_revisar">Sin revisar</string>
     <string name="resumen_por_tipo">Por tipo de ataque</string>
     <string name="resumen_tipo_fuerza_bruta">Fuerza bruta (SSH, FTP)</string>
+    <!-- Los tipos sin alertas en el período, debajo de su bloque, como en el tablero web. -->
+    <string name="resumen_tipos_sin_alertas">Sin alertas: %1$s.</string>
     <string name="resumen_reales_y_falsos">Reales y falsos positivos (de las revisadas)</string>
     <string name="resumen_reales">Reales</string>
     <string name="resumen_falsos_positivos">Falsos positivos</string>
