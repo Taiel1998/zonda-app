@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -80,6 +81,7 @@ import ar.edu.uade.zonda.ui.components.Panel
 import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
 import ar.edu.uade.zonda.ui.components.TarjetaTono
 import ar.edu.uade.zonda.ui.components.TituloSeccion
+import ar.edu.uade.zonda.ui.components.descripcionDeRuta
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.nombreCorto
@@ -499,16 +501,21 @@ private fun Encabezado(alerta: Alerta, estado: EstadoRevision, enCola: Boolean, 
                 if (envio == EstadoEnvio.ERROR) IndicadorEnvio(envio)
             }
         }
+        val ruta = descripcionDeRuta(alerta)
         Text(
             text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}",
             style = MaterialTheme.typography.encabezado,
-            modifier = Modifier.semantics { heading() },
+            // TalkBack dice "De pc-rrhh a srv-sueldos" en lugar de leer la flecha.
+            modifier = Modifier.semantics {
+                heading()
+                contentDescription = ruta
+            },
         )
         Text(
             text = listOf(
                 Formato.servicioProtocoloYPuerto(alerta.servicio, alerta.protocolo, alerta.puerto),
                 Formato.horaConSegundos(alerta.inicio, zona),
-                stringResource(R.string.detalle_detectada_por, enumerar(metodos)),
+                stringResource(R.string.detalle_detectada_por, Formato.enumerar(metodos)),
             ).joinToString(" · "),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -681,7 +688,7 @@ private fun TarjetaHistorial(alerta: Alerta, nombreDelTelefono: String, cambios:
         }
     }
     val metodos = alerta.metodos.sorted().map { stringResource(it.nombreEnHistorial()) }
-    eventos += EventoHistorial(alerta.inicio, stringResource(R.string.historial_detectada, enumerar(metodos)), null)
+    eventos += EventoHistorial(alerta.inicio, stringResource(R.string.historial_detectada, Formato.enumerar(metodos)), null)
     alerta.avisoTelegram?.let { eventos += EventoHistorial(it, stringResource(R.string.historial_aviso_telegram), null) }
 
     Panel {
@@ -853,11 +860,4 @@ private fun textoParaCompartir(alerta: Alerta, red: String, zona: ZoneId): Strin
 private fun autorDe(revision: Revision, nombreDelTelefono: String): String {
     val telefono = revision.autor ?: nombreDelTelefono
     return revision.persona?.takeIf { it != telefono }?.let { "$it · $telefono" } ?: telefono
-}
-
-/** "IA", "IA y umbrales", "IA, umbrales y reglas". */
-private fun enumerar(partes: List<String>): String = when (partes.size) {
-    0 -> ""
-    1 -> partes.single()
-    else -> partes.dropLast(1).joinToString(", ") + " y " + partes.last()
 }

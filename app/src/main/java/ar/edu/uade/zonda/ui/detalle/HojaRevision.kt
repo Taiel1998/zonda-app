@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
@@ -43,6 +44,7 @@ import ar.edu.uade.zonda.ui.components.ChipOpcion
 import ar.edu.uade.zonda.ui.components.HojaInferior
 import ar.edu.uade.zonda.ui.components.LeyendaObligatorio
 import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
+import ar.edu.uade.zonda.ui.components.descripcionDeCampo
 import ar.edu.uade.zonda.ui.components.etiquetaConAsterisco
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.theme.Tonos
@@ -150,10 +152,14 @@ private fun PasoMotivo(formulario: FormularioRevision, resultado: ResultadoRevis
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
+    val etiquetaMotivo = stringResource(R.string.revisar_motivo)
+    val descripcionMotivo = descripcionDeCampo(etiquetaMotivo, obligatorio = true)
     Text(
-        text = etiquetaConAsterisco(stringResource(R.string.revisar_motivo)),
+        text = etiquetaConAsterisco(etiquetaMotivo),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        // TalkBack dice "Motivo, obligatorio", como los campos, y no el asterisco.
+        modifier = Modifier.semantics { contentDescription = descripcionMotivo },
     )
     // El motivo es uno solo: TalkBack lo anuncia como opción ("1 de 4"), no como casilla.
     FlowRow(

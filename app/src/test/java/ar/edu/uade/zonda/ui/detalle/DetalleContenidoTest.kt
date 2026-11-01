@@ -5,12 +5,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -89,6 +93,8 @@ class DetalleContenidoTest {
         )
 
         compose.onNodeWithText("pc-09 → srv-web").assertIsDisplayed()
+        // TalkBack lee el título como "De pc-09 a srv-web", sin la flecha, y sigue siendo encabezado.
+        compose.onNodeWithText("pc-09 → srv-web").assert(hasContentDescription("De pc-09 a srv-web")).assert(isHeading())
         compose.onNodeWithText("SSH · TCP/22 · 10:50:00 · detectada por IA").assertIsDisplayed()
         compose.onNodeWithText("Datos del flujo").assertIsDisplayed()
         compose.onNodeWithText("Predicción por método").performScrollTo().assertIsDisplayed()
@@ -324,6 +330,10 @@ class DetalleContenidoTest {
         compose.onNodeWithText("Comentario *").assertIsDisplayed()
         compose.onNodeWithText("* Obligatorio").assertIsDisplayed()
         compose.onNodeWithContentDescription("Comentario, obligatorio").assertIsDisplayed()
+        // TalkBack dice "Motivo, obligatorio" y "Comentario, obligatorio": ni la etiqueta del campo ni la leyenda se leen aparte.
+        compose.onNodeWithContentDescription("Motivo, obligatorio").assertIsDisplayed()
+        compose.onNodeWithText("Comentario *", useUnmergedTree = true).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
+        compose.onNodeWithText("* Obligatorio").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
         compose.onNodeWithText("Confirmar revisión").assertIsNotEnabled()
         compose.onNodeWithText("Backup").performClick()
         // El comentario del Figma, con los equipos de esta alerta.

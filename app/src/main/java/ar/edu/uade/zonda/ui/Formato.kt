@@ -170,4 +170,11 @@ object Formato {
             }
         }
     }
+
+    /** "IA", "IA y umbrales", "IA, umbrales y reglas": los métodos en una frase, en el detalle y en la tarjeta. */
+    fun enumerar(partes: List<String>): String = when (partes.size) {
+        0 -> ""
+        1 -> partes.single()
+        else -> partes.dropLast(1).joinToString(", ") + " y " + partes.last()
+    }
 }

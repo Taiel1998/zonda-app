@@ -10,6 +10,7 @@
     <!-- Acciones comunes -->
     <string name="accion_volver">Volver</string>
     <string name="accion_sincronizar">Sincronizar ahora</string>
+    <string name="accion_sincronizando">Sincronizando…</string>
     <string name="error_reintentar">Reintentar</string>
 
     <!-- Acceso vencido (401): hay que parear de nuevo sin perder lo guardado -->
@@ -1181,6 +1182,9 @@
 
     <!-- Tarjeta de alerta: responsable e importancia del equipo destino (Figma 468-1454) -->
     <string name="tarjeta_vos">Vos</string>
+    <!-- Lo que lee TalkBack en lugar de la flecha y del nombre suelto del chip -->
+    <string name="tarjeta_ruta">De %1$s a %2$s</string>
+    <string name="tarjeta_responsable">Responsable: %1$s</string>
     <string name="tarjeta_subio">Subió de %1$s a %2$s: %3$s es %4$s.</string>
     <string name="tarjeta_bajo">Bajó de %1$s a %2$s: %3$s es %4$s.</string>
     <string name="tarjeta_ya_era">%1$s es %2$s (ya era %3$s).</string>

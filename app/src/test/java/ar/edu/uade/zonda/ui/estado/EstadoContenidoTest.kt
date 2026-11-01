@@ -98,6 +98,14 @@ class EstadoContenidoTest {
     }
 
     @Test
+    fun `mientras sincroniza, el boton dice Sincronizando y no su nombre`() {
+        dibujar(EstadoUiState(contenido = datos(), datosDe = ahora, sincronizando = true))
+
+        compose.onNodeWithContentDescription("Sincronizando…").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Sincronizar ahora").assertCountEquals(0)
+    }
+
+    @Test
     fun `con solo medias el semaforo es amarillo y sigue pidiendo atencion`() {
         dibujar(
             EstadoUiState(

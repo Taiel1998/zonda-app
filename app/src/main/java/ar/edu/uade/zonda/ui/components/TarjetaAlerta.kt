@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
@@ -34,6 +36,7 @@ import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.ui.ContextoTarjetas
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.etiqueta
+import ar.edu.uade.zonda.ui.nombreEnFrase
 import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.theme.rotulo
@@ -64,9 +67,12 @@ fun TarjetaAlerta(
     ) {
         Column(modifier = Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PrimerRenglon(alerta, zona)
+            val ruta = descripcionDeRuta(alerta)
             Text(
                 text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}",
                 style = MaterialTheme.typography.titleSmall,
+                // TalkBack dice "De pc-rrhh a srv-sueldos" en lugar de leer la flecha.
+                modifier = Modifier.semantics { contentDescription = ruta },
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -74,7 +80,18 @@ fun TarjetaAlerta(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                alerta.metodos.sorted().forEach { metodo -> EtiquetaMetodo(metodo) }
+                val metodos = alerta.metodos.sorted()
+                if (metodos.isNotEmpty()) {
+                    // TalkBack dice "detectada por IA y umbrales", como el detalle, y no las etiquetas sueltas.
+                    val detectadaPor = stringResource(R.string.detalle_detectada_por, Formato.enumerar(metodos.map { stringResource(it.nombreEnFrase()) }))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.semantics { contentDescription = detectadaPor },
+                    ) {
+                        metodos.forEach { metodo -> EtiquetaMetodo(metodo) }
+                    }
+                }
                 val responsable = alerta.asignacion?.takeIf { it.responsableId != null }
                 if (responsable != null) {
                     Spacer(modifier = Modifier.weight(1f))
@@ -86,9 +103,15 @@ fun TarjetaAlerta(
     }
 }
 
+/** Lo que lee TalkBack de "pc-rrhh → srv-sueldos" en la tarjeta y en el detalle: "De pc-rrhh a srv-sueldos". */
+@Composable
+fun descripcionDeRuta(alerta: Alerta): String = stringResource(R.string.tarjeta_ruta, alerta.origen.etiqueta, alerta.destino.etiqueta)
+
 /** El chip del responsable (Figma 468-2150): gris cálido, esquinas de 4, la persona de 13 y el nombre Medium 12. */
 @Composable
 private fun ChipResponsable(nombre: String) {
+    // TalkBack dice "Responsable: Vos" y no el nombre suelto.
+    val descripcion = stringResource(R.string.tarjeta_responsable, nombre)
     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
         Row(
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -96,7 +119,13 @@ private fun ChipResponsable(nombre: String) {
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Icon(Icons.Outlined.Person, contentDescription = null, tint = MaterialTheme.zonda.textoNota, modifier = Modifier.size(13.dp))
-            Text(text = nombre, style = MaterialTheme.typography.rotulo, color = MaterialTheme.zonda.textoNota, maxLines = 1)
+            Text(
+                text = nombre,
+                style = MaterialTheme.typography.rotulo,
+                color = MaterialTheme.zonda.textoNota,
+                maxLines = 1,
+                modifier = Modifier.semantics { contentDescription = descripcion },
+            )
         }
     }
 }

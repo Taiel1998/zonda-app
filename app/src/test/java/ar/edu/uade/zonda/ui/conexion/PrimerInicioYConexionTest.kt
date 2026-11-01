@@ -3,6 +3,9 @@ package ar.edu.uade.zonda.ui.conexion
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -146,6 +149,14 @@ class PrimerInicioYConexionTest {
         compose.onNodeWithContentDescription("Código de pareo, obligatorio").performTextInput("k7m2")
 
         assertEquals("k7m2", escrito)
+    }
+
+    @Test
+    fun `con las casillas a la vista, TalkBack no lee la etiqueta del codigo aparte ni el asterisco`() {
+        mostrar(ConexionUiState.Formulario(codigo = "K7M2"))
+
+        compose.onNodeWithContentDescription("Código de pareo, obligatorio").assertIsDisplayed()
+        compose.onNodeWithText("Código de pareo *", useUnmergedTree = true).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
     }
 
     @Test
