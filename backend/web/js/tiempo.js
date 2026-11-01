@@ -2,7 +2,8 @@
 // rango a medida con desde y hasta, correrlo para atrás o para adelante, alejarlo, actualizar ahora o cada
 // tanto y copiar el enlace. El horario va en la dirección de la página (?desde=now-15m&hasta=now): al
 // recargar o al compartir el enlace se ve lo mismo. Las expresiones son las de Grafana: «now», «now-15m»,
-// «now-1d/d» (el día entero) o una hora en milisegundos desde 1970.
+// «now-1d/d» (el día entero) o una hora en milisegundos desde 1970; «todo» es desde el principio. El selector
+// del horario sirve también para la lista de alertas, con sus propios rangos (alertas.js).
 
 import { dia, el, hora, horaConSegundos, icono, vaciar } from './util.js';
 import { $, ahoraServidor, e } from './comun.js';
@@ -15,19 +16,27 @@ const BARRAS = 300;
 // El servidor guarda una semana de tráfico (ZONDA_DIAS_TRAFICO).
 const SEMANA = 7 * 86400e3;
 const UNIDAD = { s: 1e3, m: 60e3, h: 3600e3, d: 86400e3 };
-const CLAVE_RECIENTES = 'zonda.tablero.rangos';
 
-export const RANGOS_RAPIDOS = [
+const rangos = (lista) => lista.map(([desde, hasta]) => ({ desde, hasta }));
+
+export const RANGOS_RAPIDOS = rangos([
   ['now-5m', 'now'], ['now-15m', 'now'], ['now-30m', 'now'], ['now-1h', 'now'], ['now-3h', 'now'],
   ['now-6h', 'now'], ['now-12h', 'now'], ['now-24h', 'now'], ['now-2d', 'now'], ['now-7d', 'now'],
   ['now/d', 'now'], ['now-1d/d', 'now-1d/d'], ['now-2d/d', 'now-2d/d'],
-].map(([desde, hasta]) => ({ desde, hasta }));
+]);
 
-// Los días enteros: el nombre en la barra y cómo se dice en una oración.
+/** Los de la lista de alertas, que se guardan más que el tráfico. */
+export const RANGOS_ALERTAS = rangos([
+  ['now-1h', 'now'], ['now-24h', 'now'], ['now/d', 'now'], ['now-1d/d', 'now-1d/d'],
+  ['now-7d', 'now'], ['now-30d', 'now'], ['now-90d', 'now'], ['todo', 'now'],
+]);
+
+// Los rangos con nombre propio: el nombre en la barra y cómo se dice en una oración.
 const DIAS = {
   'now/d|now': ['Hoy hasta ahora', 'hoy'],
   'now-1d/d|now-1d/d': ['Ayer', 'ayer'],
   'now-2d/d|now-2d/d': ['Anteayer', 'anteayer'],
+  'todo|now': ['Todo', 'desde el principio'],
 };
 
 export const ACTUALIZAR = [
@@ -39,7 +48,10 @@ export const ACTUALIZAR = [
   { ms: 300000, valor: '5m', texto: '5 min' },
 ];
 
-const NOMBRE_PASO = { 5: '5 segundos', 10: '10 segundos', 15: '15 segundos', 30: '30 segundos', 60: '1 minuto', 300: '5 minutos', 900: '15 minutos', 3600: '1 hora' };
+const NOMBRE_PASO = {
+  5: '5 segundos', 10: '10 segundos', 15: '15 segundos', 30: '30 segundos', 60: '1 minuto', 300: '5 minutos', 900: '15 minutos',
+  1800: '30 minutos', 3600: '1 hora', 10800: '3 horas', 21600: '6 horas', 43200: '12 horas', 86400: '1 día',
+};
 
 let alCambiar = () => {};
 let alActualizar = () => {};
@@ -49,6 +61,7 @@ let alActualizar = () => {};
 /** El momento de una expresión, en milisegundos; con «/d», redondeado al día (al principio en el «desde» y
     al final en el «hasta»). null si no se entiende. */
 export function momento(expresion, ahora, esHasta = false) {
+  if (expresion === 'todo') return 0;
   if (/^\d{10,}$/.test(expresion || '')) return Number(expresion);
   const partes = /^now(?:-(\d+)([smhd]))?(\/d)?$/.exec(expresion || '');
   if (!partes) return null;
@@ -100,8 +113,8 @@ function nombresRelativos(segundos) {
 }
 
 function nombres(rango) {
-  const delDia = DIAS[claveRango(rango)];
-  if (delDia) return delDia;
+  const propio = DIAS[claveRango(rango)];
+  if (propio) return propio;
   const { desde, hasta } = rangoActual(rango);
   if (esRelativo(rango) && /^now-\d+[smhd]$/.test(rango.desde)) return nombresRelativos(Math.round((hasta - desde) / 1000));
   return [textoDesdeHasta(desde, hasta), 'en ese rango'];
@@ -120,29 +133,37 @@ export const nombreRango = (rango = e.rango) => nombres(rango)[0];
 /** Cómo se dice en una oración: «en los últimos 15 minutos», «ayer» o «en ese rango». */
 export const fraseRango = (rango = e.rango) => nombres(rango)[1];
 
+/** Las horas de un rango para el globito de su botón («31/10 06:00 a 07:30»); null para «Todo». */
+export function horasDe(rango) {
+  if (rango.desde === 'todo') return null;
+  const { desde, hasta } = rangoActual(rango);
+  return textoDesdeHasta(desde, Math.min(hasta, ahoraServidor()));
+}
+
 /** Cada cuánto se piden los datos de nuevo (Infinity si la actualización está apagada). */
 export const cadaCuanto = () => e.actualizar || Infinity;
 
-// ---- Cambiar el rango ----
+// ---- Mover un rango (sirve para cualquier barra) ----
+
+/** El rango corrido la mitad de su largo, como Grafana; si llega a ahora, vuelve a correrse solo. null si
+    no se puede correr («Todo», o un rango que ya termina ahora hacia adelante). */
+export function rangoCorrido(rango, sentido) {
+  if (rango.desde === 'todo' || (sentido > 0 && esRelativo(rango))) return null;
+  const { desde, hasta } = rangoActual(rango);
+  const largo = hasta - desde;
+  const nuevoHasta = hasta + (sentido * largo) / 2;
+  if (nuevoHasta >= ahoraServidor()) return { desde: expresionRelativa(Math.round(largo / 1000)), hasta: 'now' };
+  return { desde: String(Math.round(desde + (sentido * largo) / 2)), hasta: String(Math.round(nuevoHasta)) };
+}
+
+// ---- Cambiar el horario del tablero ----
 
 export function ponerRango(rango) {
-  if (claveRango(rango) === claveRango()) return;
+  if (!rango || claveRango(rango) === claveRango()) return;
   e.rango = rango;
   escribirUrl();
   pintarBarra();
   alCambiar();
-}
-
-/** Correr el rango la mitad de su largo, como Grafana; si llega a ahora, vuelve a correrse solo. */
-function correr(sentido) {
-  const { desde, hasta } = rangoActual();
-  const largo = hasta - desde;
-  const nuevoHasta = hasta + (sentido * largo) / 2;
-  if (nuevoHasta >= ahoraServidor()) {
-    ponerRango({ desde: expresionRelativa(Math.round(largo / 1000)), hasta: 'now' });
-    return;
-  }
-  ponerRango({ desde: String(Math.round(desde + (sentido * largo) / 2)), hasta: String(Math.round(nuevoHasta)) });
 }
 
 /** Alejar: el doble de tiempo alrededor del centro, hasta la semana que guarda el servidor. */
@@ -192,7 +213,7 @@ export function leerUrl() {
   const desde = p.get('desde');
   const hasta = p.get('hasta');
   const ahora = Date.now();
-  const d = momento(desde, ahora);
+  const d = desde === 'todo' ? null : momento(desde, ahora);
   const h = momento(hasta, ahora, true);
   if (d !== null && h !== null && d < h) e.rango = { desde, hasta };
   const cada = ACTUALIZAR.find((a) => a.valor === p.get('actualizar'));
@@ -241,21 +262,7 @@ export function prepararGraficoDeTiempo(grafico) {
   zr.on('globalout', soltar);
 }
 
-// ---- La barra ----
-
-function leerRecientes() {
-  try {
-    const lista = JSON.parse(localStorage.getItem(CLAVE_RECIENTES) || '[]');
-    return Array.isArray(lista) ? lista.filter((r) => r && momento(r.desde, 0) !== null && momento(r.hasta, 0) !== null).slice(0, 4) : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-function anotarReciente(rango) {
-  const lista = [rango, ...leerRecientes().filter((r) => claveRango(r) !== claveRango(rango))].slice(0, 4);
-  try { localStorage.setItem(CLAVE_RECIENTES, JSON.stringify(lista)); } catch (_) { /* solo por esta vez */ }
-}
+// ---- El selector del horario, como el de Grafana ----
 
 /** «2026-10-31T06:15:00» para un campo de fecha y hora, en la hora de este navegador. */
 function valorLocal(ms) {
@@ -270,103 +277,163 @@ function zonaHoraria() {
   return `UTC${minutos >= 0 ? '+' : '−'}${dos(minutos / 60)}:${dos(minutos % 60)}`;
 }
 
+// Los selectores abiertos se cierran con Esc o al tocar afuera, los de las dos vistas.
+const selectores = [];
+
+/** Cierra el selector del horario que esté abierto; devuelve si había uno. */
+export function cerrarSelector(enfocar = false) {
+  return selectores.some((s) => s.cerrar(enfocar));
+}
+
+/**
+ * Un selector de horario, como el de Grafana: a la izquierda, el rango a medida con desde y hasta (día y
+ * hora, con calendario) y los usados hace poco; a la derecha, los rangos rápidos con un buscador.
+ * selector: el recuadro que se abre; boton: el que lo abre; rapidos: los rangos de la lista; limite: cuánto
+ * para atrás se puede elegir (ms, o null sin límite); clave: dónde recuerda este navegador los usados;
+ * nota: lo que dice el pie; actual(): el rango de ahora; alElegir(rango): lo aplica.
+ */
+export function selectorDeHorario({ selector, boton, rapidos, limite = null, clave, nota = '', actual, alElegir }) {
+  const leerRecientes = () => {
+    try {
+      const lista = JSON.parse(localStorage.getItem(clave) || '[]');
+      return Array.isArray(lista) ? lista.filter((r) => r && momento(r.desde, 0) !== null && momento(r.hasta, 0) !== null).slice(0, 4) : [];
+    } catch (_) {
+      return [];
+    }
+  };
+  const anotarReciente = (rango) => {
+    const lista = [rango, ...leerRecientes().filter((r) => claveRango(r) !== claveRango(rango))].slice(0, 4);
+    try { localStorage.setItem(clave, JSON.stringify(lista)); } catch (_) { /* solo por esta vez */ }
+  };
+  let campos = null;
+
+  function cerrar(enfocar = false) {
+    if (selector.hidden) return false;
+    selector.hidden = true;
+    boton.setAttribute('aria-expanded', 'false');
+    if (enfocar) boton.focus();
+    return true;
+  }
+
+  function elegir(rango) {
+    cerrar();
+    alElegir(rango);
+  }
+
+  function aplicarAMedida() {
+    const desde = Date.parse(campos.desde.value);
+    const hasta = Date.parse(campos.hasta.value);
+    const minimo = limite ? ahoraServidor() - limite : null;
+    const problema = Number.isNaN(desde) || Number.isNaN(hasta) ? 'Completá las dos fechas.'
+      : desde >= hasta ? '«Desde» tiene que ser antes que «Hasta».'
+        : minimo !== null && desde < minimo ? `El servidor guarda una semana: «Desde» puede ir hasta el ${dia(minimo)} a las ${hora(minimo)}.`
+          : null;
+    campos.error.hidden = !problema;
+    campos.error.textContent = problema || '';
+    if (problema) return;
+    const rango = { desde: String(desde), hasta: String(hasta) };
+    anotarReciente(rango);
+    elegir(rango);
+  }
+
+  function botonRango(rango) {
+    return el('li', {}, el('button', {
+      type: 'button',
+      'aria-current': claveRango(rango) === claveRango(actual()) ? 'true' : null,
+      onclick: () => elegir(rango),
+    }, nombreRango(rango)));
+  }
+
+  function abrir() {
+    cerrarSelector();
+    cerrarMenu();
+    const ahora = ahoraServidor();
+    const elegido = actual();
+    const { hasta } = rangoActual(elegido);
+    const desde = elegido.desde === 'todo' ? ahora - 30 * 86400e3 : rangoActual(elegido).desde;
+    const campo = (texto, valor) => el('input', {
+      type: 'datetime-local', step: '1', value: valorLocal(valor), min: limite ? valorLocal(ahora - limite) : null, max: valorLocal(ahora), 'aria-label': texto,
+    });
+    campos = { desde: campo('Desde', desde), hasta: campo('Hasta', Math.min(hasta, ahora)), error: el('p', { class: 'selector-error', role: 'alert', hidden: true }) };
+    const recientes = leerRecientes();
+    const lista = el('ul', { class: 'lista-rangos' }, rapidos.map(botonRango));
+    const buscar = el('input', {
+      type: 'search',
+      class: 'buscar-rango',
+      placeholder: 'Buscar un rango',
+      'aria-label': 'Buscar un rango rápido',
+      oninput: (ev) => {
+        const texto = ev.target.value.trim().toLowerCase();
+        for (const item of lista.children) item.hidden = Boolean(texto) && !item.textContent.toLowerCase().includes(texto);
+      },
+    });
+    vaciar(selector,
+      el('div', { class: 'selector-columna' },
+        el('h3', {}, 'Rango a medida'),
+        el('label', { class: 'campo' }, el('span', {}, 'Desde'), campos.desde),
+        el('label', { class: 'campo' }, el('span', {}, 'Hasta'), campos.hasta),
+        campos.error,
+        el('button', { type: 'button', class: 'boton-principal chico', onclick: aplicarAMedida }, 'Aplicar'),
+        el('h3', {}, 'Usados hace poco'),
+        recientes.length ? el('ul', { class: 'lista-rangos' }, recientes.map(botonRango))
+          : el('p', { class: 'nota' }, 'Acá aparecen los rangos a medida que uses.')),
+      el('div', { class: 'selector-columna' }, buscar, lista),
+      el('div', { class: 'selector-pie' }, `Hora de este navegador (${zonaHoraria()}).${nota ? ` ${nota}` : ''}`));
+    selector.hidden = false;
+    boton.setAttribute('aria-expanded', 'true');
+    (lista.querySelector('[aria-current="true"]') || buscar).focus();
+  }
+
+  boton.addEventListener('click', () => { if (selector.hidden) abrir(); else cerrar(); });
+  selector.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' && ev.target.matches('input[type="datetime-local"]')) aplicarAMedida();
+  });
+  document.addEventListener('pointerdown', (ev) => {
+    if (!selector.hidden && !selector.contains(ev.target) && !boton.contains(ev.target)) cerrar();
+  });
+  const instancia = { cerrar };
+  selectores.push(instancia);
+  return instancia;
+}
+
+// ---- La barra del horario de En vivo ----
+
 export function pintarBarra() {
-  const { desde, hasta } = rangoActual();
   $('tiempo-texto').textContent = nombreRango();
-  $('tiempo-rango').title = textoDesdeHasta(desde, Math.min(hasta, ahoraServidor()));
+  $('tiempo-rango').title = horasDe(e.rango) || '';
   $('tiempo-adelante').disabled = esRelativo();
   const cada = ACTUALIZAR.find((a) => a.ms === e.actualizar) || ACTUALIZAR[1];
   $('actualizar-texto').textContent = cada.ms ? cada.texto : 'Apagada';
   $('actualizar-cada').classList.toggle('apagada', !cada.ms);
 }
 
-function elegir(rango) {
-  cerrarSelector();
-  ponerRango(rango);
-}
-
-function aplicarAMedida() {
-  const desde = Date.parse($('tiempo-desde').value);
-  const hasta = Date.parse($('tiempo-hasta').value);
-  const limite = ahoraServidor() - SEMANA;
-  const error = $('tiempo-error');
-  const problema = Number.isNaN(desde) || Number.isNaN(hasta) ? 'Completá las dos fechas.'
-    : desde >= hasta ? '«Desde» tiene que ser antes que «Hasta».'
-      : desde < limite ? `El servidor guarda una semana: «Desde» puede ir hasta el ${dia(limite)} a las ${hora(limite)}.`
-        : null;
-  error.hidden = !problema;
-  error.textContent = problema || '';
-  if (problema) return;
-  const rango = { desde: String(desde), hasta: String(hasta) };
-  anotarReciente(rango);
-  elegir(rango);
-}
-
-function botonRango(rango) {
-  return el('li', {}, el('button', {
-    type: 'button',
-    'aria-current': claveRango(rango) === claveRango() ? 'true' : null,
-    onclick: () => elegir(rango),
-  }, nombreRango(rango)));
-}
-
-function abrirSelector() {
-  const selector = $('selector-tiempo');
-  if (!selector.hidden) { cerrarSelector(); return; }
-  cerrarMenu();
-  const { desde, hasta } = rangoActual();
-  const ahora = ahoraServidor();
-  const campo = (id, texto, valor) => el('label', { class: 'campo' }, el('span', {}, texto),
-    el('input', { type: 'datetime-local', id, step: '1', value: valorLocal(valor), min: valorLocal(ahora - SEMANA), max: valorLocal(ahora) }));
-  const recientes = leerRecientes();
-  const lista = el('ul', { class: 'lista-rangos', id: 'lista-rapidos' }, RANGOS_RAPIDOS.map(botonRango));
-  const buscar = el('input', {
-    type: 'search',
-    class: 'buscar-rango',
-    placeholder: 'Buscar un rango',
-    'aria-label': 'Buscar un rango rápido',
-    oninput: (ev) => {
-      const texto = ev.target.value.trim().toLowerCase();
-      for (const item of lista.children) item.hidden = Boolean(texto) && !item.textContent.toLowerCase().includes(texto);
-    },
-  });
-  vaciar(selector,
-    el('div', { class: 'selector-columna' },
-      el('h3', {}, 'Rango a medida'),
-      campo('tiempo-desde', 'Desde', desde),
-      campo('tiempo-hasta', 'Hasta', Math.min(hasta, ahora)),
-      el('p', { class: 'selector-error', id: 'tiempo-error', role: 'alert', hidden: true }),
-      el('button', { type: 'button', class: 'boton-principal chico', onclick: aplicarAMedida }, 'Aplicar'),
-      el('h3', {}, 'Usados hace poco'),
-      recientes.length ? el('ul', { class: 'lista-rangos' }, recientes.map(botonRango))
-        : el('p', { class: 'nota' }, 'Acá aparecen los rangos a medida que uses.')),
-    el('div', { class: 'selector-columna' }, buscar, lista),
-    el('div', { class: 'selector-pie' }, `Hora de este navegador (${zonaHoraria()}). El servidor guarda una semana de tráfico.`));
-  selector.hidden = false;
-  $('tiempo-rango').setAttribute('aria-expanded', 'true');
-  (lista.querySelector('[aria-current="true"]') || buscar).focus();
-}
-
-/** Cierra el selector del horario; devuelve si estaba abierto. */
-export function cerrarSelector(enfocar = false) {
-  const selector = $('selector-tiempo');
-  if (selector.hidden) return false;
-  selector.hidden = true;
-  $('tiempo-rango').setAttribute('aria-expanded', 'false');
-  if (enfocar) $('tiempo-rango').focus();
-  return true;
+function ponerActualizacion(ms) {
+  e.actualizar = ms;
+  escribirUrl();
+  pintarBarra();
 }
 
 function elegirActualizacion() {
   abrirMenu($('actualizar-cada'), ACTUALIZAR.map((a) => ({
     texto: a.ms ? `Cada ${a.texto}` : 'Apagada',
     marcado: a.ms === e.actualizar,
-    accion: () => {
-      e.actualizar = a.ms;
-      escribirUrl();
-      pintarBarra();
-    },
+    accion: () => ponerActualizacion(a.ms),
   })));
+}
+
+/** El ⋮ del teléfono: lo que en la computadora son botones de la barra, en un menú, con la barra en una fila. */
+function masOpciones() {
+  abrirMenu($('tiempo-mas'), [
+    { texto: 'Actualizar ahora', icono: 'actualizar', accion: () => alActualizar() },
+    { texto: 'Alejar: el doble de tiempo', icono: 'alejar', accion: alejar },
+    { texto: 'Copiar el enlace', icono: 'enlace', accion: copiarEnlace },
+    { separador: true },
+    ...ACTUALIZAR.map((a) => ({
+      texto: a.ms ? `Actualizar cada ${a.texto}` : 'Actualización apagada',
+      marcado: a.ms === e.actualizar,
+      accion: () => ponerActualizacion(a.ms),
+    })),
+  ]);
 }
 
 async function copiarEnlace() {
@@ -383,19 +450,22 @@ export function configurarTiempo({ alCambiarRango, actualizarAhora }) {
   alCambiar = alCambiarRango;
   alActualizar = actualizarAhora;
   for (const lugar of document.querySelectorAll('#barra-tiempo [data-icono]')) lugar.prepend(icono(lugar.dataset.icono));
-  $('tiempo-rango').addEventListener('click', abrirSelector);
-  $('tiempo-atras').addEventListener('click', () => correr(-1));
-  $('tiempo-adelante').addEventListener('click', () => correr(1));
+  selectorDeHorario({
+    selector: $('selector-tiempo'),
+    boton: $('tiempo-rango'),
+    rapidos: RANGOS_RAPIDOS,
+    limite: SEMANA,
+    clave: 'zonda.tablero.rangos',
+    nota: 'El servidor guarda una semana de tráfico.',
+    actual: () => e.rango,
+    alElegir: ponerRango,
+  });
+  $('tiempo-atras').addEventListener('click', () => ponerRango(rangoCorrido(e.rango, -1)));
+  $('tiempo-adelante').addEventListener('click', () => ponerRango(rangoCorrido(e.rango, 1)));
   $('tiempo-alejar').addEventListener('click', alejar);
   $('boton-actualizar').addEventListener('click', () => alActualizar());
   $('actualizar-cada').addEventListener('click', elegirActualizacion);
   $('copiar-enlace').addEventListener('click', copiarEnlace);
-  $('selector-tiempo').addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter' && ev.target.matches('input[type="datetime-local"]')) aplicarAMedida();
-  });
-  document.addEventListener('pointerdown', (ev) => {
-    const selector = $('selector-tiempo');
-    if (!selector.hidden && !selector.contains(ev.target) && !$('tiempo-rango').contains(ev.target)) cerrarSelector();
-  });
+  $('tiempo-mas').addEventListener('click', masOpciones);
   pintarBarra();
 }

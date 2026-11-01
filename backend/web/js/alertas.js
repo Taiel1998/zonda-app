@@ -1,14 +1,20 @@
-// La vista Alertas y el detalle, con lo mismo que la app: los filtros (estado, severidad, período o fechas,
-// servicios, equipos, método y responsable), revisar en dos pasos con motivo y comentario obligatorios,
-// Deshacer, el conflicto cuando otra persona revisó después, y el responsable con las reglas de cada perfil.
+// La vista Alertas y el detalle, con lo mismo que la app: los filtros (estado, severidad, servicios, equipos,
+// método y responsable) y el horario, revisar en dos pasos con motivo y comentario obligatorios, Deshacer, el
+// conflicto cuando otra persona revisó después, y el responsable con las reglas de cada perfil. Además, la
+// lista con sus filtros se baja en CSV.
 
-import { el, fechaHora, horaConSegundos, icono, isoConZona, nuevoId, numero, vaciar } from './util.js';
+import { cambiarUrl, el, fechaCsv, fechaHora, horaConSegundos, icono, isoConZona, nuevoId, numero, vaciar } from './util.js';
 import {
   $, ESTADOS, METODOS, MOTIVOS, MOTIVOS_POR_RESULTADO, NIVEL, ORDEN_SEVERIDAD, RESULTADOS, ahoraServidor, avisarCambio,
   chipEstado, chipSeveridad, comentarioPropuesto, e, esAdmin, guardarAlerta, mandar, metodosDe, nombreEquipo, nombrePersona,
   pedir, responsableId, servicioCorto, servicioDe, tipoCorto,
 } from './comun.js';
-import { abrirHoja, avisoInferior } from './hojas.js';
+import { abrirEnLugar, abrirHoja, actualizarFondo, avisoInferior } from './hojas.js';
+import { bajarArchivo, csvDe, nombreConFecha } from './compartir.js';
+import { alternarAyuda, cerrarAyuda } from './ayuda.js';
+import {
+  RANGOS_ALERTAS, claveRango, esRelativo, fraseRango, horasDe, nombreRango, rangoActual, rangoCorrido, selectorDeHorario,
+} from './tiempo.js';
 
 // ---- Sincronización por cursor, como la app ----
 
@@ -47,15 +53,28 @@ export async function sincronizarAlertas() {
 
 // ---- Filtros ----
 
-const PERIODOS = { '24h': { nombre: 'Últimas 24 horas', horas: 24 }, '7d': { nombre: 'Últimos 7 días', horas: 168 }, '30d': { nombre: 'Últimos 30 días', horas: 720 }, todo: { nombre: 'Todo', horas: null } };
 const FILTRO_ESTADO = { todas: 'Todas', sin_revisar: 'Sin revisar', revisadas: 'Revisadas', falsos: 'Falsos positivos' };
 
 function filtrosNuevos() {
-  return { estado: 'todas', severidades: new Set(), periodo: '30d', fechas: null, servicios: new Set(), otrosServicios: false, destinos: new Set(), metodos: new Set(), responsable: 'todas' };
+  // El horario va aparte de los filtros, arriba a la derecha, como en Grafana (rango: expresiones de tiempo.js).
+  return { estado: 'todas', severidades: new Set(), rango: { desde: 'now-30d', hasta: 'now' }, servicios: new Set(), otrosServicios: false, destinos: new Set(), metodos: new Set(), responsable: 'todas' };
 }
 
 export const f = filtrosNuevos();
 let limite = 50;
+
+/** La lista con las alertas que empezaron en un tramo (una barra de «Alertas en el tiempo»), sin otros filtros. */
+export function verAlertasEntre(desde, hasta) {
+  Object.assign(f, filtrosNuevos(), { rango: { desde, hasta } });
+  limite = 50;
+}
+
+/** La lista con las sin revisar de una severidad, desde el principio: lo que cuenta su contador en En vivo y
+    lo que abre el aviso de varias altas, como el enlace de la notificación de la app. */
+export function verSinRevisar(severidad) {
+  Object.assign(f, filtrosNuevos(), { estado: 'sin_revisar', severidades: new Set([severidad]), rango: { desde: 'todo', hasta: 'now' } });
+  limite = 50;
+}
 
 /** Los servicios con chip propio: los diez con más alertas; el resto entra en "Los demás" (decisión 46). */
 function serviciosConChip() {
@@ -64,15 +83,14 @@ function serviciosConChip() {
   return [...cuenta.entries()].sort((x, y) => y[1] - x[1]).slice(0, 10).map(([s]) => s);
 }
 
-function pasa(a, ahora, conChip) {
+function pasa(a, horario, conChip) {
   if (f.estado === 'sin_revisar' && a.estadoRevision !== 'sin_revisar') return false;
   if (f.estado === 'revisadas' && a.estadoRevision === 'sin_revisar') return false;
   if (f.estado === 'falsos' && a.estadoRevision !== 'falso_positivo') return false;
   if (f.severidades.size && !f.severidades.has(a.severidad)) return false;
+  // Por la hora en que empezó; un rango que termina ahora no tiene final (el reloj del sensor puede ir adelantado).
   const t = Date.parse(a.inicio);
-  if (f.fechas) {
-    if (t < f.fechas.desde || t > f.fechas.hasta) return false;
-  } else if (PERIODOS[f.periodo].horas && t < ahora - PERIODOS[f.periodo].horas * 3600e3) return false;
+  if (t < horario.desde || (!esRelativo(f.rango) && t >= horario.hasta)) return false;
   if (f.servicios.size || f.otrosServicios) {
     const enChip = conChip.includes(a.servicio);
     if (!(f.servicios.has(a.servicio) || (f.otrosServicios && !enChip))) return false;
@@ -86,19 +104,35 @@ function pasa(a, ahora, conChip) {
   return true;
 }
 
+// El orden de la lista, como las tablas de Grafana: se toca el encabezado (Severidad, Empezó o Conexiones) y,
+// tocándolo otra vez, se da vuelta. De fábrica, las más nuevas primero; a igual valor, también.
+const ORDENES = {
+  severidad: { valor: (a) => ORDEN_SEVERIDAD.length - ORDEN_SEVERIDAD.indexOf(a.severidad), frases: ['las más graves primero', 'las menos graves primero'] },
+  empezo: { valor: (a) => Date.parse(a.inicio), frases: ['las más nuevas primero', 'las más viejas primero'] },
+  conexiones: { valor: (a) => a.cantidadFlujos, frases: ['las de más conexiones primero', 'las de menos conexiones primero'] },
+};
+const orden = { columna: 'empezo', descendente: true };
+
+function comparar(x, y) {
+  const { valor } = ORDENES[orden.columna];
+  return (valor(y) - valor(x)) * (orden.descendente ? 1 : -1) || Date.parse(y.inicio) - Date.parse(x.inicio);
+}
+
+function ordenarPor(columna) {
+  if (orden.columna === columna) orden.descendente = !orden.descendente;
+  else Object.assign(orden, { columna, descendente: true });
+  pintarAlertas();
+}
+
+/** Con los filtros y el horario, en el orden elegido; el CSV sale en el mismo orden. */
 export function alertasFiltradas() {
-  const ahora = ahoraServidor();
+  const horario = rangoActual(f.rango);
   const conChip = serviciosConChip();
-  return [...e.alertas.values()].filter((a) => pasa(a, ahora, conChip)).sort((x, y) => Date.parse(y.inicio) - Date.parse(x.inicio));
+  return [...e.alertas.values()].filter((a) => pasa(a, horario, conChip)).sort(comparar);
 }
 
 const cantidadMasFiltros = () => f.servicios.size + (f.otrosServicios ? 1 : 0) + f.destinos.size + f.metodos.size;
-const hayFiltros = () => f.estado !== 'todas' || f.severidades.size || f.periodo !== '30d' || f.fechas || cantidadMasFiltros() || f.responsable !== 'todas';
-
-function textoPeriodo() {
-  if (f.fechas) return `${fechaHora(f.fechas.desde)} a ${fechaHora(f.fechas.hasta)}`;
-  return PERIODOS[f.periodo].nombre;
-}
+const hayFiltros = () => f.estado !== 'todas' || f.severidades.size || claveRango(f.rango) !== 'now-30d|now' || cantidadMasFiltros() || f.responsable !== 'todas';
 
 function textoResponsable() {
   if (f.responsable === 'mias') return 'Asignadas a mí';
@@ -107,43 +141,131 @@ function textoResponsable() {
   return 'Responsable';
 }
 
+/** Cada chip abre la hoja de su filtro: el lector lo anuncia como algo que abre un diálogo, no como un interruptor. */
 function chip(texto, activo, alTocar) {
-  return el('button', { type: 'button', class: 'chip-filtro', 'aria-pressed': String(Boolean(activo)), onclick: alTocar }, texto);
+  return el('button', { type: 'button', class: `chip-filtro${activo ? ' activo' : ''}`, 'aria-haspopup': 'dialog', onclick: alTocar }, texto);
 }
 
 export function pintarAlertas() {
   const severidades = f.severidades.size ? ORDEN_SEVERIDAD.filter((s) => f.severidades.has(s)).map((s) => NIVEL[s]).join(', ') : 'Severidad';
   vaciar($('filtros-alertas'),
-    chip(FILTRO_ESTADO[f.estado], true, hojaEstado),
+    chip(f.estado === 'todas' ? 'Estado' : FILTRO_ESTADO[f.estado], f.estado !== 'todas', hojaEstado),
     chip(severidades, f.severidades.size, hojaSeveridad),
-    chip(textoPeriodo(), f.fechas || f.periodo !== '30d', hojaPeriodo),
     chip(cantidadMasFiltros() ? `Más filtros (${cantidadMasFiltros()})` : 'Más filtros', cantidadMasFiltros(), hojaMasFiltros),
     chip(textoResponsable(), f.responsable !== 'todas', hojaResponsableFiltro),
     hayFiltros() ? el('button', { type: 'button', class: 'boton-texto', onclick: () => { Object.assign(f, filtrosNuevos()); limite = 50; pintarAlertas(); } }, 'Limpiar filtros') : null);
 
+  pintarBarraAlertas();
   const lista = alertasFiltradas();
   const sinRevisar = lista.filter((a) => a.estadoRevision === 'sin_revisar').length;
-  vaciar($('resumen-filtros-alertas'), el('strong', {}, `${numero(lista.length)} ${lista.length === 1 ? 'alerta' : 'alertas'}`), ` · ${numero(sinRevisar)} sin revisar · las más nuevas primero`);
+  // Hasta la primera sincronización la lista no está vacía: está cargando.
+  if (!e.sincronizada) vaciar($('resumen-filtros-alertas'), 'Cargando las alertas…');
+  else vaciar($('resumen-filtros-alertas'), el('strong', {}, `${numero(lista.length)} ${lista.length === 1 ? 'alerta' : 'alertas'}`), ` ${fraseRango(f.rango)} · ${numero(sinRevisar)} sin revisar · ${ORDENES[orden.columna].frases[orden.descendente ? 0 : 1]}`);
+  // Solo la columna elegida lleva aria-sort, y su flecha (estilos.css) dice para qué lado.
+  for (const th of $('tabla-alertas').tHead.querySelectorAll('th[data-orden]')) {
+    if (th.dataset.orden === orden.columna) th.setAttribute('aria-sort', orden.descendente ? 'descending' : 'ascending');
+    else th.removeAttribute('aria-sort');
+  }
   const cuerpo = $('tabla-alertas').tBodies[0];
+  // Si el foco estaba en una fila, vuelve a la misma alerta después de armar la tabla de nuevo.
+  const enfocada = cuerpo.contains(document.activeElement) ? document.activeElement.closest('tr[data-id]') : null;
   vaciar(cuerpo, lista.slice(0, limite).map((a) => {
     const quien = responsableId(a);
-    return el('tr', { class: 'clic', tabindex: '0', onclick: () => abrirDetalle(a.id), onkeydown: (ev) => { if (ev.key === 'Enter') abrirDetalle(a.id); } },
+    // El estado va al lado de la severidad, así nunca queda cortado; el puerto, en el detalle.
+    return el('tr', {
+      class: 'clic', tabindex: '0', dataset: { id: a.id }, onclick: () => abrirDetalle(a.id),
+      onkeydown: (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrirDetalle(a.id); } },
+    },
       el('td', {}, chipSeveridad(a.severidad)),
+      el('td', {}, chipEstado(a.estadoRevision)),
       el('td', {}, el('strong', {}, tipoCorto(a))),
       el('td', { class: 'par' }, `${nombreEquipo(a, 'origen')} → ${nombreEquipo(a, 'destino')}`),
-      el('td', { class: 'secundario', 'data-etiqueta': 'Servicio' }, servicioDe(a)),
+      el('td', { class: 'secundario', 'data-etiqueta': 'Servicio' }, servicioCorto(a.servicio)),
       el('td', { class: 'secundario', 'data-etiqueta': 'Empezó' }, fechaHora(Date.parse(a.inicio), ahoraServidor())),
-      el('td', { class: 'num', 'data-etiqueta': 'Flujos' }, numero(a.cantidadFlujos)),
-      el('td', {}, el('span', { class: 'metodos' }, METODOS.map((m) => el('span', { class: `metodo${a.veredictos[m.id] ? ' si' : ''}`, title: `${m.nombre}: ${a.veredictos[m.id] ? 'anómalo' : 'normal'}` }, m.corto)))),
-      el('td', {}, quien ? chipResponsable(a.asignacion.responsable) : el('span', { class: 'secundario' }, 'Sin asignar')),
-      el('td', {}, chipEstado(a.estadoRevision)));
+      el('td', { class: 'num', 'data-etiqueta': 'Conexiones' }, numero(a.cantidadFlujos)),
+      el('td', {}, el('span', { class: 'metodos', 'aria-label': textoMetodos(a) }, METODOS.map((m) => el('span', { class: `metodo${a.veredictos[m.id] ? ' si' : ''}`, title: `${m.nombre}: ${a.veredictos[m.id] ? 'anómalo' : 'normal'}`, 'aria-hidden': 'true' }, m.corto)))),
+      el('td', {}, quien ? chipResponsable(a.asignacion.responsable) : el('span', { class: 'secundario' }, 'Sin asignar')));
   }));
-  $('vacio-alertas').hidden = lista.length > 0;
+  if (enfocada) {
+    const fila = cuerpo.querySelector(`tr[data-id="${CSS.escape(enfocada.dataset.id)}"]`);
+    if (fila) fila.focus({ preventScroll: true });
+  }
+  $('vacio-alertas').hidden = lista.length > 0 || !e.sincronizada;
   $('vacio-alertas').textContent = 'Ninguna alerta con estos filtros. Cambiá o limpiá los filtros.';
   $('ver-mas').hidden = lista.length <= limite;
 }
 
 export function verMas() { limite += 50; pintarAlertas(); }
+
+function conClase(elemento, clase) {
+  elemento.classList.add(clase);
+  return elemento;
+}
+
+/** Lo que el lector de pantalla dice de los métodos: cuáles marcaron, no solo el color. */
+function textoMetodos(a) {
+  const marcaron = METODOS.filter((m) => a.veredictos[m.id]).map((m) => m.nombre.toLowerCase());
+  if (!marcaron.length) return 'Ningún método marcó';
+  return `Marcaron: ${marcaron.length === 1 ? marcaron[0] : `${marcaron.slice(0, -1).join(', ')} y ${marcaron[marcaron.length - 1]}`}`;
+}
+
+/** Toda la lista con los filtros y el horario de arriba, no solo lo que se ve; los métodos y la revisión, en palabras. */
+function bajarCsvAlertas() {
+  const lista = alertasFiltradas();
+  if (!lista.length) { avisoInferior('No hay alertas con estos filtros para bajar'); return; }
+  const columnas = ['Severidad', 'Tipo', 'Origen', 'IP de origen', 'Destino', 'IP de destino', 'Servicio', 'Puerto', 'Empezó', 'Terminó',
+    'Conexiones', ...METODOS.map((m) => m.nombre), 'Responsable', 'Estado', 'Revisó', 'Motivo', 'Comentario'];
+  const filas = lista.map((a) => {
+    const revisada = a.estadoRevision !== 'sin_revisar';
+    const ultima = revisada ? (a.historial || []).reduce((x, r) => (!x || Date.parse(r.revisadaEn || r.fecha) >= Date.parse(x.revisadaEn || x.fecha) ? r : x), null) : null;
+    return [
+      NIVEL[a.severidad], tipoCorto(a), nombreEquipo(a, 'origen'), a.origenIp, nombreEquipo(a, 'destino'), a.destinoIp,
+      servicioCorto(a.servicio), `${(a.protocolo || 'tcp').toUpperCase()}/${a.puerto}`, fechaCsv(Date.parse(a.inicio)), fechaCsv(Date.parse(a.fin)),
+      a.cantidadFlujos, ...METODOS.map((m) => (a.veredictos[m.id] ? 'Marcó' : 'No marcó')),
+      responsableId(a) ? a.asignacion.responsable : 'Sin asignar', ESTADOS[a.estadoRevision] || a.estadoRevision,
+      ultima ? ultima.persona || ultima.autor : '', ultima ? MOTIVOS[ultima.motivo] || ultima.motivo : '', ultima ? ultima.comentario : '',
+    ];
+  });
+  bajarArchivo(`${nombreConFecha('alertas')}.csv`, csvDe(columnas, filas));
+}
+
+// ---- El horario de la lista, arriba a la derecha, con el mismo selector de En vivo ----
+
+function pintarBarraAlertas() {
+  $('alertas-rango-texto').textContent = nombreRango(f.rango);
+  $('alertas-rango').title = horasDe(f.rango) || 'Desde la primera alerta';
+  $('alertas-atras').disabled = f.rango.desde === 'todo';
+  $('alertas-adelante').disabled = esRelativo(f.rango);
+}
+
+function ponerRangoAlertas(rango) {
+  if (!rango || claveRango(rango) === claveRango(f.rango)) return;
+  f.rango = rango;
+  limite = 50;
+  pintarAlertas();
+}
+
+/** El selector del horario de la lista: los rangos de las alertas, que se guardan más que el tráfico. */
+export function configurarAlertas() {
+  for (const lugar of document.querySelectorAll('#barra-tiempo-alertas [data-icono], #alertas-csv [data-icono]')) lugar.prepend(icono(lugar.dataset.icono));
+  $('alertas-csv').addEventListener('click', bajarCsvAlertas);
+  for (const boton of $('tabla-alertas').tHead.querySelectorAll('button[data-orden]')) {
+    boton.append(icono('abajo'));
+    boton.addEventListener('click', () => ordenarPor(boton.dataset.orden));
+  }
+  selectorDeHorario({
+    selector: $('selector-alertas'),
+    boton: $('alertas-rango'),
+    rapidos: RANGOS_ALERTAS,
+    clave: 'zonda.tablero.rangos-alertas',
+    nota: 'La lista muestra las alertas que empezaron en ese horario.',
+    actual: () => f.rango,
+    alElegir: ponerRangoAlertas,
+  });
+  $('alertas-atras').addEventListener('click', () => ponerRangoAlertas(rangoCorrido(f.rango, -1)));
+  $('alertas-adelante').addEventListener('click', () => ponerRangoAlertas(rangoCorrido(f.rango, 1)));
+  pintarBarraAlertas();
+}
 
 function chipResponsable(nombre) {
   return el('span', { class: 'responsable-chip' }, el('span', { class: 'inicial' }, (nombre || '?').slice(0, 1).toUpperCase()), nombre);
@@ -194,41 +316,6 @@ function hojaSeveridad() {
   });
 }
 
-function aLocal(ms) {
-  const d = new Date(ms);
-  const dos = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}T${dos(d.getHours())}:${dos(d.getMinutes())}`;
-}
-
-/** Período: 24 horas, 7 o 30 días, todo, o desde y hasta con día y hora (las fechas mandan sobre el período). */
-export function hojaPeriodo() {
-  let periodo = f.fechas ? null : f.periodo;
-  const ahora = ahoraServidor();
-  const desde = el('input', { type: 'datetime-local', value: aLocal(f.fechas ? f.fechas.desde : ahora - 86400e3) });
-  const hasta = el('input', { type: 'datetime-local', value: aLocal(f.fechas ? f.fechas.hasta : ahora) });
-  const error = el('div', { class: 'error-hoja', hidden: true });
-  const botones = opcionUnica(Object.fromEntries(Object.entries(PERIODOS).map(([id, p]) => [id, p.nombre])), () => periodo, (id) => { periodo = id; });
-  abrirHoja({
-    titulo: 'Período',
-    cuerpo: [
-      el('div', { class: 'opciones' }, botones),
-      el('div', { class: 'grupo-opciones' }, el('p', {}, 'O elegí las fechas'), el('label', { class: 'campo' }, el('span', {}, 'Desde'), desde), el('label', { class: 'campo' }, el('span', {}, 'Hasta'), hasta)),
-      error,
-    ],
-    acciones: [
-      { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
-      {
-        texto: 'Usar las fechas', tipo: 'secundario', alHacer: (h) => {
-          const d = Date.parse(desde.value); const a = Date.parse(hasta.value);
-          if (!(a > d)) { error.hidden = false; error.textContent = 'La hora de «Hasta» tiene que ser después de la de «Desde».'; return; }
-          f.fechas = { desde: d, hasta: a }; h.cerrar(); limite = 50; pintarAlertas();
-        },
-      },
-      { texto: 'Aplicar período', tipo: 'principal', alHacer: (h) => { if (periodo) { f.periodo = periodo; f.fechas = null; } h.cerrar(); limite = 50; pintarAlertas(); } },
-    ],
-  });
-}
-
 function hojaMasFiltros() {
   const servicios = new Set(f.servicios);
   const destinos = new Set(f.destinos);
@@ -244,7 +331,7 @@ function hojaMasFiltros() {
   const destinosOrdenados = [...cuentaDestinos.entries()].sort((x, y) => y[1].n - x[1].n).slice(0, 12);
   hojaDeOpciones({
     titulo: 'Más filtros',
-    subtitulo: 'Podés elegir varios en cada grupo. Tocá uno elegido para sacarlo.',
+    subtitulo: 'Podés elegir varios en cada grupo. Para sacar uno, elegilo de nuevo.',
     grupos: [
       { titulo: 'Servicio', opciones: [...opcionMultiple(conChip.map((s) => ({ id: s, nombre: servicioCorto(s) })), servicios), ...(e.alertas.size && new Set([...e.alertas.values()].map((a) => a.servicio)).size > conChip.length ? opcionMultiple([{ id: '__otros', nombre: 'Los demás' }], otros) : [])] },
       { titulo: 'Equipo destino', opciones: opcionMultiple(destinosOrdenados.map(([ip, d]) => ({ id: ip, nombre: d.nombre === ip ? ip : `${d.nombre}` })), destinos) },
@@ -263,21 +350,72 @@ function hojaResponsableFiltro() {
 
 // ---- Detalle de una alerta ----
 
-export function abrirDetalle(id, enfocar = true) {
+/** Cuánto se pasó un método de lo normal, con palabras y en la misma escala para la IA y los umbrales,
+    como la app (decisión 37): desde el doble del límite dice cuántas veces; antes, «un poco más». */
+function cuantoMas(anomalo, valor, limite) {
+  if (!anomalo) return 'Dentro de lo normal';
+  const veces = valor / limite;
+  return limite > 0 && veces >= 2 ? `${Math.round(veces)} veces más de lo normal` : 'Un poco más de lo normal';
+}
+
+/** Lo que dice el detalle de cada método, sin el umbral ni los números con ceros (como la app). */
+function lecturas(v) {
+  return {
+    ia: cuantoMas(v.ia, v.errorReconstruccion, v.umbralIa),
+    // Sin marcarla, «Dentro de lo normal» aunque el servicio sea nuevo: el texto no contradice la etiqueta.
+    umbrales: !v.umbrales ? 'Dentro de lo normal' : v.servicioSinLineaBase ? 'Servicio nuevo en la red' : cuantoMas(true, v.contexto60s, v.umbralServicio),
+    reglas: v.parEnCatalogo ? 'Servicio autorizado' : 'Servicio no autorizado',
+  };
+}
+
+/** El único «?» del detalle, con los textos de la app: las conexiones y los tres métodos, en un globito. */
+function alternarAyudaDetalle(ev) {
+  alternarAyuda(ev.currentTarget, 'Qué significa cada dato', [
+    el('p', {}, el('b', {}, 'Conexiones en total:'), ' todas las de estos dos equipos, hasta que pasan 15 minutos sin ninguna.'),
+    el('p', {}, el('b', {}, 'Conexiones en 60 s:'), ' cuántas veces el origen se conectó a este servicio en un minuto.'),
+    el('p', {}, el('b', {}, 'Modelo de IA:'), ' aprendió el tráfico normal de tu red y marca lo que se aleja de eso.'),
+    el('p', {}, el('b', {}, 'Umbrales estadísticos:'), ' marcan si hay más conexiones a un servicio por minuto que en un día normal.'),
+    el('p', {}, el('b', {}, 'Reglas estáticas:'), ' marcan los servicios que no están en la lista de autorizados.'),
+    el('p', {}, 'Alcanza con que uno marque para que haya alerta.'),
+  ]);
+}
+
+/** «Detectada por IA y umbrales», como la app (detalle_detectada_por). */
+function detectadaPor(a) {
+  const nombres = { ia: 'IA', umbrales: 'umbrales', reglas: 'reglas' };
+  const marcaron = METODOS.filter((m) => a.veredictos[m.id]).map((m) => nombres[m.id]);
+  return marcaron.length < 2 ? marcaron.join('') || 'ningún método' : `${marcaron.slice(0, -1).join(', ')} y ${marcaron[marcaron.length - 1]}`;
+}
+
+// Lo que tenía el foco al abrir el detalle: al cerrarlo, el foco vuelve ahí (o a la fila de la misma alerta).
+let abridorDetalle = null;
+// Si abrir el detalle dejó una entrada en el historial: cerrarlo es volver atrás, así Atrás no sale del tablero.
+let entradaPropia = false;
+
+/** La alerta abierta va en la dirección (`alerta=`): Atrás cierra el detalle, como en la app, y el enlace se comparte.
+    `sinHistoria` es para cuando lo abre o lo cierra el mismo botón Atrás. */
+export function abrirDetalle(id, enfocar = true, { sinHistoria = false } = {}) {
   const a = e.alertas.get(id);
   if (!a) return;
+  // Mientras se revisa en el panel, lo que llega de afuera no borra los pasos; abrir otra alerta los cancela.
+  if (revision) {
+    if (revision.id === id && !enfocar) return;
+    revision.hoja.cerrar('otra');
+  }
+  if (enfocar && $('detalle').hidden) abridorDetalle = document.activeElement;
+  if (!sinHistoria && new URLSearchParams(location.search).get('alerta') !== id) {
+    const nueva = $('detalle').hidden;
+    cambiarUrl({ alerta: id }, { nueva });
+    if (nueva) entradaPropia = true;
+  }
+  // El «?» se vuelve a armar: su globito quedaría suelto.
+  cerrarAyuda();
   e.detalleAbierto = id;
   e.nuevas.delete(id);
   const panel = $('detalle');
   const v = a.veredictos;
   const ahora = ahoraServidor();
-  const explicacion = {
-    ia: `Error de reconstrucción ${numero(v.errorReconstruccion, 4)} frente a un umbral de ${numero(v.umbralIa, 4)}.`,
-    umbrales: v.servicioSinLineaBase
-      ? `El servicio no tenía línea base: ${numero(v.contexto60s)} conexiones en 60 segundos.`
-      : `${numero(v.contexto60s)} conexiones al servicio en 60 segundos, frente a ${numero(v.umbralServicio)} de un día normal.`,
-    reglas: v.parEnCatalogo ? `${v.parDestino} está en el catálogo de pares autorizados.` : `${v.parDestino} no está en el catálogo de pares autorizados.`,
-  };
+  const explicacion = lecturas(v);
   const historial = a.historial || [];
   const quien = responsableId(a);
   const accionesResponsable = [];
@@ -292,9 +430,16 @@ export function abrirDetalle(id, enfocar = true) {
     el('div', { class: 'detalle-cabecera' },
       el('div', {},
         el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' }, chipSeveridad(a.severidad), chipEstado(a.estadoRevision)),
-        el('h2', { id: 'detalle-titulo' }, tipoCorto(a)),
-        el('p', {}, a.tipoAtaque && a.confianzaTipo != null ? `Lo tipificó la segunda etapa con una confianza del ${numero(a.confianzaTipo * 100, 0)} %.` : 'Sin tipo de la segunda etapa: lo vieron las reglas o los umbrales.')),
-      el('button', { type: 'button', class: 'boton-icono', 'aria-label': 'Cerrar el detalle', onclick: cerrarDetalle }, icono('cruz'))),
+        el('div', { class: 'titulo-con-ayuda' },
+          el('h2', { id: 'detalle-titulo' }, tipoCorto(a)),
+          el('button', {
+            type: 'button', class: 'boton-ayuda', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-controls': 'ayuda-flotante',
+            'aria-label': 'Qué significa cada dato', title: 'Qué significa cada dato', onclick: alternarAyudaDetalle,
+          }, '?')),
+        el('p', {}, `Detectada por ${detectadaPor(a)}.`)),
+      // La X en la computadora; en el teléfono, la flecha de arriba a la izquierda, como la app (estilos.css).
+      el('button', { type: 'button', class: 'boton-icono cerrar-detalle', 'aria-label': 'Cerrar el detalle', onclick: cerrarDetalle },
+        conClase(icono('cruz'), 'cruz-compu'), conClase(icono('volver'), 'volver-telefono'))),
     el('div', { class: 'recorrido' },
       el('div', {}, el('strong', {}, nombreEquipo(a, 'origen')), el('span', {}, a.origenIp)),
       el('span', { class: 'flecha' }, icono('flecha')),
@@ -309,16 +454,18 @@ export function abrirDetalle(id, enfocar = true) {
     el('section', { class: 'detalle-seccion' },
       el('dl', { class: 'datos' },
         el('div', {}, el('dt', {}, 'Servicio'), el('dd', {}, servicioDe(a))),
-        el('div', {}, el('dt', {}, 'Flujos'), el('dd', {}, numero(a.cantidadFlujos))),
+        el('div', {}, el('dt', {}, 'Conexiones en total'), el('dd', {}, numero(a.cantidadFlujos))),
         el('div', {}, el('dt', {}, 'Empezó'), el('dd', {}, fechaHoraSeg(Date.parse(a.inicio), ahora))),
         el('div', {}, el('dt', {}, 'Terminó'), el('dd', {}, fechaHoraSeg(Date.parse(a.fin), ahora))),
-        el('div', {}, el('dt', {}, 'Puertos distintos'), el('dd', {}, numero(a.puertosDistintos))),
-        el('div', {}, el('dt', {}, 'Aviso de Telegram'), el('dd', {}, a.avisoTelegram ? `Salió a las ${horaConSegundos(Date.parse(a.avisoTelegram))}` : 'No salió')))),
+        el('div', {}, el('dt', {}, 'Conexiones en 60 s'), el('dd', {}, numero(v.contexto60s))),
+        el('div', {}, el('dt', {}, 'Aviso de Telegram'), el('dd', {}, a.avisoTelegram ? `Salió a las ${horaConSegundos(Date.parse(a.avisoTelegram))}` : 'No salió')),
+        // Como en la app: un solo puerto no dice nada; varios, que el origen probó puertos.
+        a.puertosDistintos > 1 ? el('div', {}, el('dt', {}, 'Puertos distintos'), el('dd', {}, numero(a.puertosDistintos))) : null)),
     el('section', { class: 'detalle-seccion' },
       el('h3', {}, 'Predicción por método'),
       METODOS.map((m) => el('div', { class: `veredicto ${v[m.id] ? 'anomalo' : 'normal'}` },
         el('span', { class: 'veredicto-icono' }, icono(m.icono)),
-        el('span', { class: 'veredicto-nombre' }, m.nombre),
+        el('span', { class: 'veredicto-nombre' }, m.resumen),
         el('span', { class: 'veredicto-resultado' }, v[m.id] ? 'Anómalo' : 'Normal'),
         el('span', { class: 'veredicto-explicacion' }, explicacion[m.id])))),
     el('section', { class: 'detalle-seccion' },
@@ -330,6 +477,7 @@ export function abrirDetalle(id, enfocar = true) {
         : el('p', { class: 'nota' }, 'Todavía nadie la revisó.')));
   $('velo').hidden = false;
   panel.hidden = false;
+  actualizarFondo();
   if (enfocar) panel.querySelector('.boton-icono').focus();
 }
 
@@ -357,10 +505,50 @@ function lineasHistorial(a) {
   return lineas.sort((x, y) => y.cuando - x.cuando);
 }
 
-export function cerrarDetalle() {
+export function cerrarDetalle({ sinHistoria = false } = {}) {
+  if (revision) revision.hoja.cerrar('detalle');
+  cerrarAyuda();
+  const id = e.detalleAbierto;
+  if (sinHistoria) entradaPropia = false;
+  else if (new URLSearchParams(location.search).get('alerta')) {
+    if (entradaPropia) { entradaPropia = false; history.back(); } else cambiarUrl({ alerta: null });
+  }
   e.detalleAbierto = null;
   $('detalle').hidden = true;
   $('velo').hidden = true;
+  actualizarFondo();
+  const volver = abridorDetalle && abridorDetalle.isConnected ? abridorDetalle
+    : id ? document.querySelector(`#tablero [data-id="${CSS.escape(id)}"]`) : null;
+  abridorDetalle = null;
+  if (volver) volver.focus({ preventScroll: true });
+}
+
+// Los pasos de Revisar abiertos dentro del panel del detalle: { id, hoja }.
+let revision = null;
+
+/** En la compu, los pasos de Revisar van dentro del panel del detalle, debajo del origen y el destino, y el resto
+    del detalle se esconde hasta terminar o cancelar; en el teléfono, la hoja que sube desde abajo, como la app. */
+function abrirRevision(a) {
+  if (matchMedia('(max-width: 720px)').matches) return abrirHoja({ titulo: '', cuerpo: [] });
+  const panel = $('detalle');
+  cerrarAyuda();
+  panel.classList.add('revisando');
+  panel.scrollTop = 0;
+  const hoja = abrirEnLugar(panel.querySelector('.recorrido'), {
+    titulo: '',
+    cuerpo: [],
+    alCerrar: (motivo) => {
+      revision = null;
+      panel.classList.remove('revisando');
+      // Si se cerró el detalle o se abrió otra alerta, eso ya pinta lo que sigue.
+      if (motivo === 'detalle' || motivo === 'otra') return;
+      abrirDetalle(a.id, false);
+      const boton = panel.querySelector('.acciones-detalle .boton-principal');
+      if (boton) boton.focus({ preventScroll: true });
+    },
+  });
+  revision = { id: a.id, hoja };
+  return hoja;
 }
 
 // ---- Revisar: dos pasos, Deshacer y el conflicto ----
@@ -370,7 +558,7 @@ function revisar(a) {
   let motivo = null;
   let comentario = '';
   let comentarioTocado = false;
-  const hoja = abrirHoja({ titulo: '', cuerpo: [] });
+  const hoja = abrirRevision(a);
 
   function paso1() {
     hoja.pintar({
@@ -472,7 +660,7 @@ function hojaAsignar(a) {
   const valores = Object.fromEntries(e.personas.map((p) => [p.id, `${nombrePersona(p)}${p.vos ? ' (vos)' : ''}`]));
   abrirHoja({
     titulo: 'Asignar a',
-    subtitulo: 'Le llega un aviso por Telegram y la ve en Estado.',
+    subtitulo: 'Le llega un aviso por Telegram y la ve en la app, en Estado.',
     cuerpo: [el('div', { class: 'opciones' }, opcionUnica(valores, () => elegido, (id) => { elegido = id; }))],
     acciones: [
       responsableId(a) ? { texto: 'Sacar la asignación', tipo: 'texto', alHacer: (h) => { h.cerrar(); asignar(a, null); } } : null,

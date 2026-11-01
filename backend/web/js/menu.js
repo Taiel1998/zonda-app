@@ -57,6 +57,9 @@ export function configurarMenu() {
       ev.preventDefault();
       const siguiente = ev.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
       items[siguiente].focus();
+    } else if (ev.key === 'Home' || ev.key === 'End') {
+      ev.preventDefault();
+      items[ev.key === 'Home' ? 0 : items.length - 1].focus();
     } else if (ev.key === 'Tab') {
       cerrarMenu();
     }
@@ -65,4 +68,6 @@ export function configurarMenu() {
     if (abierto && !abierto.menu.contains(ev.target) && !abierto.boton.contains(ev.target)) cerrarMenu();
   });
   window.addEventListener('resize', () => cerrarMenu());
+  // El menú de un botón de una barra fija no seguiría al botón al bajar la página: se cierra.
+  window.addEventListener('scroll', () => { if (abierto && abierto.boton.closest('.barra-fija')) cerrarMenu(); }, { passive: true });
 }

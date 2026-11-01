@@ -1,23 +1,62 @@
-// La vista Ajustes, como los de la app: esta red y este navegador, las personas (el administrador suma gente
-// con un código y su QR, cambia perfiles y quita), los equipos con su importancia, la severidad por tipo de
-// ataque, el registro de cambios y Telegram. El analista ve todo sin los botones de administrador; igual
-// el servidor controla cada cambio (403).
+// La vista Ajustes, como las páginas de administración de Grafana: un menú de secciones a la izquierda (General,
+// Personas, Equipos, Severidades, Notificaciones y Registro de cambios) y, a la derecha, la sección elegida, con
+// tablas que se editan en el lugar. Lo que se cambia queda marcado hasta «Guardar cambios», que pide el motivo
+// cuando el cambio va al registro (la importancia y la severidad), como en la app. El analista ve todo sin los
+// controles de administrador; igual el servidor controla cada cambio (403).
 
 import { el, fechaHora, haceCuanto, hora, numero, vaciar } from './util.js';
 import {
   $, IMPORTANCIAS, NIVEL, ORDEN_SEVERIDAD, PERFILES, TIPOS, ahoraServidor, e, esAdmin, mandar, nombrePersona, pedir,
 } from './comun.js';
 import { abrirHoja, avisoInferior, confirmar } from './hojas.js';
+import { apagarAvisos, avisoDePrueba, estadoAvisos, permitirAvisos } from './avisos.js';
 
 const ORDEN_TIPOS_SEVERIDAD = ['fuerza_bruta', 'escaneo', 'ddos', 'probable_falsa_alarma', 'sin_tipificar', 'servicio_no_autorizado', 'volumen_inusual'];
 const MODOS_AVISO = { sonido: 'Con sonido', vibracion: 'Sin sonido', sin_aviso: 'Sin aviso' };
-let alSalir = () => {};
-let alCambiarTema = () => {};
-let esperaTelegram = null;
+const SECCIONES = [
+  { id: 'general', nombre: 'General' },
+  { id: 'personas', nombre: 'Personas' },
+  { id: 'equipos', nombre: 'Equipos' },
+  { id: 'severidades', nombre: 'Severidades' },
+  { id: 'notificaciones', nombre: 'Notificaciones' },
+  { id: 'registro', nombre: 'Registro de cambios' },
+];
+const CLAVE_SECCION = 'zonda.tablero.ajustes';
 
-export function configurarAjustes({ salir, cambiarTema }) {
+let alSalir = () => {};
+let alElegirTema = () => {};
+let temaElegido = () => 'sistema';
+let esperaTelegram = null;
+let seccion = leerSeccion();
+// Lo que se cambió en las tablas y todavía no se guardó: perfiles, importancias y severidades.
+const pendientes = { personas: new Map(), equipos: new Map(), severidades: new Map() };
+const busqueda = { equipos: '', registro: '' };
+let largoRegistro = 50;
+// Si llegan datos del servidor mientras alguien escribe o elige, la sección se vuelve a armar al soltar el campo.
+let repintarAlSoltar = false;
+
+function leerSeccion() {
+  try { return localStorage.getItem(CLAVE_SECCION) || 'general'; } catch (_) { return 'general'; }
+}
+
+function guardarSeccion(id) {
+  try { localStorage.setItem(CLAVE_SECCION, id); } catch (_) { /* sin almacenamiento, vale mientras la pestaña siga abierta */ }
+}
+
+const editando = () => {
+  const activo = document.activeElement;
+  return Boolean(activo && $('ajustes').contains(activo) && ['INPUT', 'SELECT', 'TEXTAREA'].includes(activo.tagName));
+};
+
+export function configurarAjustes({ salir, elegirTema, temaElegido: elegido }) {
   alSalir = salir;
-  alCambiarTema = cambiarTema;
+  alElegirTema = elegirTema;
+  temaElegido = elegido;
+  // Recargar o cerrar la pestaña con cambios sin guardar: el navegador pregunta.
+  window.addEventListener('beforeunload', (ev) => { if (cambiosSinGuardar()) { ev.preventDefault(); ev.returnValue = ''; } });
+  $('ajustes').addEventListener('focusout', () => setTimeout(() => {
+    if (repintarAlSoltar && !editando()) { repintarAlSoltar = false; pintarAjustes(); }
+  }, 0));
 }
 
 /** Las personas de la red: además dicen quién es este navegador y con qué perfil. */
@@ -36,49 +75,234 @@ export async function actualizarAjustes() {
   if (pedidos[2].status === 'fulfilled') e.severidades = pedidos[2].value;
   if (pedidos[3].status === 'fulfilled') e.registro = pedidos[3].value;
   if (pedidos[4].status === 'fulfilled') e.telegram = pedidos[4].value;
-  if (e.vista === 'ajustes') pintarAjustes();
+  if (e.vista === 'ajustes') pintarAjustes({ desdeElServidor: true });
 }
 
-function tarjeta(titulo, sub, ...contenido) {
-  return el('article', { class: 'tarjeta' },
-    el('div', { class: 'tarjeta-cabecera' }, el('div', {}, el('h2', { class: 'tarjeta-titulo' }, titulo), sub ? el('p', { class: 'tarjeta-sub' }, sub) : null)),
-    ...contenido);
+/** Cuántos cambios faltan guardar, en todas las secciones. */
+export const cambiosSinGuardar = () => Object.values(pendientes).reduce((suma, m) => suma + m.size, 0);
+
+/** El numerito de los cambios sin guardar. El lector dice «1 cambio sin guardar» en lugar de pegar el número al
+    nombre («Ajustes1»). */
+function marcaPendientes(n) {
+  return el('span', { class: 'ajustes-pendientes', title: `${numero(n)} sin guardar` },
+    el('span', { 'aria-hidden': 'true' }, numero(n)),
+    el('span', { class: 'oculto-visual' }, `, ${numero(n)} ${n === 1 ? 'cambio' : 'cambios'} sin guardar`));
+}
+
+/** La pestaña «Ajustes», arriba y en la barra de abajo, también dice cuántos cambios faltan guardar. */
+function marcarPestania() {
+  const n = cambiosSinGuardar();
+  for (const boton of document.querySelectorAll('.pestania[data-vista="ajustes"], #barra-inferior [data-vista="ajustes"]')) {
+    const marca = boton.querySelector('.ajustes-pendientes');
+    if (marca) marca.remove();
+    if (n) boton.append(marcaPendientes(n));
+  }
+}
+
+/** Lo pendiente que otra persona ya dejó igual (o que desapareció) deja de estarlo. */
+function limpiarPendientes() {
+  for (const [id, perfil] of pendientes.personas) {
+    const p = e.personas.find((x) => x.id === id);
+    if (!p || p.perfil === perfil) pendientes.personas.delete(id);
+  }
+  for (const [ip, importancia] of pendientes.equipos) {
+    const q = e.equipos.find((x) => x.ip === ip);
+    if (!q || q.importancia === importancia) pendientes.equipos.delete(ip);
+  }
+  for (const [tipo, severidad] of pendientes.severidades) {
+    if (!e.severidades[tipo] || e.severidades[tipo] === severidad) pendientes.severidades.delete(tipo);
+  }
+}
+
+// ---- El marco: el menú de secciones y la sección elegida ----
+
+const CONTENIDO = {
+  general: seccionGeneral,
+  personas: seccionPersonas,
+  equipos: seccionEquipos,
+  severidades: seccionSeveridades,
+  notificaciones: seccionNotificaciones,
+  registro: seccionRegistro,
+};
+
+export function pintarAjustes({ desdeElServidor = false } = {}) {
+  if (desdeElServidor && editando()) { repintarAlSoltar = true; return; }
+  limpiarPendientes();
+  marcarPestania();
+  if (!CONTENIDO[seccion]) seccion = 'general';
+  // El campo o la lista que tenía el foco lo recupera después de armar todo de nuevo.
+  const foco = document.activeElement && $('ajustes').contains(document.activeElement) ? document.activeElement.dataset.foco : null;
+  const menu = el('nav', { class: 'ajustes-menu', role: 'tablist', 'aria-label': 'Secciones de Ajustes', 'aria-orientation': 'vertical', onkeydown: moverEnMenu },
+    SECCIONES.map((s) => {
+      const n = pendientes[s.id] ? pendientes[s.id].size : 0;
+      return el('button', {
+        type: 'button', role: 'tab', id: `ajustes-${s.id}`, 'aria-selected': String(s.id === seccion), 'aria-controls': 'ajustes-panel',
+        tabindex: s.id === seccion ? '0' : '-1', dataset: { seccion: s.id }, onclick: () => elegirSeccion(s.id),
+      }, el('span', {}, s.nombre), n ? marcaPendientes(n) : null);
+    }));
+  vaciar($('ajustes'), menu,
+    el('section', { class: 'tarjeta ajustes-panel', id: 'ajustes-panel', role: 'tabpanel', 'aria-labelledby': `ajustes-${seccion}` }, CONTENIDO[seccion]()));
+  if (foco) {
+    const nuevo = $('ajustes').querySelector(`[data-foco="${foco}"]`);
+    if (nuevo) nuevo.focus();
+  }
+}
+
+function elegirSeccion(id, enfocar = false) {
+  seccion = id;
+  guardarSeccion(id);
+  pintarAjustes();
+  if (enfocar) $(`ajustes-${id}`).focus();
+}
+
+/** Con las flechas se pasa de una sección a otra, como en cualquier lista de pestañas. */
+function moverEnMenu(ev) {
+  const adelante = ['ArrowDown', 'ArrowRight'].includes(ev.key);
+  if (!adelante && !['ArrowUp', 'ArrowLeft'].includes(ev.key)) return;
+  ev.preventDefault();
+  const i = SECCIONES.findIndex((s) => s.id === seccion);
+  elegirSeccion(SECCIONES[(i + (adelante ? 1 : SECCIONES.length - 1)) % SECCIONES.length].id, true);
+}
+
+function cabecera(titulo, sub, accion = null) {
+  return el('div', { class: 'seccion-cabecera' },
+    el('div', {}, el('h2', { class: 'seccion-titulo' }, titulo), sub ? el('p', { class: 'seccion-sub' }, sub) : null),
+    accion ? el('div', { class: 'seccion-acciones' }, accion) : null);
+}
+
+function tabla(columnas, filas, id = null) {
+  return el('div', { class: 'tabla-envoltura' },
+    el('table', { class: 'tabla tabla-ajustes', id },
+      el('thead', {}, el('tr', {}, columnas.map((c) => el('th', { scope: 'col' }, c)))),
+      el('tbody', {}, filas)));
+}
+
+function selector({ etiqueta, opciones, valor, foco, alCambiar }) {
+  return el('select', { class: 'select-tabla', 'aria-label': etiqueta, dataset: { foco }, onchange: (ev) => alCambiar(ev.target.value) },
+    Object.entries(opciones).map(([id, texto]) => el('option', { value: id, selected: id === valor }, texto)));
+}
+
+/** Marca un cambio en una tabla; volver al valor de antes lo desmarca. */
+function marcar(id, clave, valor, original) {
+  if (valor === original) pendientes[id].delete(clave);
+  else pendientes[id].set(clave, valor);
+  pintarAjustes();
+}
+
+const GUARDAR = { personas: guardarPerfiles, equipos: guardarImportancias, severidades: guardarSeveridades };
+
+function barraCambios(id) {
+  const n = pendientes[id].size;
+  if (!n) return null;
+  return el('div', { class: 'barra-cambios' },
+    el('span', {}, `${numero(n)} ${n === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}`),
+    el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => { pendientes[id].clear(); pintarAjustes(); } }, 'Descartar'),
+    el('button', { type: 'button', class: 'boton-principal boton-chico', onclick: GUARDAR[id] }, 'Guardar cambios'));
 }
 
 const notaSoloAdmin = () => (esAdmin() ? null : el('p', { class: 'solo-admin-nota' }, 'Lo cambia un administrador.'));
 
-export function pintarAjustes() {
+const sinTildes = (texto) => String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** El motivo del cambio, obligatorio: queda en el registro con el nombre y la hora (decisión 40). */
+function hojaMotivo({ titulo, lineas, ejemplo, alGuardar }) {
+  const uno = lineas.length === 1;
+  const motivo = el('textarea', { maxlength: '500', placeholder: ejemplo });
+  const error = el('div', { class: 'error-hoja', hidden: true });
+  abrirHoja({
+    titulo,
+    cuerpo: [
+      el('ul', { class: 'lista-cambios' }, lineas.map((linea) => el('li', {}, linea))),
+      el('label', { class: 'campo' }, el('span', {}, uno ? '¿Por qué lo cambiás?' : '¿Por qué los cambiás?', el('span', { class: 'asterisco' }, ' *')), motivo,
+        el('small', {}, 'Queda en el registro de cambios con tu nombre y la hora.')),
+      error,
+    ],
+    acciones: [
+      { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
+      {
+        texto: 'Guardar', tipo: 'principal', alHacer: async (h) => {
+          if (!motivo.value.trim()) { error.hidden = false; error.textContent = uno ? 'Escribí por qué lo cambiás.' : 'Escribí por qué los cambiás.'; return; }
+          try {
+            await alGuardar(motivo.value.trim());
+            h.cerrar();
+          } catch (falla) {
+            error.hidden = false;
+            error.textContent = falla.message;
+          }
+          actualizarAjustes().catch(() => {});
+        },
+      },
+    ],
+  });
+}
+
+// ---- General ----
+
+function seccionGeneral() {
   const red = e.acceso.red ? e.acceso.red.nombre : 'Red';
   const yo = e.personas.find((p) => p.vos);
-  const tema = document.documentElement.dataset.tema;
-  vaciar($('ajustes'),
-    tarjeta('Esta red', `${red} · ${location.host}`,
-      el('ul', { class: 'filas' },
-        el('li', {}, el('span', { class: 'titulo-fila' }, 'Este navegador'), el('span', { class: 'detalle-fila' }, `${yo ? nombrePersona(yo) : 'Tablero web'} · ${PERFILES[e.perfil] || ''}${e.acceso.vence ? ` · el acceso vence el ${fechaHora(Date.parse(e.acceso.vence), 0)}` : ''}`),
-          el('span', { class: 'acciones-fila' }, el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => alSalir() }, 'Salir'))),
-        el('li', {}, el('span', { class: 'titulo-fila' }, 'Servidor de alertas'), el('span', { class: 'detalle-fila' }, `Versión ${e.salud ? e.salud.version : '–'} · HTTPS con el certificado de la red`)),
-        el('li', {}, el('span', { class: 'titulo-fila' }, 'Tema'), el('span', { class: 'detalle-fila' }, tema === 'oscuro' ? 'Oscuro' : 'Claro'),
-          el('span', { class: 'acciones-fila' }, el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => { alCambiarTema(); pintarAjustes(); } }, tema === 'oscuro' ? 'Pasar a claro' : 'Pasar a oscuro'))))),
-    tarjetaPersonas(),
-    tarjetaEquipos(),
-    tarjetaSeveridades(),
-    tarjetaTelegram(),
-    tarjetaRegistro());
+  const vence = e.acceso.vence ? ` · el acceso vence el ${fechaHora(Date.parse(e.acceso.vence), 0)}` : '';
+  return [
+    cabecera('General', 'Esta red, este navegador y cómo se ve el tablero.'),
+    el('dl', { class: 'ajustes-datos' },
+      dato('Red', `${red} · ${location.host}`),
+      dato('Este navegador', `${yo ? nombrePersona(yo) : 'Tablero web'} · ${PERFILES[e.perfil] || ''}${vence}`,
+        el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => alSalir() }, 'Salir')),
+      dato('Servidor de alertas', `Versión ${e.salud ? e.salud.version : '–'} · ${location.protocol === 'https:' ? 'HTTPS con el certificado de la red' : 'sin cifrar (HTTP)'}`),
+      dato('Tema', null, selector({
+        etiqueta: 'Tema', opciones: { sistema: 'Como el sistema', claro: 'Claro', oscuro: 'Oscuro' }, valor: temaElegido(), foco: 'tema',
+        alCambiar: (valor) => { alElegirTema(valor); pintarAjustes(); },
+      }))),
+  ];
+}
+
+function dato(nombre, valor, control = null) {
+  return el('div', { class: 'ajustes-dato' }, el('dt', {}, nombre), el('dd', {}, el('span', {}, valor || ''), control));
 }
 
 // ---- Personas ----
 
-function tarjetaPersonas() {
+function seccionPersonas() {
+  const admin = esAdmin();
   const ahora = ahoraServidor();
-  const filas = e.personas.map((p) => el('li', {},
-    el('span', { class: 'titulo-fila' }, nombrePersona(p), p.vos ? el('span', { class: 'etiqueta', style: 'margin-left:8px' }, 'vos') : null),
-    el('span', { class: 'detalle-fila' }, `${p.telefono}${p.ultimoUso ? ` · usó Zonda ${haceCuanto(Date.parse(p.ultimoUso), ahora)}` : ''}`),
-    el('span', { class: 'acciones-fila' },
-      el('span', { class: `etiqueta${p.perfil === 'administrador' ? ' admin' : ''}` }, PERFILES[p.perfil]),
-      esAdmin() && !p.vos ? el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => hojaPersona(p) }, 'Cambiar') : null)));
-  return tarjeta('Personas', 'Quiénes usan Zonda en esta red. Los administradores cambian la configuración y suman gente.',
-    el('ul', { class: 'filas' }, filas),
-    esAdmin() ? el('div', { class: 'acciones-detalle' }, el('button', { type: 'button', class: 'boton-principal', onclick: hojaAgregarPersona }, 'Agregar persona')) : notaSoloAdmin());
+  const filas = e.personas.map((p) => {
+    const editable = admin && !p.vos;
+    const perfil = editable
+      ? selector({
+        etiqueta: `Perfil de ${nombrePersona(p)}`, opciones: PERFILES, valor: pendientes.personas.get(p.id) || p.perfil, foco: `perfil-${p.id}`,
+        alCambiar: (valor) => marcar('personas', p.id, valor, p.perfil),
+      })
+      : el('span', { class: `etiqueta${p.perfil === 'administrador' ? ' admin' : ''}` }, PERFILES[p.perfil]);
+    return el('tr', { class: pendientes.personas.has(p.id) ? 'cambiada' : null },
+      el('td', {}, el('strong', {}, nombrePersona(p)), p.vos ? [' ', el('span', { class: 'etiqueta vos' }, 'vos')] : null),
+      el('td', { class: 'secundario', 'data-etiqueta': 'Dispositivo' }, p.telefono),
+      el('td', { 'data-etiqueta': 'Perfil' }, perfil),
+      el('td', { class: 'secundario', 'data-etiqueta': 'Último uso' }, p.ultimoUso ? haceCuanto(Date.parse(p.ultimoUso), ahora) : '–'),
+      el('td', { class: 'accion' }, editable ? el('button', { type: 'button', class: 'boton-texto peligro', onclick: () => quitarPersona(p) }, 'Quitar') : null));
+  });
+  return [
+    cabecera('Personas', 'Quiénes usan Zonda en esta red. Los administradores cambian la configuración y agregan personas.',
+      admin ? el('button', { type: 'button', class: 'boton-principal boton-chico', onclick: hojaAgregarPersona }, 'Agregar persona') : null),
+    tabla(['Nombre', 'Dispositivo', 'Perfil', 'Último uso', ''], filas),
+    admin ? barraCambios('personas') : notaSoloAdmin(),
+  ];
+}
+
+async function guardarPerfiles() {
+  const cambios = [...pendientes.personas.entries()].map(([id, perfil]) => ({ p: e.personas.find((x) => x.id === id), perfil })).filter((c) => c.p);
+  const texto = cambios.map((c) => `${nombrePersona(c.p)} pasa a ${PERFILES[c.perfil].toLowerCase()}`).join('. ');
+  if (!await confirmar({ titulo: cambios.length === 1 ? '¿Cambiar el perfil?' : '¿Cambiar los perfiles?', texto: `${texto}.`, aceptar: 'Guardar' })) return;
+  for (const { p, perfil } of cambios) {
+    try {
+      await mandar(`/personas/${encodeURIComponent(p.id)}/perfil`, 'PUT', { perfil });
+      pendientes.personas.delete(p.id);
+    } catch (falla) {
+      avisoInferior(falla.message, { duracion: 7000 });
+      break;
+    }
+  }
+  if (!pendientes.personas.size) avisoInferior(cambios.length === 1 ? 'Perfil guardado.' : 'Perfiles guardados.');
+  actualizarAjustes().catch(() => {});
 }
 
 function hojaAgregarPersona() {
@@ -128,31 +352,11 @@ function mostrarCodigo(hoja, codigo) {
   });
 }
 
-function hojaPersona(p) {
-  const pasarA = p.perfil === 'administrador' ? 'analista' : 'administrador';
-  abrirHoja({
-    titulo: nombrePersona(p),
-    subtitulo: `${PERFILES[p.perfil]} · ${p.telefono}`,
-    cuerpo: [],
-    acciones: [
-      { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
-      { texto: 'Quitar del equipo', tipo: 'peligro', alHacer: async (h) => { h.cerrar(); quitarPersona(p); } },
-      { texto: pasarA === 'administrador' ? 'Hacer administrador' : 'Pasar a analista', tipo: 'principal', alHacer: async (h) => {
-        h.cerrar();
-        try {
-          await mandar(`/personas/${encodeURIComponent(p.id)}/perfil`, 'PUT', { perfil: pasarA });
-          avisoInferior(`${nombrePersona(p)} ahora es ${PERFILES[pasarA].toLowerCase()}.`);
-        } catch (falla) { avisoInferior(falla.message, { duracion: 7000 }); }
-        actualizarAjustes();
-      } },
-    ],
-  });
-}
-
 async function quitarPersona(p) {
   if (!await confirmar({ titulo: `¿Quitar a ${nombrePersona(p)} del equipo?`, texto: 'Su dispositivo deja de recibir alertas y no puede volver a entrar sin un código nuevo.', aceptar: 'Quitar', peligro: true })) return;
   try {
     await mandar(`/personas/${encodeURIComponent(p.id)}`, 'DELETE');
+    pendientes.personas.delete(p.id);
     avisoInferior(`Se quitó a ${nombrePersona(p)} del equipo.`);
   } catch (falla) { avisoInferior(falla.message, { duracion: 7000 }); }
   actualizarAjustes();
@@ -160,111 +364,141 @@ async function quitarPersona(p) {
 
 // ---- Equipos ----
 
-function tarjetaEquipos() {
-  const filas = e.equipos.map((q) => el('li', {},
-    el('span', { class: 'titulo-fila' }, q.nombre),
-    el('span', { class: 'detalle-fila' }, q.ip),
-    el('span', { class: 'acciones-fila' },
-      el('span', { class: `etiqueta${q.importancia === 'critico' ? ' critico' : ''}` }, IMPORTANCIAS[q.importancia].nombre),
-      esAdmin() ? el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => hojaImportancia(q) }, 'Cambiar') : null)));
-  return tarjeta('Equipos', 'La importancia de un equipo sube o baja un nivel la severidad de sus alertas.', el('ul', { class: 'filas' }, filas), notaSoloAdmin());
+const NOMBRES_IMPORTANCIA = Object.fromEntries(Object.entries(IMPORTANCIAS).map(([id, imp]) => [id, imp.nombre]));
+
+function seccionEquipos() {
+  return [
+    cabecera('Equipos', 'La importancia de un equipo sube o baja un nivel la severidad de sus alertas.'),
+    el('input', {
+      type: 'search', class: 'buscar-tabla', placeholder: 'Buscar equipo o IP', value: busqueda.equipos, 'aria-label': 'Buscar equipo o IP', dataset: { foco: 'buscar-equipos' },
+      oninput: (ev) => { busqueda.equipos = ev.target.value; vaciar($('tabla-equipos').tBodies[0], filasEquipos()); },
+    }),
+    tabla(['Equipo', 'IP', 'Importancia'], filasEquipos(), 'tabla-equipos'),
+    el('p', { class: 'nota ajustes-leyenda' }, `${IMPORTANCIAS.critico.nombre}: ${IMPORTANCIAS.critico.explicacion.toLowerCase()} ${IMPORTANCIAS.poco_importante.nombre}: ${IMPORTANCIAS.poco_importante.explicacion.toLowerCase()}`),
+    esAdmin() ? barraCambios('equipos') : notaSoloAdmin(),
+  ];
 }
 
-function hojaImportancia(q) {
-  let elegida = q.importancia;
-  const motivo = el('textarea', { maxlength: '500', placeholder: 'Por ejemplo: es el servidor de sueldos.' });
-  const error = el('div', { class: 'error-hoja', hidden: true });
-  const opciones = Object.entries(IMPORTANCIAS).map(([id, imp]) => el('button', {
-    type: 'button', class: 'opcion-grande', 'aria-pressed': String(id === elegida), dataset: { id },
-    onclick: () => { elegida = id; for (const b of opciones) b.setAttribute('aria-pressed', String(b.dataset.id === elegida)); },
-  }, el('span', { class: 'punto', style: `background:${id === 'critico' ? 'var(--info)' : 'var(--texto-3)'}` }), el('strong', {}, imp.nombre), el('span', { class: 'explicacion' }, imp.explicacion)));
-  abrirHoja({
-    titulo: `Importancia de ${q.nombre}`,
-    subtitulo: q.ip,
-    cuerpo: [...opciones, el('label', { class: 'campo' }, el('span', {}, '¿Por qué la cambiás?', el('span', { class: 'asterisco' }, ' *')), motivo, el('small', {}, 'Queda en el registro de cambios con tu nombre y la hora.')), error],
-    acciones: [
-      { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
-      {
-        texto: 'Guardar cambios', tipo: 'principal', alHacer: async (h) => {
-          if (elegida === q.importancia) { h.cerrar(); return; }
-          if (!motivo.value.trim()) { error.hidden = false; error.textContent = 'Escribí por qué la cambiás.'; return; }
-          try {
-            await mandar(`/equipos/${encodeURIComponent(q.ip)}`, 'PUT', { importancia: elegida, motivo: motivo.value.trim() });
-            h.cerrar();
-            avisoInferior(`${q.nombre} pasó a ${IMPORTANCIAS[elegida].nombre.toLowerCase()}. Sus alertas cambian de severidad.`);
-            actualizarAjustes();
-          } catch (falla) { error.hidden = false; error.textContent = falla.message; }
-        },
-      },
-    ],
+function filasEquipos() {
+  const buscado = sinTildes(busqueda.equipos.trim());
+  const lista = e.equipos.filter((q) => !buscado || sinTildes(q.nombre).includes(buscado) || q.ip.includes(buscado));
+  if (!lista.length) return el('tr', {}, el('td', { colspan: '3', class: 'secundario' }, `Ningún equipo con «${busqueda.equipos.trim()}».`));
+  return lista.map((q) => el('tr', { class: pendientes.equipos.has(q.ip) ? 'cambiada' : null },
+    el('td', {}, el('strong', {}, q.nombre)),
+    el('td', { class: 'secundario', 'data-etiqueta': 'IP' }, q.ip),
+    el('td', { 'data-etiqueta': 'Importancia' }, esAdmin()
+      ? selector({
+        etiqueta: `Importancia de ${q.nombre}`, opciones: NOMBRES_IMPORTANCIA, valor: pendientes.equipos.get(q.ip) || q.importancia, foco: `equipo-${q.ip}`,
+        alCambiar: (valor) => marcar('equipos', q.ip, valor, q.importancia),
+      })
+      : el('span', { class: `etiqueta${q.importancia === 'critico' ? ' critico' : ''}` }, IMPORTANCIAS[q.importancia].nombre))));
+}
+
+function guardarImportancias() {
+  const cambios = [...pendientes.equipos.entries()].map(([ip, importancia]) => ({ q: e.equipos.find((x) => x.ip === ip), importancia })).filter((c) => c.q);
+  hojaMotivo({
+    titulo: cambios.length === 1 ? 'Guardar 1 cambio' : `Guardar ${numero(cambios.length)} cambios`,
+    lineas: cambios.map((c) => `${c.q.nombre}: ${IMPORTANCIAS[c.q.importancia].nombre.toLowerCase()} → ${IMPORTANCIAS[c.importancia].nombre.toLowerCase()}`),
+    ejemplo: 'Por ejemplo: es el servidor de sueldos.',
+    alGuardar: async (motivo) => {
+      for (const { q, importancia } of cambios) {
+        await mandar(`/equipos/${encodeURIComponent(q.ip)}`, 'PUT', { importancia, motivo });
+        pendientes.equipos.delete(q.ip);
+      }
+      avisoInferior(cambios.length === 1 ? `${cambios[0].q.nombre} cambió de importancia. Sus alertas cambian de severidad.` : 'Importancias guardadas. Las alertas de esos equipos cambian de severidad.');
+    },
   });
 }
 
 // ---- Severidad por tipo de ataque ----
 
-function tarjetaSeveridades() {
-  const tipos = ORDEN_TIPOS_SEVERIDAD.filter((t) => e.severidades[t]);
-  const filas = tipos.map((t) => el('li', {},
-    el('span', { class: 'titulo-fila' }, TIPOS[t]),
-    el('span', { class: 'acciones-fila' }, el('span', { class: `sev ${e.severidades[t]}` }, NIVEL[e.severidades[t]]))));
-  return tarjeta('Severidad por tipo de ataque', 'Con qué severidad llega cada tipo. Cambia los avisos y el orden de las alertas.',
-    el('ul', { class: 'filas' }, filas),
-    esAdmin() ? el('div', { class: 'acciones-detalle' }, el('button', { type: 'button', class: 'boton-secundario', onclick: hojaSeveridades }, 'Cambiar severidades')) : notaSoloAdmin());
+function seccionSeveridades() {
+  const admin = esAdmin();
+  const filas = ORDEN_TIPOS_SEVERIDAD.filter((t) => e.severidades[t]).map((t) => {
+    const valor = pendientes.severidades.get(t) || e.severidades[t];
+    return el('tr', { class: pendientes.severidades.has(t) ? 'cambiada' : null },
+      el('td', {}, el('strong', {}, TIPOS[t])),
+      el('td', { 'data-etiqueta': 'Severidad' }, admin
+        ? el('span', { class: 'con-punto' }, el('i', { class: 'punto', style: `background:var(--${valor})` }), selector({
+          etiqueta: `Severidad de ${TIPOS[t]}`, opciones: Object.fromEntries(ORDEN_SEVERIDAD.map((s) => [s, NIVEL[s]])), valor, foco: `severidad-${t}`,
+          alCambiar: (nuevo) => marcar('severidades', t, nuevo, e.severidades[t]),
+        }))
+        : el('span', { class: `sev ${valor}` }, NIVEL[valor])));
+  });
+  return [
+    cabecera('Severidades', 'Con qué severidad llega cada tipo de ataque. Cambia los avisos y el orden de las alertas.'),
+    tabla(['Tipo de ataque', 'Severidad'], filas),
+    admin ? barraCambios('severidades') : notaSoloAdmin(),
+  ];
 }
 
-function hojaSeveridades() {
-  const nuevas = { ...e.severidades };
-  const motivo = el('textarea', { maxlength: '500', placeholder: 'Por ejemplo: el backup nocturno usa SSH y daba falsas alarmas.' });
-  const error = el('div', { class: 'error-hoja', hidden: true });
-  const filas = ORDEN_TIPOS_SEVERIDAD.filter((t) => nuevas[t]).map((t) => {
-    const botones = ORDEN_SEVERIDAD.map((s) => el('button', {
-      type: 'button', class: 'chip-filtro', 'aria-pressed': String(nuevas[t] === s), dataset: { s },
-      onclick: () => { nuevas[t] = s; for (const b of botones) b.setAttribute('aria-pressed', String(b.dataset.s === s)); },
-    }, el('span', { class: 'punto', style: `background:var(--${s})` }), NIVEL[s]));
-    return el('div', { class: 'grupo-opciones' }, el('p', {}, TIPOS[t]), el('div', { class: 'opciones' }, botones));
+function guardarSeveridades() {
+  const cambios = Object.fromEntries(pendientes.severidades);
+  hojaMotivo({
+    titulo: pendientes.severidades.size === 1 ? 'Guardar 1 cambio' : `Guardar ${numero(pendientes.severidades.size)} cambios`,
+    lineas: Object.entries(cambios).map(([t, s]) => `${TIPOS[t]}: ${NIVEL[e.severidades[t]].toLowerCase()} → ${NIVEL[s].toLowerCase()}`),
+    ejemplo: 'Por ejemplo: el backup nocturno usa SSH y daba falsas alarmas.',
+    alGuardar: async (motivo) => {
+      e.severidades = await mandar('/severidades', 'PUT', { severidades: cambios, motivo });
+      pendientes.severidades.clear();
+      avisoInferior('Severidades guardadas. Las alertas se reordenan con la severidad nueva.');
+    },
   });
-  abrirHoja({
-    titulo: 'Severidad por tipo de ataque',
-    cuerpo: [...filas, el('label', { class: 'campo' }, el('span', {}, '¿Por qué la cambiás?', el('span', { class: 'asterisco' }, ' *')), motivo, el('small', {}, 'Queda en el registro de cambios con tu nombre y la hora.')), error],
-    acciones: [
-      { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
-      {
-        texto: 'Guardar cambios', tipo: 'principal', alHacer: async (h) => {
-          const cambios = Object.fromEntries(Object.entries(nuevas).filter(([t, s]) => e.severidades[t] !== s));
-          if (!Object.keys(cambios).length) { h.cerrar(); return; }
-          if (!motivo.value.trim()) { error.hidden = false; error.textContent = 'Escribí por qué la cambiás.'; return; }
-          try {
-            e.severidades = await mandar('/severidades', 'PUT', { severidades: cambios, motivo: motivo.value.trim() });
-            h.cerrar();
-            avisoInferior('Severidades guardadas. Las alertas se reordenan con la severidad nueva.');
-            actualizarAjustes();
-          } catch (falla) { error.hidden = false; error.textContent = falla.message; }
+}
+
+// ---- Notificaciones: en este navegador (avisos.js) y por Telegram ----
+
+function seccionNotificaciones() {
+  return [
+    cabecera('Notificaciones', 'Cómo te avisa Zonda de las alertas: en este navegador y por Telegram.'),
+    el('div', { class: 'ajustes-bloque' }, notificacionesNavegador()),
+    el('div', { class: 'ajustes-bloque' }, notificacionesTelegram()),
+  ];
+}
+
+function bloque(titulo, sub, ...contenido) {
+  return [el('h3', { class: 'bloque-titulo' }, titulo), sub ? el('p', { class: 'seccion-sub' }, sub) : null, ...contenido];
+}
+
+function notificacionesNavegador() {
+  const titulo = 'En este navegador';
+  const estado = estadoAvisos();
+  if (estado === 'imposibles') return bloque(titulo, 'Este navegador no puede mostrar notificaciones.');
+  if (estado === 'bloqueados') return bloque(titulo, 'Sin permiso, el tablero no puede mostrar notificaciones. Sigue funcionando; podés permitirlas desde el candado de la barra de direcciones.');
+  if (estado === 'apagados') {
+    return bloque(titulo, 'El navegador muestra una notificación cuando llega una alerta alta y el tablero no está a la vista. Te va a pedir confirmar el permiso.',
+      el('div', { class: 'acciones-detalle' }, el('button', {
+        type: 'button', class: 'boton-principal',
+        onclick: async () => {
+          if (await permitirAvisos() === 'activados') avisoInferior('Las notificaciones están permitidas.');
+          pintarAjustes();
         },
-      },
-    ],
-  });
+      }, 'Permitir notificaciones')));
+  }
+  return bloque(titulo, 'Las notificaciones están permitidas: llegan las alertas altas cuando el tablero no está a la vista.',
+    el('div', { class: 'acciones-detalle' },
+      el('button', { type: 'button', class: 'boton-secundario', onclick: () => { if (!avisoDePrueba()) avisoInferior('Este navegador no mostró la notificación.'); } }, 'Mandar una de prueba'),
+      el('button', { type: 'button', class: 'boton-texto', onclick: () => { apagarAvisos(); pintarAjustes(); } }, 'Desactivar')));
 }
 
-// ---- Telegram de este navegador ----
-
-function tarjetaTelegram() {
+function notificacionesTelegram() {
   const t = e.telegram;
-  if (!t) return tarjeta('Telegram', 'Los avisos de este navegador por Telegram.', el('p', { class: 'nota' }, 'Cargando…'));
+  if (!t) return bloque('Telegram', 'Cargando…');
   if (!t.vinculado) {
-    return tarjeta('Telegram', 'Recibí los avisos de alertas en Telegram, en el chat con el bot de Zonda. Solo viajan la severidad, el servicio, la hora y la red.',
+    return bloque('Telegram', 'Recibí los avisos de alertas en Telegram, en el chat con el bot de Zonda. Solo viajan la severidad, el servicio, la hora y la red.',
       el('div', { class: 'acciones-detalle' }, el('button', { type: 'button', class: 'boton-principal', onclick: conectarTelegram }, 'Conectar Telegram')));
   }
-  const filas = ORDEN_SEVERIDAD.map((s) => {
-    const botones = Object.entries(MODOS_AVISO).map(([modo, texto]) => el('button', {
-      type: 'button', class: 'chip-filtro', 'aria-pressed': String(t.avisos[s] === modo),
-      onclick: async () => {
-        try { e.telegram.avisos = await mandar('/telegram/avisos', 'PUT', { ...t.avisos, [s]: modo }); pintarAjustes(); } catch (falla) { avisoInferior(falla.message); }
+  const filas = ORDEN_SEVERIDAD.map((s) => el('tr', {},
+    el('td', {}, el('span', { class: `sev ${s}` }, `Alertas ${NIVEL[s].toLowerCase()}s`)),
+    el('td', { 'data-etiqueta': 'Aviso' }, selector({
+      etiqueta: `Aviso de las alertas ${NIVEL[s].toLowerCase()}s`, opciones: MODOS_AVISO, valor: t.avisos[s], foco: `telegram-${s}`,
+      alCambiar: async (modo) => {
+        try { e.telegram.avisos = await mandar('/telegram/avisos', 'PUT', { ...t.avisos, [s]: modo }); } catch (falla) { avisoInferior(falla.message); }
+        pintarAjustes();
       },
-    }, texto));
-    return el('div', { class: 'grupo-opciones' }, el('p', {}, `Alertas ${NIVEL[s].toLowerCase()}s`), el('div', { class: 'opciones' }, botones));
-  });
-  return tarjeta('Telegram', `Vinculado con @${t.bot}${t.vinculadoEn ? ` desde el ${fechaHora(Date.parse(t.vinculadoEn), 0)}` : ''}.`,
-    el('div', { class: 'hoja-cuerpo', style: 'margin-top:4px' }, filas),
+    }))));
+  return bloque('Telegram', `Vinculado con @${t.bot}${t.vinculadoEn ? ` desde el ${fechaHora(Date.parse(t.vinculadoEn), 0)}` : ''}.`,
+    tabla(['Severidad', 'Aviso'], filas),
     el('div', { class: 'acciones-detalle' },
       el('button', { type: 'button', class: 'boton-secundario', onclick: async () => { try { await mandar('/telegram/prueba', 'POST'); avisoInferior('Aviso de prueba enviado.'); } catch (falla) { avisoInferior(falla.message); } } }, 'Mandar un aviso de prueba'),
       el('button', { type: 'button', class: 'boton-texto', onclick: desvincularTelegram }, 'Desvincular')));
@@ -283,8 +517,8 @@ async function conectarTelegram() {
     subtitulo: `El enlace vence a las ${hora(Date.parse(vinculo.vence))}.`,
     cuerpo: [
       el('ol', { style: 'margin:0;padding-left:20px;display:grid;gap:6px' },
-        el('li', {}, 'Tocá «Abrir Telegram»: se abre el chat con el bot de Zonda.'),
-        el('li', {}, 'Tocá «Iniciar». El bot reconoce este navegador.'),
+        el('li', {}, 'Apretá «Abrir Telegram»: se abre el chat con el bot de Zonda.'),
+        el('li', {}, 'Apretá «Iniciar». El bot reconoce este navegador.'),
         el('li', {}, 'Volvé acá: se actualiza solo.')),
     ],
     acciones: [
@@ -319,14 +553,44 @@ function fraseDe(c) {
   return c.tipo;
 }
 
-function tarjetaRegistro() {
-  const ahora = ahoraServidor();
-  const filas = e.registro.slice(0, 40).map((c) => el('li', {},
-    el('span', { class: 'titulo-fila', style: 'white-space:normal' }, fraseDe(c)),
-    el('span', { class: 'detalle-fila' }, `${c.autor} · ${fechaHora(Date.parse(c.fecha), ahora)}`),
-    c.motivo ? el('span', { class: 'registro-motivo', style: 'grid-column:1' }, `«${c.motivo}»`) : null));
-  return tarjeta('Registro de cambios', 'Quién cambió la configuración, cuándo y por qué. Lo ve todo el equipo y no se puede borrar.',
-    filas.length ? el('ul', { class: 'filas' }, filas) : el('p', { class: 'nota' }, 'Todavía no hay cambios.'));
+function seccionRegistro() {
+  const lista = registroFiltrado();
+  return [
+    cabecera('Registro de cambios', 'Quién cambió la configuración, cuándo y por qué. Lo ve todo el equipo y no se puede borrar.'),
+    el('input', {
+      type: 'search', class: 'buscar-tabla', placeholder: 'Buscar en el registro', value: busqueda.registro, 'aria-label': 'Buscar en el registro', dataset: { foco: 'buscar-registro' },
+      oninput: (ev) => { busqueda.registro = ev.target.value; largoRegistro = 50; pintarFilasRegistro(); },
+    }),
+    tabla(['Cuándo', 'Quién', 'Qué cambió', 'Motivo'], filasRegistro(lista), 'tabla-registro'),
+    el('div', { class: 'tabla-mas', id: 'registro-mas' }, botonMasRegistro(lista)),
+  ];
 }
 
-export const cantidadPersonas = () => numero(e.personas.length);
+function registroFiltrado() {
+  const buscado = sinTildes(busqueda.registro.trim());
+  return e.registro.filter((c) => !buscado || sinTildes(`${fraseDe(c)} ${c.autor} ${c.motivo || ''}`).includes(buscado));
+}
+
+function filasRegistro(lista) {
+  const ahora = ahoraServidor();
+  if (!lista.length) {
+    return el('tr', {}, el('td', { colspan: '4', class: 'secundario' }, busqueda.registro.trim() ? `Nada con «${busqueda.registro.trim()}».` : 'Todavía no hay cambios.'));
+  }
+  return lista.slice(0, largoRegistro).map((c) => el('tr', {},
+    el('td', { class: 'secundario' }, fechaHora(Date.parse(c.fecha), ahora)),
+    el('td', { 'data-etiqueta': 'Quién' }, c.autor),
+    el('td', { class: 'envolver' }, fraseDe(c)),
+    el('td', { class: 'envolver secundario', 'data-etiqueta': 'Motivo' }, c.motivo ? `«${c.motivo}»` : '–')));
+}
+
+function botonMasRegistro(lista) {
+  if (lista.length <= largoRegistro) return null;
+  return el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => { largoRegistro += 50; pintarFilasRegistro(); } }, `Ver más (${numero(lista.length - largoRegistro)})`);
+}
+
+/** La búsqueda y «Ver más» rehacen solo las filas: el campo no pierde lo escrito ni el foco. */
+function pintarFilasRegistro() {
+  const lista = registroFiltrado();
+  vaciar($('tabla-registro').tBodies[0], filasRegistro(lista));
+  vaciar($('registro-mas'), botonMasRegistro(lista));
+}

@@ -30,7 +30,7 @@ export function colores() {
   const leer = (nombre) => estilo.getPropertyValue(nombre).trim();
   const c = {};
   for (const nombre of ['--superficie', '--superficie-2', '--texto', '--texto-2', '--texto-3', '--grilla', '--eje', '--borde', '--borde-fuerte', '--verde', '--arista',
-    '--alta', '--media', '--baja', '--serie-1', '--serie-2', '--serie-3', '--serie-4', '--serie-otros', '--neutro']) {
+    '--alta', '--media', '--baja', '--media-texto', '--serie-1', '--serie-2', '--serie-3', '--serie-4', '--serie-otros', '--neutro']) {
     c[nombre] = leer(nombre);
   }
   return c;
@@ -44,7 +44,12 @@ function base(c) {
     animationDuration: 500,
     animationDurationUpdate: 350,
     tooltip: {
+      // Explícito: un gráfico que estuvo vacío (sinEjes) lo apaga, y al volver los datos tiene que prenderse.
+      show: true,
       confine: true,
+      // Aparece y se va al instante, como en Grafana: con la transición de ECharts quedaba un globito a medio
+      // borrar al sacar el mouse.
+      transitionDuration: 0,
       backgroundColor: c['--superficie'],
       borderColor: c['--borde'],
       borderWidth: 1,
@@ -72,9 +77,10 @@ function ejeTiempo(c, desde, hasta, conMarcas = false) {
       margin: conMarcas ? 17 : 8,
       // Con segundos en los rangos cortos; en los de más de medio día, la fecha en cada medianoche.
       formatter: (valor) => {
-        if (largo > 2 * 86400e3) return dia(valor);
         const fecha = new Date(valor);
-        if (largo > 12 * 3600e3 && fecha.getHours() === 0 && fecha.getMinutes() === 0) return dia(valor);
+        const medianoche = fecha.getHours() === 0 && fecha.getMinutes() === 0;
+        if (largo > 3 * 86400e3) return medianoche ? dia(valor) : '';
+        if (largo > 12 * 3600e3 && medianoche) return dia(valor);
         return largo <= 10 * 60e3 ? horaConSegundos(valor) : hora(valor);
       },
     },
@@ -104,6 +110,18 @@ function pincel(c) {
   };
 }
 
+/** Sin datos, el gráfico queda en blanco y su aviso (.vacio) dice por qué, como el «No data» de Grafana: sin ejes,
+    sin una escala inventada de 0 a 1 y sin marcas sueltas. */
+export function sinEjes(opciones) {
+  return {
+    ...opciones,
+    xAxis: { ...opciones.xAxis, show: false, axisPointer: { show: false } },
+    yAxis: { ...opciones.yAxis, show: false },
+    tooltip: { ...opciones.tooltip, show: false },
+    series: opciones.series.filter((s) => s.id !== 'marcas'),
+  };
+}
+
 /** El eje vertical; sin datos, llega a `vacio` para que la grilla no muestre marcas repetidas. */
 function ejeValor(c, formato, valores = null, vacio = 1) {
   const hayDatos = !valores || valores.some((v) => v > 0);
@@ -130,19 +148,6 @@ function tramoDe(t, paso) {
   return `${horaConSegundos(t)} a ${horaConSegundos(t + paso * 1000)}`;
 }
 
-/** Barras apiladas con la punta redondeada solo en el segmento de arriba de cada barra. */
-function apilar(series, tiempos) {
-  const n = tiempos.length;
-  for (let i = 0; i < n; i += 1) {
-    let arriba = -1;
-    series.forEach((s, j) => { if (s.valores[i] > 0) arriba = j; });
-    series.forEach((s, j) => {
-      const valor = s.valores[i] > 0 ? s.valores[i] : null;
-      s.datos[i] = j === arriba ? { value: [tiempos[i], valor], itemStyle: { borderRadius: [4, 4, 0, 0] } } : [tiempos[i], valor];
-    });
-  }
-}
-
 /**
  * Las alertas, como las marcas de Grafana pero sin la línea vertical: un triángulo chico debajo del eje, del
  * color de la severidad, en el momento en que empezó cada una. Las más graves quedan arriba. No entra en el
@@ -152,6 +157,8 @@ function apilar(series, tiempos) {
  */
 function serieMarcas(c, marcas) {
   const orden = marcas.slice().sort((a, b) => (PESO[a.severidad] || 0) - (PESO[b.severidad] || 0) || a.t - b.t || (a.id < b.id ? -1 : 1));
+  // En claro, el naranja de «Media» sobre blanco no llega a 3:1: su marca lleva el borde del texto de las medias.
+  const borde = (severidad) => (severidad === 'media' && document.documentElement.dataset.tema !== 'oscuro' ? c['--media-texto'] : c['--superficie']);
   return {
     id: 'marcas',
     name: 'Alertas',
@@ -170,7 +177,7 @@ function serieMarcas(c, marcas) {
         children: [
           // Un recuadro invisible más grande que la marca, para que sea fácil de apuntar.
           { type: 'rect', shape: { x: x - 7, y: y + 1, width: 14, height: 12 }, style: { fill: 'rgba(0,0,0,0)' } },
-          { type: 'polygon', shape: { points: [[x, y + 2.5], [x - 5.5, y + 11], [x + 5.5, y + 11]] }, style: { fill: c[`--${m.severidad}`], stroke: c['--superficie'], lineWidth: 1 } },
+          { type: 'polygon', shape: { points: [[x, y + 2.5], [x - 5.5, y + 11], [x + 5.5, y + 11]] }, style: { fill: c[`--${m.severidad}`], stroke: borde(m.severidad), lineWidth: 1 } },
         ],
       };
     },
@@ -238,6 +245,57 @@ export function opcionesServicios(c, datos) {
         data: datos.tiempos.map((t, i) => [t, datos.porGrupo[g.id][i]]),
       })),
     ],
+  };
+}
+
+/**
+ * Las alertas que empezaron en cada barra, apiladas por severidad con las altas abajo, con el mismo eje y el
+ * mismo cursor que los gráficos de tráfico, como un panel de barras de Grafana. Las marcas se tapan cuando
+ * caen varias juntas; acá se cuentan. El globito da cuántas hay de cada severidad y de cada tipo de ataque;
+ * tocar una barra abre esas alertas en la lista (vivo.js).
+ * datos: { tiempos (ms), paso (s), desde, hasta, porSeveridad: {alta: [], media: [], baja: []},
+ *          porTipo: [[{ tipo, n }] de cada barra, de mayor a menor] }
+ */
+export function opcionesAlertasTiempo(c, datos) {
+  const totales = datos.tiempos.map((_, i) => SEVERIDADES.reduce((suma, s) => suma + datos.porSeveridad[s.id][i], 0));
+  return {
+    ...base(c),
+    grid: { left: 8, right: 16, top: 12, bottom: 6, containLabel: true },
+    brush: pincel(c),
+    xAxis: ejeTiempo(c, datos.desde, datos.hasta),
+    yAxis: { ...ejeValor(c, ejeNumero, totales, 1), minInterval: 1 },
+    tooltip: {
+      ...base(c).tooltip,
+      trigger: 'axis',
+      axisPointer: { type: 'line', lineStyle: { color: c['--texto-3'] } },
+      formatter: (params) => {
+        if (!params.length) return '';
+        const i = Math.floor((params[0].axisValue - datos.tiempos[0]) / (datos.paso * 1000));
+        if (i < 0 || i >= datos.tiempos.length) return '';
+        const html = `<div class="globito"><div class="globito-titulo">${escapar(tramoDe(datos.tiempos[i], datos.paso))}</div>`;
+        if (!totales[i]) return `${html}<div class="globito-nota">Sin alertas</div></div>`;
+        const filas = SEVERIDADES.filter((s) => datos.porSeveridad[s.id][i]).map((s) => {
+          const n = datos.porSeveridad[s.id][i];
+          return filaGlobito(c[s.color], numero(n), n === 1 ? s.nombre.toLowerCase() : `${s.nombre.toLowerCase()}s`, true);
+        });
+        const tipos = datos.porTipo[i].map((x) => `<div class="globito-fila"><span></span><b>${escapar(numero(x.n))}</b><em>${escapar(x.tipo)}</em></div>`);
+        return `${html}${filas.join('')}<div class="globito-separador"></div>${tipos.join('')}<div class="globito-nota">Elegí la barra para verlas en la lista.</div></div>`;
+      },
+    },
+    // Sin alertas, la barra queda vacía (null). Los segmentos van sin borde: en una semana cada barra mide
+    // pocos píxeles y el borde se comería el color.
+    series: SEVERIDADES.map((s) => ({
+      id: `alertas-${s.id}`,
+      name: s.nombre,
+      type: 'bar',
+      stack: 'alertas',
+      barMaxWidth: 24,
+      barMinWidth: 2,
+      itemStyle: { color: c[s.color], borderRadius: 1 },
+      emphasis: { disabled: true },
+      // Cada barra va en el medio de su tramo: las de 3 horas cubren de 0 a 3, no empiezan en 0.
+      data: datos.tiempos.map((t, i) => [t + datos.paso * 500, datos.porSeveridad[s.id][i] || null]),
+    })),
   };
 }
 
@@ -365,8 +423,9 @@ export function opcionesGrafo(c, datos) {
         borderColor: n.severidad ? c[`--${n.severidad}`] : c['--superficie'],
         borderWidth: n.severidad ? 3.5 : 2,
         opacity: apagado ? 0.2 : 1,
-        shadowBlur: n.id === nodoElegido ? 18 : 0,
-        shadowColor: conAlfa(c['--verde'], 0.7),
+        // El halo separa la alerta del color del área (un servidor rosa con alerta roja); el elegido, en verde.
+        shadowBlur: n.id === nodoElegido ? 18 : n.severidad ? 12 : 0,
+        shadowColor: n.id === nodoElegido ? conAlfa(c['--verde'], 0.7) : n.severidad ? conAlfa(c[`--${n.severidad}`], 0.8) : 'transparent',
       },
       label: {
         show: true,
@@ -392,7 +451,8 @@ export function opcionesGrafo(c, datos) {
       target: a.destino,
       value: a.conexiones,
       symbolSize: [0, 7 + grosor * 1.5],
-      lineStyle: { width: grosor, color: a.severidad ? c[`--${a.severidad}`] : c['--arista'], opacity: encendida ? (a.severidad ? 0.95 : 0.75) : 0.07 },
+      // La alerta baja va punteada: su verde no se confunde con el área RRHH.
+      lineStyle: { width: grosor, color: a.severidad ? c[`--${a.severidad}`] : c['--arista'], type: a.severidad === 'baja' ? 'dashed' : 'solid', opacity: encendida ? (a.severidad ? 0.95 : 0.75) : 0.07 },
       label: { show: Boolean(elegido) && encendida, formatter: limpio(a.etiqueta) },
       datos: a,
     };
@@ -441,93 +501,6 @@ export function opcionesGrafo(c, datos) {
       emphasis: elegido ? { focus: 'none', scale: 1.06 } : { focus: 'adjacency', scale: 1.08, edgeLabel: { show: true } },
       blur: { itemStyle: { opacity: 0.2 }, lineStyle: { opacity: 0.07 }, label: { opacity: 0.3 } },
       animationDurationUpdate: 300,
-    }],
-  };
-}
-
-/** Alertas por día, apiladas por severidad (los colores de severidad, siempre con su nombre en la leyenda). */
-export function opcionesPorDia(c, datos) {
-  const series = SEVERIDADES.slice().reverse().map((s) => ({ sev: s, valores: datos.porSeveridad[s.id], datos: new Array(datos.dias.length) }));
-  const indices = datos.dias.map((_, i) => i);
-  apilar(series, indices);
-  for (const s of series) s.datos = s.datos.map((d) => (Array.isArray(d) ? d[1] : { value: d.value[1], itemStyle: d.itemStyle }));
-  const totales = datos.dias.map((_, i) => SEVERIDADES.reduce((suma, s) => suma + datos.porSeveridad[s.id][i], 0));
-  return {
-    ...base(c),
-    grid: { left: 8, right: 12, top: 16, bottom: 6, containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: datos.dias.map((d) => dia(d)),
-      axisLine: { lineStyle: { color: c['--eje'] } },
-      axisTick: { show: false },
-      splitLine: { show: false },
-      axisLabel: { color: c['--texto-2'], fontSize: 12, hideOverlap: true },
-      axisPointer: { show: true, type: 'shadow', shadowStyle: { color: c['--neutro'], opacity: 0.5 }, label: { show: false } },
-    },
-    yAxis: { ...ejeValor(c, (v) => numero(v), totales, 4), minInterval: 1 },
-    tooltip: {
-      ...base(c).tooltip,
-      trigger: 'axis',
-      formatter: (params) => {
-        const i = params[0].dataIndex;
-        if (i === undefined || i < 0) return '';
-        const filas = SEVERIDADES.map((s) => filaGlobito(c[s.color], numero(datos.porSeveridad[s.id][i]), s.nombre));
-        const total = SEVERIDADES.reduce((suma, s) => suma + datos.porSeveridad[s.id][i], 0);
-        return `<div class="globito"><div class="globito-titulo">${escapar(datos.etiquetas[i])}</div>${filas.join('')}<div class="globito-separador"></div><div class="globito-fila"><span></span><b>${escapar(numero(total))}</b><em>alertas</em></div></div>`;
-      },
-    },
-    series: series.map((s) => ({
-      name: s.sev.nombre,
-      type: 'bar',
-      stack: 'severidad',
-      barMaxWidth: 24,
-      data: s.datos,
-      itemStyle: { color: c[s.sev.color], borderColor: c['--superficie'], borderWidth: 1 },
-      emphasis: { disabled: true },
-    })),
-  };
-}
-
-/** Barras horizontales de una sola serie, de mayor a menor, con el valor en la punta. */
-export function opcionesBarrasH(c, datos, { formato = (v) => numero(v), maximo, globito } = {}) {
-  const color = c['--verde'];
-  const etiquetas = datos.etiquetas.slice().reverse();
-  const valores = datos.valores.slice().reverse();
-  const textos = (datos.textos || datos.valores.map((v) => formato(v))).slice().reverse();
-  return {
-    ...base(c),
-    grid: { left: 8, right: 96, top: 6, bottom: 6, containLabel: true },
-    xAxis: { type: 'value', min: 0, max: maximo, show: false },
-    yAxis: {
-      type: 'category',
-      data: etiquetas,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { color: c['--texto'], fontSize: 13, fontFamily: FUENTE, width: 190, overflow: 'truncate' },
-    },
-    tooltip: {
-      ...base(c).tooltip,
-      trigger: 'item',
-      formatter: (p) => `<div class="globito"><div class="globito-titulo">${escapar(p.name)}</div>${filaGlobito(color, globito ? globito(datos.etiquetas.length - 1 - p.dataIndex) : textos[p.dataIndex], datos.nombre || '')}</div>`,
-    },
-    series: [{
-      type: 'bar',
-      barMaxWidth: 18,
-      data: valores,
-      itemStyle: { color, borderRadius: [0, 4, 4, 0] },
-      showBackground: true,
-      backgroundStyle: { color: c['--neutro'], opacity: 0.5, borderRadius: [0, 4, 4, 0] },
-      label: {
-        show: true,
-        position: 'right',
-        distance: 8,
-        color: c['--texto'],
-        fontSize: 13,
-        fontWeight: 600,
-        fontFamily: FUENTE,
-        formatter: (p) => textos[p.dataIndex],
-      },
-      emphasis: { itemStyle: { opacity: 0.85 } },
     }],
   };
 }

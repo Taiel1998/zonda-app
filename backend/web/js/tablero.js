@@ -2,24 +2,31 @@
 // Usa la misma API y el mismo acceso que un teléfono: se entra con un código de pareo de un solo uso y el
 // navegador queda como un dispositivo más, con su perfil y su vencimiento.
 
-import { api, borrarAcceso, guardarAcceso, horaConSegundos, icono, leerAcceso, vaciar, el } from './util.js';
+import { api, borrarAcceso, cambiarUrl, guardarAcceso, horaConSegundos, icono, leerAcceso, vaciar, el } from './util.js';
 import { $, alCambiarAlertas, cuandoExpire, e } from './comun.js';
 import {
   actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
-  pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
+  configurarVivo, pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
 } from './vivo.js';
 import { actualizarPares, configurarMapa, pintarMapa, soltarElegido } from './mapa.js';
-import { abrirDetalle, cerrarDetalle, pintarAlertas, sincronizarAlertas, verMas } from './alertas.js';
-import { cambiarPeriodo, descargarImagen, guardarPdf, pintarResumen } from './resumen.js';
-import { actualizarAjustes, actualizarPersonas, configurarAjustes, pintarAjustes } from './ajustes.js';
+import {
+  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verMas, verSinRevisar,
+} from './alertas.js';
+import { avisarEnLaCompu, avisosActivados, configurarAvisos } from './avisos.js';
+import { pintarResumen } from './resumen.js';
+import { actualizarAjustes, actualizarPersonas, cambiosSinGuardar, configurarAjustes, pintarAjustes } from './ajustes.js';
+import { confirmar } from './hojas.js';
 import { cadaCuanto, cerrarSelector, configurarTiempo, leerUrl, pintarBarra } from './tiempo.js';
 import { cerrarInspector, configurarPaneles, salirDeGrande, teclaDePanel, verEnGrande } from './paneles.js';
 import { cerrarMenu, configurarMenu } from './menu.js';
+import { alternarAyuda, cerrarAyuda, configurarAyuda } from './ayuda.js';
 import { configurarFilas, filaAbierta } from './filas.js';
 
 const CLAVE_TEMA = 'zonda.tablero.tema';
 const tareas = {};
 let ticker = null;
+// Con el tablero oculto y los avisos de esta compu activados, trae las alertas (alCambiarVisibilidad).
+let vigia = null;
 
 // ---- Tema ----
 
@@ -32,13 +39,40 @@ function aplicarTema(tema) {
   vaciar(boton, icono(tema === 'oscuro' ? 'sol' : 'luna'));
 }
 
-function temaGuardado() {
-  try { return localStorage.getItem(CLAVE_TEMA) === 'oscuro' ? 'oscuro' : 'claro'; } catch (_) { return 'claro'; }
+// El tema elegido: «claro», «oscuro» o, sin nada guardado, el del sistema, como la app (decisión 43).
+const oscuroDelSistema = window.matchMedia('(prefers-color-scheme: dark)');
+
+function temaElegido() {
+  try {
+    const guardado = localStorage.getItem(CLAVE_TEMA);
+    return guardado === 'claro' || guardado === 'oscuro' ? guardado : 'sistema';
+  } catch (_) { return 'sistema'; }
 }
 
+const temaQueToca = () => (temaElegido() === 'sistema' ? (oscuroDelSistema.matches ? 'oscuro' : 'claro') : temaElegido());
+
+function guardarTema(tema) {
+  try {
+    if (tema === 'sistema') localStorage.removeItem(CLAVE_TEMA);
+    else localStorage.setItem(CLAVE_TEMA, tema);
+  } catch (_) { /* solo por esta vez */ }
+}
+
+/** El botón de la cabecera pasa al otro tema y lo deja elegido. */
 function cambiarTema() {
   const tema = document.documentElement.dataset.tema === 'oscuro' ? 'claro' : 'oscuro';
-  try { localStorage.setItem(CLAVE_TEMA, tema); } catch (_) { /* solo por esta vez */ }
+  guardarTema(tema);
+  ponerTema(tema);
+}
+
+/** Ajustes → General: «Como el sistema», «Claro» u «Oscuro». */
+function elegirTema(tema) {
+  guardarTema(tema);
+  ponerTema(temaQueToca());
+}
+
+function ponerTema(tema) {
+  if (document.documentElement.dataset.tema === tema) return;
   aplicarTema(tema);
   // Al limpiar un gráfico se pierde el pincel de arrastrar para acercar: tiempo.js lo vuelve a armar.
   for (const grafico of Object.values(e.graficos)) { grafico.clear(); grafico.zondaPincel = false; }
@@ -49,12 +83,9 @@ function cambiarTema() {
   if (e.vista === 'resumen') pintarResumen();
 }
 
-/** El único «?» de la tarjeta del estado del sistema: abre y cierra su ayuda. */
+/** El único «?» de la tarjeta del estado del sistema: abre y cierra su globito, con el texto de index.html. */
 function alternarAyudaEstado() {
-  const boton = $('boton-ayuda-estado');
-  const abierta = boton.getAttribute('aria-expanded') === 'true';
-  boton.setAttribute('aria-expanded', String(!abierta));
-  $('ayuda-estado').hidden = abierta;
+  alternarAyuda($('boton-ayuda-estado'), 'Qué muestra cada pieza', [...$('ayuda-estado').content.cloneNode(true).children]);
 }
 
 // ---- Ingreso ----
@@ -109,7 +140,7 @@ async function entrar(evento) {
     error.hidden = false;
     error.textContent = falla.estado === 400 ? 'Ese código no existe. Revisá las letras o pedí uno nuevo.'
       : falla.estado === 410 ? 'Ese código venció o ya se usó. Pedí uno nuevo.'
-        : falla.estado === 0 ? 'El servidor no contesta. Revisá que esté andando.'
+        : falla.estado === 0 ? 'El servidor no contesta. Revisá que la computadora del servidor esté encendida y que estés en la red de la empresa.'
           : (falla.message || 'No se pudo entrar.');
   } finally {
     boton.disabled = false;
@@ -118,12 +149,15 @@ async function entrar(evento) {
 }
 
 async function salir() {
+  const n = cambiosSinGuardar();
+  if (n && !await confirmar({ titulo: '¿Salir sin guardar?', texto: `${n === 1 ? 'Hay 1 cambio' : `Hay ${n} cambios`} sin guardar en Ajustes.`, aceptar: 'Salir igual', peligro: true })) return;
   try { await api('/dispositivos/actual', { token: e.acceso.token, metodo: 'DELETE' }); } catch (_) { /* igual se olvida el acceso */ }
   terminarSesion();
 }
 
 function terminarSesion(mensaje) {
   detenerTicker();
+  clearInterval(vigia);
   borrarAcceso();
   e.acceso = null;
   e.alertas.clear();
@@ -158,16 +192,22 @@ function arrancarTicker() {
   tic();
 }
 
+function correr(nombre) {
+  const estado = tareas[nombre] || (tareas[nombre] = { ultima: 0, corriendo: false });
+  if (estado.corriendo) return;
+  estado.corriendo = true;
+  estado.ultima = Date.now();
+  TAREAS[nombre].correr().catch(() => { /* se muestra en el indicador y se reintenta en la vuelta siguiente */ }).finally(() => { estado.corriendo = false; });
+}
+
 function tic() {
   if (!e.acceso) return;
   const ahora = Date.now();
   for (const [nombre, tarea] of Object.entries(TAREAS)) {
-    const estado = tareas[nombre] || (tareas[nombre] = { ultima: 0, corriendo: false });
+    const estado = tareas[nombre];
     // La primera vez corre siempre, aunque la actualización automática esté apagada.
-    if (estado.corriendo || (estado.ultima && ahora - estado.ultima < tarea.cada())) continue;
-    estado.corriendo = true;
-    estado.ultima = ahora;
-    tarea.correr().catch(() => { /* se muestra en el indicador y se reintenta en la vuelta siguiente */ }).finally(() => { estado.corriendo = false; });
+    if (estado && estado.ultima && ahora - estado.ultima < tarea.cada()) continue;
+    correr(nombre);
   }
   pintarEnVivo();
   // El dato de cada pieza del estado cuenta los segundos («Última revisión hace 12 s»).
@@ -180,12 +220,19 @@ function pintarEnVivo() {
   if (!e.ultimaRespuesta) {
     indicador.dataset.estado = e.servidorCaido ? 'caido' : 'lento';
     texto.textContent = e.servidorCaido ? 'El servidor no contesta' : 'Conectando…';
+    indicador.title = texto.textContent;
     return;
   }
   const segundos = Math.round((Date.now() - e.ultimaRespuesta) / 1000);
   indicador.dataset.estado = e.servidorCaido || segundos > 60 ? 'caido' : segundos > 15 ? 'lento' : 'ok';
   texto.textContent = e.servidorCaido ? `Sin respuesta desde las ${horaConSegundos(e.ultimaRespuesta)}`
     : segundos <= 2 ? 'En vivo · recién' : `En vivo · hace ${segundos} s`;
+  // Con la actualización apagada los gráficos quedan quietos: la cabecera no dice «En vivo», como en Grafana.
+  if (!e.servidorCaido && segundos <= 60 && cadaCuanto() === Infinity) {
+    indicador.dataset.estado = 'pausa';
+    texto.textContent = 'Actualización apagada';
+  }
+  indicador.title = texto.textContent;
   const banda = $('banda-error');
   banda.hidden = !(e.servidorCaido || segundos > 60);
   banda.textContent = 'El servidor de alertas no contesta. El tablero muestra lo último que recibió y sigue intentando.';
@@ -197,7 +244,13 @@ function cambiarVista(vista, { mantenerPanel = false } = {}) {
   if (!mantenerPanel) salirDeGrande();
   cerrarInspector();
   e.vista = vista;
-  for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.setAttribute('aria-selected', String(boton.dataset.vista === vista));
+  for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) {
+    if (boton.dataset.vista === vista) boton.setAttribute('aria-current', 'page');
+    else boton.removeAttribute('aria-current');
+  }
+  document.title = `${{ vivo: 'En vivo', alertas: 'Alertas', resumen: 'Resumen', ajustes: 'Ajustes' }[vista]} · Zonda`;
+  // La vista queda en la dirección: al recargar o al compartir el enlace se abre la misma.
+  cambiarUrl({ vista: vista === 'vivo' ? null : vista });
   for (const nombre of ['vivo', 'alertas', 'resumen', 'ajustes']) $(`vista-${nombre}`).hidden = nombre !== vista;
   if (vista === 'alertas') pintarAlertas();
   if (vista === 'resumen') pintarResumen();
@@ -227,7 +280,7 @@ function alCambiarFila(fila, abierta) {
   }
 }
 
-const CON_HORARIO = ['servicios', 'volumen', 'fallidas', 'mapa'];
+const CON_HORARIO = ['servicios', 'alertas-tiempo', 'volumen', 'fallidas', 'mapa'];
 
 /** Cambió el horario (o se tocó Actualizar): se piden ya el tráfico y el mapa, y los relojes arrancan de nuevo. */
 function actualizarHorario() {
@@ -250,7 +303,7 @@ function actualizarTodo() {
 function alApretarTecla(ev) {
   if (ev.key === 'Escape') {
     if (document.querySelector('.hoja-velo')) return;
-    if (cerrarMenu(true) || cerrarSelector(true) || cerrarInspector()) { ev.preventDefault(); return; }
+    if (cerrarAyuda(true) || cerrarMenu(true) || cerrarSelector(true) || cerrarInspector()) { ev.preventDefault(); return; }
     if (e.detalleAbierto) { cerrarDetalle(); return; }
     if (soltarElegido() || salirDeGrande()) ev.preventDefault();
     return;
@@ -266,7 +319,61 @@ function alCambiar(nuevas) {
   if (e.vista === 'alertas') pintarAlertas();
   if (e.vista === 'resumen') pintarResumen();
   if (e.detalleAbierto && e.alertas.has(e.detalleAbierto) && !$('detalle').hidden) abrirDetalle(e.detalleAbierto, false);
-  if (nuevas.length) avisarNuevas(nuevas);
+  if (nuevas.length) {
+    avisarNuevas(nuevas);
+    avisarEnLaCompu(nuevas);
+  }
+  if (alertaDelEnlace && e.alertas.has(alertaDelEnlace)) {
+    const id = alertaDelEnlace;
+    alertaDelEnlace = null;
+    abrirDetalle(id, true, { sinHistoria: true });
+  }
+}
+
+/** La barra de arriba de cada vista queda fija debajo de la cabecera (estilos.css); ya pegada, lleva una línea abajo. */
+function marcarBarrasPegadas() {
+  const tope = document.querySelector('.cabecera').offsetHeight;
+  for (const barra of document.querySelectorAll('.barra-fija')) {
+    barra.classList.toggle('pegada', window.scrollY > 0 && barra.getBoundingClientRect().top <= tope + 1);
+  }
+}
+
+/** El logo lleva a En vivo, arriba de todo, como el inicio de una página web; con Ctrl o la rueda, el navegador
+    abre el tablero en otra pestaña. */
+function irAlInicio(ev) {
+  if (ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
+  ev.preventDefault();
+  cerrarDetalle();
+  cambiarVista('vivo');
+}
+
+// La alerta del enlace se abre cuando llegan las alertas (la primera sincronización).
+let alertaDelEnlace = null;
+
+/** Atrás y Adelante del navegador abren o cierran el detalle; la vista no cambia. */
+function alNavegar() {
+  if (!e.acceso) return;
+  const alerta = new URLSearchParams(location.search).get('alerta');
+  if (alerta && e.alertas.has(alerta)) abrirDetalle(alerta, true, { sinHistoria: true });
+  else if (!alerta && e.detalleAbierto) cerrarDetalle({ sinHistoria: true });
+  cambiarUrl({ vista: e.vista === 'vivo' ? null : e.vista });
+}
+
+/** Las sin revisar de una severidad en la lista de Alertas: los contadores de En vivo y el aviso de varias altas. */
+function abrirSinRevisar(severidad) {
+  verSinRevisar(severidad);
+  cambiarVista('alertas');
+}
+
+/** Con el tablero oculto no se pide ni se dibuja nada; con los avisos de esta compu activados, las alertas se
+    siguen trayendo cada 20 s para avisar las altas (el navegador puede espaciarlo hasta un minuto). */
+function alCambiarVisibilidad() {
+  if (!e.acceso) return;
+  clearInterval(vigia);
+  vigia = null;
+  if (!document.hidden) { arrancarTicker(); return; }
+  detenerTicker();
+  if (avisosActivados()) vigia = setInterval(() => { if (e.acceso) correr('alertas'); }, 20000);
 }
 
 async function cargarAreas() {
@@ -282,6 +389,7 @@ async function cargarAreas() {
 async function arrancarTablero() {
   $('ingreso').hidden = true;
   $('tablero').hidden = false;
+  document.title = 'En vivo · Zonda';
   e.perfil = e.acceso.perfil;
   e.miId = e.acceso.dispositivoId || null;
   vaciar($('red-actual'), e.acceso.red ? e.acceso.red.nombre : 'Red', el('small', {}, `${e.acceso.persona || 'Tablero web'} · ${e.perfil === 'administrador' ? 'administrador' : 'analista'}`));
@@ -294,20 +402,27 @@ async function arrancarTablero() {
 }
 
 function iniciar() {
-  aplicarTema(temaGuardado());
+  aplicarTema(temaQueToca());
+  oscuroDelSistema.addEventListener('change', () => {
+    if (temaElegido() === 'sistema') ponerTema(temaQueToca());
+    if (e.vista === 'ajustes') pintarAjustes();
+  });
   cuandoExpire(terminarSesion);
   alCambiarAlertas(alCambiar);
-  configurarAjustes({ salir, cambiarTema });
+  configurarAjustes({ salir, elegirTema, temaElegido });
   const panelDeLaUrl = leerUrl();
   configurarMenu();
+  configurarAyuda();
   configurarFilas({ alCambiar: alCambiarFila });
   configurarMapa();
   configurarTiempo({ alCambiarRango: actualizarHorario, actualizarAhora: actualizarTodo });
+  configurarAlertas();
   configurarPaneles({
-    // El mapa y el estado del sistema se arman según el tamaño del panel; los otros gráficos se ajustan solos.
+    // El mapa y las piezas del estado del sistema (que en grande llevan ejes) se arman según el tamaño del
+    // panel; los otros gráficos se ajustan solos.
     alAgrandar: (nombre) => {
       if (nombre === 'mapa') pintarMapa();
-      if (nombre === 'estado') pintarGraficosPiezas();
+      if (['sensor', 'analisis', 'servidor'].includes(nombre)) pintarGraficosPiezas();
     },
     irAVista: (vista) => { if (e.vista !== vista) cambiarVista(vista, { mantenerPanel: true }); },
   });
@@ -317,19 +432,23 @@ function iniciar() {
     if (valor !== ev.target.value) ev.target.value = valor;
   });
   $('boton-tema').addEventListener('click', cambiarTema);
+  $('ir-al-inicio').addEventListener('click', irAlInicio);
   $('boton-ayuda-estado').addEventListener('click', alternarAyudaEstado);
   $('boton-salir').addEventListener('click', salir);
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.addEventListener('click', () => cambiarVista(boton.dataset.vista));
-  for (const boton of $('periodos').querySelectorAll('button')) boton.addEventListener('click', () => cambiarPeriodo(boton.dataset.dias));
   $('ver-mas').addEventListener('click', verMas);
-  $('descargar-imagen').addEventListener('click', descargarImagen);
-  $('descargar-pdf').addEventListener('click', guardarPdf);
+  $('ver-todas-alertas').addEventListener('click', () => cambiarVista('alertas'));
   $('velo').addEventListener('click', cerrarDetalle);
   document.addEventListener('keydown', alApretarTecla);
-  document.addEventListener('visibilitychange', () => {
-    if (!e.acceso) return;
-    if (document.hidden) detenerTicker(); else arrancarTicker();
+  document.addEventListener('visibilitychange', alCambiarVisibilidad);
+  window.addEventListener('popstate', alNavegar);
+  window.addEventListener('scroll', marcarBarrasPegadas, { passive: true });
+  $('sin-revisar').addEventListener('click', (ev) => {
+    const contador = ev.target.closest('[data-severidad]');
+    if (contador) abrirSinRevisar(contador.dataset.severidad);
   });
+  configurarAvisos({ abrirDetalle: (id) => abrirDetalle(id), abrirLista: abrirSinRevisar });
+  configurarVivo({ verAlertas: (desde, hasta) => { verAlertasEntre(desde, hasta); cambiarVista('alertas'); } });
   setInterval(() => { if (e.acceso && e.alertas.size) pintarUltimas(); }, 30000);
   // El nombre de un rango que termina ahora no cambia, pero sí sus horas (en el globito del botón).
   setInterval(() => { if (e.acceso) pintarBarra(); }, 30000);
@@ -338,6 +457,9 @@ function iniciar() {
   if (e.acceso) {
     arrancarTablero();
     if (panelDeLaUrl) verEnGrande(panelDeLaUrl);
+    const enlace = new URLSearchParams(location.search);
+    if (['alertas', 'resumen', 'ajustes'].includes(enlace.get('vista')) && !panelDeLaUrl) cambiarVista(enlace.get('vista'));
+    alertaDelEnlace = enlace.get('alerta');
   } else {
     mostrarIngreso();
   }

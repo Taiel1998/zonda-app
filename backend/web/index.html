@@ -19,26 +19,26 @@
     </div>
     <h1>Tablero de la red</h1>
     <p>Ingresá un código de pareo de un solo uso. Este navegador queda como un dispositivo más de la red, con su perfil y su vencimiento, igual que un teléfono.</p>
-    <label class="oculto-visual" for="codigo">Código de pareo</label>
+    <label class="ingreso-etiqueta" for="codigo">Código de pareo</label>
     <input id="codigo" class="campo-codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="9" placeholder="ABCD-2345" required>
     <button class="boton-principal" id="boton-entrar" type="submit">Entrar</button>
     <div class="ingreso-error" id="ingreso-error" role="alert" hidden></div>
     <div class="ingreso-red" id="ingreso-red"></div>
-    <div class="ingreso-ayuda">El código lo genera un administrador: desde la app, en Ajustes → Personas → Agregar persona, o en la notebook del servidor con <code>zonda pair</code>. Vence a los 10 minutos.</div>
+    <div class="ingreso-ayuda">El código lo genera un administrador: desde la app, en Ajustes → Personas → Agregar persona, o en la computadora del servidor con <code>zonda pair</code>. Vence a los 10 minutos.</div>
   </form>
 </main>
 
 <div id="tablero" hidden>
   <header class="cabecera">
-    <div class="marca">
+    <a class="marca" id="ir-al-inicio" href="index.html" title="Ir a En vivo" aria-label="Zonda: ir a En vivo">
       <img src="img/logo_zonda.png" alt="">
       <span class="marca-nombre">Zonda</span>
-    </div>
-    <nav class="pestanias" role="tablist" aria-label="Vistas del tablero">
-      <button class="pestania" role="tab" id="pestania-vivo" data-vista="vivo" aria-selected="true" aria-controls="vista-vivo">En vivo</button>
-      <button class="pestania" role="tab" id="pestania-alertas" data-vista="alertas" aria-selected="false" aria-controls="vista-alertas">Alertas</button>
-      <button class="pestania" role="tab" id="pestania-resumen" data-vista="resumen" aria-selected="false" aria-controls="vista-resumen">Resumen</button>
-      <button class="pestania" role="tab" id="pestania-ajustes" data-vista="ajustes" aria-selected="false" aria-controls="vista-ajustes">Ajustes</button>
+    </a>
+    <nav class="pestanias" aria-label="Vistas del tablero">
+      <button class="pestania" type="button" id="pestania-vivo" data-vista="vivo" aria-current="page">En vivo</button>
+      <button class="pestania" type="button" id="pestania-alertas" data-vista="alertas">Alertas</button>
+      <button class="pestania" type="button" id="pestania-resumen" data-vista="resumen">Resumen</button>
+      <button class="pestania" type="button" id="pestania-ajustes" data-vista="ajustes">Ajustes</button>
     </nav>
     <div class="cabecera-derecha">
       <span class="en-vivo" id="en-vivo" data-estado="ok"><span class="punto" aria-hidden="true"></span><span id="en-vivo-texto">Conectando…</span></span>
@@ -53,9 +53,9 @@
   <main class="contenido">
     <div class="banda-error" id="banda-error" role="status" hidden></div>
 
-    <section id="vista-vivo" role="tabpanel" aria-labelledby="pestania-vivo">
-      <div class="filtros barra-horario">
-        <span class="filtros-nota" id="nota-paso"></span>
+    <section id="vista-vivo" aria-labelledby="titulo-vista-vivo">
+      <h1 class="oculto-visual" id="titulo-vista-vivo">En vivo</h1>
+      <div class="filtros barra-horario barra-fija">
         <div class="barra-tiempo" id="barra-tiempo" role="toolbar" aria-label="Horario">
           <div class="grupo-botones">
             <button class="boton-barra" id="tiempo-atras" type="button" data-icono="izquierda" aria-label="Correr el horario para atrás" title="Correr el horario para atrás"></button>
@@ -63,11 +63,12 @@
             <button class="boton-barra" id="tiempo-adelante" type="button" data-icono="derecha" aria-label="Correr el horario para adelante" title="Correr el horario para adelante"></button>
           </div>
           <button class="boton-barra" id="tiempo-alejar" type="button" data-icono="alejar" aria-label="Alejar: el doble de tiempo" title="Alejar: el doble de tiempo"></button>
-          <div class="grupo-botones">
+          <div class="grupo-botones" id="grupo-actualizar">
             <button class="boton-barra" id="boton-actualizar" type="button" title="Actualizar ahora"><span data-icono="actualizar"></span><span class="texto-boton">Actualizar</span></button>
             <button class="boton-barra" id="actualizar-cada" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Cada cuánto se actualiza" title="Cada cuánto se actualiza"><span id="actualizar-texto">5 s</span><span data-icono="abajo"></span></button>
           </div>
           <button class="boton-barra" id="copiar-enlace" type="button" data-icono="enlace" aria-label="Copiar el enlace con este horario" title="Copiar el enlace con este horario"></button>
+          <button class="boton-barra" id="tiempo-mas" type="button" data-icono="menu" aria-haspopup="menu" aria-expanded="false" aria-label="Más opciones del horario" title="Más opciones del horario"></button>
           <div class="selector-tiempo" id="selector-tiempo" role="dialog" aria-label="Elegir el horario" hidden></div>
         </div>
       </div>
@@ -75,66 +76,84 @@
       <div class="fila" data-fila="estado">
         <h2 class="fila-titulo"><button class="fila-boton" type="button" aria-expanded="true" aria-controls="grilla-estado">Estado<span class="fila-cuenta"></span></button></h2>
         <div class="grilla" id="grilla-estado">
-          <article class="tarjeta c-12" id="tarjeta-estado" data-panel="estado" aria-labelledby="titulo-estado">
+          <article class="tarjeta c-12" id="tarjeta-estado" aria-labelledby="titulo-estado">
             <div class="estado-cabecera">
               <h3 class="tarjeta-titulo" id="titulo-estado">Estado del sistema</h3>
-              <button class="boton-ayuda" type="button" id="boton-ayuda-estado" aria-expanded="false" aria-controls="ayuda-estado" aria-label="Qué muestra cada pieza" title="Qué muestra cada pieza">?</button>
+              <button class="boton-ayuda" type="button" id="boton-ayuda-estado" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Qué muestra cada pieza" title="Qué muestra cada pieza">?</button>
               <div class="tarjeta-acciones">
                 <span class="etiqueta-rango" title="Este panel muestra siempre la última hora">Última hora</span>
-                <button class="boton-panel" type="button" data-menu-panel="estado" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Estado del sistema" title="Menú del panel"></button>
               </div>
             </div>
-            <div class="ayuda-estado" id="ayuda-estado" hidden>
+            <template id="ayuda-estado">
               <p><b>Sensor de red:</b> recibe una copia del tráfico de la red.</p>
               <p><b>Análisis en vivo:</b> revisa ese tráfico cada 20 s.</p>
               <p><b>Servidor de alertas:</b> guarda las alertas y avisa por Telegram.</p>
               <p>Verde: funciona. Ámbar: el sensor pierde tráfico. Rojo: no funciona o no hay datos.</p>
               <p>Los gráficos son de la última hora: las conexiones y las revisiones de cada minuto, y cuánto tarda el servidor en contestarle a este navegador.</p>
-            </div>
+            </template>
             <div class="piezas">
-              <div class="pieza" id="pieza-sensor">
+              <div class="pieza" id="pieza-sensor" data-panel="sensor">
                 <div class="pieza-cabecera">
-                  <span class="pieza-nombre"><i class="punto" id="punto-sensor"></i>Sensor de red</span>
-                  <span class="semaforo" id="semaforo-sensor" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                  <span class="pieza-nombre"><i class="punto" id="punto-sensor"></i><span class="pieza-titulo">Sensor de red</span></span>
+                  <span class="pieza-acciones">
+                    <span class="semaforo" id="semaforo-sensor" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                    <button class="boton-panel" type="button" data-menu-panel="sensor" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Sensor de red" title="Menú del panel"></button>
+                  </span>
                 </div>
                 <div class="pieza-dato" id="dato-sensor">–</div>
-                <div class="grafico mini" id="grafico-pieza-sensor" role="img" aria-label="Conexiones por minuto en la última hora"></div>
+                <div class="mini-envoltura">
+                  <div class="grafico mini" id="grafico-pieza-sensor" role="img" aria-label="Conexiones por minuto en la última hora. Los datos están en el menú del panel."></div>
+                  <div class="vacio-mini" id="vacio-pieza-sensor" hidden></div>
+                </div>
                 <div class="pieza-pie">Conexiones por minuto</div>
               </div>
-              <div class="pieza" id="pieza-analisis">
+              <div class="pieza" id="pieza-analisis" data-panel="analisis">
                 <div class="pieza-cabecera">
-                  <span class="pieza-nombre"><i class="punto" id="punto-analisis"></i>Análisis en vivo</span>
-                  <span class="semaforo" id="semaforo-analisis" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                  <span class="pieza-nombre"><i class="punto" id="punto-analisis"></i><span class="pieza-titulo">Análisis en vivo</span></span>
+                  <span class="pieza-acciones">
+                    <span class="semaforo" id="semaforo-analisis" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                    <button class="boton-panel" type="button" data-menu-panel="analisis" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Análisis en vivo" title="Menú del panel"></button>
+                  </span>
                 </div>
                 <div class="pieza-dato" id="dato-analisis">–</div>
-                <div class="grafico mini" id="grafico-pieza-analisis" role="img" aria-label="Revisiones por minuto en la última hora"></div>
+                <div class="mini-envoltura">
+                  <div class="grafico mini" id="grafico-pieza-analisis" role="img" aria-label="Revisiones por minuto en la última hora. Los datos están en el menú del panel."></div>
+                  <div class="vacio-mini" id="vacio-pieza-analisis" hidden></div>
+                </div>
                 <div class="pieza-pie">Revisiones por minuto</div>
               </div>
-              <div class="pieza" id="pieza-servidor">
+              <div class="pieza" id="pieza-servidor" data-panel="servidor">
                 <div class="pieza-cabecera">
-                  <span class="pieza-nombre"><i class="punto" id="punto-servidor"></i>Servidor de alertas</span>
-                  <span class="semaforo" id="semaforo-servidor" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                  <span class="pieza-nombre"><i class="punto" id="punto-servidor"></i><span class="pieza-titulo">Servidor de alertas</span></span>
+                  <span class="pieza-acciones">
+                    <span class="semaforo" id="semaforo-servidor" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                    <button class="boton-panel" type="button" data-menu-panel="servidor" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Servidor de alertas" title="Menú del panel"></button>
+                  </span>
                 </div>
                 <div class="pieza-dato" id="dato-servidor">–</div>
-                <div class="grafico mini" id="grafico-pieza-servidor" role="img" aria-label="Tiempo de respuesta del servidor"></div>
-                <div class="pieza-pie">Respuesta en milisegundos</div>
+                <div class="mini-envoltura">
+                  <div class="grafico mini" id="grafico-pieza-servidor" role="img" aria-label="Tiempo de respuesta del servidor. Los datos están en el menú del panel."></div>
+                  <div class="vacio-mini" id="vacio-pieza-servidor" hidden></div>
+                </div>
+                <div class="pieza-pie" id="pie-servidor">Respuesta en milisegundos</div>
               </div>
             </div>
           </article>
 
           <article class="tarjeta c-6" aria-labelledby="titulo-sin-revisar">
-            <p class="kpi-etiqueta" id="titulo-sin-revisar">Alertas sin revisar</p>
+            <div class="kpi-cabecera"><p class="kpi-etiqueta" id="titulo-sin-revisar">Alertas sin revisar</p><span class="etiqueta-rango" title="Cuentan todas las alertas sin revisar, sin importar el horario">Todas</span></div>
             <div class="contadores" id="sin-revisar"></div>
+            <p class="kpi-detalle">Elegí un contador para ver esas alertas.</p>
           </article>
 
           <article class="tarjeta c-2" aria-labelledby="titulo-ahora">
-            <p class="kpi-etiqueta" id="titulo-ahora">Conexiones por segundo</p>
-            <div class="kpi-heroe" id="conexiones-ahora">–</div>
+            <div class="kpi-cabecera"><p class="kpi-etiqueta" id="titulo-ahora">Conexiones por segundo</p><span class="etiqueta-rango" title="Los últimos 30 segundos, sin importar el horario">Ahora</span></div>
+            <div class="kpi-valor" id="conexiones-ahora">–</div>
             <div class="kpi-detalle" id="conexiones-ahora-detalle">Promedio de los últimos 30 segundos</div>
           </article>
 
           <article class="tarjeta c-2" aria-labelledby="titulo-trafico-ahora">
-            <p class="kpi-etiqueta" id="titulo-trafico-ahora">Tráfico ahora</p>
+            <div class="kpi-cabecera"><p class="kpi-etiqueta" id="titulo-trafico-ahora">Tráfico</p><span class="etiqueta-rango" title="Los últimos 30 segundos, sin importar el horario">Ahora</span></div>
             <div class="kpi-valor" id="trafico-ahora">–</div>
             <div class="kpi-detalle" id="trafico-ahora-detalle"></div>
           </article>
@@ -158,10 +177,23 @@
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="servicios" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Conexiones por servicio" title="Menú del panel"></button></div>
             </div>
-            <div class="grafico alto" id="grafico-servicios" role="img" aria-label="Conexiones por servicio"></div>
+            <div class="grafico alto" id="grafico-servicios" role="img" aria-label="Conexiones por servicio. Los datos están en el menú del panel."></div>
             <div class="vacio" id="vacio-servicios" hidden></div>
             <div class="leyenda-tabla-envoltura"><table class="leyenda-tabla" id="leyenda-servicios" hidden></table></div>
             <div class="leyenda leyenda-marcas" id="leyenda-marcas"></div>
+          </article>
+
+          <article class="tarjeta c-12" id="tarjeta-alertas-tiempo" data-panel="alertas-tiempo">
+            <div class="tarjeta-cabecera">
+              <div>
+                <h3 class="tarjeta-titulo">Alertas en el tiempo</h3>
+                <p class="tarjeta-sub" id="sub-alertas-tiempo">Las alertas que empezaron en cada barra, por severidad. Elegí una barra para verlas en la lista.</p>
+              </div>
+              <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="alertas-tiempo" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Alertas en el tiempo" title="Menú del panel"></button></div>
+            </div>
+            <div class="grafico corto" id="grafico-alertas-tiempo" role="img" aria-label="Alertas de cada barra, por severidad. Los datos están en el menú del panel."></div>
+            <div class="vacio" id="vacio-alertas-tiempo" hidden></div>
+            <div class="leyenda" id="leyenda-alertas-tiempo"></div>
           </article>
 
           <article class="tarjeta c-6" id="tarjeta-volumen" data-panel="volumen">
@@ -172,7 +204,7 @@
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="volumen" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Volumen de tráfico" title="Menú del panel"></button></div>
             </div>
-            <div class="grafico bajo" id="grafico-volumen" role="img" aria-label="Volumen de tráfico"></div>
+            <div class="grafico bajo" id="grafico-volumen" role="img" aria-label="Volumen de tráfico. Los datos están en el menú del panel."></div>
             <div class="vacio" id="vacio-volumen" hidden></div>
           </article>
 
@@ -184,7 +216,8 @@
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="fallidas" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Conexiones sin respuesta" title="Menú del panel"></button></div>
             </div>
-            <div class="grafico bajo" id="grafico-fallidas" role="img" aria-label="Conexiones sin respuesta"></div>
+            <div class="grafico bajo" id="grafico-fallidas" role="img" aria-label="Conexiones sin respuesta. Los datos están en el menú del panel."></div>
+            <div class="vacio" id="vacio-fallidas" hidden></div>
           </article>
         </div>
       </div>
@@ -202,7 +235,7 @@
             </div>
             <div class="mapa-cuerpo">
               <div class="mapa-lienzo">
-                <div class="grafico mapa" id="grafico-mapa" role="img" aria-label="Comunicaciones entre los equipos de la red"></div>
+                <div class="grafico mapa" id="grafico-mapa" role="img" aria-label="Comunicaciones entre los equipos de la red. Los datos están en el menú del panel."></div>
                 <div class="mapa-zoom" role="group" aria-label="Zoom del mapa">
                   <button class="boton-barra" type="button" id="mapa-acercar" data-icono="mas" aria-label="Acercar" title="Acercar (o Ctrl y la rueda)"></button>
                   <button class="boton-barra" type="button" id="mapa-alejar" data-icono="menos" aria-label="Alejar" title="Alejar (o Ctrl y la rueda)"></button>
@@ -223,8 +256,9 @@
             <div class="tarjeta-cabecera">
               <div>
                 <h3 class="tarjeta-titulo">Últimas alertas</h3>
-                <p class="tarjeta-sub">Las más nuevas primero. Tocá una para ver el detalle.</p>
+                <p class="tarjeta-sub">Elegí una para ver el detalle.</p>
               </div>
+              <div class="tarjeta-acciones"><span class="etiqueta-rango" title="Sin importar el horario">Las 8 más nuevas</span><button class="boton-texto" type="button" id="ver-todas-alertas">Ver todas</button></div>
             </div>
             <ul class="feed" id="ultimas-alertas"></ul>
           </article>
@@ -232,13 +266,27 @@
       </div>
     </section>
 
-    <section id="vista-alertas" role="tabpanel" aria-labelledby="pestania-alertas" hidden>
-      <div class="filtros" id="filtros-alertas"></div>
-      <p class="resumen-filtros" id="resumen-filtros-alertas"></p>
+    <section id="vista-alertas" aria-labelledby="titulo-vista-alertas" hidden>
+      <h1 class="oculto-visual" id="titulo-vista-alertas">Alertas</h1>
+      <div class="filtros barra-filtros barra-fija">
+        <div class="filtros-chips" id="filtros-alertas"></div>
+        <div class="barra-tiempo" id="barra-tiempo-alertas" role="toolbar" aria-label="Horario de las alertas">
+          <div class="grupo-botones">
+            <button class="boton-barra" id="alertas-atras" type="button" data-icono="izquierda" aria-label="Correr el horario para atrás" title="Correr el horario para atrás"></button>
+            <button class="boton-barra boton-rango" id="alertas-rango" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="selector-alertas"><span data-icono="reloj"></span><span id="alertas-rango-texto">Últimos 30 días</span><span data-icono="abajo"></span></button>
+            <button class="boton-barra" id="alertas-adelante" type="button" data-icono="derecha" aria-label="Correr el horario para adelante" title="Correr el horario para adelante"></button>
+          </div>
+          <div class="selector-tiempo" id="selector-alertas" role="dialog" aria-label="Elegir el horario de las alertas" hidden></div>
+        </div>
+      </div>
+      <div class="resumen-con-acciones">
+        <p class="resumen-filtros" id="resumen-filtros-alertas"></p>
+        <button class="boton-barra" id="alertas-csv" type="button" title="Descargar en CSV las alertas de la lista, con estos filtros"><span data-icono="descargar"></span><span class="texto-boton">Descargar CSV</span></button>
+      </div>
       <article class="tarjeta">
         <div class="tabla-envoltura">
           <table class="tabla" id="tabla-alertas">
-            <thead><tr><th>Severidad</th><th>Tipo</th><th>Origen → destino</th><th>Servicio</th><th>Empezó</th><th class="num">Flujos</th><th>Métodos</th><th>Responsable</th><th>Estado</th></tr></thead>
+            <thead><tr><th data-orden="severidad"><button class="orden" type="button" data-orden="severidad" title="Ordenar por severidad">Severidad</button></th><th>Estado</th><th>Tipo</th><th>Origen → destino</th><th>Servicio</th><th data-orden="empezo" aria-sort="descending"><button class="orden" type="button" data-orden="empezo" title="Ordenar por la hora en que empezó">Empezó</button></th><th class="num" data-orden="conexiones"><button class="orden" type="button" data-orden="conexiones" title="Ordenar por conexiones">Conexiones</button></th><th>Métodos</th><th>Responsable</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -247,85 +295,25 @@
       </article>
     </section>
 
-    <section id="vista-resumen" role="tabpanel" aria-labelledby="pestania-resumen" hidden>
-      <div class="filtros no-imprimir">
-        <span class="filtros-etiqueta" id="etiqueta-periodo">Período</span>
-        <div class="segmentado" id="periodos" role="group" aria-labelledby="etiqueta-periodo">
-          <button type="button" data-dias="7" aria-pressed="true">7 días</button>
-          <button type="button" data-dias="30" aria-pressed="false">30 días</button>
-          <button type="button" data-dias="fechas" aria-pressed="false">Fechas</button>
-        </div>
-        <div class="filtros-activos" id="filtros-resumen"></div>
-        <div class="descargas">
-          <button class="boton-secundario" id="descargar-imagen" type="button">Descargar imagen</button>
-          <button class="boton-secundario" id="descargar-pdf" type="button">Guardar PDF</button>
-        </div>
-      </div>
-
-      <div id="resumen-imprimible">
-      <div class="grilla">
-        <article class="tarjeta c-12" id="tarjeta-metricas">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo" id="titulo-resumen">Resumen</h2><p class="tarjeta-sub" id="sub-resumen"></p></div>
-          </div>
-          <div class="metricas" id="metricas-resumen"></div>
-          <p class="nota-resumen no-imprimir">Tocá una cifra o una barra de «Por tipo de ataque» para filtrar todo el resumen.</p>
-        </article>
-
-        <article class="tarjeta c-7" id="tarjeta-por-dia" data-panel="por-dia">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Alertas por día</h2><p class="tarjeta-sub">Por severidad, según cuándo empezó cada una.</p></div>
-            <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="por-dia" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Alertas por día" title="Menú del panel"></button></div>
-          </div>
-          <div class="leyenda" id="leyenda-por-dia"></div>
-          <div class="grafico" id="grafico-por-dia" role="img" aria-label="Alertas por día y severidad"></div>
-        </article>
-
-        <article class="tarjeta c-5" id="tarjeta-por-tipo" data-panel="por-tipo">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Por tipo de ataque</h2><p class="tarjeta-sub">Lo tipifica la segunda etapa; sin tipo, según qué método la vio.</p></div>
-            <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="por-tipo" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Por tipo de ataque" title="Menú del panel"></button></div>
-          </div>
-          <div class="grafico" id="grafico-por-tipo" role="img" aria-label="Alertas por tipo de ataque"></div>
-        </article>
-
-        <article class="tarjeta c-6 no-imprimir" id="tarjeta-equipos" data-panel="equipos">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Equipos con más alertas</h2><p class="tarjeta-sub">Como destino del tráfico, los ocho primeros.</p></div>
-            <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="equipos" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Equipos con más alertas" title="Menú del panel"></button></div>
-          </div>
-          <div class="grafico" id="grafico-equipos" role="img" aria-label="Equipos con más alertas"></div>
-        </article>
-
-        <article class="tarjeta c-6" id="tarjeta-acierto" data-panel="acierto">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Cuánto acierta cada método</h2><p class="tarjeta-sub">De las alertas revisadas que marcó cada método, cuántas fueron un ataque real.</p></div>
-            <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="acierto" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Cuánto acierta cada método" title="Menú del panel"></button></div>
-          </div>
-          <div class="grafico bajo" id="grafico-acierto" role="img" aria-label="Precisión de cada método sobre las alertas revisadas"></div>
-        </article>
-
-        <article class="tarjeta c-12" id="tarjeta-revision">
-          <div class="tarjeta-cabecera">
-            <div><h2 class="tarjeta-titulo">Revisión</h2><p class="tarjeta-sub">Qué tan rápido y qué tan bien se revisa, como el Resumen de la app.</p></div>
-          </div>
-          <div class="metricas" id="metricas-revision"></div>
-        </article>
-      </div>
-      <p class="nota-resumen" id="pie-resumen">Generado con Zonda · no incluye IPs ni nombres de equipos</p>
-      </div>
+    <section id="vista-resumen" aria-labelledby="titulo-vista-resumen" hidden>
+      <h1 class="oculto-visual" id="titulo-vista-resumen">Resumen</h1>
+      <!-- Como el Resumen de la app (resumen.js): el período y los filtros, la línea de la red y las piezas. -->
+      <div class="res-barra-superior barra-fija" id="resumen-barra" role="toolbar" aria-label="Período, filtros y compartir"></div>
+      <p class="res-linea" id="resumen-linea"></p>
+      <div id="resumen-cuerpo"></div>
     </section>
 
-    <section id="vista-ajustes" role="tabpanel" aria-labelledby="pestania-ajustes" hidden>
+    <section id="vista-ajustes" aria-labelledby="titulo-vista-ajustes" hidden>
+      <h1 class="oculto-visual" id="titulo-vista-ajustes">Ajustes</h1>
       <div class="ajustes" id="ajustes"></div>
     </section>
   </main>
 
-  <nav class="barra-inferior" id="barra-inferior" role="tablist" aria-label="Vistas del tablero">
-    <button type="button" role="tab" data-vista="vivo" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>En vivo</button>
-    <button type="button" role="tab" data-vista="alertas" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alertas</button>
-    <button type="button" role="tab" data-vista="resumen" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>Resumen</button>
-    <button type="button" role="tab" data-vista="ajustes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
+  <nav class="barra-inferior" id="barra-inferior" aria-label="Vistas del tablero">
+    <button type="button" data-vista="vivo" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>En vivo</button>
+    <button type="button" data-vista="alertas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alertas</button>
+    <button type="button" data-vista="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>Resumen</button>
+    <button type="button" data-vista="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
   </nav>
 </div>
 
@@ -334,6 +322,7 @@
 <div class="velo" id="velo-inspector" hidden></div>
 <aside class="inspector" id="inspector" role="dialog" aria-modal="true" aria-labelledby="inspector-titulo" tabindex="-1" hidden></aside>
 <div class="menu-flotante" id="menu-flotante" role="menu" hidden></div>
+<div class="ayuda-flotante" id="ayuda-flotante" role="dialog" tabindex="-1" hidden></div>
 <div class="globito-flotante" id="globito-marca" role="tooltip" hidden></div>
 <div class="aviso" id="aviso" role="status" hidden></div>
 <div id="hojas"></div>

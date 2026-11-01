@@ -8,6 +8,7 @@
 
 :root {
   color-scheme: light;
+  --alto-cabecera: 66px;
   --pagina: #f7f5ef;
   --superficie: #ffffff;
   --superficie-2: #fbfaf6;
@@ -16,7 +17,8 @@
   --neutro: #edebe4;
   --texto: #1c1b1f;
   --texto-2: #5f5e5a;
-  --texto-3: #8a8983;
+  --texto-3: #6f6e69;
+  --borde-campo: #8f8d86;
   --verde: #0f6e56;
   --verde-claro: #e1f5ee;
   --verde-texto: #0f6e56;
@@ -43,6 +45,8 @@
   --serie-3: #6250d6;
   --serie-4: #e87ba4;
   --serie-otros: #a8a69e;
+  --barra-resumen: #5ab89a;
+  --precision-clara: #9fe1cb;
   --sombra: 0 1px 2px rgba(28, 27, 31, 0.04), 0 6px 20px rgba(28, 27, 31, 0.05);
   --sombra-flotante: 0 12px 40px rgba(28, 27, 31, 0.16);
   --radio: 14px;
@@ -59,7 +63,8 @@
   --neutro: #33322e;
   --texto: #e8e6df;
   --texto-2: #a9a79f;
-  --texto-3: #8a8983;
+  --texto-3: #9a988f;
+  --borde-campo: #75736b;
   --verde: #5dcaa5;
   --verde-claro: #085041;
   --verde-texto: #9fe1cb;
@@ -83,6 +88,8 @@
   --serie-3: #9085e9;
   --serie-4: #d55181;
   --serie-otros: #7a7871;
+  --barra-resumen: #2f9e7b;
+  --precision-clara: #2b6e5a;
   --sombra: none;
   --sombra-flotante: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
@@ -100,13 +107,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-button, input { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 
 button { cursor: pointer; }
 
 :focus-visible { outline: 2px solid var(--verde); outline-offset: 2px; }
 
 [hidden] { display: none !important; }
+
+html { scrollbar-gutter: stable; }
 
 .oculto-visual {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -146,12 +155,15 @@ button { cursor: pointer; }
   text-align: center;
   text-transform: uppercase;
   padding: 14px 12px;
-  border: 1px solid var(--borde-fuerte);
+  border: 1px solid var(--borde-campo);
   border-radius: 12px;
   background: var(--superficie-2);
   font-variant-numeric: tabular-nums;
 }
 .campo-codigo:focus { outline: 2px solid var(--verde); outline-offset: 0; border-color: transparent; }
+/* El ejemplo, tenue y más fino: grande, centrado y con el mismo peso parecía un código ya escrito. */
+.campo-codigo::placeholder { color: var(--texto-3); font-weight: 400; opacity: 0.55; }
+.ingreso-etiqueta { display: block; font-size: 13px; font-weight: 500; color: var(--texto-2); margin: 0 0 6px; }
 
 .boton-principal {
   width: 100%;
@@ -194,14 +206,21 @@ button { cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 20px;
-  height: 66px;
+  height: var(--alto-cabecera);
   padding: 0 28px;
   background: color-mix(in srgb, var(--superficie) 92%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--borde);
 }
 
-.marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.marca { flex: none; display: flex; align-items: center; gap: 12px; min-width: 0; color: inherit; text-decoration: none; border-radius: 10px; }
+/* En media pantalla (de 721 a 1000 px) no entra todo: la red y el perfil ya están en Ajustes → General, y el texto de
+   «En vivo» queda para el lector de pantalla y en el globito del punto. */
+@media (max-width: 1000px) {
+  .red-actual { display: none; }
+  #en-vivo-texto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+.marca:focus-visible { outline: 2px solid var(--verde); outline-offset: 4px; }
 .marca img { width: 36px; height: 36px; border-radius: 9px; }
 .marca-nombre { font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
 
@@ -216,7 +235,7 @@ button { cursor: pointer; }
   white-space: nowrap;
 }
 .pestania:hover { background: var(--neutro); color: var(--texto); }
-.pestania[aria-selected="true"] { background: var(--verde-claro); color: var(--verde-texto); }
+.pestania[aria-current="page"] { background: var(--verde-claro); color: var(--verde-texto); }
 
 .cabecera-derecha { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 
@@ -250,6 +269,7 @@ button { cursor: pointer; }
 }
 @media (prefers-reduced-motion: reduce) {
   .en-vivo .punto::after { animation: none; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
 .red-actual { font-size: 14px; color: var(--texto); font-weight: 500; white-space: nowrap; }
@@ -291,13 +311,27 @@ button { cursor: pointer; }
   margin-bottom: 18px;
 }
 .filtros-etiqueta { font-size: 14px; color: var(--texto-2); }
-.filtros-nota { font-size: 13px; color: var(--texto-3); margin-left: auto; }
 
 /* ---- El horario, como la barra de tiempo de Grafana ---- */
 
-.barra-horario .filtros-nota { margin-left: 0; }
+/* La barra de arriba de En vivo, Alertas y Resumen queda fija debajo de la cabecera al bajar, para cambiar el
+   horario sin volver arriba; ya pegada, lleva una línea abajo (tablero.js le pone la clase). */
+.barra-fija {
+  position: sticky;
+  top: var(--alto-cabecera);
+  z-index: 15;
+  margin: -10px -28px 8px;
+  padding: 10px 28px;
+  background: var(--pagina);
+}
+.barra-fija.pegada { box-shadow: 0 1px 0 var(--borde); }
+#resumen-barra.barra-fija { margin-bottom: 0; }
+/* En Alertas, los filtros a la izquierda y el horario a la derecha, como en Grafana. */
+.filtros-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .barra-tiempo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; position: relative; }
 .grupo-botones { display: inline-flex; }
+/* El ⋮ del horario es solo del teléfono (abajo). */
+#tiempo-mas { display: none; }
 .grupo-botones > .boton-barra + .boton-barra { margin-left: -1px; }
 .grupo-botones > .boton-barra:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .grupo-botones > .boton-barra:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
@@ -337,6 +371,9 @@ button { cursor: pointer; }
   border: 1px solid var(--borde);
   border-radius: 12px;
   box-shadow: var(--sombra-flotante);
+  /* Con la barra fija, el selector no puede pasarse de la pantalla: lo que no entra se recorre adentro. */
+  max-height: calc(100vh - var(--alto-cabecera) - 80px);
+  overflow-y: auto;
 }
 .selector-columna { padding: 16px 18px; min-width: 0; }
 .selector-columna + .selector-columna { border-left: 1px solid var(--borde); }
@@ -346,7 +383,7 @@ button { cursor: pointer; }
   width: 100%;
   height: 36px;
   padding: 0 10px;
-  border: 1px solid var(--borde-fuerte);
+  border: 1px solid var(--borde-campo);
   border-radius: 8px;
   background: var(--superficie-2);
   color: var(--texto);
@@ -367,6 +404,7 @@ button { cursor: pointer; }
   color: var(--texto);
 }
 .lista-rangos button:hover { background: var(--neutro); }
+.lista-rangos button:focus-visible { outline: 2px solid var(--verde); outline-offset: -2px; }
 .lista-rangos button[aria-current="true"] { background: var(--verde-claro); color: var(--verde-texto); font-weight: 600; }
 .selector-pie { grid-column: 1 / -1; border-top: 1px solid var(--borde); padding: 10px 18px; font-size: 12.5px; color: var(--texto-2); }
 
@@ -395,7 +433,8 @@ button { cursor: pointer; }
   color: var(--texto);
   text-align: left;
 }
-.menu-item:hover, .menu-item:focus-visible { background: var(--neutro); outline: none; }
+.menu-item:hover { background: var(--neutro); }
+.menu-item:focus-visible { background: var(--neutro); outline: 2px solid var(--verde); outline-offset: -2px; }
 .menu-item svg, .menu-hueco { width: 16px; height: 16px; flex: none; color: var(--texto-2); }
 .menu-item[aria-checked="true"] svg { color: var(--verde); }
 .menu-texto { flex: 1; }
@@ -405,6 +444,18 @@ button { cursor: pointer; }
 @media (max-width: 720px) {
   .barra-tiempo { margin-left: 0; }
   .texto-boton { display: none; }
+  /* El horario de En vivo en una sola fila, como la app ocupa poco arriba: el rango con sus flechas y un ⋮ con
+     actualizar, alejar, copiar el enlace y cada cuánto se actualiza. */
+  #barra-tiempo { flex-wrap: nowrap; width: 100%; }
+  #barra-tiempo > .grupo-botones:first-child { flex: 1; min-width: 0; }
+  #barra-tiempo .boton-rango { flex: 1; justify-content: center; }
+  #tiempo-alejar, #grupo-actualizar, #copiar-enlace { display: none; }
+  #tiempo-mas { display: inline-flex; flex: none; }
+  .barra-fija { margin: -8px -16px 10px; padding: 8px 16px; }
+  /* Los filtros de Alertas en una sola fila que se corre de costado, como en la app: la barra fija ocupa menos. */
+  .barra-filtros .filtros-chips { flex: 0 0 calc(100% + 32px); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+  .barra-filtros .filtros-chips::-webkit-scrollbar { display: none; }
+  .barra-filtros .filtros-chips > * { flex: none; }
   .boton-rango { min-width: 0; }
   .selector-tiempo { grid-template-columns: minmax(0, 1fr); right: auto; left: 0; }
   .selector-columna + .selector-columna { border-left: 0; border-top: 1px solid var(--borde); }
@@ -446,7 +497,7 @@ button { cursor: pointer; }
   font-size: 13px;
   font-weight: 500;
 }
-.chip-filtro[aria-pressed="true"] { border-color: var(--verde); color: var(--texto); background: var(--verde-claro); }
+.chip-filtro[aria-pressed="true"], .chip-filtro.activo { border-color: var(--verde); color: var(--texto); background: var(--verde-claro); }
 .chip-filtro .punto { width: 8px; height: 8px; border-radius: 50%; }
 
 .grilla { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
@@ -461,6 +512,7 @@ button { cursor: pointer; }
 
 @media (max-width: 1400px) {
   .c-2 { grid-column: span 4; }
+  #grilla-estado .c-6 { grid-column: span 12; }
   .c-3 { grid-column: span 6; }
 }
 @media (max-width: 1100px) {
@@ -470,7 +522,6 @@ button { cursor: pointer; }
   .c-2, .c-3 { grid-column: span 12; }
   .contenido { padding: 16px; }
   .cabecera { padding: 0 16px; gap: 10px; }
-  .red-actual, .en-vivo span { display: none; }
   .pestanias { margin-left: 0; }
 }
 
@@ -515,20 +566,23 @@ button { cursor: pointer; }
 
 /* Un panel en grande: los demás se esconden y el gráfico toma el alto de la pantalla; la barra del horario
    queda arriba, como en Grafana. */
-.modo-panel .grilla > :not(.panel-grande) { display: none; }
-.modo-panel .grilla > .panel-grande { grid-column: 1 / -1; }
-.modo-panel .fila-titulo, .modo-panel .fila:not(:has(.panel-grande)) { display: none; }
+.modo-panel .grilla > :not(.panel-grande):not(.contiene-grande) { display: none; }
+.modo-panel .grilla > .panel-grande, .modo-panel .grilla > .contiene-grande { grid-column: 1 / -1; }
+.modo-panel .fila-titulo, .modo-panel .fila:not(:has(.panel-grande, .contiene-grande)) { display: none; }
 .modo-panel .fila + .fila { margin-top: 0; }
 .tarjeta.panel-grande .grafico { height: calc(100vh - 290px); min-height: 340px; }
 #tarjeta-servicios.panel-grande .grafico { height: calc(100vh - 470px); min-height: 300px; }
 .tarjeta.panel-grande .mapa-detalle { max-height: calc(100vh - 290px); }
-.tarjeta.panel-grande .piezas { grid-template-columns: minmax(0, 1fr); }
-.tarjeta.panel-grande .grafico.mini { height: calc((100vh - 480px) / 3); min-height: 130px; }
+/* Una pieza del estado del sistema en grande: sola, dentro de su tarjeta. */
+.tarjeta.contiene-grande .pieza:not(.pieza-grande) { display: none; }
+.tarjeta.contiene-grande .piezas { grid-template-columns: minmax(0, 1fr); }
+.pieza.pieza-grande .grafico.mini { height: calc(100vh - 360px); min-height: 260px; }
 
 .leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--texto-2); margin: 2px 0 6px; }
 .leyenda span { display: inline-flex; align-items: center; gap: 7px; }
 .leyenda i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .leyenda i.linea { width: 14px; height: 2px; border-radius: 2px; }
+.leyenda i.linea.punteada { background: repeating-linear-gradient(90deg, var(--baja) 0 4px, transparent 4px 7px) !important; }
 .leyenda i.punto { width: 9px; height: 9px; border-radius: 50%; }
 .leyenda i.triangulo { width: 0; height: 0; border-radius: 0; background: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid; }
 .leyenda-marcas { margin: 10px 0 0; }
@@ -561,6 +615,9 @@ button { cursor: pointer; }
 .grafico.alto { height: 340px; }
 .grafico.mapa { height: 460px; }
 .grafico.bajo { height: 230px; }
+.grafico.corto { height: 180px; }
+#tarjeta-volumen, #tarjeta-fallidas { display: flex; flex-direction: column; }
+#tarjeta-volumen > .grafico, #tarjeta-fallidas > .grafico { margin-top: auto; }
 .grafico.cargando { opacity: 0.55; }
 
 .vacio {
@@ -577,22 +634,34 @@ button { cursor: pointer; }
 /* ---- Indicadores ---- */
 
 .kpi-etiqueta { font-size: 13px; color: var(--texto-2); font-weight: 500; margin: 0 0 8px; }
+.kpi-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+/* Las tres tarjetas chicas de En vivo, cuando van de a seis columnas: la cabecera con el alto de dos renglones, así
+   los números quedan a la misma altura aunque «Conexiones por segundo» y su «Ahora» no entren en uno. */
+@media (min-width: 1401px) {
+  #grilla-estado .c-2 .kpi-cabecera { min-height: 46px; }
+  #grilla-estado .c-2 > .kpi-etiqueta { min-height: 38px; }
+}
 .kpi-valor { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
 .kpi-valor small { font-size: 16px; font-weight: 500; color: var(--texto-2); letter-spacing: 0; margin-left: 4px; }
-.kpi-heroe { font-size: 56px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
 .kpi-detalle { font-size: 13px; color: var(--texto-2); margin-top: 8px; }
 
 .contadores { display: flex; gap: 10px; }
 .contador {
   flex: 1;
+  min-width: 0;
   border-radius: 12px;
   padding: 10px 12px;
   background: var(--superficie-2);
   border: 1px solid var(--borde);
+  color: var(--texto);
+  text-align: left;
+  cursor: pointer;
 }
+.contador:hover { border-color: var(--borde-fuerte); }
 .contador-titulo { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--texto-2); font-weight: 500; }
 .contador-titulo .punto { width: 9px; height: 9px; border-radius: 50%; }
-.contador-numero { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; }
+.contador-numero { display: block; font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; }
+.contadores + .kpi-detalle { margin-top: 10px; }
 
 /* El estado del sistema, como la tarjeta de la app (decisión 52): cada pieza con su punto, su nombre, el
    semáforo de dos luces a la derecha (sin palabras), un dato corto y un gráfico chico de la última hora. */
@@ -603,13 +672,26 @@ button { cursor: pointer; }
   font: 600 13px/1 inherit; display: grid; place-items: center; cursor: pointer; padding: 0;
 }
 .boton-ayuda:hover, .boton-ayuda[aria-expanded="true"] { border-color: var(--texto); color: var(--texto); }
-.ayuda-estado {
-  font-size: 13px; color: var(--texto-2); background: var(--superficie-2);
-  border: 1px solid var(--borde); border-radius: 10px; padding: 10px 12px; margin: -4px 0 12px;
+/* El globito de cada «?» (ayuda.js): fijo al lado del botón, encima del detalle y de los menús. */
+.ayuda-flotante {
+  position: fixed;
+  z-index: 50;
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  width: min(340px, calc(100vw - 16px));
+  padding: 12px 14px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  box-shadow: var(--sombra-flotante);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--texto-2);
 }
-.ayuda-estado p { margin: 0 0 4px; }
-.ayuda-estado p:last-child { margin-bottom: 0; }
-.ayuda-estado b { color: var(--texto); font-weight: 600; }
+.ayuda-flotante p { margin: 0 0 6px; }
+.ayuda-flotante p:last-child { margin-bottom: 0; }
+.ayuda-flotante b { color: var(--texto); font-weight: 600; }
+.ayuda-flotante .ayuda-titulo { color: var(--texto); font-size: 13.5px; font-weight: 600; margin-bottom: 8px; }
 
 .piezas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .pieza {
@@ -622,9 +704,23 @@ button { cursor: pointer; }
 .pieza-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pieza-nombre { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; min-width: 0; }
 .pieza-nombre .punto { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--texto-3); }
+.pieza-acciones { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.pieza .boton-panel { width: 28px; height: 28px; }
 .pieza-dato { font-size: 13.5px; color: var(--texto-2); margin: 2px 0 8px 18px; }
 .pieza-pie { font-size: 12px; color: var(--texto-3); margin-top: 4px; }
 .grafico.mini { height: 64px; }
+/* Sin datos, el gráfico chico dice por qué en el medio, como los paneles grandes con .vacio. */
+.mini-envoltura { position: relative; }
+.vacio-mini {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--texto-3);
+  font-size: 12.5px;
+  pointer-events: none;
+}
 .semaforo {
   display: inline-flex; align-items: center; gap: 5px; flex: none;
   background: #2c2c2a; border-radius: 999px; padding: 4px 6px;
@@ -635,6 +731,7 @@ button { cursor: pointer; }
 .semaforo[data-estado="funciona"] .luz.verde { background: #6dd36a; }
 .semaforo[data-estado="parcial"] .luz.verde { background: var(--media); }
 .semaforo[data-estado="detenido"] .luz.roja { background: #f05454; }
+:root[data-tema="oscuro"] .semaforo { background: #141413; box-shadow: 0 0 0 1px var(--borde-fuerte); }
 
 /* ---- Severidad y estado ---- */
 
@@ -675,7 +772,7 @@ button { cursor: pointer; }
   padding: 1px 7px;
   border-radius: 6px;
   background: var(--neutro);
-  color: var(--texto-3);
+  color: var(--texto-2);
 }
 .metodo.si { background: var(--verde-claro); color: var(--verde-texto); }
 
@@ -690,7 +787,7 @@ button { cursor: pointer; }
   background: transparent;
   text-align: left;
   display: grid;
-  grid-template-columns: auto minmax(0, 15rem) minmax(0, 1fr) auto auto;
+  grid-template-columns: 4.75rem minmax(0, 15rem) minmax(0, 1fr) 5.5rem 7.5rem;
   gap: 4px 16px;
   align-items: center;
   padding: 9px 8px;
@@ -700,7 +797,7 @@ button { cursor: pointer; }
 .feed-tipo { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .feed-par { font-size: 13.5px; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .feed-hora { font-size: 13px; color: var(--texto-2); text-align: right; white-space: nowrap; }
-.feed-estado { text-align: right; }
+.feed-estado { text-align: right; justify-self: end; }
 
 /* ---- Las filas de En vivo, como las de Grafana (filas.js) ---- */
 
@@ -783,18 +880,34 @@ button { cursor: pointer; }
 /* ---- Tabla ---- */
 
 .tabla-envoltura { overflow-x: auto; }
-.tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tabla { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .tabla th {
   text-align: left;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--texto-2);
-  padding: 8px 10px;
+  padding: 8px;
   border-bottom: 1px solid var(--borde-fuerte);
   white-space: nowrap;
 }
-.tabla td { padding: 9px 10px; border-bottom: 1px solid var(--borde); vertical-align: middle; white-space: nowrap; }
+.tabla td { padding: 9px 8px; border-bottom: 1px solid var(--borde); vertical-align: middle; white-space: nowrap; }
 .tabla td.num, .tabla th.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Los encabezados que ordenan la lista, como las tablas de Grafana. La flecha va en el hueco entre columnas, así
+   la tabla no se ensancha; se ve en la columna elegida y, tenue, al pasar el mouse o con el foco. */
+.tabla th .orden {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.tabla th .orden svg { position: absolute; left: 100%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 2px; stroke-width: 2.5; opacity: 0; }
+.tabla th .orden:hover svg, .tabla th .orden:focus-visible svg { opacity: 0.45; }
+.tabla th[aria-sort] { color: var(--texto); }
+.tabla th[aria-sort] .orden svg { opacity: 1; }
+.tabla th[aria-sort="ascending"] .orden svg { transform: rotate(180deg); }
 .tabla tbody tr.clic { cursor: pointer; }
 .tabla tbody tr.clic:hover { background: var(--superficie-2); }
 .tabla .par { white-space: nowrap; }
@@ -829,7 +942,11 @@ button { cursor: pointer; }
 .detalle-cabecera { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .detalle-cabecera h2 { font-size: 22px; font-weight: 600; margin: 6px 0 2px; letter-spacing: -0.01em; }
 .detalle-cabecera p { margin: 0; color: var(--texto-2); font-size: 14px; }
+/* El único «?» del detalle de una alerta, al lado del tipo (como el del estado del sistema). */
+.titulo-con-ayuda { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; }
+.titulo-con-ayuda h2 { margin: 0; }
 .detalle-cabecera .boton-icono { margin-left: auto; flex: none; }
+.cerrar-detalle .volver-telefono { display: none; }
 
 /* Los datos de un panel, como el inspector de Grafana: la tabla con su encabezado fijo y el botón del CSV. */
 .inspector {
@@ -1030,6 +1147,13 @@ button { cursor: pointer; }
 .hoja-acciones .boton-principal { width: auto; margin: 0; padding: 11px 20px; }
 .hoja-paso { font-size: 12.5px; font-weight: 600; color: var(--texto-2); margin: 0 0 4px; }
 
+/* Revisar dentro del panel del detalle, en la compu (alertas.js, abrirRevision): los pasos van debajo del origen y
+   el destino, con una línea arriba, y el resto del detalle se esconde hasta terminar o cancelar. */
+.detalle.revisando > :not(.detalle-cabecera):not(.recorrido):not(.hoja-en-lugar) { display: none; }
+.hoja-en-lugar { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--borde); animation: subir 0.18s ease-out; }
+.hoja-en-lugar:focus { outline: none; }
+.hoja-en-lugar .hoja-titulo { font-size: 18px; }
+
 .opcion-grande {
   width: 100%;
   text-align: left;
@@ -1053,7 +1177,7 @@ button { cursor: pointer; }
 .asterisco { color: var(--alta-texto); }
 .campo input, .campo textarea, .campo select {
   width: 100%;
-  border: 1px solid var(--borde-fuerte);
+  border: 1px solid var(--borde-campo);
   border-radius: 10px;
   padding: 10px 12px;
   background: var(--superficie-2);
@@ -1099,6 +1223,9 @@ button { cursor: pointer; }
 /* ---- Lista de alertas ---- */
 
 .resumen-filtros { font-size: 13.5px; color: var(--texto-2); margin: -6px 0 14px; }
+.resumen-con-acciones { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: -6px 0 14px; }
+.resumen-con-acciones .resumen-filtros { margin: 0; }
+.resumen-con-acciones .boton-barra { height: 32px; font-size: 13px; }
 .resumen-filtros strong { color: var(--texto); }
 .responsable-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--texto-2); white-space: nowrap; }
 .responsable-chip .inicial {
@@ -1108,42 +1235,283 @@ button { cursor: pointer; }
 }
 .vacio-lista { text-align: center; padding: 36px 12px; color: var(--texto-2); }
 
-/* ---- Resumen ---- */
+/* ---- Resumen, como el de la app (resumen.js): en la compu, las piezas de a dos ---- */
 
-.metricas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.metrica {
+.res-barra-superior { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.res-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid var(--borde);
-  border-radius: 12px;
-  padding: 12px 14px;
-  background: var(--superficie-2);
-  text-align: left;
+  border-radius: 999px;
+  background: var(--superficie);
+  padding: 6px 13px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--texto-2);
 }
-button.metrica { cursor: pointer; }
-button.metrica:hover { border-color: var(--borde-fuerte); }
-button.metrica[aria-pressed="true"] { border: 2px solid var(--verde); padding: 11px 13px; }
-.metrica strong { display: block; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
-.metrica span { font-size: 13px; color: var(--texto-2); }
-.filtros-activos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.descargas { margin-left: auto; display: flex; gap: 8px; }
-@media (max-width: 720px) { .descargas { margin-left: 0; width: 100%; } .descargas > * { flex: 1; } }
-.nota-resumen { font-size: 13px; color: var(--texto-2); margin: 8px 0 0; }
+.res-chip svg { width: 14px; height: 14px; }
+.res-chip[aria-pressed="true"] { border-color: transparent; background: var(--verde-claro); color: var(--verde-texto); }
+.res-compartir { margin-left: auto; }
+.res-compartir svg { width: 16px; height: 16px; }
+.res-linea { font-size: 13px; color: var(--texto-2); margin: 0 0 14px; }
+
+/* Las tarjetas de una misma fila tienen la misma altura: no quedan huecos debajo de la más corta. */
+.res-grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.res-ancho { grid-column: 1 / -1; }
+@media (max-width: 1100px) { .res-grilla { grid-template-columns: minmax(0, 1fr); } }
+
+/* Los cinco indicadores, como una fila de paneles «Stat» de Grafana: todos iguales, sin bloques de color; el
+   color queda para un punto chico cuando hay algo pendiente. Tocarlos filtra, como en la app. */
+.res-indicadores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.res-indicador {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  background: var(--superficie);
+  padding: 12px 14px;
+  text-align: left;
+  color: var(--texto);
+  cursor: pointer;
+}
+.res-indicador:hover { border-color: var(--borde-fuerte); }
+.res-indicador[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--verde); border-color: transparent; }
+.res-indicador-nombre { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--texto-2); }
+.res-indicador-nombre .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+.res-indicador strong { font-size: 26px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; }
+.res-indicador-detalle { font-size: 12px; color: var(--texto-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Con las cinco tarjetas angostas, el detalle baja de renglón en lugar de cortarse («mediana del per…»). */
+@media (max-width: 1250px) { .res-indicador strong { font-size: 22px; } .res-indicador-detalle { white-space: normal; } }
+
+.res-tarjeta { display: flex; flex-direction: column; background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); box-shadow: var(--sombra); padding: 14px 16px; }
+.res-titulo { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13.5px; font-weight: 600; color: var(--texto-2); }
+
+/* Las barras llenan el alto que deja la tarjeta de al lado, sobre una línea de base; el número va solo arriba de
+   las que tienen alertas. Finas (hasta 24 px), con la punta redondeada. */
+.res-barras { flex: 1 1 auto; display: flex; align-items: stretch; min-height: 170px; }
+.res-columna {
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  color: var(--texto);
+  cursor: pointer;
+}
+.res-columna-pista { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 0; border-bottom: 1px solid var(--borde-fuerte); }
+.res-columna-n { font-size: 11.5px; font-weight: 500; margin-bottom: 3px; }
+.res-columna-etiqueta { padding-top: 6px; font-size: 11.5px; color: var(--texto-2); white-space: nowrap; text-align: center; }
+.res-barras.muchas .res-columna-n, .res-barras.muchas .res-columna-etiqueta { font-size: 11px; }
+.res-barra { display: block; width: min(70%, 24px); border-radius: 4px 4px 0 0; background: var(--barra-resumen); }
+.res-barra.hoy { background: var(--verde); }
+.res-barra.cero { height: 0; }
+.res-columna:hover .res-columna-pista { background: var(--superficie-2); }
+.res-columna.elegida { box-shadow: 0 0 0 2px var(--superficie), 0 0 0 4px var(--verde); }
+.res-columna.apagada { opacity: 0.35; }
+.res-frase { margin: 10px 0 0; font-size: 12.5px; line-height: 1.3; color: var(--texto-2); }
+
+.res-bloque { display: grid; gap: 8px; }
+.res-bloque + .res-bloque { border-top: 1px solid var(--borde-fuerte); margin-top: 10px; padding-top: 10px; }
+.res-bloque-titulo { margin: 0; font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.res-sin-alertas { margin: 0; font-size: 12.5px; line-height: 1.35; color: var(--texto-3); }
+/* Reales y falsos positivos: una sola barra partida, con un hueco de 2 px entre las dos partes, y su leyenda. */
+.res-partida { display: flex; gap: 2px; height: 12px; border-radius: 6px; overflow: hidden; background: var(--neutro); }
+.res-partida i { display: block; height: 100%; }
+.res-partida-leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
+.res-leyenda-item { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 8px; background: transparent; padding: 4px 6px; margin: -4px -6px; font-size: 13.5px; color: var(--texto); cursor: pointer; }
+.res-leyenda-item .punto { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.res-leyenda-item[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--verde); }
+.res-filas { display: grid; gap: 10px; }
+.res-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) minmax(40px, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% + 8px);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  text-align: left;
+  font-size: 13.5px;
+  color: var(--texto);
+}
+.res-fila.dos { grid-template-columns: 150px minmax(40px, 1fr) 34px; }
+.res-fila.equipo { grid-template-columns: minmax(0, 260px) minmax(40px, 1fr) 34px; }
+.res-fila.cero { color: var(--texto-2); }
+.res-fila-nombre { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.res-fila-nombre > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res-fila-nombre .punto, .res-check .punto, .res-ayuda-tipo .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+.res-fila-valor { text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+.res-pista { display: block; height: 10px; border-radius: 999px; background: var(--neutro); overflow: hidden; }
+.res-pista i { display: block; height: 100%; border-radius: 999px; background: var(--verde); }
+.res-pista.fina { height: 8px; }
+.res-pista i.clara { background: var(--precision-clara); }
+.res-fila.elegida, .res-precision.elegida, .res-cobertura.elegida { box-shadow: inset 0 0 0 2px var(--verde); }
+.res-nota { margin: 10px 0 0; font-size: 12.5px; line-height: 1.3; color: var(--texto-2); }
+.res-nota.arriba { margin: -6px 0 12px; }
+
+.res-cobertura {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--borde);
+  border-radius: 0;
+  background: transparent;
+  padding: 2px 0 10px;
+  margin-bottom: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--texto-2);
+  cursor: pointer;
+}
+.res-cobertura strong { color: var(--texto); font-weight: 600; }
+.res-precision {
+  display: grid;
+  grid-template-columns: 160px minmax(40px, 1fr) 46px 64px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 2px 4px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--texto);
+}
+.res-precision strong { text-align: right; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.res-de { text-align: right; font-size: 12.5px; color: var(--texto-2); }
+
+.res-vacio { display: grid; justify-items: center; gap: 8px; padding: 40px 24px; text-align: center; }
+.res-vacio-circulo { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--baja-fondo); color: var(--baja-texto); }
+.res-vacio-circulo svg { width: 24px; height: 24px; }
+.res-vacio h3 { margin: 4px 0 0; font-size: 18px; font-weight: 600; }
+.res-vacio p { margin: 0; max-width: 460px; font-size: 14px; color: var(--texto-2); }
+
+/* Las hojas del resumen: los tipos con su casilla y las ayudas. */
+.res-check { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; padding: 4px 0; cursor: pointer; }
+.res-check input { width: 18px; height: 18px; accent-color: var(--verde); }
+.res-ayuda-tipo { display: flex; gap: 8px; align-items: baseline; margin: 0; font-size: 13.5px; color: var(--texto-2); }
+.res-ayuda-tipo b { color: var(--texto); font-weight: 600; }
+.res-ayuda-texto { margin: 0; font-size: 13px; line-height: 1.35; color: var(--texto-2); }
+.res-ayuda-bloque h4 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.res-ayuda-bloque p { margin: 0; font-size: 13.5px; color: var(--texto-2); }
+.res-recuadro { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--info-fondo); color: var(--info-texto); font-size: 13.5px; }
+.res-divisor { border: 0; border-top: 1px solid var(--borde-fuerte); margin: 4px 0; width: 100%; }
+
+@media (max-width: 720px) {
+  /* Los indicadores de a dos; el total arriba, a todo el ancho. */
+  .res-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .res-indicador:first-child { grid-column: 1 / -1; }
+  .res-indicador-detalle { white-space: normal; }
+  .res-fila { grid-template-columns: minmax(0, 150px) minmax(30px, 1fr) 30px; }
+  .res-precision { grid-template-columns: 120px minmax(30px, 1fr) 42px 54px; font-size: 13px; }
+}
 
 /* ---- Ajustes ---- */
 
-.ajustes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
-.filas { list-style: none; margin: 8px 0 0; padding: 0; }
-.filas > li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 12px;
+/* ---- Ajustes, como la administración de Grafana (ajustes.js): el menú de secciones a la izquierda y la
+   sección elegida a la derecha, con tablas que se editan en el lugar. ---- */
+.ajustes { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 20px; align-items: start; max-width: 1180px; margin: 0; }
+.ajustes-menu { display: grid; gap: 2px; position: sticky; top: calc(var(--alto-cabecera) + 16px); }
+.ajustes-menu button {
+  display: flex;
   align-items: center;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--borde);
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--texto-2);
+  cursor: pointer;
 }
-.filas > li:last-child { border-bottom: 0; }
-.filas .titulo-fila { font-weight: 600; font-size: 14.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.filas .detalle-fila { grid-column: 1; font-size: 13px; color: var(--texto-2); }
-.filas .acciones-fila { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.ajustes-menu button:hover { background: var(--superficie-2); color: var(--texto); }
+.ajustes-menu button[aria-selected="true"] { background: var(--verde-claro); color: var(--verde-texto); font-weight: 600; }
+.ajustes-pendientes { min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--info-fondo); color: var(--info-texto); font-size: 12px; font-weight: 600; text-align: center; }
+.ajustes-panel { padding: 20px 22px; }
+.seccion-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.seccion-titulo { font-size: 17px; font-weight: 600; margin: 0; }
+.seccion-sub { font-size: 13px; color: var(--texto-2); margin: 3px 0 0; }
+.seccion-acciones { display: flex; gap: 8px; flex: none; }
+.seccion-acciones .boton-principal { width: auto; margin: 0; }
+.ajustes-datos { margin: 0; }
+.ajustes-dato { display: grid; grid-template-columns: 190px minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--borde); }
+.ajustes-dato:last-child { border-bottom: 0; }
+.ajustes-dato dt { font-size: 13.5px; font-weight: 600; color: var(--texto); }
+.ajustes-dato dd { margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--texto-2); min-width: 0; }
+.buscar-tabla {
+  width: min(100%, 360px);
+  height: 36px;
+  padding: 0 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--borde-campo);
+  border-radius: 9px;
+  background: var(--superficie-2);
+  color: var(--texto);
+  font-size: 14px;
+}
+.buscar-tabla:focus, .select-tabla:focus { outline: 2px solid var(--verde); outline-offset: 0; border-color: transparent; }
+.select-tabla {
+  height: 32px;
+  min-width: 150px;
+  padding: 0 8px;
+  border: 1px solid var(--borde-campo);
+  border-radius: 8px;
+  background: var(--superficie-2);
+  color: var(--texto);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.tabla-ajustes td { padding: 8px 10px; }
+.tabla-ajustes tbody tr:last-child td { border-bottom: 0; }
+.tabla-ajustes tr.cambiada td { background: var(--info-fondo); }
+.tabla-ajustes td.accion { text-align: right; width: 1%; }
+.tabla-ajustes td.envolver { white-space: normal; min-width: 180px; }
+.etiqueta.vos { margin-left: 8px; }
+.pestania .ajustes-pendientes { margin-left: 6px; }
+.barra-inferior button { position: relative; }
+.barra-inferior .ajustes-pendientes { position: absolute; top: 2px; left: calc(50% + 10px); }
+.con-punto { display: inline-flex; align-items: center; gap: 8px; }
+.con-punto .punto { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.boton-texto.peligro { color: var(--alta-texto); }
+.ajustes-leyenda { margin: 10px 0 0; }
+/* Lo que se cambió y no se guardó: pegado abajo mientras se baja por una tabla larga. */
+.barra-cambios {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px -22px -20px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--borde);
+  border-radius: 0 0 var(--radio) var(--radio);
+  background: var(--superficie);
+}
+.barra-cambios > span { flex: 1; font-size: 13.5px; color: var(--texto-2); }
+.barra-cambios .boton-principal { width: auto; margin: 0; }
+.ajustes-bloque + .ajustes-bloque { border-top: 1px solid var(--borde); margin-top: 20px; padding-top: 18px; }
+.bloque-titulo { font-size: 14.5px; font-weight: 600; margin: 0; }
+.ajustes-bloque .tabla-envoltura { margin-top: 10px; }
+.lista-cambios { margin: 0; padding-left: 18px; display: grid; gap: 2px; font-size: 14px; color: var(--texto-2); }
 .etiqueta {
   display: inline-block;
   font-size: 12px;
@@ -1156,7 +1524,6 @@ button.metrica[aria-pressed="true"] { border: 2px solid var(--verde); padding: 1
 }
 .etiqueta.admin { background: var(--verde-claro); color: var(--verde-texto); }
 .etiqueta.critico { background: var(--info-fondo); color: var(--info-texto); }
-.registro-motivo { font-size: 13px; color: var(--texto-2); font-style: italic; }
 .solo-admin-nota { font-size: 12.5px; color: var(--texto-3); margin: 6px 0 0; }
 
 /* ---- Teléfono: barra inferior como la app, una columna, detalle y hojas a pantalla completa ---- */
@@ -1164,6 +1531,15 @@ button.metrica[aria-pressed="true"] { border: 2px solid var(--verde); padding: 1
 @media (max-width: 720px) {
   body { padding-bottom: 72px; }
   .pestanias { display: none; }
+  /* En el teléfono la lista es como la de la app, que no baja CSV. */
+  #alertas-csv { display: none; }
+  /* Zonas de toque de 44 px sin agrandar el dibujo: un borde invisible alrededor de los botones chicos. */
+  .boton-ayuda, .boton-panel, .boton-barra { position: relative; }
+  .boton-ayuda::after, .boton-panel::after { content: ""; position: absolute; inset: -10px; }
+  .boton-barra::after { content: ""; position: absolute; inset: -4px 0; }
+  .fila-boton { min-height: 44px; }
+  /* La lista de alertas y las secciones de Ajustes sin tarjeta alrededor: cada fila ya es una. */
+  #vista-alertas > .tarjeta, .ajustes-panel { border: 0; background: transparent; box-shadow: none; padding: 0; }
   .barra-inferior {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1187,14 +1563,13 @@ button.metrica[aria-pressed="true"] { border: 2px solid var(--verde); padding: 1
     color: var(--texto-2);
   }
   .barra-inferior button svg { width: 22px; height: 22px; padding: 3px 14px; box-sizing: content-box; border-radius: 999px; }
-  .barra-inferior button[aria-selected="true"] { color: var(--verde-texto); }
-  .barra-inferior button[aria-selected="true"] svg { background: var(--verde-claro); }
-  .cabecera { height: 58px; }
+  .barra-inferior button[aria-current="page"] { color: var(--verde-texto); }
+  .barra-inferior button[aria-current="page"] svg { background: var(--verde-claro); }
+  :root { --alto-cabecera: 58px; }
   .marca img { width: 30px; height: 30px; }
   .marca-nombre { font-size: 18px; }
   #boton-tema, #boton-salir { display: none; }
   .tarjeta { padding: 14px 14px 12px; border-radius: 12px; }
-  .kpi-heroe { font-size: 44px; }
   .kpi-valor { font-size: 28px; }
   .grafico { height: 230px; }
   .grafico.alto { height: 260px; }
@@ -1206,42 +1581,65 @@ button.metrica[aria-pressed="true"] { border: 2px solid var(--verde); padding: 1
   .feed-estado { grid-column: 3; grid-row: 2; }
   .fila + .fila { margin-top: 20px; }
   .filtros { gap: 8px; }
-  .filtros-nota { margin-left: 0; width: 100%; }
   .segmentado { max-width: 100%; overflow-x: auto; }
   .contadores { gap: 6px; }
   .contador { padding: 8px; }
   .contador-numero { font-size: 24px; }
   .piezas { grid-template-columns: 1fr; }
-  .metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ajustes { grid-template-columns: 1fr; }
+  /* Ajustes: las secciones en una fila que se corre de costado y las tablas como tarjetas, como la lista de alertas. */
+  .ajustes { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .ajustes-menu { position: static; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
+  .ajustes-menu::-webkit-scrollbar { display: none; }
+  .ajustes-menu button { flex: none; width: auto; border: 1px solid var(--borde-fuerte); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+  .ajustes-menu button[aria-selected="true"] { border-color: transparent; }
+  .ajustes-panel { padding: 16px 14px; }
+  .seccion-cabecera { flex-wrap: wrap; }
+  .ajustes-dato { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .buscar-tabla { width: 100%; }
+  .tabla-ajustes thead { display: none; }
+  .tabla-ajustes, .tabla-ajustes tbody, .tabla-ajustes tr, .tabla-ajustes td { display: block; }
+  .tabla-ajustes tr { border: 1px solid var(--borde); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+  .tabla-ajustes td, .tabla-ajustes tbody tr:last-child td { border: 0; padding: 3px 0; white-space: normal; }
+  .tabla-ajustes td[data-etiqueta]::before { content: attr(data-etiqueta) " · "; color: var(--texto-3); font-size: 12.5px; }
+  .tabla-ajustes td.accion { text-align: left; width: auto; }
+  .tabla-ajustes tr.cambiada { background: var(--info-fondo); }
+  .tabla-ajustes tr.cambiada td { background: transparent; }
+  .barra-cambios { bottom: 72px; margin: 12px 0 0; padding: 12px 14px; flex-wrap: wrap; border: 1px solid var(--borde); border-radius: 12px; }
   .detalle { width: 100vw; padding: 16px 16px 90px; border-left: 0; }
+  /* El detalle se cierra con la flecha de arriba a la izquierda, como en la app (también con Atrás). */
+  .detalle-cabecera .cerrar-detalle { order: -1; margin: 0 -4px 0 -8px; }
+  .cerrar-detalle .cruz-compu { display: none; }
+  .cerrar-detalle .volver-telefono { display: block; }
   .hoja-velo { place-items: end stretch; padding: 0; }
   .hoja { width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); }
   .hoja-acciones > * { flex: 1; }
   .aviso { top: 66px; }
   .aviso-inferior { bottom: 82px; }
-  /* La tabla de alertas pasa a tarjetas, como la lista de la app. */
+  /* La tabla de alertas pasa a tarjetas de cuatro renglones, como la lista de la app: severidad, estado y hora;
+     el tipo; origen → destino y servicio; métodos y responsable. Las conexiones quedan en el detalle. */
   #tabla-alertas thead { display: none; }
-  #tabla-alertas, #tabla-alertas tbody, #tabla-alertas tr, #tabla-alertas td { display: block; }
+  #tabla-alertas, #tabla-alertas tbody { display: block; }
   #tabla-alertas tr {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-areas: "sev est hora" "tipo tipo tipo" "par par serv" "met met resp";
+    gap: 6px 8px;
+    align-items: center;
     border: 1px solid var(--borde);
     border-radius: 12px;
-    padding: 10px 12px;
+    padding: 12px;
     margin-bottom: 10px;
     background: var(--superficie);
   }
-  #tabla-alertas td { border: 0; padding: 3px 0; white-space: normal; }
-  #tabla-alertas td.num { text-align: left; }
-  #tabla-alertas td[data-etiqueta]::before { content: attr(data-etiqueta) " · "; color: var(--texto-3); font-size: 12.5px; }
+  #tabla-alertas td { display: block; border: 0; padding: 0; white-space: normal; min-width: 0; }
+  #tabla-alertas td:nth-child(1) { grid-area: sev; }
+  #tabla-alertas td:nth-child(2) { grid-area: est; }
+  #tabla-alertas td:nth-child(3) { grid-area: tipo; }
+  #tabla-alertas td:nth-child(4) { grid-area: par; }
+  #tabla-alertas td:nth-child(5) { grid-area: serv; justify-self: end; }
+  #tabla-alertas td:nth-child(6) { grid-area: hora; justify-self: end; }
+  #tabla-alertas td:nth-child(7) { display: none; }
+  #tabla-alertas td:nth-child(8) { grid-area: met; }
+  #tabla-alertas td:nth-child(9) { grid-area: resp; justify-self: end; }
 }
 
-/* ---- Impresión del resumen: solo la hoja del resumen, en A4 ---- */
-
-@media print {
-  @page { size: A4; margin: 14mm; }
-  body { background: #ffffff; padding: 0; }
-  body * { visibility: hidden; }
-  #resumen-imprimible, #resumen-imprimible * { visibility: visible; }
-  #resumen-imprimible { position: absolute; left: 0; top: 0; width: 100%; }
-  .no-imprimir, #resumen-imprimible .tarjeta-acciones { display: none !important; }
-}
