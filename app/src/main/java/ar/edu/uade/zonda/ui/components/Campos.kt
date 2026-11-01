@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -72,7 +73,10 @@ fun etiquetaConAsterisco(texto: String, obligatorio: Boolean = true): AnnotatedS
     }
 }
 
-/** "* Obligatorio", debajo de los campos de un formulario que tiene campos obligatorios (decisión 48). */
+/**
+ * "* Obligatorio", debajo de los campos de un formulario que tiene campos obligatorios (decisión 48).
+ * TalkBack no la lee: cada campo obligatorio ya dice "obligatorio".
+ */
 @Composable
 fun LeyendaObligatorio(modifier: Modifier = Modifier) {
     val rojo = MaterialTheme.colorScheme.error
@@ -84,13 +88,16 @@ fun LeyendaObligatorio(modifier: Modifier = Modifier) {
         },
         style = MaterialTheme.typography.nota,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier,
+        modifier = modifier.semantics { hideFromAccessibility() },
     )
 }
 
-/** Lo que lee TalkBack del campo: la etiqueta y, si es obligatorio, "obligatorio" (el asterisco no se lee). */
+/**
+ * Lo que lee TalkBack del campo: la etiqueta y, si es obligatorio, "obligatorio" (el asterisco no se lee).
+ * También sirve para una etiqueta suelta, como "Motivo *" en Revisar.
+ */
 @Composable
-private fun descripcionDeCampo(etiqueta: String, obligatorio: Boolean): String =
+fun descripcionDeCampo(etiqueta: String, obligatorio: Boolean): String =
     if (obligatorio) stringResource(R.string.campo_obligatorio_descripcion, etiqueta) else etiqueta
 
 /** El recuadro de un campo con la etiqueta adentro. [campo] es el texto que se escribe. */
@@ -120,8 +127,10 @@ private fun RecuadroDeCampo(
             .padding(horizontal = 16.dp + grosor, vertical = 10.dp + grosor),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
+        // La etiqueta ya está en la descripción del campo: TalkBack la leería dos veces y con el asterisco.
+        val sinLeer = Modifier.semantics { hideFromAccessibility() }
         if (mostrarEjemplo) {
-            Text(text = textoEtiqueta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = textoEtiqueta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = sinLeer)
         } else {
             Text(
                 text = textoEtiqueta,
@@ -131,6 +140,7 @@ private fun RecuadroDeCampo(
                     enfocado -> MaterialTheme.colorScheme.primary
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
+                modifier = sinLeer,
             )
         }
         Box {
@@ -245,7 +255,8 @@ fun CampoCodigo(
                         enfocado -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
-                    modifier = Modifier.weight(1f),
+                    // El campo de abajo ya dice la etiqueta: TalkBack no la lee aparte ni con el asterisco.
+                    modifier = Modifier.weight(1f).semantics { hideFromAccessibility() },
                 )
                 ChipPegar(texto = textoPegar, alTocar = alPegar)
             }

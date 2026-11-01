@@ -26,6 +26,14 @@ class FormatoTest {
     }
 
     @Test
+    fun `los metodos en una frase, como el detalle y lo que lee TalkBack en la tarjeta`() {
+        assertEquals("", Formato.enumerar(emptyList()))
+        assertEquals("IA", Formato.enumerar(listOf("IA")))
+        assertEquals("IA y umbrales", Formato.enumerar(listOf("IA", "umbrales")))
+        assertEquals("IA, umbrales y reglas", Formato.enumerar(listOf("IA", "umbrales", "reglas")))
+    }
+
+    @Test
     fun `duraciones en segundos, minutos y horas`() {
         assertEquals("0 s", Formato.duracion(Duration.ZERO))
         assertEquals("42 s", Formato.duracion(Duration.ofSeconds(42)))

@@ -124,8 +124,8 @@ fun AlertasContenido(
                 titulo = stringResource(R.string.destino_alertas),
                 acciones = {
                     if (estado.sincronizando) {
-                        // Reemplaza al botón mientras sincroniza: con nombre, TalkBack no se queda sin qué decir.
-                        val descripcion = stringResource(R.string.accion_sincronizar)
+                        // Reemplaza al botón mientras sincroniza: TalkBack dice "Sincronizando…", no el nombre del botón.
+                        val descripcion = stringResource(R.string.accion_sincronizando)
                         CircularProgressIndicator(
                             modifier = Modifier
                                 .padding(end = 16.dp)

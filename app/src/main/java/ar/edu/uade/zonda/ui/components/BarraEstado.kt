@@ -82,8 +82,8 @@ fun BarraEstado(
                 if (alSincronizar != null) {
                     IconButton(onClick = alSincronizar, enabled = !sincronizando) {
                         if (sincronizando) {
-                            // Mientras gira, el botón sigue con nombre: TalkBack dice "Sincronizar ahora, desactivado".
-                            val descripcion = stringResource(R.string.accion_sincronizar)
+                            // Mientras gira, el botón dice qué está haciendo: TalkBack dice "Sincronizando…, desactivado".
+                            val descripcion = stringResource(R.string.accion_sincronizando)
                             CircularProgressIndicator(modifier = Modifier.size(22.dp).semantics { contentDescription = descripcion }, strokeWidth = 2.dp)
                         } else {
                             Icon(

@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -99,6 +100,14 @@ class AlertasContenidoTest {
 
         compose.onAllNodesWithText("pc-09 → srv-web").onFirst().performClick()
         assertEquals("a-1", abierta)
+    }
+
+    @Test
+    fun `mientras sincroniza, la ruedita dice Sincronizando y no el nombre del boton`() {
+        dibujar(AlertasUiState(contenido = lista(Fixtures.alerta("a-1")), datosDe = Fixtures.AHORA, sincronizando = true))
+
+        compose.onNodeWithContentDescription("Sincronizando…").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Sincronizar ahora").assertCountEquals(0)
     }
 
     @Test
