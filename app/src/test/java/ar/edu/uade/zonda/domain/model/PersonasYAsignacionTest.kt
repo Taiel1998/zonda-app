@@ -3,6 +3,7 @@ package ar.edu.uade.zonda.domain.model
 import ar.edu.uade.zonda.domain.Fixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -32,6 +33,17 @@ class PersonasYAsignacionTest {
         assertEquals("Teléfono d-1", vieja.nombreVisible)
         assertEquals("T", vieja.inicial)
         assertEquals("L", persona("d-2", " laura", Perfil.ANALISTA).inicial)
+    }
+
+    @Test
+    fun `un navegador del tablero se reconoce por su nombre y se nombra sin el Tablero web`() {
+        assertTrue(esNombreDeNavegador("Tablero web · Chrome en Windows"))
+        assertTrue(esNombreDeNavegador("Tablero web"))
+        assertFalse(esNombreDeNavegador("Laura"))
+        assertFalse(esNombreDeNavegador(null))
+        assertEquals("Chrome en Windows", navegadorDelNombre("Tablero web · Chrome en Windows"))
+        // Los primeros se llamaban solo "Tablero web": no hay más nombre que ese.
+        assertNull(navegadorDelNombre("Tablero web"))
     }
 
     @Test

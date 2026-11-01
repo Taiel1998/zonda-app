@@ -269,7 +269,8 @@ fun ContenidoMasFiltros(
                 alTocar = { responsable = FiltroResponsable.SinAsignar },
                 rol = Role.RadioButton,
             )
-            personas.filter { it.id != miId }.forEach { persona ->
+            // Un navegador del tablero no es una persona: no se le asignan alertas (decisión 51), como en el tablero.
+            personas.filter { it.id != miId && !it.navegador }.forEach { persona ->
                 val deEsa = FiltroResponsable.De(persona.id)
                 ChipOpcion(persona.nombreVisible, elegido = responsable == deEsa, alTocar = { responsable = deEsa }, rol = Role.RadioButton)
             }

@@ -32,6 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.TipoCambio
+import ar.edu.uade.zonda.domain.model.esNombreDeNavegador
+import ar.edu.uade.zonda.domain.model.navegadorDelNombre
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.BarraSuperior
 import ar.edu.uade.zonda.ui.components.Panel
@@ -128,7 +130,9 @@ private fun cuandoDelCambio(fecha: Instant, ahora: Instant, zona: ZoneId): Strin
 /**
  * Qué cambió, con palabras (Taiel no entendió la flecha): "Fuerza bruta pasó de alta a media",
  * "srv-sueldos pasó de normal a crítico", "Meli pasó de analista a administrador", "Sumó a Laura al
- * equipo como analista" o "Quitó a Laura del equipo".
+ * equipo como analista" o "Quitó a Laura del equipo". Los navegadores del tablero web, como en el
+ * tablero: "Sumó el navegador Chrome en Windows como administrador", "Salió del tablero" o "Le quitó
+ * el acceso al navegador Chrome en Windows".
  */
 @Composable
 fun tituloDelCambio(cambio: CambioRegistro): String {
@@ -145,21 +149,25 @@ fun tituloDelCambio(cambio: CambioRegistro): String {
             cambio.importanciaDespues?.let { stringResource(it.etiqueta()).lowercase() } ?: cambio.despues.orEmpty(),
         )
         TipoCambio.PERFIL -> pasoDe(
-            nombre,
+            if (esNombreDeNavegador(nombre)) elNavegador(nombre).replaceFirstChar { it.uppercase() } else nombre,
             cambio.perfilAntes?.let { stringResource(it.etiqueta()).lowercase() },
             cambio.perfilDespues?.let { stringResource(it.etiqueta()).lowercase() } ?: cambio.despues.orEmpty(),
         )
         TipoCambio.PERSONA_NUEVA -> stringResource(
-            R.string.registro_persona_nueva,
-            nombre,
+            if (esNombreDeNavegador(nombre)) R.string.registro_navegador_nuevo else R.string.registro_persona_nueva,
+            if (esNombreDeNavegador(nombre)) elNavegador(nombre) else nombre,
             cambio.perfilDespues?.let { stringResource(it.etiqueta()).lowercase() } ?: cambio.despues.orEmpty(),
         )
-        TipoCambio.PERSONA_QUITADA ->
-            if (cambio.autorId != null && cambio.autorId == cambio.objeto) {
-                stringResource(R.string.registro_se_quito)
-            } else {
-                stringResource(R.string.registro_persona_quitada, nombre)
+        TipoCambio.PERSONA_QUITADA -> {
+            val propio = cambio.autorId != null && cambio.autorId == cambio.objeto
+            when {
+                esNombreDeNavegador(nombre) && propio -> stringResource(R.string.registro_navegador_salio)
+                esNombreDeNavegador(nombre) -> navegadorDelNombre(nombre)?.let { stringResource(R.string.registro_navegador_quitado, it) }
+                    ?: stringResource(R.string.registro_navegador_quitado_sin_nombre)
+                propio -> stringResource(R.string.registro_se_quito)
+                else -> stringResource(R.string.registro_persona_quitada, nombre)
             }
+        }
         // Decisión 51: "Bloqueó pc-rrhh por 1 h", "Cambió el bloqueo de pc-rrhh a 8 h" y "Desbloqueó pc-rrhh".
         // Un cambio de duración trae la de antes; "hasta desbloquear" viaja como texto, no como segundos.
         TipoCambio.BLOQUEO -> {
@@ -179,6 +187,14 @@ fun tituloDelCambio(cambio: CambioRegistro): String {
         )
     }
 }
+
+/**
+ * Un navegador del tablero web no es una persona, como en el tablero: "el navegador Chrome en Windows", o
+ * "un navegador" si se llamaba solo "Tablero web".
+ */
+@Composable
+private fun elNavegador(nombre: String): String =
+    navegadorDelNombre(nombre)?.let { stringResource(R.string.registro_el_navegador, it) } ?: stringResource(R.string.registro_un_navegador)
 
 @Composable
 private fun pasoDe(nombre: String, antes: String?, despues: String): String =

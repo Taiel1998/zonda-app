@@ -78,7 +78,7 @@ internal val EntreTarjetas = Arrangement.spacedBy(16.dp)
 
 /**
  * Ajustes (RF05 y RF06; Figma 4-66 y 51-1137): una lista de tarjetas que abren otras pantallas.
- * Red (Redes, Personas, Equipos, Registro de cambios y Detalles técnicos), Avisos (Telegram, avisos por severidad y severidad por tipo de
+ * Red (Redes, Personas, Navegadores, Equipos, Registro de cambios y Detalles técnicos), Avisos (Telegram, avisos por severidad y severidad por tipo de
  * ataque; desde la 1.0.4 sin "Notificaciones del sistema", porque cada severidad tiene su interruptor),
  * Datos locales, Este dispositivo y Ayuda. Las confirmaciones son
  * hojas inferiores con el botón rojo.
@@ -87,6 +87,7 @@ internal val EntreTarjetas = Arrangement.spacedBy(16.dp)
 fun AjustesScreen(
     alAbrirRedes: () -> Unit,
     alAbrirPersonas: () -> Unit,
+    alAbrirNavegadores: () -> Unit,
     alAbrirEquipos: () -> Unit,
     alAbrirRegistro: () -> Unit,
     alAbrirDetallesTecnicos: () -> Unit,
@@ -105,6 +106,7 @@ fun AjustesScreen(
         acciones = AccionesAjustes(
             alAbrirRedes = alAbrirRedes,
             alAbrirPersonas = alAbrirPersonas,
+            alAbrirNavegadores = alAbrirNavegadores,
             alAbrirEquipos = alAbrirEquipos,
             alAbrirRegistro = alAbrirRegistro,
             alAbrirDetallesTecnicos = alAbrirDetallesTecnicos,
@@ -155,6 +157,8 @@ data class AccionesAjustes(
     val alAbrirRedes: () -> Unit = {},
     /** Personas, Equipos y Registro de cambios (decisiones 39 a 41; Figma 468-2154). */
     val alAbrirPersonas: () -> Unit = {},
+    /** Las computadoras con el tablero web, aparte de las personas. */
+    val alAbrirNavegadores: () -> Unit = {},
     val alAbrirEquipos: () -> Unit = {},
     val alAbrirRegistro: () -> Unit = {},
     val alAbrirDetallesTecnicos: () -> Unit = {},
@@ -238,15 +242,24 @@ fun AjustesContenido(
                     )
                     // Un servidor anterior a la API 0.6.0 no tiene gente ni registro: las filas no aparecen.
                     if (estado.personas.isNotEmpty()) {
+                        val gente = estado.personas.size - estado.navegadores.size
                         FilaNavegable(
                             titulo = stringResource(R.string.ajustes_personas),
                             detalle = pluralStringResource(
                                 R.plurals.ajustes_personas_detalle,
-                                estado.personas.size,
-                                estado.personas.size,
+                                gente,
+                                gente,
                                 stringResource(if (estado.perfil.esAdministrador) R.string.ajustes_sos_administrador else R.string.ajustes_sos_analista),
                             ),
                             alTocar = acciones.alAbrirPersonas,
+                        )
+                    }
+                    // Las computadoras con el tablero web no son personas: van aparte, como en el tablero.
+                    if (estado.navegadores.isNotEmpty()) {
+                        FilaNavegable(
+                            titulo = stringResource(R.string.ajustes_navegadores),
+                            detalle = pluralStringResource(R.plurals.ajustes_navegadores_detalle, estado.navegadores.size, estado.navegadores.size),
+                            alTocar = acciones.alAbrirNavegadores,
                         )
                     }
                     if (estado.equipos.isNotEmpty()) {

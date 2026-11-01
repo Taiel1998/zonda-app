@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.ui.components
 
+import android.content.res.Resources
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -29,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Importancia
 import ar.edu.uade.zonda.domain.model.Persona
+import ar.edu.uade.zonda.domain.model.navegadorDelNombre
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.theme.Tonos
@@ -76,13 +80,11 @@ fun nombreDePersona(persona: Persona): String =
 
 /**
  * "Administrador · moto g(9) plus · hoy 14:33" (Figma 468-2614): el perfil, el teléfono y su último uso. Un
- * navegador con el tablero web empieza por "Navegador", para que no se confunda con una persona, y un
  * analista con permiso de bloquear dice "Bloquea" después del perfil (decisión 51).
  */
 @Composable
 fun detalleDePersona(persona: Persona, ahora: Instant, zona: ZoneId): String {
     val partes = mutableListOf<String>()
-    if (persona.navegador) partes += stringResource(R.string.personas_navegador)
     partes += stringResource(persona.perfil.etiqueta())
     if (!persona.perfil.esAdministrador && persona.puedeBloquear) partes += stringResource(R.string.personas_bloquea)
     // Los teléfonos pareados antes de la 1.0.5 se llaman como el teléfono: no se repite.
@@ -115,6 +117,69 @@ fun FilaPersona(
     modifier: Modifier = Modifier,
     alTocar: (() -> Unit)? = null,
 ) {
+    FilaDeLaLista(
+        circulo = { Avatar(persona.inicial) },
+        titulo = nombreDePersona(persona),
+        detalle = detalleDePersona(persona, ahora, zona),
+        modifier = modifier,
+        alTocar = alTocar,
+    )
+}
+
+/** "Chrome en Windows"; los primeros navegadores del tablero, que se llamaban solo "Tablero web", dicen "Navegador". */
+fun nombreDeNavegador(navegador: Persona, recursos: Resources): String =
+    navegadorDelNombre(navegador.telefono) ?: recursos.getString(R.string.personas_navegador)
+
+/** "Administrador · hoy 14:33": el perfil y el último uso de un navegador del tablero. */
+@Composable
+fun detalleDeNavegador(navegador: Persona, ahora: Instant, zona: ZoneId): String {
+    val partes = mutableListOf(stringResource(navegador.perfil.etiqueta()))
+    navegador.ultimoUso?.let { partes += ultimoUso(it, ahora, zona) }
+    return partes.joinToString(" · ")
+}
+
+/** El círculo de un navegador: la computadora de 16 en verde sobre verde claro, como la inicial de una persona. */
+@Composable
+fun AvatarNavegador(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(30.dp)
+            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Outlined.Computer, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+    }
+}
+
+/**
+ * Un navegador de Navegadores, como la fila de una persona con la computadora en el círculo: "Chrome en
+ * Windows" y "Administrador · hoy 14:33". Con [alTocar], la flecha a la derecha (la ve el administrador).
+ */
+@Composable
+fun FilaNavegador(
+    navegador: Persona,
+    ahora: Instant,
+    zona: ZoneId,
+    modifier: Modifier = Modifier,
+    alTocar: (() -> Unit)? = null,
+) {
+    FilaDeLaLista(
+        circulo = { AvatarNavegador() },
+        titulo = nombreDeNavegador(navegador, LocalResources.current),
+        detalle = detalleDeNavegador(navegador, ahora, zona),
+        modifier = modifier,
+        alTocar = alTocar,
+    )
+}
+
+@Composable
+private fun FilaDeLaLista(
+    circulo: @Composable () -> Unit,
+    titulo: String,
+    detalle: String,
+    modifier: Modifier,
+    alTocar: (() -> Unit)?,
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -123,10 +188,10 @@ fun FilaPersona(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Avatar(persona.inicial)
+        circulo()
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(text = nombreDePersona(persona), style = MaterialTheme.typography.titleSmall)
-            Text(text = detalleDePersona(persona, ahora, zona), style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = titulo, style = MaterialTheme.typography.titleSmall)
+            Text(text = detalle, style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (alTocar != null) {
             Icon(

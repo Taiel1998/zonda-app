@@ -2,8 +2,10 @@ package ar.edu.uade.zonda.ui.detalle
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -21,6 +23,7 @@ import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.TipoCambio
 import ar.edu.uade.zonda.ui.ajustes.tituloDelCambio
+import ar.edu.uade.zonda.ui.components.FilaNavegador
 import ar.edu.uade.zonda.ui.components.FilaPersona
 import ar.edu.uade.zonda.ui.estado.TarjetaBloqueos
 import ar.edu.uade.zonda.ui.estado.TarjetaEstadoSistema
@@ -226,23 +229,23 @@ class BloqueoContenidoTest {
     }
 
     @Test
-    fun `asignar no ofrece los navegadores del tablero y Personas los marca`() {
+    fun `asignar no ofrece los navegadores del tablero, que van aparte en Navegadores`() {
         val taiel = Persona("d-1", "Taiel", "moto g(9) plus", Perfil.ADMINISTRADOR, null, vos = true)
         val laura = Persona("d-2", "Laura", "Teléfono de Laura", Perfil.ANALISTA, null, vos = false)
-        val tablero = Persona("d-3", null, "Tablero web", Perfil.ADMINISTRADOR, null, vos = false, navegador = true)
+        val tablero = Persona("d-3", null, "Tablero web · Chrome en Windows", Perfil.ADMINISTRADOR, null, vos = false, navegador = true)
         compose.setContent {
             ZondaTheme {
                 Column {
                     ContenidoHojaAsignar(listOf(taiel, laura, tablero), responsableId = null) {}
-                    FilaPersona(tablero, Fixtures.AHORA, utc)
+                    FilaNavegador(tablero, Fixtures.AHORA, utc)
                 }
             }
         }
 
         compose.onNodeWithText("Laura").assertExists()
-        // El tablero aparece una sola vez: en la fila de Personas, marcado como navegador.
-        compose.onNodeWithText("Tablero web").assertExists()
-        compose.onNodeWithText("Navegador · Administrador").assertExists()
+        // El navegador aparece una sola vez: en su fila de Navegadores, sin el "Tablero web ·".
+        compose.onAllNodesWithText("Tablero web · Chrome en Windows").assertCountEquals(0)
+        compose.onAllNodesWithText("Chrome en Windows").assertCountEquals(1)
     }
 
     @Test

@@ -41,6 +41,9 @@ object Rutas {
     const val PERSONAS = "personas"
     const val CODIGO_PERSONA = "personas/codigo"
 
+    /** Las computadoras con el tablero web, aparte de las personas, como en el tablero. */
+    const val NAVEGADORES = "navegadores"
+
     /** La importancia de cada equipo (decisión 41; Figma 468-3089). */
     const val EQUIPOS = "equipos"
 

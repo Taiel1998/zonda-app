@@ -30,7 +30,8 @@ data class Persona(
     val vos: Boolean,
     /**
      * Es un navegador con el tablero web, no un teléfono (decisión 51). No se le asignan alertas: no
-     * recibe el aviso de la asignación. En Personas se ve aparte, para poder quitarlo.
+     * recibe el aviso de la asignación. No es una persona: va aparte, en Navegadores, donde se le quita
+     * el acceso, como en el tablero.
      */
     val navegador: Boolean = false,
     /** El permiso de bloquear de un analista, que le da un administrador al de guardia (decisión 51). */
@@ -61,6 +62,22 @@ data class Persona(
                 .map { it.value }
     }
 }
+
+/** Así empiezan los nombres de los navegadores pareados con el tablero web (decisión 50): "Tablero web · Chrome en Windows". */
+private const val PREFIJO_TABLERO = "Tablero web"
+
+/**
+ * Si [nombre] es el de un navegador del tablero web. El registro de cambios trae el nombre y no si es un
+ * navegador: con esto lo nombra como navegador y no como persona, como el tablero.
+ */
+fun esNombreDeNavegador(nombre: String?): Boolean = nombre?.startsWith(PREFIJO_TABLERO) == true
+
+/**
+ * El navegador de un nombre del tablero web, sin el "Tablero web ·" que llevan todos: "Chrome en Windows".
+ * Null si no dice más que "Tablero web", como los primeros.
+ */
+fun navegadorDelNombre(nombre: String): String? =
+    nombre.removePrefix(PREFIJO_TABLERO).trim().removePrefix("·").trim().ifEmpty { null }
 
 /**
  * El código de un uso para sumar a una persona (Figma 468-2735): lo que lleva el QR, el código en

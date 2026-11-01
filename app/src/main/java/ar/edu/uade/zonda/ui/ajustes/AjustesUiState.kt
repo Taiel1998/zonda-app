@@ -61,9 +61,13 @@ data class AjustesUiState(
     val perfil: Perfil
         get() = redActiva?.perfil ?: Perfil.ADMINISTRADOR
 
-    /** "Taiel o Meli": quienes pueden cambiar la configuración, para la pantalla de la analista. */
+    /** Las computadoras con el tablero web: no son personas y van aparte, en Navegadores, como en el tablero. */
+    val navegadores: List<Persona>
+        get() = personas.filter { it.navegador }
+
+    /** "Taiel o Meli": quienes pueden cambiar la configuración, para la pantalla de la analista; sin los navegadores. */
     val administradores: List<String>
-        get() = personas.filter { it.perfil.esAdministrador }.map { it.nombreVisible }
+        get() = personas.filter { it.perfil.esAdministrador && !it.navegador }.map { it.nombreVisible }
 }
 
 /** Avisos inferiores de un solo uso (snackbar). */
