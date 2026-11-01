@@ -464,7 +464,7 @@ private fun CuerpoDetalle(
                 Veredictos(alerta)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     BotonContorno(
-                        texto = textoMantener(ajena?.autor),
+                        texto = textoMantener(ajena?.persona ?: ajena?.autor),
                         alTocar = acciones.alQuedarmeConLaOtra,
                         modifier = Modifier.weight(1f),
                         relleno = RellenoBotonAngosto,
@@ -719,7 +719,8 @@ private fun TarjetaConflicto(ajena: Revision, propia: Revision?, zona: ZoneId) {
         add(
             stringResource(
                 R.string.conflicto_texto,
-                ajena.autor ?: stringResource(R.string.conflicto_otra_persona),
+                // La persona ("Lucía", decisión 39) y no su teléfono, como el tablero; los pareados antes de la 1.0.5 no la traen.
+                ajena.persona ?: ajena.autor ?: stringResource(R.string.conflicto_otra_persona),
                 stringResource(ajena.resultado.etiqueta()).lowercase(),
                 Formato.hora(ajena.hechaEn, zona),
                 stringResource(ajena.motivo.etiqueta()),
