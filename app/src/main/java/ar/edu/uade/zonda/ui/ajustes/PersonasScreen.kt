@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.ui.components.AvisoInferior
@@ -292,7 +293,8 @@ fun ColumnScope.ContenidoHojaAgregarPersona(formulario: FormularioPersona, accio
     }
     formulario.error?.let { error ->
         Text(
-            text = stringResource(error.mensaje()),
+            // Sin red, el texto general ("Se muestran los datos guardados") no dice qué pasó con el código.
+            text = if (error is ErrorZonda.SinConexion) stringResource(R.string.personas_codigo_sin_conexion) else stringResource(error.mensaje()),
             style = MaterialTheme.typography.nota,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },

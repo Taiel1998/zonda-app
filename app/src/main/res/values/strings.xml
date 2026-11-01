@@ -1067,6 +1067,8 @@
     <string name="personas_nombre">Nombre</string>
     <string name="personas_nombre_ejemplo">Por ejemplo: Laura</string>
     <string name="personas_falta_nombre">Escribí el nombre de la persona.</string>
+    <!-- Como "Sin conexión: el bloqueo no se envió.": dice qué pasó con lo que se pidió. -->
+    <string name="personas_codigo_sin_conexion">Sin conexión: el código no se generó.</string>
     <string name="personas_perfil">Perfil</string>
     <string name="personas_generar_codigo">Generar código</string>
     <string name="personas_hacer_administrador">Hacer administrador</string>
