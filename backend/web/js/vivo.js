@@ -318,7 +318,7 @@ function mostrarGlobitoMarca(p) {
     el('div', { class: 'globito-titulo' }, m.tipo),
     el('div', { class: 'globito-fila' }, el('i', { class: 'globito-llave punto', style: `background:var(--${m.severidad})` }), el('b', {}, m.nivel), el('em', {}, `empezó ${fechaHoraSegundos(m.t)}`)),
     el('div', { class: 'globito-nota' }, `${m.par} · ${m.servicio}`),
-    el('div', { class: 'globito-nota' }, `${m.estado}. Tocá la marca para ver el detalle.`)));
+    el('div', { class: 'globito-nota' }, `${m.estado}. Elegí la marca para ver el detalle.`)));
   globito.hidden = false;
   const x = Math.min(window.innerWidth - globito.offsetWidth - 8, ev.clientX + 14);
   const arriba = ev.clientY - globito.offsetHeight - 14;
@@ -438,7 +438,7 @@ export function pintarTrafico() {
     prepararGraficoDeTiempo(graficoAlertas);
     prepararAlertasTiempo(graficoAlertas);
   }
-  $('sub-alertas-tiempo').textContent = `Las alertas que empezaron en cada barra de ${nombrePaso(barras.paso)}, por severidad. Tocá una barra para verlas en la lista.`;
+  $('sub-alertas-tiempo').textContent = `Las alertas que empezaron en cada barra de ${nombrePaso(barras.paso)}, por severidad. Elegí una barra para verlas en la lista.`;
   $('vacio-alertas-tiempo').hidden = totalAlertas > 0;
   $('leyenda-alertas-tiempo').hidden = !totalAlertas;
   $('leyenda-marcas').hidden = sinTrafico;
@@ -447,7 +447,10 @@ export function pintarTrafico() {
 
   const fallidas = g.fallidas.reduce((a, b) => a + b, 0);
   $('sin-respuesta').textContent = numero(fallidas);
-  $('sin-respuesta-detalle').textContent = total ? `${porcentaje(fallidas, total)} de ${numero(total)} conexiones ${frase}` : `Ninguna conexión ${frase}`;
+  // Una sola sin respuesta entre cientos no es «0 %»: debajo del 1 %, con un decimal.
+  const parte = total ? (100 * fallidas) / total : 0;
+  const proporcion = fallidas && parte < 0.05 ? 'menos del 0,1 %' : porcentaje(fallidas, total, fallidas && parte < 1 ? 1 : 0);
+  $('sin-respuesta-detalle').textContent = total ? `${proporcion} de ${numero(total)} conexiones ${frase}` : `Ninguna conexión ${frase}`;
   $('trafico-ahora-detalle').textContent = `${bytes(bytesTotal)} ${frase}`;
   $('conexiones-ahora-detalle').textContent = `Promedio de los últimos 30 segundos. ${numero(total)} conexiones ${frase}.`;
 
@@ -521,7 +524,7 @@ function pintarLeyendaServicios(g, presentes) {
       el('th', { scope: 'row' }, el('button', {
         type: 'button',
         'aria-pressed': String(visible),
-        title: 'Tocá para ver solo este. Con Ctrl, sumalo o sacalo.',
+        title: 'Elegilo para ver solo este. Con Ctrl, sumalo o sacalo.',
         onclick: (ev) => tocarServicio(x.id, presentes, ev.ctrlKey || ev.metaKey),
       }, el('i', { style: `background:var(${x.color})` }), x.nombre)),
       el('td', { class: 'num' }, numero(Math.min(...valores))),

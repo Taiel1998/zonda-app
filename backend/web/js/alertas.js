@@ -198,6 +198,11 @@ export function pintarAlertas() {
 
 export function verMas() { limite += 50; pintarAlertas(); }
 
+function conClase(elemento, clase) {
+  elemento.classList.add(clase);
+  return elemento;
+}
+
 /** Lo que el lector de pantalla dice de los métodos: cuáles marcaron, no solo el color. */
 function textoMetodos(a) {
   const marcaron = METODOS.filter((m) => a.veredictos[m.id]).map((m) => m.nombre.toLowerCase());
@@ -327,7 +332,7 @@ function hojaMasFiltros() {
   const destinosOrdenados = [...cuentaDestinos.entries()].sort((x, y) => y[1].n - x[1].n).slice(0, 12);
   hojaDeOpciones({
     titulo: 'Más filtros',
-    subtitulo: 'Podés elegir varios en cada grupo. Tocá uno elegido para sacarlo.',
+    subtitulo: 'Podés elegir varios en cada grupo. Para sacar uno, elegilo de nuevo.',
     grupos: [
       { titulo: 'Servicio', opciones: [...opcionMultiple(conChip.map((s) => ({ id: s, nombre: servicioCorto(s) })), servicios), ...(e.alertas.size && new Set([...e.alertas.values()].map((a) => a.servicio)).size > conChip.length ? opcionMultiple([{ id: '__otros', nombre: 'Los demás' }], otros) : [])] },
       { titulo: 'Equipo destino', opciones: opcionMultiple(destinosOrdenados.map(([ip, d]) => ({ id: ip, nombre: d.nombre === ip ? ip : `${d.nombre}` })), destinos) },
@@ -428,7 +433,9 @@ export function abrirDetalle(id, enfocar = true, { sinHistoria = false } = {}) {
             'aria-label': 'Qué significa cada dato', title: 'Qué significa cada dato', onclick: alternarAyudaDetalle,
           }, '?')),
         el('p', {}, `Detectada por ${detectadaPor(a)}.`)),
-      el('button', { type: 'button', class: 'boton-icono', 'aria-label': 'Cerrar el detalle', onclick: cerrarDetalle }, icono('cruz'))),
+      // La X en la computadora; en el teléfono, la flecha de arriba a la izquierda, como la app (estilos.css).
+      el('button', { type: 'button', class: 'boton-icono cerrar-detalle', 'aria-label': 'Cerrar el detalle', onclick: cerrarDetalle },
+        conClase(icono('cruz'), 'cruz-compu'), conClase(icono('volver'), 'volver-telefono'))),
     el('div', { class: 'recorrido' },
       el('div', {}, el('strong', {}, nombreEquipo(a, 'origen')), el('span', {}, a.origenIp)),
       el('span', { class: 'flecha' }, icono('flecha')),

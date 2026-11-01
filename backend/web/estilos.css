@@ -940,6 +940,7 @@ html { scrollbar-gutter: stable; }
 .titulo-con-ayuda { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; }
 .titulo-con-ayuda h2 { margin: 0; }
 .detalle-cabecera .boton-icono { margin-left: auto; flex: none; }
+.cerrar-detalle .volver-telefono { display: none; }
 
 /* Los datos de un panel, como el inspector de Grafana: la tabla con su encabezado fijo y el botón del CSV. */
 .inspector {
@@ -1591,6 +1592,10 @@ html { scrollbar-gutter: stable; }
   .tabla-ajustes tr.cambiada td { background: transparent; }
   .barra-cambios { bottom: 72px; margin: 12px 0 0; padding: 12px 14px; flex-wrap: wrap; border: 1px solid var(--borde); border-radius: 12px; }
   .detalle { width: 100vw; padding: 16px 16px 90px; border-left: 0; }
+  /* El detalle se cierra con la flecha de arriba a la izquierda, como en la app (también con Atrás). */
+  .detalle-cabecera .cerrar-detalle { order: -1; margin: 0 -4px 0 -8px; }
+  .cerrar-detalle .cruz-compu { display: none; }
+  .cerrar-detalle .volver-telefono { display: block; }
   .hoja-velo { place-items: end stretch; padding: 0; }
   .hoja { width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); }
   .hoja-acciones > * { flex: 1; }

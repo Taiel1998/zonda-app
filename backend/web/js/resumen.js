@@ -272,13 +272,13 @@ function gruposDeFiltros(x, formaBarra) {
 }
 
 /** La frase de abajo del gráfico (fraseDelGrafico de la app). Con filtros dice qué se está mostrando; sin
-    filtros, cuenta la barra con más alertas. En la imagen no dice «Tocá de nuevo». */
+    filtros, cuenta la barra con más alertas. En la imagen no dice «Elegilo de nuevo». */
 function fraseDelGrafico(x, enImagen = false) {
   const nombrados = r.barras.size + (sonLasAltas() ? 1 : r.tipos.size) + (r.revision ? 1 : 0) + (r.metodo ? 1 : 0);
   const alertas = `${x.total} ${plural(x.total, 'alerta', 'alertas')}`;
   if (nombrados === 1) {
     const [nombre] = gruposDeFiltros(x, 'uno');
-    return enImagen ? `Mostrando ${nombre}: ${alertas}.` : `Mostrando ${nombre}: ${alertas}. Tocá de nuevo para sacarlo.`;
+    return enImagen ? `Mostrando ${nombre}: ${alertas}.` : `Mostrando ${nombre}: ${alertas}. Elegilo de nuevo para sacarlo.`;
   }
   if (nombrados > 1 && nombrados <= 4) return `Mostrando ${alertas}: ${gruposDeFiltros(x, 'varios').join(' · ')}.`;
   if (nombrados > 4) return `Mostrando ${alertas} con ${cantidadFiltros()} filtros.`;
