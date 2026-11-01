@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -156,7 +157,11 @@ fun ZondaNavHost(
     val pestaniaRetocada = remember { MutableSharedFlow<String>(extraBufferCapacity = 1) }
     CompositionLocalProvider(LocalRegistroRecorrido provides registroRecorrido, LocalPestaniaRetocada provides pestaniaRetocada) {
         Box(modifier = Modifier.fillMaxSize()) {
+            val conRecorrido = pasoRecorrido != null && (enPestania || enDetalle || enResumen)
             Scaffold(
+                // Con el recorrido a la vista, lo de atrás del velo no se puede tocar: TalkBack tampoco tiene que
+                // poder enfocarlo ni activarlo. La capa del recorrido va aparte y conserva su semántica.
+                modifier = if (conRecorrido) Modifier.clearAndSetSemantics {} else Modifier,
                 contentWindowInsets = WindowInsets(0),
                 // "Revisaste ..." con Deshacer en la lista a la que volvió el detalle (decisión 38): arriba de
                 // la barra de pestañas o, en la lista del Resumen, de la barra de navegación de Android.
