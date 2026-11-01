@@ -435,7 +435,10 @@ export function pintarTrafico() {
 
   const fallidas = g.fallidas.reduce((a, b) => a + b, 0);
   $('sin-respuesta').textContent = numero(fallidas);
-  $('sin-respuesta-detalle').textContent = total ? `${porcentaje(fallidas, total)} de ${numero(total)} conexiones ${frase}` : `Ninguna conexión ${frase}`;
+  // Una sola sin respuesta entre cientos no es «0 %»: debajo del 1 %, con un decimal.
+  const parte = total ? (100 * fallidas) / total : 0;
+  const proporcion = fallidas && parte < 0.05 ? 'menos del 0,1 %' : porcentaje(fallidas, total, fallidas && parte < 1 ? 1 : 0);
+  $('sin-respuesta-detalle').textContent = total ? `${proporcion} de ${numero(total)} conexiones ${frase}` : `Ninguna conexión ${frase}`;
   $('trafico-ahora-detalle').textContent = `${bytes(bytesTotal)} ${frase}`;
   $('conexiones-ahora-detalle').textContent = `Promedio de los últimos 30 segundos. ${numero(total)} conexiones ${frase}.`;
 
