@@ -1,6 +1,7 @@
 package ar.edu.uade.zonda.data.remote
 
 import ar.edu.uade.zonda.domain.model.Red
+import java.time.OffsetDateTime
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import retrofit2.HttpException
@@ -113,7 +114,7 @@ class ApiFalsa : ZondaApi {
 
     override suspend fun salud(): SaludDto {
         fallarSiCorresponde("salud")
-        return SaludDto("0.3.0", horaSalud, alertas.size, RedDto(redId, redNombre), null, sistema)
+        return SaludDto("0.3.0", horaSalud, alertas.size, RedDto(redId, redNombre), null, sistema, firewall.takeIf { firewallEnSalud })
     }
 
     override suspend fun alertas(desde: String?): PaginaAlertasDto {
@@ -264,7 +265,15 @@ class ApiFalsa : ZondaApi {
         fallarSiCorresponde("perfil")
         val indice = personas.indexOfFirst { it.id == id }
         if (indice < 0) throw errorHttp(404)
-        personas[indice] = personas[indice].copy(perfil = entrada.perfil)
+        personas[indice] = personas[indice].copy(perfil = entrada.perfil, puedeBloquear = entrada.perfil == "administrador")
+        return personas[indice]
+    }
+
+    override suspend fun cambiarPermisoBloqueo(id: String, entrada: PermisoBloqueoEntradaDto): PersonaDto {
+        fallarSiCorresponde("permisoBloqueo")
+        val indice = personas.indexOfFirst { it.id == id }
+        if (indice < 0) throw errorHttp(404)
+        personas[indice] = personas[indice].copy(puedeBloquear = entrada.puedeBloquear)
         return personas[indice]
     }
 
@@ -290,9 +299,14 @@ class ApiFalsa : ZondaApi {
         return EquipoDto(ip, nombre, entrada.importancia)
     }
 
-    override suspend fun registro(): List<CambioRegistroDto> {
+    /** Si la última vez se pidió el registro con los bloqueos (`?bloqueos=true`). */
+    var registroConBloqueos: Boolean? = null
+
+    /** Como la API 0.9.0: los bloqueos y desbloqueos, solo a quien los pide. */
+    override suspend fun registro(conBloqueos: Boolean): List<CambioRegistroDto> {
         fallarSiCorresponde("registro")
-        return registro.toList()
+        registroConBloqueos = conBloqueos
+        return registro.filter { conBloqueos || it.tipo !in setOf("bloqueo", "desbloqueo") }
     }
 
     override suspend fun asignar(id: String, entrada: AsignacionEntradaDto): AlertaDto {
@@ -307,8 +321,100 @@ class ApiFalsa : ZondaApi {
         return nueva
     }
 
+    // ---- Bloqueos del firewall (API 0.9.0, decisión 51) ----
+
+    /** El firewall de la red: apagado, como un servidor sin ZONDA_FIREWALL_TOKEN (modo de observación). */
+    var firewall = EstadoFirewallDto(habilitado = false, conectado = false, ultimaConsulta = null, nuncaBloquear = emptyList())
+
+    /** Si `GET /salud` manda el firewall; falso, como un servidor anterior a la API 0.9.0. */
+    var firewallEnSalud = true
+
+    /** Los bloqueos de la red, del más viejo al más nuevo. */
+    val bloqueos = mutableListOf<BloqueoDto>()
+    val bloqueosRecibidos = mutableListOf<BloqueoEntradaDto>()
+
+    /** Como la API: el teléfono de un administrador lo deja aprobado; el de un analista, pedido. */
+    private fun esAdministrador() = (personas.firstOrNull { it.vos }?.perfil ?: "administrador") == "administrador"
+
+    override suspend fun bloqueos(): ListaBloqueosDto {
+        fallarSiCorresponde("bloqueos")
+        return ListaBloqueosDto(bloqueos.reversed(), firewall)
+    }
+
+    override suspend fun bloquear(entrada: BloqueoEntradaDto): BloqueoDto {
+        fallarSiCorresponde("bloquear")
+        if (!firewall.habilitado) throw errorHttp(503, """{"detail": "Los bloqueos están apagados: esta red no tiene un firewall conectado"}""")
+        bloqueos.firstOrNull { it.id == "b-${entrada.accionId}" }?.let { return it }
+        val alerta = alertas[entrada.alertaId] ?: throw errorHttp(404)
+        if (bloqueos.any { it.ip == alerta.origenIp && it.estado in ACTIVOS }) {
+            throw errorHttp(409, """{"detail": "Ese equipo ya tiene un bloqueo o un pedido de bloqueo"}""")
+        }
+        bloqueosRecibidos += entrada
+        val administrador = esAdministrador()
+        val nuevo = BloqueoDto(
+            id = "b-${entrada.accionId}",
+            alertaId = alerta.id,
+            ip = alerta.origenIp,
+            nombre = alerta.origenNombre,
+            estado = if (administrador) "aprobado" else "pedido",
+            duracion = entrada.duracion,
+            motivo = entrada.motivo,
+            pedidoPorId = "d-1",
+            pedidoPor = "Este teléfono",
+            pedidoEn = HORA_BLOQUEO,
+            aprobadoPorId = "d-1".takeIf { administrador },
+            aprobadoPor = "Este teléfono".takeIf { administrador },
+            aprobadoEn = HORA_BLOQUEO.takeIf { administrador },
+            venceEn = if (administrador) vence(entrada.duracion) else null,
+            aplicadoEn = null,
+            terminadoPorId = null,
+            terminadoPor = null,
+            terminadoEn = null,
+            detalle = null,
+        )
+        bloqueos += nuevo
+        return nuevo
+    }
+
+    override suspend fun aprobarBloqueo(id: String): BloqueoDto = cambiarBloqueo(id, setOf("pedido")) {
+        it.copy(estado = "aprobado", aprobadoPorId = "d-1", aprobadoPor = "Este teléfono", aprobadoEn = HORA_BLOQUEO, venceEn = vence(it.duracion))
+    }
+
+    override suspend fun rechazarBloqueo(id: String, entrada: MotivoEntradaDto): BloqueoDto = cambiarBloqueo(id, setOf("pedido")) {
+        motivosRecibidos += entrada.motivo
+        it.copy(estado = "rechazado", terminadoPorId = "d-1", terminadoPor = "Este teléfono", terminadoEn = HORA_BLOQUEO, detalle = entrada.motivo)
+    }
+
+    override suspend fun desbloquear(id: String, entrada: MotivoEntradaDto): BloqueoDto = cambiarBloqueo(id, setOf("aprobado", "aplicado")) {
+        motivosRecibidos += entrada.motivo
+        it.copy(estado = "desbloqueado", terminadoPorId = "d-1", terminadoPor = "Este teléfono", terminadoEn = HORA_BLOQUEO, detalle = entrada.motivo)
+    }
+
+    override suspend fun cambiarDuracionBloqueo(id: String, entrada: DuracionEntradaDto): BloqueoDto = cambiarBloqueo(id, setOf("aprobado", "aplicado")) {
+        motivosRecibidos += entrada.motivo
+        it.copy(estado = "aprobado", duracion = entrada.duracion, venceEn = vence(entrada.duracion), aplicadoEn = null)
+    }
+
+    /** El firewall preguntó y dijo que aplicó lo aprobado. */
+    fun aplicarBloqueosAprobados() {
+        bloqueos.replaceAll { if (it.estado == "aprobado") it.copy(estado = "aplicado", aplicadoEn = HORA_BLOQUEO) else it }
+    }
+
+    private fun cambiarBloqueo(id: String, estados: Set<String>, cambio: (BloqueoDto) -> BloqueoDto): BloqueoDto {
+        fallarSiCorresponde("cambiarBloqueo")
+        val indice = bloqueos.indexOfFirst { it.id == id }
+        if (indice < 0) throw errorHttp(404)
+        if (bloqueos[indice].estado !in estados) throw errorHttp(409, """{"detail": "Ese bloqueo ya no está vigente"}""")
+        bloqueos[indice] = cambio(bloqueos[indice])
+        return bloqueos[indice]
+    }
+
+    private fun vence(duracion: Int?): String? = duracion?.let { OffsetDateTime.parse(HORA_BLOQUEO).plusSeconds(it.toLong()).toString() }
+
     private companion object {
         val NIVELES = listOf("baja", "media", "alta")
+        val ACTIVOS = setOf("pedido", "aprobado", "aplicado")
+        const val HORA_BLOQUEO = "2026-10-12T11:58:00+00:00"
     }
 }
 

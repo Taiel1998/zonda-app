@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Importancia
@@ -45,7 +47,9 @@ fun Avatar(inicial: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(30.dp)
-            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+            // La inicial es decorativa: el nombre ya está al lado y TalkBack no tiene que decir "T".
+            .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
         Text(text = inicial, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -70,10 +74,17 @@ fun AvatarSinAsignar(modifier: Modifier = Modifier) {
 fun nombreDePersona(persona: Persona): String =
     if (persona.vos) stringResource(R.string.personas_vos, persona.nombreVisible) else persona.nombreVisible
 
-/** "Administrador · moto g(9) plus · hoy 14:33" (Figma 468-2614): el perfil, el teléfono y su último uso. */
+/**
+ * "Administrador · moto g(9) plus · hoy 14:33" (Figma 468-2614): el perfil, el teléfono y su último uso. Un
+ * navegador con el tablero web empieza por "Navegador", para que no se confunda con una persona, y un
+ * analista con permiso de bloquear dice "Bloquea" después del perfil (decisión 51).
+ */
 @Composable
 fun detalleDePersona(persona: Persona, ahora: Instant, zona: ZoneId): String {
-    val partes = mutableListOf(stringResource(persona.perfil.etiqueta()))
+    val partes = mutableListOf<String>()
+    if (persona.navegador) partes += stringResource(R.string.personas_navegador)
+    partes += stringResource(persona.perfil.etiqueta())
+    if (!persona.perfil.esAdministrador && persona.puedeBloquear) partes += stringResource(R.string.personas_bloquea)
     // Los teléfonos pareados antes de la 1.0.5 se llaman como el teléfono: no se repite.
     if (persona.nombre != null) partes += persona.telefono
     persona.ultimoUso?.let { partes += ultimoUso(it, ahora, zona) }
@@ -107,7 +118,7 @@ fun FilaPersona(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (alTocar != null) Modifier.clickable(onClick = alTocar) else Modifier)
+            .then(if (alTocar != null) Modifier.clickable(role = Role.Button, onClick = alTocar) else Modifier)
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),

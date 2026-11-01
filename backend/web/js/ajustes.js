@@ -2,7 +2,8 @@
 // Personas, Equipos, Severidades, Notificaciones y Registro de cambios) y, a la derecha, la sección elegida, con
 // tablas que se editan en el lugar. Lo que se cambia queda marcado hasta «Guardar cambios», que pide el motivo
 // cuando el cambio va al registro (la importancia y la severidad), como en la app. El analista ve todo sin los
-// controles de administrador; igual el servidor controla cada cambio (403).
+// controles de administrador; igual el servidor controla cada cambio (403). Sumar, quitar o cambiar a alguien
+// se confirma con la llave de esta computadora (decisión 51); sin ella, eso se hace desde la app.
 
 import { el, fechaHora, haceCuanto, hora, numero, vaciar } from './util.js';
 import {
@@ -10,6 +11,7 @@ import {
 } from './comun.js';
 import { abrirHoja, avisoInferior, confirmar } from './hojas.js';
 import { apagarAvisos, avisoDePrueba, estadoAvisos, permitirAvisos } from './avisos.js';
+import { cabecerasConLlave, tieneLlave } from './llave.js';
 
 const ORDEN_TIPOS_SEVERIDAD = ['fuerza_bruta', 'escaneo', 'ddos', 'probable_falsa_alarma', 'sin_tipificar', 'servicio_no_autorizado', 'volumen_inusual'];
 const MODOS_AVISO = { sonido: 'Con sonido', vibracion: 'Sin sonido', sin_aviso: 'Sin aviso' };
@@ -28,8 +30,14 @@ let alElegirTema = () => {};
 let temaElegido = () => 'sistema';
 let esperaTelegram = null;
 let seccion = leerSeccion();
-// Lo que se cambió en las tablas y todavía no se guardó: perfiles, importancias y severidades.
-const pendientes = { personas: new Map(), equipos: new Map(), severidades: new Map() };
+// Lo que se cambió en las tablas y todavía no se guardó: perfiles, permisos de bloquear, importancias y severidades.
+const pendientes = { personas: new Map(), bloqueos: new Map(), equipos: new Map(), severidades: new Map() };
+// Lo pendiente de cada sección: la de Personas junta los perfiles y los permisos de bloquear.
+const DE_LA_SECCION = { personas: ['personas', 'bloqueos'], equipos: ['equipos'], severidades: ['severidades'] };
+const sinGuardar = (id) => (DE_LA_SECCION[id] || []).reduce((n, clave) => n + pendientes[clave].size, 0);
+// «Bloqueos» (decisión 51): un administrador siempre bloquea; un analista, si un administrador le dio «Bloquea».
+const BLOQUEOS = { bloquea: 'Bloquea', pide_aprobacion: 'Pide aprobación' };
+const bloqueosDe = (p) => (p.puedeBloquear ? 'bloquea' : 'pide_aprobacion');
 const busqueda = { equipos: '', registro: '' };
 let largoRegistro = 50;
 // Si llegan datos del servidor mientras alguien escribe o elige, la sección se vuelve a armar al soltar el campo.
@@ -70,7 +78,8 @@ export async function actualizarPersonas() {
 }
 
 export async function actualizarAjustes() {
-  const pedidos = await Promise.allSettled([actualizarPersonas(), pedir('/equipos'), pedir('/severidades'), pedir('/registro'), pedir('/telegram')]);
+  // Con ?bloqueos=true el registro trae también los bloqueos y los permisos (la app 1.0.8 no los conoce).
+  const pedidos = await Promise.allSettled([actualizarPersonas(), pedir('/equipos'), pedir('/severidades'), pedir('/registro?bloqueos=true'), pedir('/telegram')]);
   if (pedidos[1].status === 'fulfilled') e.equipos = pedidos[1].value;
   if (pedidos[2].status === 'fulfilled') e.severidades = pedidos[2].value;
   if (pedidos[3].status === 'fulfilled') e.registro = pedidos[3].value;
@@ -105,6 +114,11 @@ function limpiarPendientes() {
     const p = e.personas.find((x) => x.id === id);
     if (!p || p.perfil === perfil) pendientes.personas.delete(id);
   }
+  // Un perfil nuevo deja el permiso en «Pide aprobación» (y un administrador siempre bloquea): se elige después.
+  for (const [id, bloqueos] of pendientes.bloqueos) {
+    const p = e.personas.find((x) => x.id === id);
+    if (!p || p.perfil !== 'analista' || pendientes.personas.has(id) || bloqueosDe(p) === bloqueos) pendientes.bloqueos.delete(id);
+  }
   for (const [ip, importancia] of pendientes.equipos) {
     const q = e.equipos.find((x) => x.ip === ip);
     if (!q || q.importancia === importancia) pendientes.equipos.delete(ip);
@@ -134,7 +148,7 @@ export function pintarAjustes({ desdeElServidor = false } = {}) {
   const foco = document.activeElement && $('ajustes').contains(document.activeElement) ? document.activeElement.dataset.foco : null;
   const menu = el('nav', { class: 'ajustes-menu', role: 'tablist', 'aria-label': 'Secciones de Ajustes', 'aria-orientation': 'vertical', onkeydown: moverEnMenu },
     SECCIONES.map((s) => {
-      const n = pendientes[s.id] ? pendientes[s.id].size : 0;
+      const n = sinGuardar(s.id);
       return el('button', {
         type: 'button', role: 'tab', id: `ajustes-${s.id}`, 'aria-selected': String(s.id === seccion), 'aria-controls': 'ajustes-panel',
         tabindex: s.id === seccion ? '0' : '-1', dataset: { seccion: s.id }, onclick: () => elegirSeccion(s.id),
@@ -189,14 +203,14 @@ function marcar(id, clave, valor, original) {
   pintarAjustes();
 }
 
-const GUARDAR = { personas: guardarPerfiles, equipos: guardarImportancias, severidades: guardarSeveridades };
+const GUARDAR = { personas: guardarPersonas, equipos: guardarImportancias, severidades: guardarSeveridades };
 
 function barraCambios(id) {
-  const n = pendientes[id].size;
+  const n = sinGuardar(id);
   if (!n) return null;
   return el('div', { class: 'barra-cambios' },
     el('span', {}, `${numero(n)} ${n === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}`),
-    el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => { pendientes[id].clear(); pintarAjustes(); } }, 'Descartar'),
+    el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => { for (const clave of DE_LA_SECCION[id]) pendientes[clave].clear(); pintarAjustes(); } }, 'Descartar'),
     el('button', { type: 'button', class: 'boton-principal boton-chico', onclick: GUARDAR[id] }, 'Guardar cambios'));
 }
 
@@ -264,44 +278,85 @@ function dato(nombre, valor, control = null) {
 
 function seccionPersonas() {
   const admin = esAdmin();
+  // Sumar, quitar o cambiar a alguien desde acá se confirma con la llave de esta computadora.
+  const cambia = admin && tieneLlave();
   const ahora = ahoraServidor();
   const filas = e.personas.map((p) => {
-    const editable = admin && !p.vos;
+    const editable = cambia && !p.vos;
     const perfil = editable
       ? selector({
         etiqueta: `Perfil de ${nombrePersona(p)}`, opciones: PERFILES, valor: pendientes.personas.get(p.id) || p.perfil, foco: `perfil-${p.id}`,
         alCambiar: (valor) => marcar('personas', p.id, valor, p.perfil),
       })
       : el('span', { class: `etiqueta${p.perfil === 'administrador' ? ' admin' : ''}` }, PERFILES[p.perfil]);
-    return el('tr', { class: pendientes.personas.has(p.id) ? 'cambiada' : null },
+    return el('tr', { class: pendientes.personas.has(p.id) || pendientes.bloqueos.has(p.id) ? 'cambiada' : null },
       el('td', {}, el('strong', {}, nombrePersona(p)), p.vos ? [' ', el('span', { class: 'etiqueta vos' }, 'vos')] : null),
-      el('td', { class: 'secundario', 'data-etiqueta': 'Dispositivo' }, p.telefono),
+      el('td', { class: 'secundario envolver', 'data-etiqueta': 'Dispositivo' }, p.telefono),
       el('td', { 'data-etiqueta': 'Perfil' }, perfil),
+      el('td', { 'data-etiqueta': 'Bloqueos' }, celdaBloqueos(p, editable)),
       el('td', { class: 'secundario', 'data-etiqueta': 'Último uso' }, p.ultimoUso ? haceCuanto(Date.parse(p.ultimoUso), ahora) : '–'),
       el('td', { class: 'accion' }, editable ? el('button', { type: 'button', class: 'boton-texto peligro', onclick: () => quitarPersona(p) }, 'Quitar') : null));
   });
   return [
     cabecera('Personas', 'Quiénes usan Zonda en esta red. Los administradores cambian la configuración y agregan personas.',
-      admin ? el('button', { type: 'button', class: 'boton-principal boton-chico', onclick: hojaAgregarPersona }, 'Agregar persona') : null),
-    tabla(['Nombre', 'Dispositivo', 'Perfil', 'Último uso', ''], filas),
-    admin ? barraCambios('personas') : notaSoloAdmin(),
+      cambia ? el('button', { type: 'button', class: 'boton-principal boton-chico', onclick: hojaAgregarPersona }, 'Agregar persona') : null),
+    tabla(['Nombre', 'Dispositivo', 'Perfil', 'Bloqueos', 'Último uso', ''], filas),
+    el('p', { class: 'nota ajustes-leyenda' }, 'Bloquea: corta el tráfico de un equipo en el acto. Pide aprobación: lo aprueba alguien que puede bloquear.'),
+    admin && !cambia ? el('p', { class: 'solo-admin-nota' }, 'Sin la llave de esta computadora, las personas se agregan y se cambian desde la app.') : null,
+    cambia ? barraCambios('personas') : (admin ? null : notaSoloAdmin()),
   ];
 }
 
-async function guardarPerfiles() {
-  const cambios = [...pendientes.personas.entries()].map(([id, perfil]) => ({ p: e.personas.find((x) => x.id === id), perfil })).filter((c) => c.p);
-  const texto = cambios.map((c) => `${nombrePersona(c.p)} pasa a ${PERFILES[c.perfil].toLowerCase()}`).join('. ');
-  if (!await confirmar({ titulo: cambios.length === 1 ? '¿Cambiar el perfil?' : '¿Cambiar los perfiles?', texto: `${texto}.`, aceptar: 'Guardar' })) return;
-  for (const { p, perfil } of cambios) {
-    try {
-      await mandar(`/personas/${encodeURIComponent(p.id)}/perfil`, 'PUT', { perfil });
+/** El permiso de bloquear en la tabla. Con un perfil cambiado sin guardar se ve cómo queda: un administrador
+    bloquea y un analista nuevo empieza en «Pide aprobación». */
+function celdaBloqueos(p, editable) {
+  const perfil = pendientes.personas.get(p.id) || p.perfil;
+  if (perfil === 'administrador') return el('span', {}, BLOQUEOS.bloquea);
+  if (perfil !== p.perfil) return el('span', { class: 'secundario' }, BLOQUEOS.pide_aprobacion);
+  if (!editable) return el('span', { class: p.puedeBloquear ? null : 'secundario' }, BLOQUEOS[bloqueosDe(p)]);
+  return selector({
+    etiqueta: `Bloqueos de ${nombrePersona(p)}`, opciones: BLOQUEOS, valor: pendientes.bloqueos.get(p.id) || bloqueosDe(p), foco: `bloqueos-${p.id}`,
+    alCambiar: (valor) => marcar('bloqueos', p.id, valor, bloqueosDe(p)),
+  });
+}
+
+/** Guarda los perfiles y después los permisos de bloquear, cada cambio con la llave (Windows pide la huella, la
+    cara o el PIN). Si uno falla, los que siguen quedan sin guardar. */
+async function guardarPersonas() {
+  const de = (mapa) => [...mapa.entries()].map(([id, valor]) => ({ p: e.personas.find((x) => x.id === id), valor })).filter((c) => c.p);
+  const perfiles = de(pendientes.personas);
+  const permisos = de(pendientes.bloqueos);
+  const lineas = [
+    ...perfiles.map((c) => `${nombrePersona(c.p)} pasa a ${PERFILES[c.valor].toLowerCase()}`),
+    ...permisos.map((c) => `${nombrePersona(c.p)} ${c.valor === 'bloquea' ? 'bloquea en el acto' : 'pide aprobación para bloquear'}`),
+  ];
+  let titulo = '¿Guardar los cambios?';
+  if (!permisos.length) titulo = perfiles.length === 1 ? '¿Cambiar el perfil?' : '¿Cambiar los perfiles?';
+  else if (!perfiles.length && permisos.length === 1) titulo = '¿Cambiar el permiso de bloquear?';
+  if (!await confirmar({ titulo, texto: `${lineas.join('. ')}.`, aceptar: 'Guardar' })) return;
+  try {
+    for (const { p, valor } of perfiles) {
+      const cabeceras = await cabecerasConLlave({ tipo: 'perfil', personaId: p.id, perfil: valor });
+      await pedir(`/personas/${encodeURIComponent(p.id)}/perfil`, { metodo: 'PUT', cuerpo: { perfil: valor }, cabeceras });
       pendientes.personas.delete(p.id);
-    } catch (falla) {
-      avisoInferior(falla.message, { duracion: 7000 });
-      break;
     }
+    for (const { p, valor } of permisos) {
+      const puedeBloquear = valor === 'bloquea';
+      const cabeceras = await cabecerasConLlave({ tipo: 'permiso_bloqueo', personaId: p.id, puedeBloquear });
+      await pedir(`/personas/${encodeURIComponent(p.id)}/bloqueos`, { metodo: 'PUT', cuerpo: { puedeBloquear }, cabeceras });
+      pendientes.bloqueos.delete(p.id);
+    }
+    if (permisos.length === 1 && !perfiles.length) {
+      const { p, valor } = permisos[0];
+      avisoInferior(valor === 'bloquea' ? `${nombrePersona(p)} ya puede bloquear.` : `${nombrePersona(p)} ahora pide aprobación para bloquear.`);
+    } else if (!permisos.length) {
+      avisoInferior(perfiles.length === 1 ? 'Perfil guardado.' : 'Perfiles guardados.');
+    } else {
+      avisoInferior('Cambios guardados.');
+    }
+  } catch (falla) {
+    avisoInferior(falla.cancelada ? 'No se confirmó con la llave: quedan cambios sin guardar.' : falla.message, { duracion: 7000 });
   }
-  if (!pendientes.personas.size) avisoInferior(cambios.length === 1 ? 'Perfil guardado.' : 'Perfiles guardados.');
   actualizarAjustes().catch(() => {});
 }
 
@@ -328,11 +383,12 @@ function hojaAgregarPersona() {
         texto: 'Generar código', tipo: 'principal', alHacer: async (h) => {
           if (!nombre.value.trim()) { error.hidden = false; error.textContent = 'Escribí el nombre de la persona.'; return; }
           try {
-            const codigo = await mandar('/personas/codigo', 'POST', { nombre: nombre.value.trim(), perfil });
-            mostrarCodigo(h, codigo);
+            const cuerpo = { nombre: nombre.value.trim(), perfil };
+            const cabeceras = await cabecerasConLlave({ tipo: 'sumar', ...cuerpo });
+            mostrarCodigo(h, await pedir('/personas/codigo', { metodo: 'POST', cuerpo, cabeceras }));
           } catch (falla) {
             error.hidden = false;
-            error.textContent = falla.message;
+            error.textContent = falla.cancelada ? 'No se confirmó con la llave: no se generó el código.' : falla.message;
           }
         },
       },
@@ -355,10 +411,12 @@ function mostrarCodigo(hoja, codigo) {
 async function quitarPersona(p) {
   if (!await confirmar({ titulo: `¿Quitar a ${nombrePersona(p)} del equipo?`, texto: 'Su dispositivo deja de recibir alertas y no puede volver a entrar sin un código nuevo.', aceptar: 'Quitar', peligro: true })) return;
   try {
-    await mandar(`/personas/${encodeURIComponent(p.id)}`, 'DELETE');
+    const cabeceras = await cabecerasConLlave({ tipo: 'quitar', personaId: p.id });
+    await pedir(`/personas/${encodeURIComponent(p.id)}`, { metodo: 'DELETE', cabeceras });
     pendientes.personas.delete(p.id);
+    pendientes.bloqueos.delete(p.id);
     avisoInferior(`Se quitó a ${nombrePersona(p)} del equipo.`);
-  } catch (falla) { avisoInferior(falla.message, { duracion: 7000 }); }
+  } catch (falla) { avisoInferior(falla.cancelada ? 'No se confirmó con la llave: no se quitó a nadie.' : falla.message, { duracion: 7000 }); }
   actualizarAjustes();
 }
 
@@ -550,7 +608,22 @@ function fraseDe(c) {
   if (c.tipo === 'persona_nueva') return `Sumó a ${c.nombre || 'una persona'} al equipo como ${(PERFILES[des] || des || '').toLowerCase()}`;
   if (c.tipo === 'perfil') return `${c.nombre || 'Una persona'} pasó a ${(PERFILES[des] || des || '').toLowerCase()}`;
   if (c.tipo === 'persona_quitada') return c.autorId && c.autorId === c.objeto ? 'Quitó su dispositivo del equipo' : `Quitó a ${c.nombre || 'una persona'} del equipo`;
+  // Decisión 51, como en la app: «Bloqueó pc-rrhh por 1 h», «Cambió el bloqueo de pc-rrhh a 24 h», «Desbloqueó
+  // pc-rrhh». Un cambio de duración trae la de antes; «hasta desbloquear» viaja como texto, no como segundos.
+  if (c.tipo === 'bloqueo') {
+    const equipo = c.nombre || c.objeto;
+    const hasta = des === 'hasta_desbloquear';
+    if (ant == null) return hasta ? `Bloqueó ${equipo} hasta desbloquear` : `Bloqueó ${equipo} por ${duracionBloqueo(des)}`;
+    return hasta ? `Dejó ${equipo} bloqueado hasta desbloquear` : `Cambió el bloqueo de ${equipo} a ${duracionBloqueo(des)}`;
+  }
+  if (c.tipo === 'desbloqueo') return `Desbloqueó ${c.nombre || c.objeto}`;
+  if (c.tipo === 'permiso_bloqueo') return `${des === 'bloquea' ? 'Le dio' : 'Le sacó el'} permiso de bloquear a ${c.nombre || 'una persona'}`;
   return c.tipo;
+}
+
+function duracionBloqueo(texto) {
+  const segundos = Number(texto);
+  return segundos % 3600 === 0 ? `${segundos / 3600} h` : `${Math.ceil(segundos / 60)} min`;
 }
 
 function seccionRegistro() {

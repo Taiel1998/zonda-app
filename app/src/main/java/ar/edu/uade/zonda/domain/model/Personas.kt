@@ -28,7 +28,21 @@ data class Persona(
     val ultimoUso: Instant?,
     /** Si es este teléfono. */
     val vos: Boolean,
+    /**
+     * Es un navegador con el tablero web, no un teléfono (decisión 51). No se le asignan alertas: no
+     * recibe el aviso de la asignación. En Personas se ve aparte, para poder quitarlo.
+     */
+    val navegador: Boolean = false,
+    /** El permiso de bloquear de un analista, que le da un administrador al de guardia (decisión 51). */
+    val permisoDeBloquear: Boolean = false,
 ) {
+    /**
+     * Si bloquea en el acto (decisión 51): un administrador siempre; un analista, con permiso. Si no, pide el
+     * bloqueo y lo aprueba alguien que bloquea.
+     */
+    val puedeBloquear: Boolean
+        get() = perfil.esAdministrador || permisoDeBloquear
+
     val nombreVisible: String
         get() = nombre ?: telefono
 

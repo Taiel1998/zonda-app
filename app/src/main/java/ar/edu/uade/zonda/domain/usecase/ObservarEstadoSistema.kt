@@ -47,7 +47,14 @@ class ObservarEstadoSistema(private val redes: RedesRepository, private val cada
         while (true) {
             val actual = redes.estadoDelSistema(redId)
             val conLoConocido = if (actual.servidor == EstadoPieza.NO_RESPONDE && anterior != null) {
-                actual.copy(ultimaCorrida = anterior.ultimaCorrida, ultimoFlujo = anterior.ultimoFlujo)
+                actual.copy(
+                    ultimaCorrida = anterior.ultimaCorrida,
+                    ultimoFlujo = anterior.ultimoFlujo,
+                    // Del firewall tampoco se sabe nada, pero su fila no desaparece: queda en rojo, sin datos.
+                    firewall = anterior.firewall?.let { EstadoPieza.SIN_DATOS },
+                    ultimaConsultaFirewall = anterior.ultimaConsultaFirewall,
+                    bloqueos = anterior.bloqueos,
+                )
             } else {
                 actual
             }

@@ -3,6 +3,7 @@ package ar.edu.uade.zonda.data.remote
 import ar.edu.uade.zonda.data.mapper.aDominio
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Revision
+import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import java.io.IOException
 import java.net.UnknownServiceException
@@ -14,9 +15,10 @@ import retrofit2.HttpException
  * Para qué se está llamando a la API. Cambia el significado de algunos códigos: en el pareo un 400 es
  * "código inválido" y un 410 "código vencido o usado"; en la sincronización un 410 es "cursor
  * inválido"; en Telegram un 409 es "no está vinculado" y un 503 "el servidor no tiene el bot"; en
- * Personas un 409 es "tiene que quedar un administrador" y al asignar, "ya la tiene otra persona".
+ * Personas un 409 es "tiene que quedar un administrador" y al asignar, "ya la tiene otra persona". Al
+ * bloquear, 409, 422, 429 y 503 son "no se pudo", con el porqué que manda el servidor.
  */
-enum class OperacionHttp { GENERAL, PAREO, SINCRONIZACION, TELEGRAM, PERSONAS, ASIGNACION }
+enum class OperacionHttp { GENERAL, PAREO, SINCRONIZACION, TELEGRAM, PERSONAS, ASIGNACION, BLOQUEO }
 
 /**
  * Ejecuta una llamada a la API y traduce lo que puede salir mal a [ErrorZonda], que es lo único que
@@ -55,11 +57,29 @@ fun traducirHttp(error: HttpException, operacion: OperacionHttp): ErrorZonda = w
         OperacionHttp.TELEGRAM -> ErrorZonda.TelegramSinVincular()
         OperacionHttp.PERSONAS -> ErrorZonda.UltimoAdministrador()
         OperacionHttp.ASIGNACION -> ErrorZonda.YaAsignada()
+        OperacionHttp.BLOQUEO -> ErrorZonda.BloqueoNoPosible(detalleDe(error))
         else -> revisionAjenaDe(error)?.let { ErrorZonda.Conflicto(it) } ?: ErrorZonda.ErrorDelServidor(409, error)
     }
     410 -> if (operacion == OperacionHttp.PAREO) ErrorZonda.CodigoVencido() else ErrorZonda.CursorInvalido()
-    503 -> if (operacion == OperacionHttp.TELEGRAM) ErrorZonda.TelegramNoDisponible() else ErrorZonda.ErrorDelServidor(503, error)
+    422, 429 -> if (operacion == OperacionHttp.BLOQUEO) ErrorZonda.BloqueoNoPosible(detalleDe(error)) else ErrorZonda.ErrorDelServidor(error.code(), error)
+    503 -> when (operacion) {
+        OperacionHttp.TELEGRAM -> ErrorZonda.TelegramNoDisponible()
+        OperacionHttp.BLOQUEO -> ErrorZonda.BloqueoNoPosible(detalleDe(error))
+        else -> ErrorZonda.ErrorDelServidor(503, error)
+    }
     else -> ErrorZonda.ErrorDelServidor(error.code(), error)
+}
+
+/** El porqué de texto de un error (`{"detail": "Ese equipo ya tiene un bloqueo..."}`); null si no viene así. */
+private fun detalleDe(error: HttpException): String? = try {
+    val cuerpo = error.response()?.errorBody()?.string()
+    cuerpo?.let { ProveedorDeApiRetrofit.gson.fromJson(it, JsonObject::class.java) }
+        ?.get("detail")
+        ?.takeIf { it.isJsonPrimitive }
+        ?.asString
+        ?.takeIf { it.isNotBlank() }
+} catch (e: Exception) {
+    null
 }
 
 /** El 409 trae `{"detail": {"revisionAjena": {...}}}`; si no se puede leer, se trata como error del servidor. */

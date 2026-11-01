@@ -8,10 +8,12 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 
 from . import latido
+from . import llaves
 from . import personas as gente
 from . import registro
 from . import trafico
 from .asignaciones import asignaciones_de, asignar, responsable_de
+from .bloqueos import estado_firewall
 from .auth import (
     administrador_actual,
     ahora,
@@ -54,6 +56,7 @@ from .modelos import (
     PareoSalida,
     ParesTrafico,
     PerfilEntrada,
+    PermisoBloqueoEntrada,
     Persona,
     PuntoTrafico,
     Revision,
@@ -73,7 +76,7 @@ from .revisiones import aplicar_revision
 from .semilla import SQL_SEVERIDAD, guardar_equipo, severidad_de
 from .telegram import BotTelegram, ErrorTelegram
 
-VERSION = "0.8.2"
+VERSION = "0.9.0"
 
 router = APIRouter()
 
@@ -153,12 +156,14 @@ def alerta_dto(con: sqlite3.Connection, fila: sqlite3.Row) -> Alerta:
 @router.get("/salud", response_model=Salud)
 def salud(request: Request, authorization: Annotated[str | None, Header()] = None) -> Salud:
     """Sin token sirve para verificar el servidor antes de parear. Con token, informa su vencimiento (401
-    si venció) y cómo está la cadena: el sensor, el análisis en vivo y el servidor (Estado del sistema)."""
+    si venció) y cómo está la cadena: el sensor, el análisis en vivo, el servidor y el firewall (Estado
+    del sistema)."""
     base = _base(request)
     con = base.conexion()
     cfg = request.app.state.config
     token_vence = None
     sistema = None
+    firewall = None
     token = token_de_cabecera(authorization)
     if token is not None:
         dispositivo = buscar_dispositivo(con, token)
@@ -166,6 +171,7 @@ def salud(request: Request, authorization: Annotated[str | None, Header()] = Non
             raise HTTPException(status_code=401, detail="El token venció o fue revocado")
         token_vence = dispositivo["vence_en"]
         sistema = latido.estado_del_sistema(base, cfg)
+        firewall = estado_firewall(base, cfg)
     cantidad = con.execute("SELECT COUNT(*) FROM alertas").fetchone()[0]
     return Salud(
         version=VERSION,
@@ -174,6 +180,7 @@ def salud(request: Request, authorization: Annotated[str | None, Header()] = Non
         red={"id": cfg.red_id, "nombre": cfg.red_nombre},
         tokenVence=token_vence,
         sistema=sistema,
+        firewall=firewall,
     )
 
 
@@ -328,7 +335,7 @@ def parear(entrada: PareoEntrada, request: Request) -> PareoSalida:
     cfg = request.app.state.config
     limite = iso(ahora() - timedelta(days=cfg.dias_cache))
     with _base(request).transaccion() as con:
-        datos = canjear_codigo_pareo(con, entrada.codigo, entrada.nombreDispositivo, cfg.dias_token)
+        datos = canjear_codigo_pareo(con, entrada.codigo, entrada.nombreDispositivo, cfg.dias_token, tipo=entrada.tipo)
         recientes = con.execute("SELECT COUNT(*) FROM alertas WHERE creada_en >= ?", (limite,)).fetchone()[0]
     return PareoSalida(
         token=datos["token"],
@@ -468,7 +475,9 @@ def personas(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_ac
 @router.post("/personas/codigo", response_model=CodigoPersona)
 def codigo_para_persona(entrada: CodigoPersonaEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> CodigoPersona:
     """Agregar persona: un código de un uso (10 minutos) con el nombre y el perfil de quien se suma, y lo
-    que lleva su QR. Al usarlo, queda en el registro a nombre de este administrador."""
+    que lleva su QR. Al usarlo, queda en el registro a nombre de este administrador. Desde el tablero, con la
+    llave de esa computadora (decisión 51): con ese código se entra a la red, y como administrador se bloquea."""
+    llaves.exigir(request, administrador, {"tipo": "sumar", "nombre": entrada.nombre, "perfil": entrada.perfil})
     cfg = request.app.state.config
     with _base(request).transaccion() as con:
         codigo, vence = crear_codigo_pareo(con, cfg.minutos_codigo, persona=entrada.nombre, perfil=entrada.perfil, creado_por=administrador["id"])
@@ -496,15 +505,30 @@ def _persona_activa(con: sqlite3.Connection, persona_id: str) -> sqlite3.Row:
 
 @router.put("/personas/{persona_id}/perfil", response_model=Persona)
 def cambiar_perfil(persona_id: str, entrada: PerfilEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Persona:
-    """Hacer administrador o pasar a analista. 409 si deja al equipo sin administrador."""
+    """Hacer administrador o pasar a analista; desde el tablero, con la llave de esa computadora (decisión 51).
+    409 si deja al equipo sin administrador."""
+    llaves.exigir(request, administrador, {"tipo": "perfil", "personaId": persona_id, "perfil": entrada.perfil})
     with _base(request).transaccion() as con:
         gente.cambiar_perfil(con, _persona_activa(con, persona_id), entrada.perfil, autor=administrador)
         return gente.persona_dto(_persona_activa(con, persona_id), vos=persona_id == administrador["id"])
 
 
+@router.put("/personas/{persona_id}/bloqueos", response_model=Persona)
+def cambiar_permiso_bloqueo(persona_id: str, entrada: PermisoBloqueoEntrada, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Persona:
+    """«Bloqueos» de un analista (decisión 51): true si bloquea en el acto, false si pide aprobación. Queda en
+    el registro de cambios; desde el tablero, con la llave de esa computadora. 409 para un administrador, que
+    siempre bloquea."""
+    llaves.exigir(request, administrador, {"tipo": "permiso_bloqueo", "personaId": persona_id, "puedeBloquear": entrada.puedeBloquear})
+    with _base(request).transaccion() as con:
+        gente.cambiar_permiso_bloqueo(con, _persona_activa(con, persona_id), entrada.puedeBloquear, autor=administrador)
+        return gente.persona_dto(_persona_activa(con, persona_id), vos=persona_id == administrador["id"])
+
+
 @router.delete("/personas/{persona_id}", status_code=204)
 def quitar_persona(persona_id: str, request: Request, administrador: sqlite3.Row = Depends(administrador_actual)) -> Response:
-    """Quitar del equipo: revoca el token de ese teléfono. 409 si deja gente sin administrador."""
+    """Quitar del equipo: revoca el token de ese teléfono; desde el tablero, con la llave de esa computadora
+    (decisión 51). 409 si deja gente sin administrador."""
+    llaves.exigir(request, administrador, {"tipo": "quitar", "personaId": persona_id})
     with _base(request).transaccion() as con:
         gente.quitar(con, _persona_activa(con, persona_id), autor=administrador)
     return Response(status_code=204)
@@ -537,9 +561,10 @@ def cambiar_importancia(ip: str, entrada: ImportanciaEntrada, request: Request, 
 
 
 @router.get("/registro", response_model=list[CambioRegistro])
-def registro_de_cambios(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual)) -> list[CambioRegistro]:
-    """Quién cambió la configuración de la red, cuándo y por qué, de lo más nuevo a lo más viejo. Lo ve todo el equipo."""
-    return registro.leer(_base(request).conexion())
+def registro_de_cambios(request: Request, dispositivo: sqlite3.Row = Depends(dispositivo_actual), bloqueos: bool = False) -> list[CambioRegistro]:
+    """Quién cambió la configuración de la red, cuándo y por qué, de lo más nuevo a lo más viejo. Lo ve todo el
+    equipo. Los bloqueos del firewall vienen solo con ?bloqueos=true (decisión 51): la app 1.0.8 no los conoce."""
+    return registro.leer(_base(request).conexion(), con_bloqueos=bloqueos)
 
 
 @router.put("/alertas/{alerta_id}/asignacion", response_model=Alerta)

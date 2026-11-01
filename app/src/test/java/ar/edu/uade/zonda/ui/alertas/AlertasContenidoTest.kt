@@ -306,4 +306,12 @@ class AlertasContenidoTest {
 
         assertEquals(FiltroAlertas(), cambiado)
     }
+
+    @Test
+    fun `con una sola alerta nueva el aviso de la sincronizacion va en singular`() {
+        dibujar(AlertasUiState(contenido = lista(), aviso = AvisoAlertas.Sincronizado(Fixtures.AHORA, nuevas = 1, altasNuevas = 1, manual = false)))
+
+        // Antes decía "1 nuevas": pasa con la alerta alta que crea `zonda emitir` en la demo.
+        compose.onNodeWithText("Sincronizado: 1 nueva, 1 de severidad alta.").assertIsDisplayed()
+    }
 }

@@ -142,6 +142,45 @@ def texto_de_asignacion(por: str, severidad: str, servicio: str, deteccion: date
     return f"<b>{html.escape(titulo)}</b>\nTocá para ver el detalle en Zonda."
 
 
+# Lo que dice el aviso de cada momento de un bloqueo (decisión 51). Nunca la IP ni el nombre del equipo.
+TITULO_BLOQUEO = {
+    "pedido": "{persona} pidió bloquear el origen de una alerta {alerta}",
+    "aprobado": "{persona} bloqueó el origen de una alerta {alerta}",
+    "desbloqueado": "{persona} desbloqueó el origen de una alerta {alerta}",
+    "rechazado": "El firewall no aplicó el bloqueo de una alerta {alerta}",
+}
+DURACION_BLOQUEO = {3600: "1 h", 86400: "24 h"}
+
+
+def texto_de_bloqueo(
+    evento: str, persona: str, duracion: int | None, severidad: str, servicio: str, deteccion: datetime, zona: tzinfo | None = None, hoy: date | None = None
+) -> str:
+    """El aviso a quienes bloquean (los administradores y los analistas con «Bloquea») de cada bloqueo
+    (decisión 51), con la misma hora que el aviso de la alerta:
+
+        Taiel bloqueó el origen de una alerta ALTA · SSH · 09:51
+        Por 1 h. Tocá para ver el detalle en Zonda.
+
+    Sale cuando se pide, cuando se aprueba, cuando se desbloquea y cuando el firewall no lo aplica: un
+    bloqueo hecho con un dispositivo ajeno se ve enseguida.
+    """
+    local = deteccion.astimezone(zona)
+    hora = local.strftime("%H:%M")
+    if local.date() != (hoy or datetime.now(zona).date()):
+        hora = local.strftime("%d/%m %H:%M")
+    titulo = TITULO_BLOQUEO[evento].format(persona=persona, alerta=f"{ETIQUETA_SEVERIDAD[severidad]} · {servicio.upper()} · {hora}")
+    if evento == "pedido":
+        cuerpo = "Lo aprueba desde Zonda, en su teléfono, alguien que puede bloquear."
+    elif evento == "aprobado":
+        cuanto = "Hasta que alguien lo desbloquee." if duracion is None else f"Por {DURACION_BLOQUEO.get(duracion, f'{duracion // 60} min')}."
+        cuerpo = f"{cuanto} Tocá para ver el detalle en Zonda."
+    elif evento == "rechazado":
+        cuerpo = "Tocá para ver por qué en Zonda."
+    else:
+        cuerpo = "Tocá para ver el detalle en Zonda."
+    return f"<b>{html.escape(titulo)}</b>\n{html.escape(cuerpo)}"
+
+
 def _utc(momento: datetime) -> str:
     return momento.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -173,6 +212,17 @@ class AvisoDeAsignacion:
     """Un aviso que falta mandar: la alerta que otra persona le asignó a alguien con Telegram."""
 
     asignacion_id: int
+    chat_id: str
+    texto: str
+    enlace: str
+
+
+@dataclass
+class AvisoDeBloqueo:
+    """Un aviso que falta mandar: un momento de un bloqueo, para alguien que bloquea, con Telegram."""
+
+    bloqueo_id: str
+    evento: str
     chat_id: str
     texto: str
     enlace: str
@@ -383,6 +433,85 @@ class BotTelegram:
             )
         return pendientes
 
+    async def avisar_bloqueos(self) -> int:
+        """Avisa a quienes bloquean (los administradores y los analistas con «Bloquea»), si tienen Telegram, cada
+        bloqueo que se pide, se aprueba, se desbloquea o el firewall no aplica (decisión 51), también a quien lo
+        hizo: si el dispositivo no estaba en sus manos, se entera. Devuelve cuántos mandó; lo que no sale se
+        reintenta en la vuelta siguiente."""
+        enviados = 0
+        for pendiente in self._bloqueos_pendientes():
+            try:
+                await self.cliente.enviar(pendiente.chat_id, pendiente.texto, boton=(BOTON_DETALLE, pendiente.enlace))
+            except ErrorTelegram as error:
+                if error.chat_perdido:
+                    self.desvincular_chat(pendiente.chat_id)
+                    continue
+                if error.reintentar_en:
+                    await asyncio.sleep(error.reintentar_en)
+                raise
+            with self.base.transaccion() as con:
+                con.execute(
+                    "INSERT OR IGNORE INTO avisos_bloqueos (bloqueo_id, evento, chat_id, enviado_en) VALUES (?, ?, ?, ?)",
+                    (pendiente.bloqueo_id, pendiente.evento, pendiente.chat_id, iso(ahora())),
+                )
+            enviados += 1
+            if self.pausa:
+                await asyncio.sleep(self.pausa)
+        return enviados
+
+    def _bloqueos_pendientes(self) -> list[AvisoDeBloqueo]:
+        """Cada momento de un bloqueo posterior al vínculo del chat de alguien que bloquea, sin su aviso. Un
+        pedido se avisa mientras sigue pendiente; el rechazo, solo el del firewall (el de una persona lo decide ella)."""
+        con = self.base.conexion()
+        filas = con.execute(
+            """
+            WITH eventos AS (
+                SELECT id, alerta_id, duracion, 'pedido' AS evento, pedido_en AS momento, pedido_por AS persona
+                FROM bloqueos WHERE fue_pedido = 1 AND estado = 'pedido'
+                UNION ALL
+                SELECT id, alerta_id, duracion, 'aprobado', aprobado_en, aprobado_por FROM bloqueos WHERE aprobado_en IS NOT NULL
+                UNION ALL
+                SELECT id, alerta_id, duracion, 'desbloqueado', terminado_en, terminado_por FROM bloqueos WHERE estado = 'desbloqueado'
+                UNION ALL
+                SELECT id, alerta_id, duracion, 'rechazado', terminado_en, terminado_por FROM bloqueos
+                WHERE estado = 'rechazado' AND aprobado_en IS NOT NULL
+            )
+            SELECT e.id AS bloqueo_id, e.evento, e.persona, e.duracion, e.alerta_id, d.telegram_chat_id AS chat_id,
+                   a.inicio, a.servicio, a.tipo_ataque, a.veredicto_reglas, a.veredicto_umbrales, a.destino_ip
+            FROM eventos e
+            JOIN dispositivos d
+              ON (d.perfil = 'administrador' OR d.puede_bloquear = 1) AND d.telegram_chat_id IS NOT NULL AND d.revocado_en IS NULL AND d.vence_en > ?
+             AND e.momento >= d.telegram_vinculado_en
+            JOIN alertas a ON a.id = e.alerta_id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM avisos_bloqueos x WHERE x.bloqueo_id = e.id AND x.evento = e.evento AND x.chat_id = d.telegram_chat_id
+            )
+            ORDER BY e.momento, e.id
+            LIMIT ?
+            """,
+            (iso(ahora()), TANDA),
+        ).fetchall()
+        pendientes: list[AvisoDeBloqueo] = []
+        vistos: set[tuple[str, str, str]] = set()
+        for fila in filas:
+            # Dos dispositivos con el mismo chat: un solo aviso.
+            clave = (fila["bloqueo_id"], fila["evento"], fila["chat_id"])
+            if clave in vistos:
+                continue
+            vistos.add(clave)
+            severidad = severidad_de(con, fila)
+            deteccion = datetime.fromisoformat(fila["inicio"])
+            pendientes.append(
+                AvisoDeBloqueo(
+                    bloqueo_id=fila["bloqueo_id"],
+                    evento=fila["evento"],
+                    chat_id=fila["chat_id"],
+                    texto=texto_de_bloqueo(fila["evento"], fila["persona"], fila["duracion"], severidad, fila["servicio"], deteccion, self.zona),
+                    enlace=enlace_del_aviso(self.cfg.enlace_aviso, fila["alerta_id"], self.cfg.red_id, severidad, fila["servicio"], deteccion, ahora()),
+                )
+            )
+        return pendientes
+
     def _registrar(self, pendiente: Pendiente, enviado: bool) -> None:
         momento = iso(ahora())
         with self.base.transaccion() as con:
@@ -430,12 +559,18 @@ class BotTelegram:
                     registro.warning("No se pudieron leer los mensajes del bot: %s", error)
                 await asyncio.sleep(error.reintentar_en or espera)
                 espera = min(espera * 2, 60)
+            except sqlite3.Error:
+                # La base trabada (un comando de zonda.cmd escribiendo, por ejemplo) no corta la escucha.
+                registro.exception("No se pudo leer o guardar por dónde van los mensajes del bot, se reintenta")
+                await asyncio.sleep(espera)
+                espera = min(espera * 2, 60)
 
     async def vigilar(self) -> None:
         while True:
             try:
                 await self.avisar_nuevas()
                 await self.avisar_asignaciones()
+                await self.avisar_bloqueos()
             except ErrorTelegram as error:
                 registro.warning("Hay avisos sin mandar, se reintenta: %s", error)
             except sqlite3.Error:

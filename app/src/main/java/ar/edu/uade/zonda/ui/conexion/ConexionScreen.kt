@@ -51,6 +51,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -311,7 +313,7 @@ private fun EncabezadoDePareo() {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         LogoZonda(tamanio = 48.dp)
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(text = stringResource(R.string.conexion_necesitas), style = MaterialTheme.typography.encabezado)
+            Text(text = stringResource(R.string.conexion_necesitas), style = MaterialTheme.typography.encabezado, modifier = Modifier.semantics { heading() })
             Text(text = stringResource(R.string.conexion_te_lo_da), style = MaterialTheme.typography.cuerpo, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

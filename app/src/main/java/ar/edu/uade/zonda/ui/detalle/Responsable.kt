@@ -21,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.AccionResponsable
@@ -114,7 +116,8 @@ private fun quienYCuando(asignacion: Asignacion, miId: String?, zona: ZoneId, ah
 
 /**
  * "Asignar a" (Figma 468-726): la gente de la red con su perfil; elegir a alguien la asigna y cierra la
- * hoja. Si ya estaba asignada, abajo "Sacar la asignación".
+ * hoja. Si ya estaba asignada, abajo "Sacar la asignación". Los navegadores con el tablero web no están:
+ * no son una persona y no reciben el aviso de la asignación (decisión 51).
  */
 @Composable
 fun ColumnScope.ContenidoHojaAsignar(
@@ -122,10 +125,10 @@ fun ColumnScope.ContenidoHojaAsignar(
     responsableId: String?,
     alElegir: (Persona?) -> Unit,
 ) {
-    Text(text = stringResource(R.string.asignar_titulo), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(R.string.asignar_titulo), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Text(text = stringResource(R.string.asignar_texto), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Column(modifier = Modifier.selectableGroup()) {
-        personas.forEach { persona ->
+        personas.filterNot { it.navegador }.forEach { persona ->
             val elegida = persona.id == responsableId
             Row(
                 modifier = Modifier

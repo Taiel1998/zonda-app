@@ -26,6 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
@@ -125,7 +128,9 @@ private fun FilaDeAviso(severidad: Severidad, texto: String, activo: Boolean, al
             IndicadorSeveridad(severidad)
             Text(text = texto, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Interruptor(activo = activo, alCambiar = alCambiarInterruptor)
+        // El interruptor es un nodo aparte de la fila: sin nombre, TalkBack decía "Activado" sin la severidad.
+        val nombre = stringResource(severidad.etiqueta())
+        Interruptor(activo = activo, alCambiar = alCambiarInterruptor, modifier = Modifier.semantics { contentDescription = nombre })
     }
 }
 
@@ -135,7 +140,7 @@ private fun FilaDeAviso(severidad: Severidad, texto: String, activo: Boolean, al
  */
 @Composable
 fun ColumnScope.ContenidoHojaModoAviso(severidad: Severidad, elegido: ModoAviso, alElegir: (ModoAviso) -> Unit) {
-    Text(text = stringResource(severidad.tituloHojaAvisos()), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(severidad.tituloHojaAvisos()), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Column(modifier = Modifier.selectableGroup()) {
         listOf(ModoAviso.SONIDO, ModoAviso.SILENCIO).forEach { modo ->
             FilaRadio(
@@ -206,7 +211,7 @@ fun NotificacionesDeZonda(
  */
 @Composable
 fun ColumnScope.ContenidoHojaModoNotificacion(severidad: Severidad, elegido: ModoNotificacion, alElegir: (ModoNotificacion) -> Unit) {
-    Text(text = stringResource(severidad.tituloHojaNotificaciones()), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(severidad.tituloHojaNotificaciones()), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Column(modifier = Modifier.selectableGroup()) {
         PreferenciasNotificaciones.MODOS_ELEGIBLES.forEach { modo ->
             FilaRadio(

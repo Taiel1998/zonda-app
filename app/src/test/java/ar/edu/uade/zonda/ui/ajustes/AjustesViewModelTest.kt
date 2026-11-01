@@ -104,6 +104,26 @@ class AjustesViewModelTest {
     }
 
     @Test
+    fun `sin borrador, como al llegar desde la introduccion, el cambio parte de lo guardado y Guardar lo guarda`() = runTest {
+        val viewModel = viewModel()
+
+        // "Configurar mis avisos" del tutorial abre Avisos por severidad sin empezarAEditarAvisos: antes el
+        // cambio no hacía nada y Guardar salía sin guardar. Lo mismo después de que Android cierra la app.
+        viewModel.cambiarAvisoDelBorrador(Severidad.MEDIA, ModoAviso.SIN_AVISO)
+        viewModel.cambiarRecordatorioDelBorrador(false)
+        viewModel.cambiarSeveridadDelBorrador(TipoAtaque.ESCANEO, Severidad.ALTA)
+        assertEquals(ModoAviso.SIN_AVISO, viewModel.estado.value.borradorAvisos?.media)
+        assertEquals(ModoAviso.SONIDO, viewModel.estado.value.borradorAvisos?.alta)
+        assertEquals(false, viewModel.estado.value.borradorNotificaciones?.recordatorio)
+        assertEquals(Severidad.ALTA, viewModel.estado.value.borradorSeveridades?.severidadDe(TipoAtaque.ESCANEO))
+
+        viewModel.guardarAvisos()
+        runCurrent()
+        assertEquals(ModoAviso.SIN_AVISO, preferencias.avisos.value.media)
+        assertNull(viewModel.estado.value.borradorAvisos)
+    }
+
+    @Test
     fun `los avisos se editan en un borrador, Guardar los guarda y volver sin guardar los descarta`() = runTest {
         val viewModel = viewModel()
 
@@ -238,6 +258,21 @@ class AjustesViewModelTest {
         assertTrue(viewModel.estado.value.redes.isEmpty())
         assertNull(viewModel.estado.value.redActiva)
         assertEquals(AvisoAjustes.DispositivoQuitado(quedanRedes = false), viewModel.estado.value.aviso)
+    }
+
+    @Test
+    fun `si el servidor no deja quitar al ultimo administrador no se borra nada y se avisa`() = runTest {
+        alertas.agregar(Fixtures.alerta("a-1"))
+        redes.errorAlQuitar = ErrorZonda.UltimoAdministrador()
+        val viewModel = viewModel()
+
+        // Antes la excepción cerraba la app, y las alertas y las acciones pendientes ya se habían borrado.
+        viewModel.quitarDispositivo()
+
+        assertTrue(redes.redesQuitadas.isEmpty())
+        assertEquals(listOf("a-1"), alertas.todas.map { it.id })
+        assertEquals("red-1", viewModel.estado.value.redActiva?.id)
+        assertTrue((viewModel.estado.value.aviso as AvisoAjustes.Error).error is ErrorZonda.UltimoAdministrador)
     }
 
     @Test

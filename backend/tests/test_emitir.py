@@ -1,10 +1,12 @@
 """`zonda emitir`: la alerta que pide la demo, en el momento justo (guion de la demo, paso 7)."""
 
 import asyncio
+import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from app.emisor import emitir_periodicamente
 from tests.conftest import todas_las_alertas
 from tests.test_telegram import alerta_del_boton, vincular
 
@@ -67,3 +69,34 @@ def test_el_aviso_de_la_alerta_emitida_suena_y_abre_esa_alerta(cliente, auth, te
     assert aviso["text"].startswith("<b>Alerta ALTA · SSH · ")
     assert aviso["disable_notification"] is False
     assert alerta_del_boton(aviso) == nueva
+
+
+def test_el_emisor_de_la_demo_sigue_si_la_base_esta_trabada(cliente, monkeypatch):
+    """Con ZONDA_EMITIR_CADA, una vuelta con la base trabada se saltea y la siguiente emite: antes la tarea se
+    cortaba sin avisar y la demo se quedaba sin alertas nuevas."""
+    base = cliente.app.state.base
+    emitidas: list[str] = []
+
+    def emitir_con_una_falla(base_de_datos) -> str:
+        if not emitidas:
+            emitidas.append("falla")
+            raise sqlite3.OperationalError("database is locked")
+        emitidas.append("ok")
+        return "a-prueba"
+
+    class FinDeLaPrueba(Exception):
+        pass
+
+    vueltas: list[int] = []
+
+    async def esperar(segundos: float) -> None:
+        vueltas.append(1)
+        if len(vueltas) == 3:
+            raise FinDeLaPrueba
+
+    monkeypatch.setattr("app.emisor.emitir_una", emitir_con_una_falla)
+    monkeypatch.setattr("app.emisor.asyncio.sleep", esperar)
+    with pytest.raises(FinDeLaPrueba):
+        asyncio.run(emitir_periodicamente(base, 30))
+
+    assert emitidas == ["falla", "ok"]

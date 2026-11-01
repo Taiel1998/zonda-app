@@ -3,11 +3,14 @@ package ar.edu.uade.zonda.data.mapper
 import ar.edu.uade.zonda.data.remote.AlertaDto
 import ar.edu.uade.zonda.data.remote.AsignacionDto
 import ar.edu.uade.zonda.data.remote.AvisosDto
+import ar.edu.uade.zonda.data.remote.BloqueoDto
 import ar.edu.uade.zonda.data.remote.CambioRegistroDto
 import ar.edu.uade.zonda.data.remote.CatalogoDto
 import ar.edu.uade.zonda.data.remote.CodigoPersonaDto
 import ar.edu.uade.zonda.data.remote.EquipoDto
+import ar.edu.uade.zonda.data.remote.EstadoFirewallDto
 import ar.edu.uade.zonda.data.remote.EstadoTelegramDto
+import ar.edu.uade.zonda.data.remote.ListaBloqueosDto
 import ar.edu.uade.zonda.data.remote.PersonaDto
 import ar.edu.uade.zonda.data.remote.RevisionDto
 import ar.edu.uade.zonda.data.remote.RevisionEntradaDto
@@ -16,11 +19,15 @@ import ar.edu.uade.zonda.data.remote.VinculoTelegramDto
 import ar.edu.uade.zonda.domain.model.AccionPendiente
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.Asignacion
+import ar.edu.uade.zonda.domain.model.Bloqueo
+import ar.edu.uade.zonda.domain.model.BloqueosDeLaRed
 import ar.edu.uade.zonda.domain.model.CambioRegistro
 import ar.edu.uade.zonda.domain.model.Catalogo
 import ar.edu.uade.zonda.domain.model.CodigoPersona
 import ar.edu.uade.zonda.domain.model.Equipo
 import ar.edu.uade.zonda.domain.model.EquipoDeLaRed
+import ar.edu.uade.zonda.domain.model.EstadoBloqueo
+import ar.edu.uade.zonda.domain.model.EstadoFirewall
 import ar.edu.uade.zonda.domain.model.EstadoPieza
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.EstadoSistema
@@ -202,14 +209,21 @@ fun importanciaDeLaApi(valor: String): Importancia = Importancia.valueOf(valor.u
 
 fun Importancia.enLaApi(): String = name.lowercase()
 
-fun PersonaDto.aDominio(): Persona = Persona(
-    id = id,
-    nombre = nombre,
-    telefono = telefono,
-    perfil = perfilDeLaApi(perfil),
-    ultimoUso = ultimoUso?.aInstante(),
-    vos = vos,
-)
+fun PersonaDto.aDominio(): Persona {
+    val perfilDeLaPersona = perfilDeLaApi(perfil)
+    return Persona(
+        id = id,
+        nombre = nombre,
+        telefono = telefono,
+        perfil = perfilDeLaPersona,
+        ultimoUso = ultimoUso?.aInstante(),
+        vos = vos,
+        navegador = tipo == "navegador",
+        // El servidor dice si bloquea; un administrador bloquea por su perfil, así que el permiso es del analista.
+        // Un servidor anterior a la 0.9.0 no lo manda: ningún analista bloquea.
+        permisoDeBloquear = puedeBloquear == true && !perfilDeLaPersona.esAdministrador,
+    )
+}
 
 fun CodigoPersonaDto.aDominio(): CodigoPersona = CodigoPersona(
     codigo = codigo,
@@ -262,3 +276,42 @@ private fun String?.aEstadoPieza(): EstadoPieza = when (this) {
     "detenido" -> EstadoPieza.DETENIDO
     else -> EstadoPieza.SIN_DATOS
 }
+
+/**
+ * Un tipo de cambio que esta app conoce. El registro de un servidor más nuevo puede traer tipos nuevos: esas
+ * líneas se saltean en lugar de cortar la sincronización (lo que le pasaba a la 1.0.8 con los bloqueos).
+ */
+val CambioRegistroDto.tipoConocido: Boolean
+    get() = TipoCambio.entries.any { it.name == tipo.uppercase() }
+
+// ---- Bloqueos del firewall (decisión 51) ----
+
+/** Un estado que no se conoce se toma como terminado: no ofrece acciones sobre algo que no se entiende. */
+fun BloqueoDto.aDominio(): Bloqueo = Bloqueo(
+    id = id,
+    alertaId = alertaId,
+    ip = ip,
+    nombre = nombre,
+    estado = EstadoBloqueo.entries.firstOrNull { it.name == estado.uppercase() } ?: EstadoBloqueo.VENCIDO,
+    segundos = duracion,
+    motivo = motivo,
+    pedidoPor = pedidoPor,
+    pedidoEn = pedidoEn.aInstante(),
+    aprobadoPor = aprobadoPor,
+    aprobadoEn = aprobadoEn?.aInstante(),
+    venceEn = venceEn?.aInstante(),
+    aplicadoEn = aplicadoEn?.aInstante(),
+    terminadoPor = terminadoPor,
+    terminadoEn = terminadoEn?.aInstante(),
+    detalle = detalle,
+)
+
+/** La última consulta se corre lo que el reloj del servidor difiere del teléfono, como el último flujo. */
+fun EstadoFirewallDto.aDominio(corrimiento: Duration = Duration.ZERO): EstadoFirewall = EstadoFirewall(
+    habilitado = habilitado,
+    conectado = conectado,
+    ultimaConsulta = ultimaConsulta?.let { runCatching { it.aInstante().plus(corrimiento) }.getOrNull() },
+    nuncaBloquear = nuncaBloquear.orEmpty(),
+)
+
+fun ListaBloqueosDto.aDominio(): BloqueosDeLaRed = BloqueosDeLaRed(bloqueos.map { it.aDominio() }, firewall.aDominio())

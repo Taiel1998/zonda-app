@@ -1,6 +1,7 @@
 package ar.edu.uade.zonda.ui.detalle
 
 import android.content.Intent
+import android.content.res.Resources
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,7 +35,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +48,7 @@ import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.Asignacion
 import ar.edu.uade.zonda.domain.model.AvisoRecibido
 import ar.edu.uade.zonda.domain.model.CambioDeSeveridad
+import ar.edu.uade.zonda.domain.model.DuracionBloqueo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
@@ -54,6 +59,7 @@ import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.lectura
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.comentarioPropuesto
 import ar.edu.uade.zonda.ui.components.AvisoInferior
 import ar.edu.uade.zonda.ui.components.BannerSinConexion
 import ar.edu.uade.zonda.ui.components.BarraSuperior
@@ -112,6 +118,18 @@ class AccionesDetalle(
     val alAvisoMostrado: () -> Unit = {},
     /** Asignar a una persona, o dejarla sin asignar con null (decisión 42). */
     val alAsignar: (Persona?) -> Unit = {},
+    /** Bloqueo del origen (decisión 51): abrir la hoja con el motivo propuesto, y lo que sigue. */
+    val alBloquear: (motivoPropuesto: String) -> Unit = {},
+    val alCambiarDuracionBloqueo: () -> Unit = {},
+    val alDesbloquear: () -> Unit = {},
+    val alRechazarBloqueo: () -> Unit = {},
+    val alAprobarBloqueo: () -> Unit = {},
+    val alElegirDuracion: (DuracionBloqueo) -> Unit = {},
+    val alCambiarMotivoBloqueo: (String) -> Unit = {},
+    val alCerrarBloqueo: () -> Unit = {},
+    val alConfirmarBloqueo: () -> Unit = {},
+    /** "Revisar" con el origen bloqueado: la revisión viene propuesta como "Bloqueado manualmente". */
+    val alRevisarBloqueada: (comentarioPropuesto: String) -> Unit = {},
 )
 
 /**
@@ -141,15 +159,21 @@ fun DetalleScreen(
             alertaId = alertaId,
             nombreDelTelefono = contenedor.nombreDelTelefono,
             avisoRecibido = avisoRecibido,
+            gestionarBloqueos = contenedor.gestionarBloqueos,
         )
     },
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     // El comentario se escribe en la hoja: el estado se lee sin demora para que el teclado no pierda letras.
     val formulario by viewModel.formulario.collectAsStateWithLifecycle(context = Dispatchers.Main.immediate)
+    val hojaBloqueo by viewModel.hojaBloqueo.collectAsStateWithLifecycle(context = Dispatchers.Main.immediate)
     val aviso by viewModel.aviso.collectAsStateWithLifecycle()
     val cerrar by viewModel.cerrar.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
+    val recursos = LocalResources.current
+    // Lo que corta o devuelve tráfico se confirma con la huella o el PIN del teléfono (decisión 51).
+    val confirmacion = LocalConfirmacionDelDueno.current ?: remember(contexto) { contexto.actividad()?.let(::ConfirmacionConHuella) }
+    val origen = (estado as? DetalleUiState.Contenido)?.alerta?.origen?.etiqueta.orEmpty()
 
     // La revisión quedó guardada: vuelve a la lista de la que se vino (o a Estado, si se abrió desde un aviso).
     LaunchedEffect(cerrar) { if (cerrar) alVolver() }
@@ -157,6 +181,7 @@ fun DetalleScreen(
     DetalleContenido(
         estado = estado,
         formulario = formulario,
+        hojaBloqueo = hojaBloqueo,
         aviso = aviso,
         acciones = AccionesDetalle(
             alVolver = alVolver,
@@ -177,8 +202,51 @@ fun DetalleScreen(
             alReintentarEnvio = viewModel::reintentarEnvio,
             alAvisoMostrado = viewModel::avisoMostrado,
             alAsignar = viewModel::asignar,
+            alBloquear = viewModel::abrirBloqueo,
+            alCambiarDuracionBloqueo = viewModel::abrirCambioDeDuracion,
+            alDesbloquear = viewModel::abrirDesbloqueo,
+            alRechazarBloqueo = viewModel::abrirRechazo,
+            alAprobarBloqueo = {
+                confirmarConHuella(
+                    pide = true,
+                    confirmacion = confirmacion,
+                    titulo = recursos.getString(R.string.huella_titulo),
+                    detalle = recursos.getString(R.string.huella_aprobar, origen),
+                    alConfirmar = viewModel::aprobarBloqueo,
+                    alNoPoder = viewModel::sinBloqueoDePantalla,
+                )
+            },
+            alElegirDuracion = viewModel::elegirDuracion,
+            alCambiarMotivoBloqueo = viewModel::cambiarMotivoBloqueo,
+            alCerrarBloqueo = viewModel::cerrarBloqueo,
+            alConfirmarBloqueo = {
+                // Sin motivo no se pide la huella: la hoja dice primero "Escribí el motivo.".
+                val hoja = hojaBloqueo
+                val puedeBloquear = (estado as? DetalleUiState.Contenido)?.puedeBloquear
+                if (hoja == null || puedeBloquear == null || hoja.motivo.isBlank()) {
+                    viewModel.confirmarBloqueo()
+                } else {
+                    confirmarConHuella(
+                        pide = pideHuella(hoja.accion, puedeBloquear),
+                        confirmacion = confirmacion,
+                        titulo = recursos.getString(R.string.huella_titulo),
+                        detalle = textoDeLaHuella(recursos, hoja, origen),
+                        alConfirmar = viewModel::confirmarBloqueo,
+                        alNoPoder = viewModel::sinBloqueoDePantalla,
+                    )
+                }
+            },
+            alRevisarBloqueada = viewModel::abrirRevisionBloqueada,
         ),
     )
+}
+
+/** Lo que dice el diálogo de la huella debajo del título: "Bloquear pc-rrhh · 1 hora". */
+private fun textoDeLaHuella(recursos: Resources, hoja: FormularioBloqueo, origen: String): String = when (hoja.accion) {
+    AccionBloqueo.BLOQUEAR -> recursos.getString(R.string.huella_bloquear, origen, recursos.getString(hoja.duracion.titulo()))
+    AccionBloqueo.CAMBIAR_DURACION -> recursos.getString(R.string.huella_duracion, origen, recursos.getString(hoja.duracion.titulo()))
+    AccionBloqueo.DESBLOQUEAR -> recursos.getString(R.string.huella_desbloquear, origen)
+    AccionBloqueo.RECHAZAR -> ""
 }
 
 /** Cómo se muestra la revisión según en qué quedó (cada caso es un cuadro del Figma). */
@@ -216,18 +284,29 @@ fun DetalleContenido(
     estado: DetalleUiState,
     acciones: AccionesDetalle,
     formulario: FormularioRevision? = null,
+    hojaBloqueo: FormularioBloqueo? = null,
     aviso: AvisoDetalle? = null,
     zona: ZoneId = ZoneId.systemDefault(),
     ahora: Instant = Instant.now(),
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     var asignando by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(aviso) {
         when (aviso) {
             is AvisoDetalle.Error -> {
-                snackbar.showSnackbar(contexto.getString(aviso.error.mensaje()))
+                // Si no se pudo bloquear, el servidor dice por qué con sus palabras ("Ese equipo ya tiene un bloqueo...").
+                val error = aviso.error
+                snackbar.showSnackbar((error as? ErrorZonda.BloqueoNoPosible)?.detalle ?: recursos.getString(error.mensaje()))
+                acciones.alAvisoMostrado()
+            }
+            AvisoDetalle.BloqueoSinConexion -> {
+                snackbar.showSnackbar(recursos.getString(R.string.bloqueo_sin_conexion))
+                acciones.alAvisoMostrado()
+            }
+            AvisoDetalle.SinBloqueoDePantalla -> {
+                snackbar.showSnackbar(recursos.getString(R.string.bloqueo_sin_bloqueo_de_pantalla))
                 acciones.alAvisoMostrado()
             }
             null -> Unit
@@ -296,6 +375,7 @@ fun DetalleContenido(
 
     if (formulario != null && alertaVisible != null) HojaRevision(formulario = formulario, alerta = alertaVisible, acciones = acciones)
     val conPersonas = estado as? DetalleUiState.Contenido
+    if (hojaBloqueo != null && conPersonas != null) HojaBloqueo(formulario = hojaBloqueo, alerta = conPersonas.alerta, puedeBloquear = conPersonas.puedeBloquear, acciones = acciones)
     if (asignando && conPersonas != null) {
         HojaInferior(alCerrar = { asignando = false }) {
             ContenidoHojaAsignar(conPersonas.personas, conPersonas.alerta.asignacion?.responsableId) { persona ->
@@ -342,13 +422,20 @@ private fun CuerpoDetalle(
                 alSoltar = { acciones.alAsignar(null) },
             )
         }
+        // Decisión 51: el bloqueo del origen, debajo del responsable; sin firewall conectado no hay tarjeta.
+        estado.bloqueo?.let { TarjetaBloqueo(seccion = it, alerta = alerta, puedeBloquear = estado.puedeBloquear, zona = zona, ahora = ahora, acciones = acciones) }
         when (modo) {
             ModoDetalle.SIN_REVISAR -> {
                 DatosDelFlujo(alerta, zona)
                 Veredictos(alerta)
+                // Con el origen bloqueado, la revisión viene propuesta como "Bloqueado manualmente" (decisión 51).
+                val bloqueada = estado.bloqueo?.actual?.estado?.enElFirewall == true
+                val recursos = LocalResources.current
                 BotonPrincipal(
                     texto = stringResource(R.string.detalle_revisar),
-                    alTocar = acciones.alRevisar,
+                    alTocar = {
+                        if (bloqueada) acciones.alRevisarBloqueada(Motivo.BLOQUEADO_MANUALMENTE.comentarioPropuesto(recursos, alerta)) else acciones.alRevisar()
+                    },
                     modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.BOTON_REVISAR),
                 )
             }
@@ -377,7 +464,7 @@ private fun CuerpoDetalle(
                 Veredictos(alerta)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     BotonContorno(
-                        texto = textoMantener(ajena?.autor),
+                        texto = textoMantener(ajena?.persona ?: ajena?.autor),
                         alTocar = acciones.alQuedarmeConLaOtra,
                         modifier = Modifier.weight(1f),
                         relleno = RellenoBotonAngosto,
@@ -412,7 +499,11 @@ private fun Encabezado(alerta: Alerta, estado: EstadoRevision, enCola: Boolean, 
                 if (envio == EstadoEnvio.ERROR) IndicadorEnvio(envio)
             }
         }
-        Text(text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}", style = MaterialTheme.typography.encabezado)
+        Text(
+            text = "${alerta.origen.etiqueta} → ${alerta.destino.etiqueta}",
+            style = MaterialTheme.typography.encabezado,
+            modifier = Modifier.semantics { heading() },
+        )
         Text(
             text = listOf(
                 Formato.servicioProtocoloYPuerto(alerta.servicio, alerta.protocolo, alerta.puerto),
@@ -628,7 +719,8 @@ private fun TarjetaConflicto(ajena: Revision, propia: Revision?, zona: ZoneId) {
         add(
             stringResource(
                 R.string.conflicto_texto,
-                ajena.autor ?: stringResource(R.string.conflicto_otra_persona),
+                // La persona ("Lucía", decisión 39) y no su teléfono, como el tablero; los pareados antes de la 1.0.5 no la traen.
+                ajena.persona ?: ajena.autor ?: stringResource(R.string.conflicto_otra_persona),
                 stringResource(ajena.resultado.etiqueta()).lowercase(),
                 Formato.hora(ajena.hechaEn, zona),
                 stringResource(ajena.motivo.etiqueta()),

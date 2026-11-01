@@ -36,7 +36,12 @@ CREATE TABLE IF NOT EXISTS dispositivos (
     -- El nombre de la persona ("Laura"); null en los pareados antes de la 1.0.5.
     persona TEXT,
     -- Cuándo usó la app por última vez (Ajustes → Personas).
-    ultimo_uso TEXT
+    ultimo_uso TEXT,
+    -- telefono o navegador (el tablero web): un bloqueo solo lo hace efectivo un teléfono (decisión 51).
+    tipo TEXT NOT NULL DEFAULT 'telefono',
+    -- «Bloqueos» de un analista (decisión 51): 1 si bloquea en el acto, como un administrador (se lo da un
+    -- administrador a quien hace guardia); 0 si pide aprobación. Vuelve a 0 cuando le cambian el perfil.
+    puede_bloquear INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS codigos_pareo (
@@ -200,6 +205,48 @@ CREATE TABLE IF NOT EXISTS trafico_pares (
     PRIMARY KEY (minuto, origen, destino, servicio)
 );
 
+-- El bloqueo del origen de una alerta en el firewall (decisión 51). Lo hace efectivo un administrador desde
+-- su teléfono y lo aplica el agente del firewall cuando pregunta. Ninguna fila se borra.
+CREATE TABLE IF NOT EXISTS bloqueos (
+    id TEXT PRIMARY KEY,
+    alerta_id TEXT NOT NULL REFERENCES alertas (id) ON DELETE CASCADE,
+    ip TEXT NOT NULL,
+    -- Como las revisiones: la misma acción reenviada desde la cola no se aplica dos veces.
+    accion_id TEXT NOT NULL UNIQUE,
+    -- pedido, aprobado, aplicado, rechazado, desbloqueado o vencido.
+    estado TEXT NOT NULL,
+    -- Segundos; null: hasta desbloquear. Manda vence_en.
+    duracion INTEGER,
+    motivo TEXT NOT NULL,
+    -- 1 si lo pidió un analista o el tablero web y lo tuvo que aprobar un administrador.
+    fue_pedido INTEGER NOT NULL DEFAULT 0,
+    pedido_por_id TEXT NOT NULL,
+    pedido_por TEXT NOT NULL,
+    pedido_en TEXT NOT NULL,
+    aprobado_por_id TEXT,
+    aprobado_por TEXT,
+    aprobado_en TEXT,
+    vence_en TEXT,
+    -- Cuándo dijo el firewall que lo aplicó.
+    aplicado_en TEXT,
+    -- Quién lo rechazó o lo desbloqueó ("Firewall" si lo rechazó el firewall), cuándo y por qué.
+    terminado_por_id TEXT,
+    terminado_por TEXT,
+    terminado_en TEXT,
+    detalle TEXT
+);
+CREATE INDEX IF NOT EXISTS bloqueos_estado ON bloqueos (estado);
+
+-- Un aviso de Telegram por bloqueo, momento y chat: el bot nunca manda dos veces el mismo.
+CREATE TABLE IF NOT EXISTS avisos_bloqueos (
+    bloqueo_id TEXT NOT NULL REFERENCES bloqueos (id) ON DELETE CASCADE,
+    -- pedido, aprobado, desbloqueado o rechazado (por el firewall).
+    evento TEXT NOT NULL,
+    chat_id TEXT NOT NULL,
+    enviado_en TEXT NOT NULL,
+    PRIMARY KEY (bloqueo_id, evento, chat_id)
+);
+
 -- Un latido del análisis en vivo por ciclo, para el gráfico del estado del sistema del tablero
 -- (decisión 52). t es la hora del servidor en que llegó, en segundos desde 1970 (UTC); se guarda lo
 -- mismo que el tráfico (dias_trafico). El último latido sigue también en meta, para GET /salud.
@@ -210,6 +257,39 @@ CREATE TABLE IF NOT EXISTS latidos (
     perdida REAL
 );
 CREATE INDEX IF NOT EXISTS latidos_t ON latidos (t);
+
+-- La llave de acceso de cada computadora con el tablero web (decisión 51): solo la parte pública. La privada
+-- vive en el chip de seguridad de la computadora (Windows Hello) y nunca sale de ahí.
+CREATE TABLE IF NOT EXISTS llaves (
+    -- El id de la credencial, en base64url.
+    id TEXT PRIMARY KEY,
+    -- El navegador que la creó al parearse.
+    dispositivo_id TEXT NOT NULL REFERENCES dispositivos (id) ON DELETE CASCADE,
+    -- La clave pública en COSE, con la que el servidor revisa cada firma.
+    clave_publica BLOB NOT NULL,
+    -- El contador de firmas de la computadora (Windows Hello suele dejarlo en 0).
+    contador INTEGER NOT NULL DEFAULT 0,
+    -- El nombre del tablero con el que se creó (zonda-equipo.duckdns.org): la llave solo vale ahí.
+    rp_id TEXT NOT NULL,
+    creada_en TEXT NOT NULL,
+    usada_en TEXT
+);
+
+-- Cada desafío sirve para una sola cosa: crear la llave o confirmar una acción, la que se dijo al pedirlo.
+-- Vence a los dos minutos.
+CREATE TABLE IF NOT EXISTS desafios_llave (
+    id TEXT PRIMARY KEY,
+    dispositivo_id TEXT NOT NULL,
+    desafio BLOB NOT NULL,
+    -- registro o accion.
+    proposito TEXT NOT NULL,
+    -- La acción que confirma, en JSON con las claves ordenadas ({"alertaId": "a-1", "duracion": 3600, "tipo": "bloquear"}).
+    accion TEXT,
+    -- La dirección del tablero que lo pidió: la firma tiene que venir de la misma.
+    origen TEXT NOT NULL,
+    vence_en TEXT NOT NULL,
+    usado_en TEXT
+);
 """
 
 
@@ -242,7 +322,7 @@ class Base:
         teléfono, los motivos nuevos, lo que guarda el bot de Telegram, las severidades del tipo vacío
         (cambio 9) y, desde la 1.0.5, la persona y el perfil de cada teléfono y la importancia de cada
         equipo. Los teléfonos ya pareados quedan como administradores: hasta la 1.0.4 todos podían
-        cambiar las severidades."""
+        cambiar las severidades. Desde la API 0.9.0, si cada dispositivo es un teléfono o un navegador."""
         from .modelos import MOTIVOS_ANTERIORES
         from .semilla import poner_al_dia_severidades
 
@@ -267,6 +347,12 @@ class Base:
             con.execute("ALTER TABLE dispositivos ADD COLUMN persona TEXT")
             con.execute("ALTER TABLE dispositivos ADD COLUMN ultimo_uso TEXT")
             con.execute("UPDATE dispositivos SET ultimo_uso = creado_en")
+        if "tipo" not in columnas:
+            con.execute("ALTER TABLE dispositivos ADD COLUMN tipo TEXT NOT NULL DEFAULT 'telefono'")
+            # Los navegadores pareados antes de este campo se llaman «Tablero web · Chrome en Windows».
+            con.execute("UPDATE dispositivos SET tipo = 'navegador' WHERE nombre LIKE 'Tablero web%'")
+        if "puede_bloquear" not in columnas:
+            con.execute("ALTER TABLE dispositivos ADD COLUMN puede_bloquear INTEGER NOT NULL DEFAULT 0")
         if "perfil" not in {fila[1] for fila in con.execute("PRAGMA table_info(codigos_pareo)")}:
             con.execute("ALTER TABLE codigos_pareo ADD COLUMN persona TEXT")
             con.execute("ALTER TABLE codigos_pareo ADD COLUMN perfil TEXT NOT NULL DEFAULT 'administrador'")

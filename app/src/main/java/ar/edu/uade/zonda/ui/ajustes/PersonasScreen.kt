@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.Icon
@@ -34,11 +36,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
+import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.ui.components.AvisoInferior
@@ -57,6 +65,10 @@ import ar.edu.uade.zonda.ui.components.Panel
 import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
 import ar.edu.uade.zonda.ui.components.detalleDePersona
 import ar.edu.uade.zonda.ui.descripcion
+import ar.edu.uade.zonda.ui.detalle.ConfirmacionConHuella
+import ar.edu.uade.zonda.ui.detalle.LocalConfirmacionDelDueno
+import ar.edu.uade.zonda.ui.detalle.actividad
+import ar.edu.uade.zonda.ui.detalle.confirmarConHuella
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
 import ar.edu.uade.zonda.ui.theme.nota
@@ -81,17 +93,31 @@ class AccionesPersonas(
     val alGenerarCodigo: () -> Unit = {},
     val alAbrirCodigo: () -> Unit = {},
     val alCambiarPerfil: (Persona, Perfil) -> Unit = { _, _ -> },
+    val alCambiarPermisoBloqueo: (Persona, Boolean) -> Unit = { _, _ -> },
     val alQuitar: (Persona) -> Unit = {},
     val alAvisoMostrado: () -> Unit = {},
 )
 
 /**
  * Ajustes → Personas (decisión 39; Figma 468-2568): la gente de la red con su perfil, su teléfono y
- * cuándo lo usó. Todos la ven; solo el administrador toca a alguien y tiene "Agregar persona".
+ * cuándo lo usó. Todos la ven; solo el administrador toca a alguien y tiene "Agregar persona". Sumar a
+ * alguien, quitarlo y cambiarle el perfil o el permiso de bloquear se confirman con la huella o el PIN
+ * (decisión 51): eso da poder en la red, y lo tiene que hacer el dueño del teléfono.
  */
 @Composable
 fun PersonasScreen(viewModel: PersonasViewModel, alVolver: () -> Unit, alAbrirCodigo: () -> Unit) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
+    val contexto = LocalContext.current
+    val recursos = LocalResources.current
+    val confirmacion = LocalConfirmacionDelDueno.current ?: remember(contexto) { contexto.actividad()?.let(::ConfirmacionConHuella) }
+    fun conHuella(detalle: String, accion: () -> Unit) = confirmarConHuella(
+        pide = true,
+        confirmacion = confirmacion,
+        titulo = recursos.getString(R.string.huella_titulo),
+        detalle = detalle,
+        alConfirmar = accion,
+        alNoPoder = viewModel::sinBloqueoDePantalla,
+    )
     PersonasContenido(
         estado = estado,
         acciones = AccionesPersonas(
@@ -100,13 +126,31 @@ fun PersonasScreen(viewModel: PersonasViewModel, alVolver: () -> Unit, alAbrirCo
             alCambiarNombre = viewModel::cambiarNombre,
             alCambiarPerfilNuevo = viewModel::cambiarPerfilNuevo,
             alCancelarAgregar = viewModel::cancelarAgregar,
-            alGenerarCodigo = viewModel::generarCodigo,
+            alGenerarCodigo = {
+                // Sin nombre no se pide la huella: la hoja dice primero que falta.
+                val formulario = estado.formulario
+                if (formulario == null || formulario.nombre.isBlank() || formulario.generando) {
+                    viewModel.generarCodigo()
+                } else {
+                    val perfil = recursos.getString(formulario.perfil.etiqueta()).lowercase()
+                    conHuella(recursos.getString(R.string.huella_sumar, formulario.nombre.trim(), perfil), viewModel::generarCodigo)
+                }
+            },
             alAbrirCodigo = {
                 viewModel.codigoAbierto()
                 alAbrirCodigo()
             },
-            alCambiarPerfil = viewModel::cambiarPerfil,
-            alQuitar = viewModel::quitar,
+            alCambiarPerfil = { persona, perfil ->
+                val texto = if (perfil.esAdministrador) R.string.huella_hacer_administrador else R.string.huella_pasar_a_analista
+                conHuella(recursos.getString(texto, persona.nombreVisible)) { viewModel.cambiarPerfil(persona, perfil) }
+            },
+            alCambiarPermisoBloqueo = { persona, puede ->
+                val texto = if (puede) R.string.huella_dar_permiso else R.string.huella_sacar_permiso
+                conHuella(recursos.getString(texto, persona.nombreVisible)) { viewModel.cambiarPermisoBloqueo(persona, puede) }
+            },
+            alQuitar = { persona ->
+                conHuella(recursos.getString(R.string.huella_quitar, persona.nombreVisible)) { viewModel.quitar(persona) }
+            },
             alAvisoMostrado = viewModel::avisoMostrado,
         ),
     )
@@ -120,7 +164,7 @@ fun PersonasContenido(
     ahora: Instant = Instant.now(),
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     val alcance = rememberCoroutineScope()
     var elegidaId by rememberSaveable { mutableStateOf<String?>(null) }
     var aQuitarId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -132,15 +176,20 @@ fun PersonasContenido(
         val aviso = estado.aviso ?: return@LaunchedEffect
         acciones.alAvisoMostrado()
         val texto = when (aviso) {
-            is AvisoPersonas.PerfilCambiado -> contexto.getString(
+            is AvisoPersonas.PerfilCambiado -> recursos.getString(
                 if (aviso.perfil.esAdministrador) R.string.personas_ahora_administrador else R.string.personas_ahora_analista,
                 aviso.nombre,
             )
-            is AvisoPersonas.Quitada -> contexto.getString(R.string.personas_quitada, aviso.nombre)
-            is AvisoPersonas.Error -> contexto.getString(aviso.error.mensaje())
+            is AvisoPersonas.PermisoBloqueoCambiado -> recursos.getString(
+                if (aviso.puedeBloquear) R.string.personas_ahora_bloquea else R.string.personas_ahora_pide_aprobacion,
+                aviso.nombre,
+            )
+            is AvisoPersonas.Quitada -> recursos.getString(R.string.personas_quitada, aviso.nombre)
+            is AvisoPersonas.Error -> recursos.getString(aviso.error.mensaje())
+            AvisoPersonas.SinBloqueoDePantalla -> recursos.getString(R.string.personas_sin_bloqueo_de_pantalla)
         }
         // Consumir el aviso cambia la clave de este efecto: se muestra en otro alcance para no cortarlo.
-        alcance.launch { snackbar.showSnackbar(message = texto, actionLabel = contexto.getString(R.string.aviso_ok), duration = SnackbarDuration.Short) }
+        alcance.launch { snackbar.showSnackbar(message = texto, actionLabel = recursos.getString(R.string.aviso_ok), duration = SnackbarDuration.Short) }
     }
 
     Scaffold(
@@ -192,6 +241,10 @@ fun PersonasContenido(
                     elegidaId = null
                     acciones.alCambiarPerfil(persona, perfil)
                 },
+                alCambiarPermisoBloqueo = { puede ->
+                    elegidaId = null
+                    acciones.alCambiarPermisoBloqueo(persona, puede)
+                },
                 alQuitar = {
                     elegidaId = null
                     aQuitarId = persona.id
@@ -219,7 +272,7 @@ fun PersonasContenido(
  */
 @Composable
 fun ColumnScope.ContenidoHojaAgregarPersona(formulario: FormularioPersona, acciones: AccionesPersonas) {
-    Text(text = stringResource(R.string.personas_agregar), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(R.string.personas_agregar), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     CampoTexto(
         valor = formulario.nombre,
         alCambiar = acciones.alCambiarNombre,
@@ -239,7 +292,13 @@ fun ColumnScope.ContenidoHojaAgregarPersona(formulario: FormularioPersona, accio
         }
     }
     formulario.error?.let { error ->
-        Text(text = stringResource(error.mensaje()), style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.error)
+        Text(
+            // Sin red, el texto general ("Se muestran los datos guardados") no dice qué pasó con el código.
+            text = if (error is ErrorZonda.SinConexion) stringResource(R.string.personas_codigo_sin_conexion) else stringResource(error.mensaje()),
+            style = MaterialTheme.typography.nota,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
     }
     LeyendaObligatorio()
     Row(modifier = Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -255,7 +314,9 @@ fun ColumnScope.ContenidoHojaAgregarPersona(formulario: FormularioPersona, accio
 
 /**
  * La hoja de una persona (Figma 468-3010): su nombre, su detalle y lo que el administrador puede hacer:
- * cambiarle el perfil o quitarla del equipo (con una confirmación, como "Quitar este dispositivo").
+ * cambiarle el perfil, darle o sacarle a un analista el permiso de bloquear (decisión 51: el de guardia
+ * bloquea en el acto; los demás piden aprobación) o quitarla del equipo (con una confirmación, como
+ * "Quitar este dispositivo").
  */
 @Composable
 fun ColumnScope.ContenidoHojaPersona(
@@ -264,8 +325,9 @@ fun ColumnScope.ContenidoHojaPersona(
     zona: ZoneId,
     alCambiarPerfil: (Perfil) -> Unit,
     alQuitar: () -> Unit,
+    alCambiarPermisoBloqueo: (Boolean) -> Unit = {},
 ) {
-    Text(text = persona.nombreVisible, style = MaterialTheme.typography.tituloHoja)
+    Text(text = persona.nombreVisible, style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Text(text = detalleDePersona(persona, ahora, zona), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     if (persona.perfil.esAdministrador) {
         AccionDePersona(Icons.Outlined.Person, stringResource(R.string.personas_pasar_a_analista), MaterialTheme.colorScheme.primary) {
@@ -274,6 +336,15 @@ fun ColumnScope.ContenidoHojaPersona(
     } else {
         AccionDePersona(Icons.Outlined.Person, stringResource(R.string.personas_hacer_administrador), MaterialTheme.colorScheme.primary) {
             alCambiarPerfil(Perfil.ADMINISTRADOR)
+        }
+        if (persona.puedeBloquear) {
+            AccionDePersona(Icons.Outlined.LockOpen, stringResource(R.string.personas_sacar_permiso_bloquear), MaterialTheme.colorScheme.primary) {
+                alCambiarPermisoBloqueo(false)
+            }
+        } else {
+            AccionDePersona(Icons.Outlined.Lock, stringResource(R.string.personas_dar_permiso_bloquear), MaterialTheme.colorScheme.primary) {
+                alCambiarPermisoBloqueo(true)
+            }
         }
     }
     AccionDePersona(Icons.Outlined.PersonRemove, stringResource(R.string.personas_quitar), MaterialTheme.colorScheme.error, alQuitar)

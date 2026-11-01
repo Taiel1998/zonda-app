@@ -43,7 +43,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         AsignacionEntity::class,
         AsignacionPendienteEntity::class,
     ],
-    version = 6,
+    version = 8,
     exportSchema = false,
 )
 abstract class ZondaDatabase : RoomDatabase() {
@@ -175,6 +175,28 @@ abstract class ZondaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Versión 7 (1.0.9, decisión 51): si cada persona es un navegador con el tablero web. Las guardadas
+         * quedan como teléfonos hasta la sincronización siguiente, que trae la lista nueva.
+         */
+        val MIGRACION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE personas ADD COLUMN navegador INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * Versión 8 (1.0.9, decisión 51): el permiso de bloquear de este teléfono y de cada persona, si son
+         * analistas. Los administradores bloquean por su perfil; un analista pide aprobación hasta la
+         * sincronización siguiente, que trae lo que dice el servidor.
+         */
+        val MIGRACION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE redes ADD COLUMN permisoDeBloquear INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE personas ADD COLUMN permisoDeBloquear INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         /** Los nombres anteriores y los del Figma, fijos acá: una migración no cambia aunque cambie el enum. */
         private val MOTIVOS_ANTERIORES = mapOf(
             "EQUIPO_AISLADO" to "BLOQUEADO_MANUALMENTE",
@@ -190,7 +212,7 @@ abstract class ZondaDatabase : RoomDatabase() {
             System.loadLibrary("sqlcipher")
             return Room.databaseBuilder(context, ZondaDatabase::class.java, NOMBRE_ARCHIVO)
                 .openHelperFactory(SupportOpenHelperFactory(clave))
-                .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4, MIGRACION_4_5, MIGRACION_5_6)
+                .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4, MIGRACION_4_5, MIGRACION_5_6, MIGRACION_6_7, MIGRACION_7_8)
                 .build()
         }
     }

@@ -28,6 +28,8 @@ data class RedEntity(
     // Versión 6 (ZondaDatabase.MIGRACION_5_6): el perfil de este teléfono en la red y su id en el servidor.
     @ColumnInfo(defaultValue = "ADMINISTRADOR") val perfil: String = "ADMINISTRADOR",
     val dispositivoId: String? = null,
+    // Versión 8 (ZondaDatabase.MIGRACION_7_8): el permiso de bloquear de este teléfono si es analista (decisión 51).
+    @ColumnInfo(defaultValue = "0") val permisoDeBloquear: Boolean = false,
 )
 
 /** Severidad elegida por la red para cada tipo de ataque. Si no hay filas, rige la recomendada. */
@@ -74,6 +76,12 @@ data class PersonaEntity(
     val vos: Boolean,
     /** El orden en que se sumaron, como lo manda el servidor. */
     val orden: Int,
+    // Versión 7 (ZondaDatabase.MIGRACION_6_7): si es un navegador con el tablero web (decisión 51).
+    @ColumnInfo(defaultValue = "0")
+    val navegador: Boolean = false,
+    // Versión 8 (ZondaDatabase.MIGRACION_7_8): el permiso de bloquear de un analista (decisión 51).
+    @ColumnInfo(defaultValue = "0")
+    val permisoDeBloquear: Boolean = false,
 )
 
 /** Una línea del registro de cambios de la red (`GET /registro`, versión 6; decisión 40). */

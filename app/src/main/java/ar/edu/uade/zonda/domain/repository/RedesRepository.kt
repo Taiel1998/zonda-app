@@ -104,6 +104,12 @@ interface RedesRepository {
     /** "Hacer administrador" o "Pasar a analista" (`PUT /personas/{id}/perfil`). Necesita conexión. */
     suspend fun cambiarPerfil(redId: String, personaId: String, perfil: Perfil)
 
+    /**
+     * "Darle permiso de bloquear" o "Sacarle el permiso de bloquear" a un analista (`PUT /personas/{id}/bloqueos`,
+     * decisión 51). Necesita conexión.
+     */
+    suspend fun cambiarPermisoBloqueo(redId: String, personaId: String, puedeBloquear: Boolean)
+
     /** "Quitar del equipo" (`DELETE /personas/{id}`). Necesita conexión. */
     suspend fun quitarPersona(redId: String, personaId: String)
 

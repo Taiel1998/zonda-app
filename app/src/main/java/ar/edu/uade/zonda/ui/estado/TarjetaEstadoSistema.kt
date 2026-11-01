@@ -55,12 +55,14 @@ fun TarjetaEstadoSistema(sistema: EstadoSistema, ahora: () -> Instant, modifier:
     Panel(modifier = modifier, espacio = 10.dp) {
         EtiquetaConAyuda(
             texto = stringResource(R.string.estado_sistema_titulo),
-            ayuda = stringResource(R.string.estado_sistema_ayuda),
+            ayuda = stringResource(if (sistema.firewall != null) R.string.estado_sistema_ayuda_con_firewall else R.string.estado_sistema_ayuda),
             estilo = MaterialTheme.typography.titleSmall,
         )
         FilaPieza(R.string.estado_sistema_sensor, sistema.sensor, detalleDelSensor(sistema, momento))
         FilaPieza(R.string.estado_sistema_analisis, sistema.analisis, detalleDelAnalisis(sistema, momento))
         FilaPieza(R.string.estado_sistema_servidor, sistema.servidor, detalleDelServidor(sistema, momento))
+        // Decisión 51: el firewall, solo si la red tiene uno conectado al servidor (si no, está en modo de observación).
+        sistema.firewall?.let { FilaPieza(R.string.estado_sistema_firewall, it, detalleDelFirewall(sistema, momento)) }
     }
 }
 
@@ -194,6 +196,13 @@ private fun detalleDelServidor(sistema: EstadoSistema, ahora: Instant): String {
     val hace = Duration.between(sistema.consultadoEn, ahora)
     if (hace.seconds < 3) return stringResource(R.string.estado_sistema_servidor_recien)
     return stringResource(R.string.estado_sistema_servidor_ultima, cuanto(hace))
+}
+
+/** El firewall: "Última consulta hace 6 s" (pregunta cada 10 s qué tiene que bloquear) o "Sin datos" si nunca preguntó. */
+@Composable
+private fun detalleDelFirewall(sistema: EstadoSistema, ahora: Instant): String {
+    val consulta = sistema.ultimaConsultaFirewall ?: return stringResource(R.string.estado_sistema_sin_datos)
+    return stringResource(R.string.estado_sistema_firewall_ultima, cuanto(Duration.between(consulta, ahora)))
 }
 
 /** Cuánto pasó, en una sola unidad para que el dato sea corto: `12 s`, `24 min`, `3 h`, `2 días`. */

@@ -41,11 +41,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -143,7 +148,13 @@ fun ColumnScope.ContenidoHojaFechas(
     val elegido = borrador.rango
 
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text = stringResource(R.string.resumen_fechas_titulo), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.weight(1f))
+        Text(
+            text = stringResource(R.string.resumen_fechas_titulo),
+            style = MaterialTheme.typography.tituloHoja,
+            modifier = Modifier
+                .weight(1f)
+                .semantics { heading() },
+        )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = stringResource(R.string.accion_cancelar),
@@ -161,7 +172,8 @@ fun ColumnScope.ContenidoHojaFechas(
             alTocarHora = { reloj = HoraEnElReloj.DESDE },
             modifier = Modifier.weight(1f),
         )
-        Text(text = "→", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Decorativa: TalkBack decía "flecha derecha" entre Desde y Hasta.
+        Text(text = "→", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.clearAndSetSemantics {})
         CampoDeFecha(
             etiqueta = stringResource(R.string.resumen_fechas_hasta),
             momento = borrador.hasta,
@@ -170,7 +182,12 @@ fun ColumnScope.ContenidoHojaFechas(
         )
     }
     if (!elegido.valido && !borrador.esperandoUltimo) {
-        Text(text = stringResource(R.string.resumen_fechas_error), style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.error)
+        Text(
+            text = stringResource(R.string.resumen_fechas_error),
+            style = MaterialTheme.typography.nota,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     Text(
@@ -181,7 +198,7 @@ fun ColumnScope.ContenidoHojaFechas(
     mesesQueTocan(guardados).forEach { mes ->
         MesDelCalendario(mes = mes, guardados = guardados, elegido = elegido, alTocar = { borrador = borrador.tocarDia(it) })
     }
-    val quedan = if (elegido.valido) cuantas(elegido) else 0
+    val quedan = remember(elegido, cuantas) { if (elegido.valido) cuantas(elegido) else 0 }
     BotonPrincipal(
         texto = pluralStringResource(R.plurals.resumen_mostrar_alertas, quedan, quedan),
         alTocar = { alMostrar(elegido) },
@@ -404,7 +421,7 @@ fun ChipDeFechas(fechas: RangoResumen?, alTocar: () -> Unit, modifier: Modifier 
         ChipConIcono(texto = stringResource(R.string.resumen_fechas), icono = R.drawable.ic_calendario, elegido = false, alTocar = alTocar, modifier = modifier)
         return
     }
-    val recursos = LocalContext.current.resources
+    val recursos = LocalResources.current
     val textos = remember(fechas, recursos) { fechas.textosDelChip(recursos) }
     val medidor = rememberTextMeasurer()
     val estilo = MaterialTheme.typography.opcion

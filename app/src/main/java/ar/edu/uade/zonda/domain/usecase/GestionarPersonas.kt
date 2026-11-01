@@ -22,6 +22,10 @@ class GestionarPersonas(private val redes: RedesRepository) {
     /** "Hacer administrador" o "Pasar a analista". */
     suspend fun cambiarPerfil(redId: String, personaId: String, perfil: Perfil) = redes.cambiarPerfil(redId, personaId, perfil)
 
+    /** "Darle permiso de bloquear" a un analista (el de guardia) o sacárselo (decisión 51). */
+    suspend fun cambiarPermisoBloqueo(redId: String, personaId: String, puedeBloquear: Boolean) =
+        redes.cambiarPermisoBloqueo(redId, personaId, puedeBloquear)
+
     /** "Quitar del equipo": el teléfono de esa persona deja de tener acceso a la red. */
     suspend fun quitar(redId: String, personaId: String) = redes.quitarPersona(redId, personaId)
 

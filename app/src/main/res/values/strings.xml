@@ -186,7 +186,10 @@
         <item quantity="one">Sincronizado: %d alerta nueva.</item>
         <item quantity="other">Sincronizado: %d alertas nuevas.</item>
     </plurals>
-    <string name="aviso_sincronizado_con_altas">Sincronizado: %1$d nuevas, %2$d de severidad alta.</string>
+    <plurals name="aviso_sincronizado_con_altas">
+        <item quantity="one">Sincronizado: %1$d nueva, %2$d de severidad alta.</item>
+        <item quantity="other">Sincronizado: %1$d nuevas, %2$d de severidad alta.</item>
+    </plurals>
 
     <!-- Errores (informe, sección 14.3) -->
     <string name="error_sin_conexion">Sin conexión. Se muestran los datos guardados.</string>
@@ -201,7 +204,6 @@
     <string name="error_validacion">Revisá los datos ingresados.</string>
     <string name="error_telegram_no_disponible">El servidor de esta red todavía no tiene el bot de Telegram. Avisale al administrador.</string>
     <string name="error_telegram_sin_vincular">Telegram ya no está vinculado. Conectalo de nuevo.</string>
-    <string name="error_generico">Algo salió mal.</string>
     <!-- Severidades de la analista (corrección 2; Figma 468-3353) -->
     <string name="severidades_las_cambia">Las cambia un administrador: %1$s. Valen para todo el equipo.</string>
     <string name="severidades_las_cambia_sin_nombres">Las cambia un administrador. Valen para todo el equipo.</string>
@@ -223,7 +225,6 @@
     <string name="detalle_detectada_por">detectada por %1$s</string>
     <string name="detalle_cargando">Descargando el detalle…</string>
     <string name="detalle_no_disponible_titulo">No se pudo cargar la alerta</string>
-    <string name="detalle_no_disponible_sin_conexion">Sin conexión. Se va a descargar cuando vuelva la red.</string>
     <string name="detalle_datos_del_flujo">Datos del flujo</string>
     <string name="detalle_origen">Origen</string>
     <string name="detalle_destino">Destino</string>
@@ -251,7 +252,6 @@
     <string name="detalle_revision">Revisión</string>
     <string name="detalle_resultado">Resultado</string>
     <string name="detalle_motivo">Motivo</string>
-    <string name="detalle_este_telefono">Este teléfono</string>
     <string name="detalle_pendiente_de_envio">pendiente de envío</string>
     <string name="detalle_historial">Historial</string>
     <string name="detalle_revisar">Revisar</string>
@@ -259,7 +259,7 @@
     <string name="detalle_comentario">Comentario</string>
     <string name="detalle_quien">Quién</string>
     <string name="detalle_revisada">Revisada</string>
-    <string name="detalle_resultado_sincronizada">%1$s · sincronizada %2$s</string>
+    <string name="detalle_resultado_sincronizada">%1$s · enviada %2$s</string>
     <string name="detalle_pendiente_de_sincronizar">Pendiente de sincronizar</string>
     <string name="detalle_revision_pendiente_banner">Sin conexión · tu revisión se enviará al reconectar</string>
     <string name="accion_compartir">Compartir</string>
@@ -320,8 +320,8 @@
     <string name="aviso_revisaste">Revisaste %1$s.</string>
     <string name="aviso_revisaste_sin_conexion">Revisaste %1$s. Se envía cuando haya conexión.</string>
     <string name="aviso_deshacer">Deshacer</string>
-    <!-- Revisada desde otro teléfono (Figma 51-2497) -->
-    <string name="conflicto_titulo">Revisada desde otro teléfono</string>
+    <!-- Revisada desde otro teléfono (Figma 51-2497); "dispositivo" porque también pudo ser el tablero web -->
+    <string name="conflicto_titulo">Revisada desde otro dispositivo</string>
     <string name="conflicto_otra_persona">Otra persona</string>
     <string name="conflicto_texto">%1$s la revisó como %2$s a las %3$s con el motivo “%4$s”, después de tu última sincronización.</string>
     <string name="conflicto_tu_revision">Tu revisión (%1$s, %2$s) todavía no se aplicó. ¿Querés aplicarla igual?</string>
@@ -581,7 +581,10 @@
     <string name="contador_descripcion">%1$d sin revisar de severidad %2$s</string>
     <string name="descarga_titulo">Descargando alertas…</string>
     <string name="descarga_progreso">%1$d de %2$d · últimos 30 días · solo la primera vez</string>
-    <string name="descarga_sin_total">%1$d alertas · últimos 30 días · solo la primera vez</string>
+    <plurals name="descarga_sin_total">
+        <item quantity="one">%1$d alerta · últimos 30 días · solo la primera vez</item>
+        <item quantity="other">%1$d alertas · últimos 30 días · solo la primera vez</item>
+    </plurals>
     <!-- Para el raro caso de rojo o amarillo sin la hora de la última alerta (la lista todavía no llegó). -->
     <string name="semaforo_actualizado">Actualizado %1$s</string>
 
@@ -975,10 +978,10 @@
     <string name="precision_pie">Se calcula con las alertas guardadas en el teléfono, de los últimos 30 días.</string>
     <string name="resumen_vacio_titulo_7">Sin alertas en los últimos 7 días</string>
     <string name="resumen_vacio_titulo_30">Sin alertas en los últimos 30 días</string>
-    <string name="resumen_vacio_detalle_7">El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
-    <string name="resumen_vacio_detalle_30">El sensor siguió activo todo el mes. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
+    <string name="resumen_vacio_detalle_7">Podés compartir el resumen igual.</string>
+    <string name="resumen_vacio_detalle_30">Podés compartir el resumen igual.</string>
     <string name="resumen_vacio_titulo_fechas">Sin alertas en estas fechas</string>
-    <string name="resumen_vacio_detalle_fechas">El sensor siguió activo. Podés compartir el resumen igual: muestra que la red estuvo tranquila.</string>
+    <string name="resumen_vacio_detalle_fechas">Podés compartir el resumen igual.</string>
     <!-- La imagen que se comparte (Figma 107-4862): solo cantidades, sin IP ni nombres de equipos (RNF02) -->
     <string name="resumen_imagen_semanal">Resumen semanal</string>
     <string name="resumen_imagen_mensual">Resumen mensual</string>
@@ -1064,10 +1067,14 @@
     <string name="personas_nombre">Nombre</string>
     <string name="personas_nombre_ejemplo">Por ejemplo: Laura</string>
     <string name="personas_falta_nombre">Escribí el nombre de la persona.</string>
+    <!-- Como "Sin conexión: el bloqueo no se envió.": dice qué pasó con lo que se pidió. -->
+    <string name="personas_codigo_sin_conexion">Sin conexión: el código no se generó.</string>
     <string name="personas_perfil">Perfil</string>
     <string name="personas_generar_codigo">Generar código</string>
     <string name="personas_hacer_administrador">Hacer administrador</string>
     <string name="personas_pasar_a_analista">Pasar a analista</string>
+    <string name="personas_dar_permiso_bloquear">Darle permiso de bloquear</string>
+    <string name="personas_sacar_permiso_bloquear">Sacarle el permiso de bloquear</string>
     <string name="personas_quitar">Quitar del equipo</string>
     <string name="personas_quitar_titulo">¿Quitar a %1$s del equipo?</string>
     <string name="personas_quitar_texto">Su teléfono deja de tener acceso a %1$s. Queda en el registro de cambios.</string>
@@ -1080,11 +1087,13 @@
     </plurals>
     <string name="personas_ahora_administrador">%1$s ahora es administrador.</string>
     <string name="personas_ahora_analista">%1$s ahora es analista.</string>
+    <string name="personas_ahora_bloquea">%1$s ya puede bloquear.</string>
+    <string name="personas_ahora_pide_aprobacion">%1$s ahora pide aprobación para bloquear.</string>
     <string name="personas_quitada">%1$s ya no está en el equipo.</string>
     <string name="perfil_administrador">Administrador</string>
     <string name="perfil_analista">Analista</string>
-    <string name="perfil_administrador_detalle">Además cambia las severidades y suma o quita gente.</string>
-    <string name="perfil_analista_detalle">Revisa las alertas y elige sus avisos.</string>
+    <string name="perfil_administrador_detalle">Además bloquea, cambia las severidades y suma o quita gente.</string>
+    <string name="perfil_analista_detalle">Revisa las alertas, pide bloqueos y elige sus avisos.</string>
 
     <!-- Código para sumar a una persona (Figma 468-2735) -->
     <string name="codigo_titulo">Código para %1$s</string>
@@ -1197,4 +1206,75 @@
     <string name="tema_como_el_telefono_detalle">Cambia solo cuando el teléfono pasa a oscuro.</string>
     <string name="tema_claro">Claro</string>
     <string name="tema_oscuro">Oscuro</string>
+    <!-- Bloqueo del origen de una alerta en el firewall (decisión 51) -->
+    <string name="bloqueo_titulo">Bloqueo</string>
+    <string name="bloqueo_sin_bloquear">Sin bloquear</string>
+    <string name="bloqueo_nunca">El firewall nunca bloquea este equipo</string>
+    <string name="bloqueo_firewall_no_responde">El firewall no responde</string>
+    <string name="bloqueo_bloquear">Bloquear</string>
+    <string name="bloqueo_pedir">Pedir bloqueo</string>
+    <string name="bloqueo_pedido">Pedido de bloqueo · %1$s</string>
+    <string name="bloqueo_lo_pidio">Lo pidió %1$s · %2$s</string>
+    <string name="bloqueo_espera_administrador">Espera a alguien que pueda bloquear</string>
+    <string name="bloqueo_rechazar">Rechazar</string>
+    <string name="bloqueo_aprobar">Aprobar</string>
+    <string name="bloqueo_esperando_firewall">Esperando al firewall</string>
+    <string name="bloqueo_lo_bloqueo">Lo bloqueó %1$s · %2$s</string>
+    <string name="bloqueo_cambiar_duracion">Cambiar duración</string>
+    <string name="bloqueo_desbloquear">Desbloquear</string>
+    <string name="bloqueo_vence">Bloqueado · vence %1$s</string>
+    <string name="bloqueo_hasta_desbloquear_titulo">Bloqueado hasta desbloquear</string>
+    <string name="bloqueo_hasta_desbloquear">hasta desbloquear</string>
+    <string name="bloqueo_horas">%1$d h</string>
+    <string name="bloqueo_minutos">%1$d min</string>
+    <string name="bloqueo_motivo_propuesto">%1$s de %2$s a %3$s.</string>
+    <string name="bloqueo_motivo_propuesto_alerta">Alerta de %1$s a %2$s.</string>
+    <string name="bloqueo_hoja_bloquear">Bloquear %1$s</string>
+    <string name="bloqueo_hoja_pedir">Pedir bloqueo de %1$s</string>
+    <string name="bloqueo_hoja_duracion">Cambiar la duración del bloqueo de %1$s</string>
+    <string name="bloqueo_hoja_desbloquear">Desbloquear %1$s</string>
+    <string name="bloqueo_hoja_rechazar">Rechazar el pedido de bloqueo de %1$s</string>
+    <string name="bloqueo_guardar">Guardar</string>
+    <string name="bloqueo_ejemplo_bloquear">Por ejemplo: fuerza bruta contra srv-sueldos.</string>
+    <string name="bloqueo_ejemplo_duracion">Por ejemplo: el ataque sigue.</string>
+    <string name="bloqueo_ejemplo_desbloquear">Por ejemplo: se cambió la contraseña y se revisó el equipo.</string>
+    <string name="bloqueo_ejemplo_rechazar">Por ejemplo: es el backup nocturno.</string>
+    <string name="bloqueo_cuanto">¿Por cuánto tiempo?</string>
+    <string name="bloqueo_cuanto_desde_ahora">¿Por cuánto tiempo, desde ahora?</string>
+    <string name="bloqueo_1_hora">1 hora</string>
+    <string name="bloqueo_24_horas">24 horas</string>
+    <string name="bloqueo_hasta_desbloquear_opcion">Hasta desbloquear</string>
+    <string name="bloqueo_motivo_falta">Escribí el motivo.</string>
+    <string name="bloqueo_sin_conexion">Sin conexión: el bloqueo no se envió.</string>
+    <string name="error_bloqueo_no_posible">El servidor no aceptó el cambio del bloqueo.</string>
+    <string name="bloqueos_titulo">Bloqueos</string>
+    <string name="bloqueos_pedido_por">Pedido de %1$s · espera aprobación</string>
+    <string name="estado_sistema_firewall">Firewall</string>
+    <string name="estado_sistema_firewall_ultima">Última consulta hace %1$s</string>
+    <string name="estado_sistema_ayuda_con_firewall">Sensor de red: recibe una copia del tráfico de la red.\nAnálisis en vivo: revisa ese tráfico cada 20 s.\nServidor de alertas: guarda las alertas y avisa por Telegram.\nFirewall: aplica los bloqueos que aprueba una persona; pregunta cada 10 s.\nVerde: funciona. Ámbar: el sensor pierde tráfico. Rojo: no funciona o no hay datos.</string>
+    <string name="registro_bloqueo">Bloqueó %1$s por %2$s</string>
+    <string name="registro_bloqueo_hasta">Bloqueó %1$s hasta desbloquear</string>
+    <string name="registro_bloqueo_cambio">Cambió el bloqueo de %1$s a %2$s</string>
+    <string name="registro_bloqueo_cambio_hasta">Dejó %1$s bloqueado hasta desbloquear</string>
+    <string name="registro_desbloqueo">Desbloqueó %1$s</string>
+    <string name="registro_permiso_bloqueo">Le dio permiso de bloquear a %1$s</string>
+    <string name="registro_sin_permiso_bloqueo">Le sacó el permiso de bloquear a %1$s</string>
+    <string name="bloqueo_se_corta">%1$s no va a llegar a otras áreas ni a internet durante %2$s.</string>
+    <string name="bloqueo_se_corta_hasta">%1$s no va a llegar a otras áreas ni a internet hasta que alguien lo desbloquee.</string>
+    <string name="bloqueo_vuelve">%1$s vuelve a llegar a otras áreas y a internet.</string>
+    <string name="bloqueo_sin_bloqueo_de_pantalla">Para bloquear, el teléfono tiene que tener huella o PIN.</string>
+    <string name="huella_titulo">Confirmá que sos vos</string>
+    <string name="huella_bloquear">Bloquear %1$s · %2$s</string>
+    <string name="huella_duracion">Bloqueo de %1$s · %2$s</string>
+    <string name="huella_desbloquear">Desbloquear %1$s</string>
+    <string name="huella_aprobar">Aprobar el bloqueo de %1$s</string>
+    <string name="huella_sumar">Sumar a %1$s como %2$s</string>
+    <string name="huella_hacer_administrador">Hacer administrador a %1$s</string>
+    <string name="huella_pasar_a_analista">Pasar a analista a %1$s</string>
+    <string name="huella_dar_permiso">Darle permiso de bloquear a %1$s</string>
+    <string name="huella_sacar_permiso">Sacarle el permiso de bloquear a %1$s</string>
+    <string name="huella_quitar">Quitar a %1$s del equipo</string>
+    <string name="personas_sin_bloqueo_de_pantalla">Para esto, el teléfono tiene que tener huella o PIN.</string>
+    <string name="personas_navegador">Navegador</string>
+    <string name="personas_bloquea">Bloquea</string>
 </resources>

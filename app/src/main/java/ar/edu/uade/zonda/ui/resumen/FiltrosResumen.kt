@@ -24,11 +24,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -146,11 +148,12 @@ fun ColumnScope.ContenidoFiltrosResumen(
     alMostrar: (FiltroResumen) -> Unit,
     alVerEnLista: (FiltroResumen) -> Unit,
 ) {
-    val recursos = LocalContext.current.resources
+    val recursos = LocalResources.current
     var borrador by remember(filtro) { mutableStateOf(filtro) }
-    val quedan = cuantas(borrador)
+    // Recorre hasta mil alertas: solo cuando cambia lo elegido, no en cada recomposición.
+    val quedan = remember(borrador, cuantas) { cuantas(borrador) }
 
-    Text(text = stringResource(R.string.resumen_filtrar_titulo), style = MaterialTheme.typography.tituloHoja)
+    Text(text = stringResource(R.string.resumen_filtrar_titulo), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     GrupoDeChips(titulo = stringResource(R.string.resumen_filtrar_cuando)) {
         barras.forEach { franja ->
             ChipOpcion(

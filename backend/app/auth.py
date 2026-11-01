@@ -14,6 +14,8 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, Request
 
 ALFABETO_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sin 0, O, 1 ni I, que se confunden al escribir
+# Cómo se llaman los navegadores pareados con el tablero web (decisión 50): «Tablero web · Chrome en Windows».
+PREFIJO_TABLERO = "Tablero web"
 
 
 def ahora() -> datetime:
@@ -62,9 +64,10 @@ def crear_codigo_pareo(
     return codigo, vence
 
 
-def canjear_codigo_pareo(con: sqlite3.Connection, codigo: str, nombre_dispositivo: str, dias_token: int) -> dict:
+def canjear_codigo_pareo(con: sqlite3.Connection, codigo: str, nombre_dispositivo: str, dias_token: int, tipo: str | None = None) -> dict:
     """Invalida el código y crea el dispositivo con su token, con la persona y el perfil del código, y lo
-    anota en el registro de cambios. Lanza 400 si no existe, 410 si venció o se usó."""
+    anota en el registro de cambios. Lanza 400 si no existe, 410 si venció o se usó. Sin [tipo] (la app y el
+    tablero anteriores a la API 0.9.0), el tablero web se reconoce por su nombre."""
     from .registro import anotar
 
     fila = con.execute("SELECT * FROM codigos_pareo WHERE codigo = ?", (normalizar_codigo(codigo),)).fetchone()
@@ -76,9 +79,11 @@ def canjear_codigo_pareo(con: sqlite3.Connection, codigo: str, nombre_dispositiv
     dispositivo_id = "d-" + uuid.uuid4().hex[:12]
     emitido = ahora()
     vence = emitido + timedelta(days=dias_token)
+    nombre = nombre_dispositivo.strip()
+    tipo = tipo or ("navegador" if nombre.startswith(PREFIJO_TABLERO) else "telefono")
     con.execute(
-        "INSERT INTO dispositivos (id, nombre, token_hash, creado_en, vence_en, perfil, persona, ultimo_uso) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (dispositivo_id, nombre_dispositivo.strip(), hash_token(token), iso(emitido), iso(vence), fila["perfil"], fila["persona"], iso(emitido)),
+        "INSERT INTO dispositivos (id, nombre, token_hash, creado_en, vence_en, perfil, persona, ultimo_uso, tipo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (dispositivo_id, nombre, hash_token(token), iso(emitido), iso(vence), fila["perfil"], fila["persona"], iso(emitido), tipo),
     )
     con.execute(
         "UPDATE codigos_pareo SET usado_en = ?, dispositivo_id = ? WHERE codigo = ?",

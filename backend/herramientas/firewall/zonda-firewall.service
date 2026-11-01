@@ -1,0 +1,37 @@
+[Unit]
+Description=Zonda - bloqueos aprobados en el firewall (decision 51, herramientas/firewall)
+# Despues de las reglas del firewall: nftables.conf empieza con flush ruleset y borraria la tabla de Zonda.
+After=network-online.target nftables.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Un usuario que crea systemd para el servicio, sin carpeta propia, con un solo permiso del nucleo:
+# CAP_NET_ADMIN, el que hace falta para cambiar la tabla de Zonda. No corre como root.
+DynamicUser=yes
+AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN
+NoNewPrivileges=yes
+# El token del firewall esta en un archivo que solo lee root; systemd le pasa una copia solo a este servicio.
+LoadCredential=token:/etc/zonda-firewall/token
+# Lo que nunca se bloquea en el laboratorio: las cuatro puertas de enlace, la red de los servidores y la red
+# de VirtualBox, donde esta el servidor de Zonda (10.0.2.2).
+ExecStart=/usr/bin/python3 -I -u /opt/zonda-firewall/agente_firewall.py \
+    --servidor http://10.0.2.2:8000 --token-archivo %d/token --tabla /etc/zonda-firewall/zonda.nft \
+    --nunca-bloquear 192.168.10.1,192.168.20.1,192.168.30.1,192.168.40.1,192.168.20.0/24,10.0.2.0/24
+Restart=always
+RestartSec=10
+# Con la configuracion mal (sin token, una red que no es red) no tiene sentido reintentar.
+RestartPreventExitStatus=2
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

@@ -73,6 +73,10 @@ export const e = {
   severidades: {},
   registro: [],
   telegram: null,
+  // Los bloqueos de la red y su firewall (GET /bloqueos, decisión 51); null si la red no tiene firewall.
+  bloqueos: null,
+  // La llave de acceso de esta computadora: { tiene, puedeCrear } (GET /llaves).
+  llave: null,
   desfase: 0,
   ultimaRespuesta: 0,
   servidorCaido: false,

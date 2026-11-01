@@ -6,13 +6,17 @@ tipo en el momento justo está `zonda emitir` (app/cli.py), que usa la misma fun
 """
 
 import asyncio
+import logging
 import random
+import sqlite3
 import uuid
 from datetime import timedelta
 
 from .auth import ahora, iso
 from .db import Base
 from .modelos import CLAVE_REGLAS, CLAVE_UMBRALES
+
+registro = logging.getLogger("zonda.emisor")
 
 COLUMNAS_COPIADAS = (
     "cantidad_flujos, uid_referencia, origen_ip, destino_ip, servicio, protocolo, puerto, puerto_referencia, puertos_distintos, "
@@ -63,6 +67,10 @@ def emitir_una(
 
 
 async def emitir_periodicamente(base: Base, cada_segundos: int) -> None:
+    """Una alerta nueva cada [cada_segundos]. Con la base trabada se saltea esa vuelta: la demo sigue."""
     while True:
         await asyncio.sleep(cada_segundos)
-        emitir_una(base)
+        try:
+            emitir_una(base)
+        except sqlite3.Error:
+            registro.exception("No se pudo emitir la alerta de la demo, se prueba en la vuelta siguiente")

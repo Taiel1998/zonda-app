@@ -284,6 +284,7 @@ fun ErrorZonda.mensaje(): Int = when (this) {
     is ErrorZonda.SinPermiso -> R.string.error_sin_permiso
     is ErrorZonda.UltimoAdministrador -> R.string.error_ultimo_administrador
     is ErrorZonda.YaAsignada -> R.string.error_ya_asignada
+    is ErrorZonda.BloqueoNoPosible -> R.string.error_bloqueo_no_posible
 }
 
 /** "Administrador" o "Analista" (decisión 39). */

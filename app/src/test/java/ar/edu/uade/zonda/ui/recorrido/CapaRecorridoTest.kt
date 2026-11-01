@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
@@ -100,6 +103,24 @@ class CapaRecorridoTest {
         compose.onNodeWithText("PASO 11 DE 11").assertIsDisplayed()
         compose.onNodeWithText("Listo").assertIsDisplayed()
         assertEquals(ObjetivoRecorrido.TARJETA_AVISOS, registro.actual)
+    }
+
+    @Test
+    fun `al terminar el recorrido no queda ningun objetivo pedido`() {
+        val registro = RegistroRecorrido()
+        var conRecorrido by mutableStateOf(true)
+        compose.setContent {
+            ZondaTheme {
+                CompositionLocalProvider(LocalRegistroRecorrido provides registro) {
+                    if (conRecorrido) CapaRecorrido(paso = PasoRecorrido.AJUSTES, registro = registro, alSiguiente = {}, alOmitir = {})
+                }
+            }
+        }
+        compose.runOnIdle { assertEquals(ObjetivoRecorrido.TARJETA_AVISOS, registro.actual) }
+
+        // Antes quedaba el último paso: cada vez que Ajustes se abría, se desplazaba sola hasta Avisos.
+        conRecorrido = false
+        compose.runOnIdle { assertNull(registro.actual) }
     }
 
     @Test

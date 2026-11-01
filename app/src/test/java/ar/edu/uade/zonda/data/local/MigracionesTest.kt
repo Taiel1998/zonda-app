@@ -12,6 +12,7 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.data.local.entidades.CatalogoEquipoEntity
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.Perfil
+import ar.edu.uade.zonda.domain.model.Persona
 import ar.edu.uade.zonda.domain.model.Motivo
 import ar.edu.uade.zonda.domain.model.OrigenRevision
 import ar.edu.uade.zonda.domain.model.Severidad
@@ -24,6 +25,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -204,6 +206,78 @@ class MigracionesTest {
         migrada.close()
     }
 
+    @Test
+    fun `la migracion 6 a 7 deja a las personas guardadas como telefonos`() = runTest {
+        val nueva = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO).allowMainThreadQueries().build()
+        nueva.redesDao().insertar(Fixtures.red("red-1").aEntidad(creadaEn = Fixtures.AHORA))
+        val taiel = Persona("d-1", "Taiel", "moto g(9) plus", Perfil.ADMINISTRADOR, null, vos = true)
+        nueva.redesDao().guardarPersonas("red-1", listOf(taiel.aEntidad("red-1", 0)))
+        nueva.close()
+        llevarAVersion6()
+
+        val migrada = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO)
+            .addMigrations(*MIGRACIONES)
+            .allowMainThreadQueries()
+            .build()
+
+        assertEquals(listOf(taiel), migrada.redesDao().observarPersonas("red-1").first().map { it.aDominio() })
+        migrada.close()
+    }
+
+    @Test
+    fun `la migracion 7 a 8 deja a los analistas guardados pidiendo aprobacion`() = runTest {
+        val nueva = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO).allowMainThreadQueries().build()
+        nueva.redesDao().insertar(Fixtures.red("red-1").copy(perfil = Perfil.ANALISTA).aEntidad(creadaEn = Fixtures.AHORA))
+        val taiel = Persona("d-1", "Taiel", "moto g(9) plus", Perfil.ADMINISTRADOR, null, vos = false)
+        val laura = Persona("d-2", "Laura", "Teléfono de Laura", Perfil.ANALISTA, null, vos = true)
+        nueva.redesDao().guardarPersonas("red-1", listOf(taiel.aEntidad("red-1", 0), laura.aEntidad("red-1", 1)))
+        nueva.close()
+        llevarAVersion7()
+
+        val migrada = Room.databaseBuilder(contexto, ZondaDatabase::class.java, ARCHIVO)
+            .addMigrations(*MIGRACIONES)
+            .allowMainThreadQueries()
+            .build()
+
+        // El administrador bloquea por su perfil; la analista pide aprobación hasta que el servidor diga otra cosa.
+        assertFalse(migrada.redesDao().obtener("red-1")!!.aDominio().puedeBloquear)
+        val personas = migrada.redesDao().observarPersonas("red-1").first().map { it.aDominio() }
+        assertEquals(listOf(true, false), personas.map { it.puedeBloquear })
+        migrada.redesDao().actualizarPerfil("red-1", "ANALISTA", "d-2", permisoDeBloquear = true)
+        assertTrue(migrada.redesDao().obtener("red-1")!!.aDominio().puedeBloquear)
+        migrada.close()
+    }
+
+    /** Deja el archivo como lo dejaba la versión 7 (la primera 1.0.9): sin el permiso de bloquear de los analistas. */
+    private fun llevarAVersion7() {
+        val db = SQLiteDatabase.openDatabase(contexto.getDatabasePath(ARCHIVO).path, null, SQLiteDatabase.OPEN_READWRITE)
+        db.beginTransaction()
+        try {
+            quitarColumnas(db, "personas", listOf("permisoDeBloquear"))
+            quitarColumnas(db, "redes", listOf("permisoDeBloquear"))
+            db.version = 7
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+    }
+
+    /** Deja el archivo como lo dejaba la versión 6 (la 1.0.8): las personas sin la marca del navegador. */
+    private fun llevarAVersion6() {
+        llevarAVersion7()
+        val db = SQLiteDatabase.openDatabase(contexto.getDatabasePath(ARCHIVO).path, null, SQLiteDatabase.OPEN_READWRITE)
+        db.beginTransaction()
+        try {
+            quitarColumnas(db, "personas", listOf("navegador"))
+            db.version = 6
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+    }
+
     /**
      * Deja el archivo como lo dejaba la versión 5 (la 1.0.4): sin perfiles, personas, registro de
      * cambios, importancia de los equipos ni asignaciones.
@@ -213,7 +287,7 @@ class MigracionesTest {
         db.beginTransaction()
         try {
             listOf("asignaciones_pendientes", "asignaciones", "registro_cambios", "personas").forEach { db.execSQL("DROP TABLE $it") }
-            quitarColumnas(db, "redes", listOf("perfil", "dispositivoId"))
+            quitarColumnas(db, "redes", listOf("perfil", "dispositivoId", "permisoDeBloquear"))
             quitarColumnas(db, "catalogo_equipos", listOf("importancia"))
             quitarColumnas(db, "revisiones", listOf("persona"))
             quitarColumnas(db, "alertas", listOf("responsableId", "responsable", "asignadaPorId", "asignadaPor", "asignadaEn"))
@@ -345,6 +419,8 @@ class MigracionesTest {
             ZondaDatabase.MIGRACION_3_4,
             ZondaDatabase.MIGRACION_4_5,
             ZondaDatabase.MIGRACION_5_6,
+            ZondaDatabase.MIGRACION_6_7,
+            ZondaDatabase.MIGRACION_7_8,
         )
         val COLUMNAS_VERSION_2 = listOf("accesoVencido", "accesoEmitidoEn", "accesoVenceEn")
     }

@@ -29,7 +29,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -143,7 +146,13 @@ private fun RecuadroDeCampo(
 @Composable
 private fun TextoBajoCampo(ayuda: String?, error: String?) {
     when {
-        error != null -> Text(text = error, style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.error)
+        // El error aparece al tocar Guardar o Conectar: TalkBack lo anuncia sin que haya que buscarlo.
+        error != null -> Text(
+            text = error,
+            style = MaterialTheme.typography.nota,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
         ayuda != null -> Text(text = ayuda, style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -186,7 +195,11 @@ fun CampoTexto(
             interactionSource = interaccion,
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = descripcion },
+                .semantics {
+                    contentDescription = descripcion
+                    // TalkBack dice "Error" y el porqué al volver al campo.
+                    if (error != null) this.error(error)
+                },
             decorationBox = { campo ->
                 RecuadroDeCampo(etiqueta, ejemplo, vacio = valor.isEmpty(), enfocado = enfocado, conError = error != null, obligatorio = obligatorio, campo = campo)
             },
@@ -248,7 +261,11 @@ fun CampoCodigo(
             interactionSource = interaccion,
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = descripcion },
+                .semantics {
+                    contentDescription = descripcion
+                    // TalkBack dice "Error" y el porqué al volver al campo.
+                    if (error != null) this.error(error)
+                },
             decorationBox = { campo ->
                 if (casillas) {
                     Box {

@@ -1,0 +1,25 @@
+#!/usr/sbin/nft -f
+# Tabla de Zonda en el firewall (decision 51). Va aparte de las reglas del firewall (/etc/nftables.conf),
+# que no se tocan. La arma el programa del firewall (agente_firewall.py) cuando falta o alguien la cambio,
+# vacia: los bloqueos los vuelve a poner el. Las dos primeras lineas hacen que cargarla de nuevo reemplace
+# la tabla entera, sin duplicar reglas.
+add table inet zonda
+delete table inet zonda
+
+table inet zonda {
+	# Los equipos bloqueados desde Zonda. Cada uno vence solo (lo saca el nucleo, aunque el servidor este
+	# apagado), salvo los que quedan hasta desbloquear. El programa nunca pone mas de 20 a la vez.
+	set bloqueados {
+		type ipv4_addr
+		flags timeout
+		size 256
+	}
+
+	# Antes que las reglas del firewall (prioridad filter - 10): descarta lo que sale de un equipo bloqueado
+	# o va hacia el, tambien en las conexiones ya establecidas.
+	chain antes_del_filtro {
+		type filter hook forward priority filter - 10; policy accept;
+		ip saddr @bloqueados counter drop
+		ip daddr @bloqueados counter drop
+	}
+}

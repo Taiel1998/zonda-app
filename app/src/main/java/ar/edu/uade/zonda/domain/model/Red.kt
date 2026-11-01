@@ -31,7 +31,16 @@ data class Red(
     val perfil: Perfil = Perfil.ADMINISTRADOR,
     /** El id de este teléfono en el servidor, para saber cuáles alertas son "asignadas a mí". */
     val dispositivoId: String? = null,
+    /**
+     * El permiso de bloquear de este teléfono si es analista (decisión 51), que un administrador le da al de
+     * guardia. Lo confirma el servidor en cada sincronización.
+     */
+    val permisoDeBloquear: Boolean = false,
 ) {
+    /** Si este teléfono bloquea en el acto: un administrador siempre; un analista, con permiso. Si no, pide el bloqueo. */
+    val puedeBloquear: Boolean
+        get() = perfil.esAdministrador || permisoDeBloquear
+
     /** Nunca se sincronizó: la pantalla Estado muestra "sin datos" y nunca un semáforo verde (RF01, criterio 3). */
     val sinDatos: Boolean
         get() = ultimaSincronizacion == null

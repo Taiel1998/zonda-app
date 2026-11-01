@@ -68,8 +68,9 @@ const LUZ = { funciona: 'funciona', parcial: 'parcial', detenido: 'detenido', si
 const COLOR_PUNTO = { funciona: 'var(--baja)', parcial: 'var(--media)', detenido: 'var(--alta)' };
 const NOMBRE_ESTADO = { funciona: 'Funciona', parcial: 'Viendo parcialmente', detenido: 'Detenido', sin_datos: 'Sin datos', no_responde: 'No responde' };
 
-/** Las tres piezas: el punto, el semáforo y un dato corto con la misma forma en las tres. Se pinta cada
-    segundo (el dato cuenta los segundos) y cada vez que contesta /salud. */
+/** Las piezas: el punto, el semáforo y un dato corto con la misma forma en todas. Se pinta cada segundo (el
+    dato cuenta los segundos) y cada vez que contesta /salud. La del firewall, solo si la red tiene uno
+    (decisión 51): en modo de observación no aparece. */
 export function pintarEstado() {
   const sistema = e.salud && e.salud.sistema;
   const ahora = ahoraServidor();
@@ -78,6 +79,11 @@ export function pintarEstado() {
     analisis: { estado: sistema ? sistema.analisis : 'sin_datos', dato: datoAnalisis(sistema, ahora) },
     servidor: { estado: e.servidorCaido ? 'no_responde' : 'funciona', dato: datoServidor() },
   };
+  const firewall = e.salud && e.salud.firewall;
+  const conFirewall = Boolean(firewall && firewall.habilitado);
+  const piezaFirewall = $('pieza-firewall');
+  if (piezaFirewall && piezaFirewall.hidden === conFirewall) piezaFirewall.hidden = !conFirewall;
+  if (conFirewall) piezas.firewall = { estado: firewall.conectado ? 'funciona' : 'no_responde', dato: datoFirewall(firewall, ahora) };
   for (const [id, pieza] of Object.entries(piezas)) {
     const luz = LUZ[pieza.estado] || 'detenido';
     const semaforo = $(`semaforo-${id}`);
@@ -106,6 +112,12 @@ function datoSensor(sistema, ahora) {
 function datoAnalisis(sistema, ahora) {
   if (!sistema || !sistema.ultimaCorrida) return 'Sin datos';
   return `Última revisión hace ${cuanto(ahora - Date.parse(sistema.ultimaCorrida))}`;
+}
+
+/** «Última consulta hace 5 s», como la pieza de la app: el firewall pregunta cada 10 s qué bloquear. */
+function datoFirewall(firewall, ahora) {
+  if (!firewall.ultimaConsulta) return 'Sin datos';
+  return `Última consulta hace ${cuanto(ahora - Date.parse(firewall.ultimaConsulta))}`;
 }
 
 /** «Última respuesta hace 7 s», «Respondió recién» o «No responde». */

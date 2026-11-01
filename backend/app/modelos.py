@@ -7,6 +7,7 @@ dos, de la más alta de las dos (cambio 9).
 """
 
 import ipaddress
+import json
 from datetime import datetime
 from typing import Literal
 
@@ -19,10 +20,13 @@ Resultado = Literal["ataque_real", "falso_positivo"]
 # Dos perfiles (decisión 39): el analista revisa alertas y elige sus avisos; el administrador, además,
 # cambia la configuración de la red y suma o quita gente.
 Perfil = Literal["administrador", "analista"]
+# Qué se pareó (decisión 51): un teléfono o un navegador con el tablero web. Un bloqueo en el firewall solo
+# lo hace efectivo un administrador desde su teléfono; desde el navegador se pide.
+TipoDispositivo = Literal["telefono", "navegador"]
 # Qué tan importante es un equipo de la red (decisión 41): sube o baja un nivel la severidad de sus alertas.
 Importancia = Literal["critico", "normal", "poco_importante"]
-# Lo que anota el registro de cambios (decisión 40).
-TipoCambio = Literal["severidad", "importancia", "persona_nueva", "perfil", "persona_quitada"]
+# Lo que anota el registro de cambios (decisión 40), con los bloqueos del firewall (decisión 51).
+TipoCambio = Literal["severidad", "importancia", "persona_nueva", "perfil", "persona_quitada", "bloqueo", "desbloqueo", "permiso_bloqueo"]
 # Los motivos del Figma (pantallas "revisar: ataque real" y "revisar: falso positivo").
 Motivo = Literal[
     "escalado_al_proveedor",
@@ -171,6 +175,16 @@ class EstadoSistema(BaseModel):
     perdidaLimite: float
 
 
+class EstadoFirewall(BaseModel):
+    # Los bloqueos se prenden al conectar un firewall (ZONDA_FIREWALL_TOKEN); si no, la red queda en modo de observación.
+    habilitado: bool
+    # El firewall preguntó hace menos de ZONDA_FIREWALL_LIMITE segundos.
+    conectado: bool
+    ultimaConsulta: str | None
+    # Lo que el firewall nunca bloquea (redes CIDR), según su último informe: la app no ofrece el botón ahí.
+    nuncaBloquear: list[str]
+
+
 class Salud(BaseModel):
     version: str
     hora: str
@@ -179,6 +193,8 @@ class Salud(BaseModel):
     tokenVence: str | None
     # Solo con un token válido: sin token, /salud no dice nada del laboratorio.
     sistema: EstadoSistema | None = None
+    # También solo con token: el firewall, para la pieza «Firewall» de Estado del sistema (decisión 51).
+    firewall: EstadoFirewall | None = None
 
 
 class Contadores(BaseModel):
@@ -234,6 +250,8 @@ class Conflicto(BaseModel):
 class PareoEntrada(BaseModel):
     codigo: str = Field(min_length=8, max_length=9)
     nombreDispositivo: str = Field(min_length=1, max_length=80)
+    # telefono o navegador. Sin el campo (la app y el tablero anteriores a la API 0.9.0), se deduce del nombre.
+    tipo: TipoDispositivo | None = None
 
 
 class PareoSalida(BaseModel):
@@ -266,6 +284,12 @@ class Persona(BaseModel):
     ultimoUso: str | None
     # Si es el teléfono que pregunta.
     vos: bool
+    # telefono o navegador (el tablero web, decisión 51): a un navegador no se le asigna una alerta, porque no
+    # recibe el aviso de la asignación; la app lo muestra aparte en Personas.
+    tipo: Literal["telefono", "navegador"] = "telefono"
+    # «Bloqueos» (decisión 51): true si bloquea en el acto (un administrador siempre; un analista, si un
+    # administrador lo pasó a «Bloquea»); false si pide aprobación.
+    puedeBloquear: bool = False
 
 
 class CodigoPersonaEntrada(BaseModel):
@@ -296,6 +320,12 @@ class CodigoPersona(BaseModel):
 
 class PerfilEntrada(BaseModel):
     perfil: Perfil
+
+
+class PermisoBloqueoEntrada(BaseModel):
+    """«Bloqueos» de un analista (decisión 51): true si bloquea en el acto, false si pide aprobación."""
+
+    puedeBloquear: bool
 
 
 class Equipo(BaseModel):
@@ -594,6 +624,195 @@ class ParesTrafico(BaseModel):
     desde: int
     hasta: int
     pares: list[ParDeTrafico]
+
+
+# ---- Bloqueos en el firewall (decisión 51) ----
+
+# pedido (falta que lo apruebe un administrador desde su teléfono), aprobado (el firewall todavía no dijo
+# que lo aplicó), aplicado, rechazado (por un administrador o por el firewall), desbloqueado o vencido.
+EstadoBloqueo = Literal["pedido", "aprobado", "aplicado", "rechazado", "desbloqueado", "vencido"]
+# Cuánto puede durar un bloqueo, en segundos: 1 hora (la que propone la app) o 24 horas. Sin duración (null)
+# queda hasta que alguien lo desbloquea.
+DURACIONES_BLOQUEO = (3600, 86400)
+
+
+def _duracion_permitida(valor: int | None) -> int | None:
+    if valor is not None and valor not in DURACIONES_BLOQUEO:
+        raise ValueError("La duración tiene que ser de 1 o 24 horas, o hasta desbloquear")
+    return valor
+
+
+class Bloqueo(BaseModel):
+    """El bloqueo del origen de una alerta en el firewall: quién lo pidió, quién lo aprobó y cómo terminó."""
+
+    id: str
+    alertaId: str
+    ip: str
+    # El nombre del equipo en el catálogo; null si no tiene.
+    nombre: str | None
+    estado: EstadoBloqueo
+    # Segundos; null: hasta desbloquear. Lo que manda es venceEn.
+    duracion: int | None
+    motivo: str
+    pedidoPorId: str
+    pedidoPor: str
+    pedidoEn: str
+    aprobadoPorId: str | None
+    aprobadoPor: str | None
+    aprobadoEn: str | None
+    venceEn: str | None
+    # Cuándo dijo el firewall que lo aplicó.
+    aplicadoEn: str | None
+    # Quién lo rechazó o lo desbloqueó ("Firewall" si lo rechazó el firewall), cuándo y por qué.
+    terminadoPorId: str | None
+    terminadoPor: str | None
+    terminadoEn: str | None
+    detalle: str | None
+
+
+class ListaBloqueos(BaseModel):
+    bloqueos: list[Bloqueo]
+    firewall: EstadoFirewall
+
+
+class BloqueoEntrada(BaseModel):
+    accionId: str = Field(min_length=8, max_length=64)
+    alertaId: str = Field(min_length=1, max_length=128)
+    duracion: int | None = 3600
+    # Obligatorio: queda en el registro de cambios (decisión 40).
+    motivo: str = Field(max_length=500)
+
+    @field_validator("duracion")
+    @classmethod
+    def duracion_permitida(cls, valor: int | None) -> int | None:
+        return _duracion_permitida(valor)
+
+    @field_validator("motivo")
+    @classmethod
+    def motivo_con_texto(cls, valor: str) -> str:
+        return _texto_obligatorio(valor, "Escribí por qué lo bloqueás")
+
+
+class DuracionEntrada(BaseModel):
+    """Cuánto dura desde ahora un bloqueo vigente; null lo deja hasta desbloquear."""
+
+    duracion: int | None
+    motivo: str = Field(max_length=500)
+
+    @field_validator("duracion")
+    @classmethod
+    def duracion_permitida(cls, valor: int | None) -> int | None:
+        return _duracion_permitida(valor)
+
+    @field_validator("motivo")
+    @classmethod
+    def motivo_con_texto(cls, valor: str) -> str:
+        return _texto_obligatorio(valor, "Escribí por qué lo cambiás")
+
+
+class MotivoEntrada(BaseModel):
+    """El motivo de un desbloqueo o del rechazo de un pedido."""
+
+    motivo: str = Field(max_length=500)
+
+    @field_validator("motivo")
+    @classmethod
+    def motivo_con_texto(cls, valor: str) -> str:
+        return _texto_obligatorio(valor, "Escribí el motivo")
+
+
+class BloqueoFirewall(BaseModel):
+    """Lo que el firewall tiene que tener bloqueado ahora: la IP y los segundos que le quedan (null: sin vencimiento)."""
+
+    id: str
+    ip: str
+    segundos: int | None
+
+
+class ListaFirewall(BaseModel):
+    bloqueos: list[BloqueoFirewall]
+    horaServidor: str
+
+
+class RechazoFirewall(BaseModel):
+    id: str = Field(min_length=1, max_length=64)
+    # nunca_bloquear (está en su lista), tope (pasa sus topes) o invalido (la IP no le sirve).
+    motivo: Literal["nunca_bloquear", "tope", "invalido"]
+
+
+class InformeFirewall(BaseModel):
+    """Lo que manda el agente del firewall a POST /firewall/informe después de cada vuelta."""
+
+    model_config = {"extra": "ignore"}
+
+    aplicados: list[str] = Field(default_factory=list, max_length=1000)
+    rechazados: list[RechazoFirewall] = Field(default_factory=list, max_length=1000)
+    # Su lista de «nunca bloquear»; null si no la manda en esta vuelta (queda la anterior).
+    nuncaBloquear: list[str] | None = Field(default=None, max_length=200)
+
+    @field_validator("nuncaBloquear")
+    @classmethod
+    def redes(cls, valor: list[str] | None) -> list[str] | None:
+        if valor is None:
+            return None
+        try:
+            return [str(ipaddress.ip_network(red.strip(), strict=False)) for red in valor]
+        except ValueError as error:
+            raise ValueError("nuncaBloquear lleva redes o direcciones IP") from error
+
+
+class InformeResultado(BaseModel):
+    aplicados: int
+    rechazados: int
+
+
+# ---- Llaves de acceso del tablero web (decisión 51) ----
+
+# Lo más grande que puede ser lo que manda la computadora al crear la llave o al firmar (una firma RSA de
+# Windows Hello, en JSON, anda por los 2 KB).
+MAXIMO_CREDENCIAL = 16_000
+
+
+class EstadoLlave(BaseModel):
+    """La llave de acceso de este navegador: si la tiene y si todavía la puede crear (al parearse)."""
+
+    tiene: bool
+    puedeCrear: bool
+
+
+class OpcionesLlave(BaseModel):
+    """Lo que el navegador le pasa a navigator.credentials (create o get) y el desafío con el que vuelve."""
+
+    desafioId: str
+    opciones: dict
+
+
+class LlaveNueva(BaseModel):
+    """La llave que creó la computadora (lo que devuelve navigator.credentials.create, en JSON)."""
+
+    desafioId: str = Field(min_length=1, max_length=64)
+    credencial: dict
+
+    @field_validator("credencial")
+    @classmethod
+    def credencial_chica(cls, valor: dict) -> dict:
+        if len(json.dumps(valor)) > MAXIMO_CREDENCIAL:
+            raise ValueError("La credencial es demasiado grande")
+        return valor
+
+
+class AccionLlave(BaseModel):
+    """Lo que la llave va a confirmar, igual a lo que después se manda: {"tipo": "bloquear", "alertaId": "a-1",
+    "duracion": 3600}."""
+
+    accion: dict[str, str | int | bool | None]
+
+    @field_validator("accion")
+    @classmethod
+    def accion_chica(cls, valor: dict) -> dict:
+        if not 1 <= len(valor) <= 8 or "tipo" not in valor or any(len(k) > 32 or (isinstance(v, str) and len(v) > 128) for k, v in valor.items()):
+            raise ValueError("La acción lleva su tipo y como mucho ocho datos cortos")
+        return valor
 
 
 class MinutoLatidos(BaseModel):

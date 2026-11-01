@@ -47,13 +47,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -67,7 +68,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
@@ -170,7 +174,7 @@ fun EstadoContenido(
     ahoraDelSistema: () -> Instant = { ahora },
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val contexto = LocalContext.current
+    val recursos = LocalResources.current
     val alcance = rememberCoroutineScope()
     var sincronizado by remember { mutableStateOf<AvisoEstado.Sincronizado?>(null) }
 
@@ -182,8 +186,8 @@ fun EstadoContenido(
             is AvisoEstado.Sincronizado -> sincronizado = aviso
             is AvisoEstado.Error -> alcance.launch {
                 val resultado = snackbar.showSnackbar(
-                    message = contexto.getString(aviso.error.mensaje()),
-                    actionLabel = contexto.getString(R.string.error_reintentar),
+                    message = recursos.getString(aviso.error.mensaje()),
+                    actionLabel = recursos.getString(R.string.error_reintentar),
                     duration = SnackbarDuration.Short,
                 )
                 if (resultado == SnackbarResult.ActionPerformed) acciones.alSincronizar()
@@ -317,6 +321,8 @@ private fun LazyListScope.datosDeLaRed(
             text = stringResource(ayudaDeLosContadores(elegida)),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // Al tocar un contador o el semáforo cambia a "Mostrando solo altas sin revisar...": TalkBack lo anuncia.
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
     item {
@@ -330,6 +336,11 @@ private fun LazyListScope.datosDeLaRed(
         )
     }
     estado.sistema?.let { sistema -> item(key = "estado-del-sistema") { TarjetaEstadoSistema(sistema, ahoraDelSistema) } }
+    estado.sistema?.bloqueos?.takeIf { it.isNotEmpty() }?.let { bloqueos ->
+        // La hora solo decide si "vence 13:34" lleva la fecha: con el reloj de 30 s alcanza y la tarjeta no se
+        // vuelve a armar cada segundo, como pasaba con el segundero de Estado del sistema.
+        item(key = "bloqueos") { TarjetaBloqueos(bloqueos, zona, ahora, acciones.alAbrirDetalle) }
+    }
     item {
         // "Ver todas" no está con la red tranquila y sin filtro (Figma 1-178): la leyenda ocupa ese lugar.
         val conVerTodas = elegida != null || datos.semaforo != Semaforo.VERDE
@@ -347,7 +358,8 @@ private fun LazyListScope.datosDeLaRed(
             )
         }
     } else {
-        items(datos.alertas, key = { it.id }) { alerta ->
+        // contentType: al desplazarse, una tarjeta reusa la composición de otra tarjeta y no la de otra pieza.
+        items(datos.alertas, key = { it.id }, contentType = { "alerta" }) { alerta ->
             TarjetaAlerta(alerta = alerta, alTocar = acciones.alAbrirDetalle, zona = zona, contexto = estado.contexto)
         }
     }
@@ -526,7 +538,9 @@ private fun EncabezadoLista(titulo: String, alVerTodas: (() -> Unit)?) {
             text = titulo,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .semantics { heading() },
         )
         if (alVerTodas != null) {
             val descripcion = stringResource(R.string.estado_ver_todas_descripcion)
@@ -686,19 +700,26 @@ private class EnElMedioDeLaPantalla(private val barraDeEstado: Int) : PopupPosit
 
 /** La hora de ahora, que avanza cada 30 segundos: así "Última alta sin revisar: hace 5 min" no se queda quieta. */
 @Composable
-private fun relojDeLaPantalla(): State<Instant> = produceState(initialValue = Instant.now()) {
-    while (true) {
-        delay(30_000)
-        value = Instant.now()
-    }
-}
+private fun relojDeLaPantalla(): State<Instant> = relojQueAvanza(cada = 30_000)
 
 /** La hora de ahora, que avanza cada segundo, para "Última corrida hace 12 s" de la tarjeta Estado del sistema. */
 @Composable
-private fun relojDeSegundos(): State<Instant> = produceState(initialValue = Instant.now()) {
-    while (true) {
-        delay(1_000)
-        value = Instant.now()
+private fun relojDeSegundos(): State<Instant> = relojQueAvanza(cada = 1_000)
+
+/**
+ * Un reloj que avanza solo mientras la pantalla está a la vista: con la app en segundo plano no despierta el
+ * hilo principal cada segundo (RNF08). Al volver se pone en hora en el acto.
+ */
+@Composable
+private fun relojQueAvanza(cada: Long): State<Instant> {
+    val ciclo = LocalLifecycleOwner.current.lifecycle
+    return produceState(initialValue = Instant.now(), ciclo) {
+        ciclo.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                value = Instant.now()
+                delay(cada)
+            }
+        }
     }
 }
 

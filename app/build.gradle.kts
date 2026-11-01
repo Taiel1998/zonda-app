@@ -31,8 +31,8 @@ android {
         // Android 8.0 (API 26) o superior, según RNF11.
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "1.0.8"
+        versionCode = 11
+        versionName = "1.0.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -116,6 +116,8 @@ dependencies {
     implementation(libs.zxing.core)
     // Sincronización en segundo plano cada 15 minutos con red (RNF08).
     implementation(libs.androidx.work.runtime)
+    // Lo que corta o devuelve tráfico se confirma con la huella o el PIN del teléfono (decisión 51).
+    implementation(libs.androidx.biometric)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

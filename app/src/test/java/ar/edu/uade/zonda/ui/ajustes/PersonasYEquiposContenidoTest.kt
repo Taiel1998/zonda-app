@@ -153,8 +153,10 @@ class PersonasYEquiposContenidoTest {
         }
 
         compose.onNodeWithText("Escribí el nombre de la persona.").assertIsDisplayed()
-        compose.onNodeWithText("Revisa las alertas y elige sus avisos.").assertIsDisplayed()
-        compose.onNodeWithText("Además cambia las severidades y suma o quita gente.").assertIsDisplayed()
+        // Sin red dice qué pasó con el código, no el texto general de los datos guardados.
+        compose.onNodeWithText("Sin conexión: el código no se generó.").assertIsDisplayed()
+        compose.onNodeWithText("Revisa las alertas, pide bloqueos y elige sus avisos.").assertIsDisplayed()
+        compose.onNodeWithText("Además bloquea, cambia las severidades y suma o quita gente.").assertIsDisplayed()
         compose.onNodeWithText("Generar código").assertIsDisplayed()
     }
 

@@ -24,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.ui.theme.cuerpo
@@ -77,7 +79,7 @@ private fun AsaDeHoja() {
 /** Título y texto de una hoja. */
 @Composable
 private fun EncabezadoDeHoja(titulo: String, texto: String) {
-    Text(text = titulo, style = MaterialTheme.typography.tituloHoja)
+    Text(text = titulo, style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     Text(text = texto, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
@@ -156,7 +158,7 @@ fun HojaAyuda(
 @Composable
 fun HojaCondiciones(alCerrar: () -> Unit) {
     HojaInferior(alCerrar = alCerrar) {
-        Text(text = stringResource(R.string.condiciones_titulo), style = MaterialTheme.typography.tituloHoja)
+        Text(text = stringResource(R.string.condiciones_titulo), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
         BloqueDeCondiciones(R.string.condiciones_guarda_titulo, R.string.condiciones_guarda)
         BloqueDeCondiciones(R.string.condiciones_sale_titulo, R.string.condiciones_sale)
         BloqueDeCondiciones(R.string.condiciones_tiempo_titulo, R.string.condiciones_tiempo)

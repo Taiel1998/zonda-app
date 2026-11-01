@@ -166,7 +166,7 @@ private fun PrimerRenglon(alerta: Alerta, zona: ZoneId) {
         val alLado = elAviso == null || lasEtiquetas.width + elAviso.width + laHora.width + 2 * separacion <= ancho
         val altoRenglon = maxOf(lasEtiquetas.height, laHora.height, if (alLado) elAviso?.height ?: 0 else 0)
         val debajo = 6.dp.roundToPx()
-        val alto = if (alLado || elAviso == null) altoRenglon else altoRenglon + debajo + elAviso.height
+        val alto = if (elAviso == null || alLado) altoRenglon else altoRenglon + debajo + elAviso.height
         layout(ancho, alto) {
             lasEtiquetas.placeRelative(0, (altoRenglon - lasEtiquetas.height) / 2)
             laHora.placeRelative(ancho - laHora.width, (altoRenglon - laHora.height) / 2)

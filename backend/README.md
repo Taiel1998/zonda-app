@@ -43,6 +43,10 @@ Configuración: copiar `.env.ejemplo` a `.env` (no se commitea). Variables que l
 | `ZONDA_LATIDO_LIMITE` | Segundos sin latido del análisis en vivo para darlo por detenido (tarjeta Estado del sistema y aviso de Telegram) | `120` |
 | `ZONDA_LATIDO_REVISAR_CADA` | Cada cuántos segundos el vigía revisa la edad del latido | `15` |
 | `ZONDA_PERDIDA_LIMITE` | Porcentaje de pérdida de captura de Zeek desde el que el sensor ve parcialmente (tarjeta en amarillo y aviso de Telegram) | `1.0` |
+| `ZONDA_FIREWALL_TOKEN` | Token con el que el agente del firewall lee los bloqueos aprobados (cabecera `X-Token-Firewall`). Sin él, los bloqueos están apagados y la red queda en modo de observación. Es una contraseña: no va al repositorio | vacío |
+| `ZONDA_FIREWALL_LIMITE` | Segundos sin que el firewall pregunte para darlo por desconectado | `60` |
+| `ZONDA_MAX_BLOQUEOS`, `ZONDA_BLOQUEOS_POR_HORA` | Topes de los bloqueos: activos a la vez en la red y pedidos por dispositivo en una hora | `20`, `10` |
+| `ZONDA_ORIGENES_LLAVE` | Direcciones del tablero, además de `ZONDA_URL_PUBLICA`, desde las que valen las llaves de acceso (decisión 51), separadas por comas; por ejemplo `http://localhost:8001` para probar. Una llave se ata al nombre: por la IP no funciona | vacío |
 
 ## Datos de muestra y fechas corridas
 
@@ -78,21 +82,22 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
 
 | Ruta | Recibe → devuelve | Errores |
 |---|---|---|
-| `GET /salud` | nada → `version`, `hora`, `alertas` (cantidad), `red`; con token, también `tokenVence` y `sistema` (cómo están el sensor, el análisis en vivo y el servidor; sin token, `null`) | 401 si el token venció |
+| `GET /salud` | nada → `version`, `hora`, `alertas` (cantidad), `red`; con token, también `tokenVence`, `sistema` (cómo están el sensor, el análisis en vivo y el servidor) y `firewall` (si está habilitado y conectado, su última consulta y su lista de «nunca bloquear»; decisión 51); sin token, `null` | 401 si el token venció |
 | `GET /estado` | token → `sinRevisar {alta, media, baja}`, `ultimoFlujoProcesado`, `horaServidor` | 401 |
 | `GET /alertas?desde=&severidad=&servicio=&destino=&metodo=&estado=` | cursor → `alertas` nuevas o modificadas, `cursorSiguiente`, `hayMas`; sin cursor trae solo los últimos 30 días y suma `total` | 401, 410 cursor de otra instalación |
 | `GET /alertas/{id}` | id → la alerta con sus veredictos e `historial` | 401, 404 |
 | `POST /alertas/{id}/revision` | `{accionId, resultado, motivo, comentario, versionVista, forzar, revisadaEn}` → la alerta actualizada | 401, 404, 409 con `revisionAjena` y la alerta, 422 motivo que no corresponde o comentario vacío |
 | `GET /severidades` | token → `{tipo: severidad}`, con los tipos de `tipoAtaque` más `servicio_no_autorizado` y `volumen_inusual` | 401 |
 | `PUT /severidades` | `{severidades: {tipo: severidad}, motivo}` → la tabla completa. Solo un administrador y con motivo: cada tipo que cambia queda en el registro de cambios; marca todas las alertas como modificadas | 401, 403 analista, 422 tipo desconocido o sin motivo |
-| `POST /pareo` | `{codigo, nombreDispositivo}` → `{token, red, emitido, vence, dispositivoId, alertas30Dias, perfil, persona}`; el perfil y el nombre son los del código | 400 inválido, 410 vencido o usado |
-| `GET /personas` | token → la gente de la red: `[{id, nombre, telefono, perfil, ultimoUso, vos}]` | 401 |
-| `POST /personas/codigo` | `{nombre, perfil}` → `{codigo, vence, contenido, nombre, perfil}`: un código de un uso para esa persona y lo que lleva su QR | 401, 403 analista, 422 sin nombre |
-| `PUT /personas/{id}/perfil` | `{perfil}` → la persona | 401, 403 analista, 404, 409 si deja al equipo sin administrador |
-| `DELETE /personas/{id}` | token → 204; revoca el token de ese teléfono | 401, 403 analista, 404, 409 si deja gente sin administrador |
+| `POST /pareo` | `{codigo, nombreDispositivo, tipo}` → `{token, red, emitido, vence, dispositivoId, alertas30Dias, perfil, persona}`; el perfil y el nombre son los del código. `tipo` es `telefono` o `navegador` (el tablero web); sin él, un nombre que empieza con «Tablero web» es un navegador | 400 inválido, 410 vencido o usado |
+| `GET /personas` | token → la gente de la red: `[{id, nombre, telefono, perfil, ultimoUso, vos, tipo, puedeBloquear}]`; `tipo` es `telefono` o `navegador` (el tablero web) y `puedeBloquear` dice si bloquea en el acto: un administrador siempre, un analista si un administrador le dio permiso (decisión 51) | 401 |
+| `POST /personas/codigo` | `{nombre, perfil}` → `{codigo, vence, contenido, nombre, perfil}`: un código de un uso para esa persona y lo que lleva su QR; desde un navegador, con la llave (`X-Llave`, decisión 51) | 401, 403 analista o navegador sin llave, 422 sin nombre |
+| `PUT /personas/{id}/perfil` | `{perfil}` → la persona; el permiso de bloquear vuelve a cero; desde un navegador, con la llave | 401, 403 analista o navegador sin llave, 404, 409 si deja al equipo sin administrador |
+| `PUT /personas/{id}/bloqueos` | `{puedeBloquear}` → la persona: un analista bloquea en el acto (el de guardia) o pide aprobación; queda en el registro como `permiso_bloqueo`; desde un navegador, con la llave (decisión 51) | 401, 403 analista o navegador sin llave, 404, 409 si es administrador |
+| `DELETE /personas/{id}` | token → 204; revoca el token de ese teléfono; desde un navegador, con la llave | 401, 403 analista o navegador sin llave, 404, 409 si deja gente sin administrador |
 | `GET /equipos` | token → `[{ip, nombre, importancia}]`, los equipos con nombre en el catálogo | 401 |
 | `PUT /equipos/{ip}` | `{importancia, motivo}` → el equipo; queda en el registro y sus alertas vuelven a bajar con la severidad nueva | 401, 403 analista, 404 fuera del catálogo, 422 sin motivo |
-| `GET /registro` | token → `[{id, fecha, tipo, autorId, autor, objeto, nombre, antes, despues, motivo}]`, de lo más nuevo a lo más viejo | 401 |
+| `GET /registro?bloqueos=` | token → `[{id, fecha, tipo, autorId, autor, objeto, nombre, antes, despues, motivo}]`, de lo más nuevo a lo más viejo; con `bloqueos=true`, también los bloqueos y desbloqueos del firewall y los cambios del permiso de bloquear | 401 |
 | `PUT /alertas/{id}/asignacion` | `{accionId, responsableId}` (null deja la alerta sin asignar) → la alerta; idempotente por `accionId` | 401, 403 lo que el perfil no permite, 404, 409 un analista se asigna una que ya tiene otra persona, 422 persona fuera del equipo |
 | `GET /telegram` | token → `{vinculado, bot, vinculadoEn, avisos}` de este teléfono | 401 |
 | `POST /telegram/vinculo` | `{avisos}` opcional → `{codigo, enlaceBot, vence}`; guarda los avisos | 401, 503 sin bot |
@@ -103,6 +108,18 @@ Convenciones: campos en camelCase; valores de enumeraciones en minúsculas con g
 | `GET /catalogo` | token → `{equipos {ip: nombre}, servicios []}` | 401 |
 | `POST /ingesta/alertas` | `{alertas: [episodios con el formato de la semilla], catalogo?}`, con la cabecera `X-Token-Ingesta` (no el token de los teléfonos) → `{recibidas, creadas, actualizadas}`; crea o actualiza cada episodio por id. La usa la plataforma de detección (prueba de punta a punta) | 401 token inválido, 422 formato, 503 sin token configurado |
 | `POST /ingesta/latido` | `{hora, flujos, ultimoFlujo, zeekActivo, episodios, intervalo, perdidaCaptura, perdidaCapturaEn, acksCaptura, perdidaSimulada}`, con la misma cabecera `X-Token-Ingesta` → `{recibidoEn}`; el análisis en vivo lo manda al final de cada ciclo, aunque no haya episodios, y se guarda el último | 401 token inválido, 422 formato, 503 sin token configurado |
+| `GET /bloqueos?alerta=` | token → `{bloqueos, firewall {habilitado, conectado, ultimaConsulta, nuncaBloquear}}`, los bloqueos de lo más nuevo a lo más viejo | 401 |
+| `POST /bloqueos` | `{accionId, alertaId, duracion, motivo}` → el bloqueo (201): `aprobado` si lo hace alguien que bloquea (un administrador o un analista con permiso) desde su teléfono o con la llave de su computadora, `pedido` si lo hace un analista que pide aprobación o un tablero sin llave; idempotente por `accionId` | 401, 403 llave que no confirma este bloqueo, 404 sin la alerta, 409 equipo ya bloqueado o tope, 422 sin motivo, duración no permitida, origen que no es un equipo o en «nunca bloquear», 429 demasiados en una hora, 503 sin firewall |
+| `POST /bloqueos/{id}/aprobacion` | token de alguien que bloquea, en su teléfono o con la llave de su computadora → el bloqueo aprobado; la duración corre desde ahora | 401, 403 a quien pide aprobación o al tablero sin llave, 404, 409 ya no está pendiente, 422 en «nunca bloquear», 503 |
+| `POST /bloqueos/{id}/rechazo` | `{motivo}` → el pedido rechazado | 401, 403 a quien pide aprobación, 404, 409 ya no está pendiente, 422 sin motivo, 503 |
+| `POST /bloqueos/{id}/desbloqueo` | `{motivo}` → el bloqueo desbloqueado; si ya terminó, sin cambios; desde un navegador, con la llave | 401, 403 a quien pide aprobación o al tablero sin llave, 404, 409 si es un pedido, 422 sin motivo, 503 |
+| `PUT /bloqueos/{id}/duracion` | `{duracion, motivo}` → el bloqueo con el vencimiento nuevo, desde ahora; `null` lo deja hasta desbloquear; como bloquear, desde el teléfono o con la llave de alguien que bloquea | 401, 403 a quien pide aprobación o al tablero sin llave, 404, 409 no vigente, 422 sin motivo o duración no permitida, 503 |
+| `GET /llaves` | token → `{tiene, puedeCrear}`: si este navegador tiene su llave de acceso y si todavía la puede crear (en los 10 minutos después de parearse; decisión 51) | 401 |
+| `POST /llaves/opciones` | token de un navegador, desde la dirección del tablero → `{desafioId, opciones}` para `navigator.credentials.create`: la llave pide la huella, la cara o el PIN y se ata al nombre del tablero | 401, 403 teléfono, fuera de los 10 minutos o por la IP, 409 ya tiene llave, 503 sin la librería `webauthn` |
+| `POST /llaves` | `{desafioId, credencial}` → 201 `{tiene, puedeCrear}`: guarda la parte pública de la llave si la firma, el desafío, la dirección y la verificación de la persona están bien | 401, 403 si algo no coincide, 409 ya tiene llave o pasaron los 10 minutos, 503 |
+| `POST /llaves/desafio` | `{accion}` (lo mismo que se va a mandar, por ejemplo `{"tipo": "bloquear", "alertaId": "a-1", "duracion": 3600}`) → `{desafioId, opciones}` para `navigator.credentials.get`; la firma vuelve con la acción en la cabecera `X-Llave` (base64url de `{desafio, credencial}`), sirve una sola vez y vence a los dos minutos | 401, 403 sin llave para este tablero, 422 acción mal armada, 503 |
+| `GET /firewall/bloqueos` | cabecera `X-Token-Firewall` (no el token de un dispositivo) → `{bloqueos: [{id, ip, segundos}], horaServidor}`, lo que el firewall tiene que tener bloqueado ahora; `segundos` null es sin vencimiento | 401 token inválido, 503 sin token configurado |
+| `POST /firewall/informe` | `{aplicados, rechazados: [{id, motivo}], nuncaBloquear}`, con `X-Token-Firewall` → `{aplicados, rechazados}` | 401, 422 formato, 503 |
 
 ### Una alerta
 
@@ -185,6 +202,14 @@ El sensor manda el tráfico con el mismo token de la ingesta. `herramientas/sens
 `GET /trafico?desde=&hasta=&paso=` (token de un dispositivo) devuelve el total y cada servicio en tramos de `paso` segundos (5, 10, 15, 30, 60, 300, 900 o 3600; hasta 5.000 puntos), solo los tramos con tráfico, y `ultimoTramo`. `GET /trafico/pares?desde=&hasta=` devuelve quién habló con quién, con el nombre de cada equipo del catálogo y sus servicios de más a menos conexiones. `GET /latidos?desde=&hasta=` devuelve los latidos del análisis en vivo por minuto (decisión 52), para los gráficos del estado del sistema; se guardan los mismos días que el tráfico.
 
 **Pérdida de captura.** Si el puerto espejo se satura, Zeek deja de ver parte del tráfico y Zonda no se entera de lo que no ve. Zeek lo mide con `misc/capture-loss` (ya cargado en zeek-lab): cada 15 minutos escribe en `capture_loss.log` qué porcentaje de lo que confirmaron los ACK de TCP no llegó a verse (`percent_lost`; sin tráfico TCP da 0 ACK y 0 %). El latido manda la última medición (`perdidaCaptura`, `perdidaCapturaEn`, `acksCaptura`) y `sistema` la devuelve con `perdidaLimite`. Si pasa de `ZONDA_PERDIDA_LIMITE` (1 %) con Zeek vivo y el latido al día, el sensor queda `parcial` ("viendo parcialmente", en amarillo en la app). Para probarlo sin saturar nada, el script del laboratorio toma el porcentaje de `vivo/.perdida_simulada` si existe y lo marca con `perdidaSimulada: true`.
+
+### Bloqueos en el firewall (decisión 51)
+
+Viene apagado: sin `ZONDA_FIREWALL_TOKEN`, las rutas de los bloqueos responden `503` y la red queda en modo de observación. Con el token, un administrador bloquea desde su teléfono el origen de una alerta, con un motivo obligatorio y una duración de 1 o 24 horas, o hasta desbloquear (`duracion: null`), que siempre se puede soltar antes. La IP sale de la alerta, nunca del pedido, y tiene que ser la de un equipo (IPv4, sin difusión ni multidifusión). Un analista o el tablero web (un dispositivo `navegador`) lo piden, y lo aprueba un administrador desde su teléfono; un pedido que nadie aprueba en una hora vence.
+
+El servidor no guarda ninguna clave del firewall. El agente del firewall pregunta cada pocos segundos con `GET /firewall/bloqueos`, valida cada IP contra su lista de «nunca bloquear» y sus topes, la aplica con su vencimiento y cuenta qué hizo con `POST /firewall/informe`: la app dice «Aplicado» recién ahí. El vencimiento lo cumple el propio firewall, aunque el servidor no responda. La lista de «nunca bloquear» que manda el firewall también la usa el servidor para no aceptar esos equipos. El agente para Linux con nftables está en `herramientas/firewall/`, con su tabla propia, su servicio de systemd y cómo se instala.
+
+Cada bloqueo y cada desbloqueo quedan en el registro de cambios, con su motivo; `GET /registro` los trae solo con `?bloqueos=true`, porque la app 1.0.8 no conoce esos tipos. El bot avisa a quienes bloquean (los administradores y los analistas con permiso), si tienen Telegram, cuando un bloqueo se pide, se aprueba, se desbloquea o el firewall no lo aplica, también a quien lo hizo, sin IP ni nombres de equipos («Taiel bloqueó el origen de una alerta ALTA · SSH · 09:51. Por 1 h.»).
 
 ## Bot de Telegram
 
@@ -288,7 +313,9 @@ app/revisiones.py  cómo se guarda una revisión: la usan la ruta y zonda tranqu
 app/emisor.py      alertas nuevas para la demo, cada N segundos o una a pedido con zonda emitir
 app/telegram.py    bot de Telegram: vínculo con /start y aviso de cada alerta nueva
 app/latido.py      latido del análisis en vivo: el estado del sistema y el vigía que avisa si se detiene
+app/bloqueos.py    bloqueos del origen de una alerta en el firewall: las rutas de la gente y las del agente
 app/cli.py         zonda pair, revoke, dispositivos, emitir, tranquila
+herramientas/firewall/  el agente del firewall (Linux con nftables): programa, tabla, servicio e instalador
 tests/             pytest con TestClient y una base nueva por test
 Caddyfile          HTTPS delante de la API: TLS 1.2 y 1.3, Let's Encrypt por DNS, sin el puerto 80
 demo.cmd           la demo con HTTPS en una ventana (arranca scripts/demo.ps1)

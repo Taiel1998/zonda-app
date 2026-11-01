@@ -84,7 +84,7 @@ fun HojaTipos(severidades: SeveridadPorTipo, alCerrar: () -> Unit) {
 @Composable
 fun ContenidoHojaTipos(severidades: SeveridadPorTipo, alCerrar: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(text = stringResource(R.string.tipos_titulo), style = MaterialTheme.typography.tituloHoja)
+        Text(text = stringResource(R.string.tipos_titulo), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
         BloqueDeLaHoja(R.string.tipos_bloque_ia, R.string.tipos_bloque_ia_frase, TipoAtaque.DETECTADOS_POR_LA_IA, severidades)
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         BloqueDeLaHoja(R.string.tipos_bloque_sin_ia, R.string.tipos_bloque_sin_ia_frase, TipoAtaque.NO_DETECTADOS_POR_LA_IA, severidades)

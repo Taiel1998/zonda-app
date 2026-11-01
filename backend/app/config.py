@@ -21,6 +21,9 @@ class Config:
     telegram_token: str = field(default="", repr=False)
     # Token con el que la plataforma de detección manda alertas a POST /ingesta/alertas; también es secreto.
     ingesta_token: str = field(default="", repr=False)
+    # Token con el que el agente del firewall pide los bloqueos aprobados (decisión 51); también es secreto.
+    # Sin él, los bloqueos están apagados y la red queda en modo de observación.
+    firewall_token: str = field(default="", repr=False)
     telegram_api: str = "https://api.telegram.org"
     enlace_aviso: str = "https://taiel1998.github.io/a/"
     emitir_cada: int = 0
@@ -37,6 +40,14 @@ class Config:
     perdida_limite: float = 1.0
     # Días de tráfico que guarda el servidor para el tablero web (decisión 49); lo anterior se borra.
     dias_trafico: int = 7
+    # Segundos sin que el firewall pregunte para darlo por desconectado, y los topes de los bloqueos: activos
+    # a la vez en la red y pedidos por dispositivo en una hora (decisión 51).
+    firewall_limite: int = 60
+    max_bloqueos: int = 20
+    bloqueos_por_hora: int = 10
+    # Direcciones del tablero, además de url_publica, desde las que vale una llave de acceso (decisión 51); por
+    # ejemplo http://localhost:8001 para probar. Una llave se ata al nombre: con una IP no funciona.
+    origenes_llave: list[str] = field(default_factory=list)
 
     @classmethod
     def desde_entorno(cls) -> "Config":
@@ -54,6 +65,7 @@ class Config:
             bot_usuario=leer("ZONDA_TELEGRAM_BOT", "zonda_alertas_bot"),
             telegram_token=leer("TELEGRAM_BOT_TOKEN", "").strip(),
             ingesta_token=leer("ZONDA_INGESTA_TOKEN", "").strip(),
+            firewall_token=leer("ZONDA_FIREWALL_TOKEN", "").strip(),
             telegram_api=leer("ZONDA_TELEGRAM_API", "https://api.telegram.org").rstrip("/"),
             enlace_aviso=leer("ZONDA_ENLACE_AVISO", "https://taiel1998.github.io/a/"),
             emitir_cada=int(leer("ZONDA_EMITIR_CADA", "0")),
@@ -64,4 +76,8 @@ class Config:
             latido_revisar_cada=int(leer("ZONDA_LATIDO_REVISAR_CADA", "15")),
             perdida_limite=float(leer("ZONDA_PERDIDA_LIMITE", "1.0").replace(",", ".")),
             dias_trafico=int(leer("ZONDA_DIAS_TRAFICO", "7")),
+            firewall_limite=int(leer("ZONDA_FIREWALL_LIMITE", "60")),
+            max_bloqueos=int(leer("ZONDA_MAX_BLOQUEOS", "20")),
+            bloqueos_por_hora=int(leer("ZONDA_BLOQUEOS_POR_HORA", "10")),
+            origenes_llave=[origen.strip() for origen in leer("ZONDA_ORIGENES_LLAVE", "").split(",") if origen.strip()],
         )

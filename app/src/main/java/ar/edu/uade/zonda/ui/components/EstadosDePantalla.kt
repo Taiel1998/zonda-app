@@ -28,6 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -70,6 +73,9 @@ fun BannerSinConexion(
                 },
                 style = MaterialTheme.typography.opcion,
                 color = Tonos.Media.texto,
+                // La sincronización automática no avisa la falta de red porque está este banner (decisión 27):
+                // con TalkBack, el banner se anuncia al aparecer.
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
     }
@@ -89,7 +95,9 @@ fun BannerAccesoVencido(alConectar: () -> Unit, modifier: Modifier = Modifier) {
                 text = stringResource(R.string.acceso_vencido_banner),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Tonos.Alta.texto,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
             )
             TextButton(onClick = alConectar) { Text(stringResource(R.string.acceso_vencido_conectar)) }
         }

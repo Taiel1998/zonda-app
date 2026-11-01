@@ -1,0 +1,2 @@
+# Estos archivos se copian tal cual al firewall, que es Linux: siempre con fin de linea LF, tambien en Windows.
+* text eol=lf
