@@ -12,6 +12,7 @@ import {
 import { abrirEnLugar, abrirHoja, actualizarFondo, avisoInferior } from './hojas.js';
 import { bajarArchivo, csvDe, nombreConFecha } from './compartir.js';
 import { alternarAyuda, cerrarAyuda } from './ayuda.js';
+import { enPagina, piePaginas, primeraPagina } from './paginas.js';
 import { origenBloqueado, seccionBloqueo } from './bloqueo.js';
 import {
   RANGOS_ALERTAS, claveRango, esRelativo, fraseRango, horasDe, nombreRango, rangoActual, rangoCorrido, selectorDeHorario,
@@ -62,19 +63,18 @@ function filtrosNuevos() {
 }
 
 export const f = filtrosNuevos();
-let limite = 50;
 
 /** La lista con las alertas que empezaron en un tramo (una barra de «Alertas en el tiempo»), sin otros filtros. */
 export function verAlertasEntre(desde, hasta) {
   Object.assign(f, filtrosNuevos(), { rango: { desde, hasta } });
-  limite = 50;
+  primeraPagina('alertas');
 }
 
 /** La lista con las sin revisar de una severidad, desde el principio: lo que cuenta su contador en En vivo y
     lo que abre el aviso de varias altas, como el enlace de la notificación de la app. */
 export function verSinRevisar(severidad) {
   Object.assign(f, filtrosNuevos(), { estado: 'sin_revisar', severidades: new Set([severidad]), rango: { desde: 'todo', hasta: 'now' } });
-  limite = 50;
+  primeraPagina('alertas');
 }
 
 /** Los servicios con chip propio: los diez con más alertas; el resto entra en "Los demás" (decisión 46). */
@@ -122,6 +122,7 @@ function comparar(x, y) {
 function ordenarPor(columna) {
   if (orden.columna === columna) orden.descendente = !orden.descendente;
   else Object.assign(orden, { columna, descendente: true });
+  primeraPagina('alertas');
   pintarAlertas();
 }
 
@@ -154,7 +155,7 @@ export function pintarAlertas() {
     chip(severidades, f.severidades.size, hojaSeveridad),
     chip(cantidadMasFiltros() ? `Más filtros (${cantidadMasFiltros()})` : 'Más filtros', cantidadMasFiltros(), hojaMasFiltros),
     chip(textoResponsable(), f.responsable !== 'todas', hojaResponsableFiltro),
-    hayFiltros() ? el('button', { type: 'button', class: 'boton-texto', onclick: () => { Object.assign(f, filtrosNuevos()); limite = 50; pintarAlertas(); } }, 'Limpiar filtros') : null);
+    hayFiltros() ? el('button', { type: 'button', class: 'boton-texto', onclick: () => { Object.assign(f, filtrosNuevos()); primeraPagina('alertas'); pintarAlertas(); } }, 'Limpiar filtros') : null);
 
   pintarBarraAlertas();
   const lista = alertasFiltradas();
@@ -170,7 +171,7 @@ export function pintarAlertas() {
   const cuerpo = $('tabla-alertas').tBodies[0];
   // Si el foco estaba en una fila, vuelve a la misma alerta después de armar la tabla de nuevo.
   const enfocada = cuerpo.contains(document.activeElement) ? document.activeElement.closest('tr[data-id]') : null;
-  vaciar(cuerpo, lista.slice(0, limite).map((a) => {
+  vaciar(cuerpo, enPagina(lista, 'alertas').map((a) => {
     const quien = responsableId(a);
     // El estado va al lado de la severidad, así nunca queda cortado; el puerto, en el detalle.
     return el('tr', {
@@ -193,10 +194,8 @@ export function pintarAlertas() {
   }
   $('vacio-alertas').hidden = lista.length > 0 || !e.sincronizada;
   $('vacio-alertas').textContent = 'Ninguna alerta con estos filtros. Cambiá o limpiá los filtros.';
-  $('ver-mas').hidden = lista.length <= limite;
+  vaciar($('alertas-paginas'), piePaginas(lista, 'alertas', pintarAlertas));
 }
-
-export function verMas() { limite += 50; pintarAlertas(); }
 
 function conClase(elemento, clase) {
   elemento.classList.add(clase);
@@ -242,7 +241,7 @@ function pintarBarraAlertas() {
 function ponerRangoAlertas(rango) {
   if (!rango || claveRango(rango) === claveRango(f.rango)) return;
   f.rango = rango;
-  limite = 50;
+  primeraPagina('alertas');
   pintarAlertas();
 }
 
@@ -281,7 +280,7 @@ function hojaDeOpciones({ titulo, subtitulo, grupos, alAplicar }) {
     cuerpo: grupos.map((g) => el('div', { class: 'grupo-opciones' }, g.titulo ? el('p', {}, g.titulo) : null, el('div', { class: 'opciones' }, g.opciones))),
     acciones: [
       { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
-      { texto: 'Aplicar', tipo: 'principal', alHacer: (h) => { alAplicar(); h.cerrar(); limite = 50; pintarAlertas(); } },
+      { texto: 'Aplicar', tipo: 'principal', alHacer: (h) => { alAplicar(); h.cerrar(); primeraPagina('alertas'); pintarAlertas(); } },
     ],
   });
 }

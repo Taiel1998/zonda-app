@@ -6,13 +6,14 @@
 // se confirma con la llave de esta computadora (decisión 51); sin ella, eso se hace desde la app.
 // Los navegadores que abren el tablero van aparte de las personas y las tablas largas, de a páginas (decisión 58).
 
-import { el, fechaHora, haceCuanto, hora, icono, numero, vaciar } from './util.js';
+import { el, fechaHora, haceCuanto, hora, numero, vaciar } from './util.js';
 import {
   $, IMPORTANCIAS, NIVEL, ORDEN_SEVERIDAD, PERFILES, TIPOS, ahoraServidor, e, esAdmin, mandar, nombrePersona, pedir,
 } from './comun.js';
 import { abrirHoja, avisoInferior, confirmar } from './hojas.js';
 import { apagarAvisos, avisoDePrueba, estadoAvisos, permitirAvisos } from './avisos.js';
 import { cabecerasConLlave, tieneLlave } from './llave.js';
+import { enPagina, piePaginas, primeraPagina } from './paginas.js';
 
 const ORDEN_TIPOS_SEVERIDAD = ['fuerza_bruta', 'escaneo', 'ddos', 'probable_falsa_alarma', 'sin_tipificar', 'servicio_no_autorizado', 'volumen_inusual'];
 const MODOS_AVISO = { sonido: 'Con sonido', vibracion: 'Sin sonido', sin_aviso: 'Sin aviso' };
@@ -41,9 +42,6 @@ const sinGuardar = (id) => (DE_LA_SECCION[id] || []).reduce((n, clave) => n + pe
 const BLOQUEOS = { bloquea: 'Bloquea', pide_aprobacion: 'Pide aprobación' };
 const bloqueosDe = (p) => (p.puedeBloquear ? 'bloquea' : 'pide_aprobacion');
 const busqueda = { equipos: '', registro: '' };
-// Las tablas largas van de a páginas de 15 filas, como las tablas de Grafana; la búsqueda vuelve a la primera.
-const POR_PAGINA = 15;
-const paginas = { equipos: 1, registro: 1 };
 // Si llegan datos del servidor mientras alguien escribe o elige, la sección se vuelve a armar al soltar el campo.
 let repintarAlSoltar = false;
 
@@ -194,55 +192,6 @@ function tabla(columnas, filas, id = null) {
     el('table', { class: 'tabla tabla-ajustes', id },
       el('thead', {}, el('tr', {}, columnas.map((c) => el('th', { scope: 'col' }, c)))),
       el('tbody', {}, filas)));
-}
-
-/** Las filas de la página actual; si la lista se achicó (una búsqueda, un cambio), vuelve a la última que existe. */
-function enPagina(lista, clave) {
-  const ultima = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
-  paginas[clave] = Math.min(paginas[clave], ultima);
-  const desde = (paginas[clave] - 1) * POR_PAGINA;
-  return lista.slice(desde, desde + POR_PAGINA);
-}
-
-/** Los números que se ven: la primera, la última y las vecinas de la actual, con «…» en los saltos. */
-function numerosDePagina(actual, ultima) {
-  const vistos = [...new Set([1, actual - 1, actual, actual + 1, ultima])].filter((n) => n >= 1 && n <= ultima).sort((a, b) => a - b);
-  const salida = [];
-  vistos.forEach((n, i) => {
-    if (i && n - vistos[i - 1] > 1) salida.push(null);
-    salida.push(n);
-  });
-  return salida;
-}
-
-/** El pie de una tabla larga, como en Grafana: «16–30 de 57», las flechas y los números. Con una sola página no
-    hay pie. Cambiar de página rehace solo las filas y el pie, y el foco sigue en el botón que se tocó. */
-function piePaginas(lista, clave, repintar) {
-  const ultima = Math.ceil(lista.length / POR_PAGINA);
-  if (ultima <= 1) return null;
-  const actual = paginas[clave];
-  const desde = (actual - 1) * POR_PAGINA + 1;
-  const hasta = Math.min(lista.length, actual * POR_PAGINA);
-  const ir = (n, foco) => {
-    paginas[clave] = n;
-    repintar();
-    const pie = $(`${clave}-paginas`);
-    const boton = pie.querySelector(`[data-foco="${foco}"]:not(:disabled)`) || pie.querySelector('[aria-current="page"]');
-    if (boton) boton.focus();
-  };
-  const flecha = (nombre, n, icon, foco, apagada) => el('button', {
-    type: 'button', class: 'pagina-flecha', 'aria-label': nombre, title: nombre, disabled: apagada, dataset: { foco }, onclick: () => ir(n, foco),
-  }, icono(icon));
-  return el('nav', { class: 'paginas', 'aria-label': 'Páginas de la tabla' },
-    el('span', { class: 'paginas-cuenta' }, `${numero(desde)}–${numero(hasta)} de ${numero(lista.length)}`),
-    flecha('Página anterior', actual - 1, 'izquierda', `${clave}-anterior`, actual === 1),
-    numerosDePagina(actual, ultima).map((n) => (n === null
-      ? el('span', { class: 'paginas-salto', 'aria-hidden': 'true' }, '…')
-      : el('button', {
-        type: 'button', 'aria-label': `Página ${n}`, 'aria-current': n === actual ? 'page' : null, dataset: { foco: `${clave}-${n}` },
-        onclick: () => ir(n, `${clave}-${n}`),
-      }, String(n)))),
-    flecha('Página siguiente', actual + 1, 'derecha', `${clave}-siguiente`, actual === ultima));
 }
 
 function selector({ etiqueta, opciones, valor, foco, alCambiar }) {
@@ -525,7 +474,7 @@ function seccionEquipos() {
     cabecera('Equipos', 'La importancia de un equipo sube o baja un nivel la severidad de sus alertas.'),
     el('input', {
       type: 'search', class: 'buscar-tabla', placeholder: 'Buscar equipo o IP', value: busqueda.equipos, 'aria-label': 'Buscar equipo o IP', dataset: { foco: 'buscar-equipos' },
-      oninput: (ev) => { busqueda.equipos = ev.target.value; paginas.equipos = 1; pintarFilasEquipos(); },
+      oninput: (ev) => { busqueda.equipos = ev.target.value; primeraPagina('equipos'); pintarFilasEquipos(); },
     }),
     tabla(['Equipo', 'IP', 'Importancia'], filasEquipos(equiposFiltrados()), 'tabla-equipos'),
     el('div', { id: 'equipos-paginas' }, piePaginas(equiposFiltrados(), 'equipos', pintarFilasEquipos)),
@@ -756,7 +705,7 @@ function seccionRegistro() {
     cabecera('Registro de cambios', 'Quién cambió la configuración, cuándo y por qué. Lo ve todo el equipo y no se puede borrar.'),
     el('input', {
       type: 'search', class: 'buscar-tabla', placeholder: 'Buscar en el registro', value: busqueda.registro, 'aria-label': 'Buscar en el registro', dataset: { foco: 'buscar-registro' },
-      oninput: (ev) => { busqueda.registro = ev.target.value; paginas.registro = 1; pintarFilasRegistro(); },
+      oninput: (ev) => { busqueda.registro = ev.target.value; primeraPagina('registro'); pintarFilasRegistro(); },
     }),
     tabla(['Cuándo', 'Quién', 'Qué cambió', 'Motivo'], filasRegistro(lista), 'tabla-registro'),
     el('div', { id: 'registro-paginas' }, piePaginas(lista, 'registro', pintarFilasRegistro)),

@@ -10,7 +10,7 @@ import {
 } from './vivo.js';
 import { actualizarPares, configurarMapa, pintarMapa, soltarElegido } from './mapa.js';
 import {
-  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verMas, verSinRevisar,
+  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verSinRevisar,
 } from './alertas.js';
 import { avisarEnLaCompu, avisosActivados, configurarAvisos } from './avisos.js';
 import { pintarResumen } from './resumen.js';
@@ -457,7 +457,6 @@ function iniciar() {
   $('boton-ayuda-estado').addEventListener('click', alternarAyudaEstado);
   $('boton-salir').addEventListener('click', salir);
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.addEventListener('click', () => cambiarVista(boton.dataset.vista));
-  $('ver-mas').addEventListener('click', verMas);
   $('ver-todas-alertas').addEventListener('click', () => cambiarVista('alertas'));
   $('velo').addEventListener('click', cerrarDetalle);
   document.addEventListener('keydown', alApretarTecla);
