@@ -913,6 +913,33 @@ html { scrollbar-gutter: stable; }
 .tabla .par { white-space: nowrap; }
 .tabla .secundario { color: var(--texto-2); font-size: 13px; }
 .tabla-mas { margin-top: 12px; text-align: center; }
+/* Las páginas de una tabla larga, como en Grafana: la cuenta a la izquierda; las flechas y los números, a la derecha. */
+.paginas { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 4px; margin-top: 12px; }
+.paginas-cuenta { margin-right: auto; font-size: 13px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.paginas button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--texto);
+  font: inherit;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.paginas button:hover:not(:disabled) { background: var(--neutro); }
+.paginas button[aria-current="page"] { background: var(--verde-claro); color: var(--verde-texto); font-weight: 600; }
+.paginas button:disabled { opacity: 0.35; cursor: default; }
+.paginas svg { width: 16px; height: 16px; }
+.paginas-salto { min-width: 20px; text-align: center; color: var(--texto-3); }
+/* En el teléfono, los botones de página del tamaño de un dedo. */
+@media (max-width: 720px) {
+  .paginas button { min-width: 44px; height: 44px; }
+}
 
 /* ---- Detalle ---- */
 

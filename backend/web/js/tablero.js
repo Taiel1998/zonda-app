@@ -141,6 +141,7 @@ async function entrar(evento) {
     e.acceso = { token: salida.token, vence: salida.vence, perfil: salida.perfil, persona: salida.persona, red: salida.red, dispositivoId: salida.dispositivoId };
     guardarAcceso(e.acceso);
     arrancarTablero();
+    abrirLoDelEnlace();
   } catch (falla) {
     error.hidden = false;
     error.textContent = falla.estado === 400 ? 'Ese código no existe. Revisá las letras o pedí uno nuevo.'
@@ -359,6 +360,15 @@ function irAlInicio(ev) {
 // La alerta del enlace se abre cuando llegan las alertas (la primera sincronización).
 let alertaDelEnlace = null;
 
+/** Lo que pide la dirección al entrar, con el acceso guardado o con un código: un panel en grande (`ver=`) o la
+    vista (`vista=`), y la alerta abierta (`alerta=`), que se abre cuando llegan las alertas. */
+function abrirLoDelEnlace() {
+  const enlace = new URLSearchParams(location.search);
+  if (enlace.get('ver')) verEnGrande(enlace.get('ver'));
+  else if (['alertas', 'resumen', 'ajustes'].includes(enlace.get('vista'))) cambiarVista(enlace.get('vista'));
+  alertaDelEnlace = enlace.get('alerta');
+}
+
 /** Atrás y Adelante del navegador abren o cierran el detalle; la vista no cambia. */
 function alNavegar() {
   if (!e.acceso) return;
@@ -421,7 +431,7 @@ function iniciar() {
   cuandoExpire(terminarSesion);
   alCambiarAlertas(alCambiar);
   configurarAjustes({ salir, elegirTema, temaElegido });
-  const panelDeLaUrl = leerUrl();
+  leerUrl();
   configurarMenu();
   configurarAyuda();
   configurarFilas({ alCambiar: alCambiarFila });
@@ -472,10 +482,7 @@ function iniciar() {
   e.acceso = leerAcceso();
   if (e.acceso) {
     arrancarTablero();
-    if (panelDeLaUrl) verEnGrande(panelDeLaUrl);
-    const enlace = new URLSearchParams(location.search);
-    if (['alertas', 'resumen', 'ajustes'].includes(enlace.get('vista')) && !panelDeLaUrl) cambiarVista(enlace.get('vista'));
-    alertaDelEnlace = enlace.get('alerta');
+    abrirLoDelEnlace();
   } else {
     mostrarIngreso();
   }

@@ -4,8 +4,9 @@
 // cuando el cambio va al registro (la importancia y la severidad), como en la app. El analista ve todo sin los
 // controles de administrador; igual el servidor controla cada cambio (403). Sumar, quitar o cambiar a alguien
 // se confirma con la llave de esta computadora (decisión 51); sin ella, eso se hace desde la app.
+// Los navegadores que abren el tablero van aparte de las personas y las tablas largas, de a páginas (decisión 58).
 
-import { el, fechaHora, haceCuanto, hora, numero, vaciar } from './util.js';
+import { el, fechaHora, haceCuanto, hora, icono, numero, vaciar } from './util.js';
 import {
   $, IMPORTANCIAS, NIVEL, ORDEN_SEVERIDAD, PERFILES, TIPOS, ahoraServidor, e, esAdmin, mandar, nombrePersona, pedir,
 } from './comun.js';
@@ -18,6 +19,7 @@ const MODOS_AVISO = { sonido: 'Con sonido', vibracion: 'Sin sonido', sin_aviso: 
 const SECCIONES = [
   { id: 'general', nombre: 'General' },
   { id: 'personas', nombre: 'Personas' },
+  { id: 'navegadores', nombre: 'Navegadores' },
   { id: 'equipos', nombre: 'Equipos' },
   { id: 'severidades', nombre: 'Severidades' },
   { id: 'notificaciones', nombre: 'Notificaciones' },
@@ -39,7 +41,9 @@ const sinGuardar = (id) => (DE_LA_SECCION[id] || []).reduce((n, clave) => n + pe
 const BLOQUEOS = { bloquea: 'Bloquea', pide_aprobacion: 'Pide aprobación' };
 const bloqueosDe = (p) => (p.puedeBloquear ? 'bloquea' : 'pide_aprobacion');
 const busqueda = { equipos: '', registro: '' };
-let largoRegistro = 50;
+// Las tablas largas van de a páginas de 15 filas, como las tablas de Grafana; la búsqueda vuelve a la primera.
+const POR_PAGINA = 15;
+const paginas = { equipos: 1, registro: 1 };
 // Si llegan datos del servidor mientras alguien escribe o elige, la sección se vuelve a armar al soltar el campo.
 let repintarAlSoltar = false;
 
@@ -133,6 +137,7 @@ function limpiarPendientes() {
 const CONTENIDO = {
   general: seccionGeneral,
   personas: seccionPersonas,
+  navegadores: seccionNavegadores,
   equipos: seccionEquipos,
   severidades: seccionSeveridades,
   notificaciones: seccionNotificaciones,
@@ -189,6 +194,55 @@ function tabla(columnas, filas, id = null) {
     el('table', { class: 'tabla tabla-ajustes', id },
       el('thead', {}, el('tr', {}, columnas.map((c) => el('th', { scope: 'col' }, c)))),
       el('tbody', {}, filas)));
+}
+
+/** Las filas de la página actual; si la lista se achicó (una búsqueda, un cambio), vuelve a la última que existe. */
+function enPagina(lista, clave) {
+  const ultima = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+  paginas[clave] = Math.min(paginas[clave], ultima);
+  const desde = (paginas[clave] - 1) * POR_PAGINA;
+  return lista.slice(desde, desde + POR_PAGINA);
+}
+
+/** Los números que se ven: la primera, la última y las vecinas de la actual, con «…» en los saltos. */
+function numerosDePagina(actual, ultima) {
+  const vistos = [...new Set([1, actual - 1, actual, actual + 1, ultima])].filter((n) => n >= 1 && n <= ultima).sort((a, b) => a - b);
+  const salida = [];
+  vistos.forEach((n, i) => {
+    if (i && n - vistos[i - 1] > 1) salida.push(null);
+    salida.push(n);
+  });
+  return salida;
+}
+
+/** El pie de una tabla larga, como en Grafana: «16–30 de 57», las flechas y los números. Con una sola página no
+    hay pie. Cambiar de página rehace solo las filas y el pie, y el foco sigue en el botón que se tocó. */
+function piePaginas(lista, clave, repintar) {
+  const ultima = Math.ceil(lista.length / POR_PAGINA);
+  if (ultima <= 1) return null;
+  const actual = paginas[clave];
+  const desde = (actual - 1) * POR_PAGINA + 1;
+  const hasta = Math.min(lista.length, actual * POR_PAGINA);
+  const ir = (n, foco) => {
+    paginas[clave] = n;
+    repintar();
+    const pie = $(`${clave}-paginas`);
+    const boton = pie.querySelector(`[data-foco="${foco}"]:not(:disabled)`) || pie.querySelector('[aria-current="page"]');
+    if (boton) boton.focus();
+  };
+  const flecha = (nombre, n, icon, foco, apagada) => el('button', {
+    type: 'button', class: 'pagina-flecha', 'aria-label': nombre, title: nombre, disabled: apagada, dataset: { foco }, onclick: () => ir(n, foco),
+  }, icono(icon));
+  return el('nav', { class: 'paginas', 'aria-label': 'Páginas de la tabla' },
+    el('span', { class: 'paginas-cuenta' }, `${numero(desde)}–${numero(hasta)} de ${numero(lista.length)}`),
+    flecha('Página anterior', actual - 1, 'izquierda', `${clave}-anterior`, actual === 1),
+    numerosDePagina(actual, ultima).map((n) => (n === null
+      ? el('span', { class: 'paginas-salto', 'aria-hidden': 'true' }, '…')
+      : el('button', {
+        type: 'button', 'aria-label': `Página ${n}`, 'aria-current': n === actual ? 'page' : null, dataset: { foco: `${clave}-${n}` },
+        onclick: () => ir(n, `${clave}-${n}`),
+      }, String(n)))),
+    flecha('Página siguiente', actual + 1, 'derecha', `${clave}-siguiente`, actual === ultima));
 }
 
 function selector({ etiqueta, opciones, valor, foco, alCambiar }) {
@@ -281,7 +335,7 @@ function seccionPersonas() {
   // Sumar, quitar o cambiar a alguien desde acá se confirma con la llave de esta computadora.
   const cambia = admin && tieneLlave();
   const ahora = ahoraServidor();
-  const filas = e.personas.map((p) => {
+  const filas = e.personas.filter((p) => p.tipo !== 'navegador').map((p) => {
     const editable = cambia && !p.vos;
     const perfil = editable
       ? selector({
@@ -420,6 +474,48 @@ async function quitarPersona(p) {
   actualizarAjustes();
 }
 
+// ---- Navegadores: las computadoras que abren el tablero (decisión 58) ----
+
+/** «Chrome en Windows»: el nombre sin «Tablero web ·», que llevan todos. Los primeros navegadores se llamaban
+    solo «Tablero web». */
+function nombreNavegador(p) {
+  const nombre = (p.telefono || '').replace(/^Tablero web\s*·\s*/, '').trim();
+  return nombre && nombre !== 'Tablero web' ? nombre : 'Navegador';
+}
+
+/** Un navegador no es una persona: entra con un código, como un teléfono, pero no recibe avisos ni se le
+    asignan alertas. Acá se ve cuáles tienen acceso y se les quita, con la llave de esta computadora. */
+function seccionNavegadores() {
+  const admin = esAdmin();
+  const cambia = admin && tieneLlave();
+  const ahora = ahoraServidor();
+  const navegadores = e.personas.filter((p) => p.tipo === 'navegador');
+  const filas = navegadores.length
+    ? navegadores.map((p) => el('tr', {},
+      el('td', {}, el('strong', {}, nombreNavegador(p)), p.vos ? [' ', el('span', { class: 'etiqueta vos' }, 'vos')] : null),
+      el('td', { 'data-etiqueta': 'Perfil' }, el('span', { class: `etiqueta${p.perfil === 'administrador' ? ' admin' : ''}` }, PERFILES[p.perfil])),
+      el('td', { class: 'secundario', 'data-etiqueta': 'Último uso' }, p.ultimoUso ? haceCuanto(Date.parse(p.ultimoUso), ahora) : '–'),
+      el('td', { class: 'accion' }, cambia && !p.vos ? el('button', { type: 'button', class: 'boton-texto peligro', onclick: () => quitarNavegador(p) }, 'Quitar acceso') : null)))
+    : el('tr', {}, el('td', { colspan: '4', class: 'secundario' }, 'Todavía ningún navegador abrió el tablero.'));
+  return [
+    cabecera('Navegadores', 'Las computadoras que abren este tablero. Cada una entra con su propio código, como un teléfono.'),
+    tabla(['Navegador', 'Perfil', 'Último uso', ''], filas),
+    admin && !cambia ? el('p', { class: 'solo-admin-nota' }, 'Sin la llave de esta computadora, el acceso de un navegador se quita desde la app.') : null,
+    admin ? null : notaSoloAdmin(),
+  ];
+}
+
+async function quitarNavegador(p) {
+  const nombre = nombreNavegador(p);
+  if (!await confirmar({ titulo: `¿Quitarle el acceso a ${nombre}?`, texto: 'Ese navegador deja de ver el tablero y no puede volver a entrar sin un código nuevo.', aceptar: 'Quitar acceso', peligro: true })) return;
+  try {
+    const cabeceras = await cabecerasConLlave({ tipo: 'quitar', personaId: p.id });
+    await pedir(`/personas/${encodeURIComponent(p.id)}`, { metodo: 'DELETE', cabeceras });
+    avisoInferior(`${nombre} ya no tiene acceso al tablero.`);
+  } catch (falla) { avisoInferior(falla.cancelada ? 'No se confirmó con la llave: el navegador sigue con acceso.' : falla.message, { duracion: 7000 }); }
+  actualizarAjustes();
+}
+
 // ---- Equipos ----
 
 const NOMBRES_IMPORTANCIA = Object.fromEntries(Object.entries(IMPORTANCIAS).map(([id, imp]) => [id, imp.nombre]));
@@ -429,19 +525,30 @@ function seccionEquipos() {
     cabecera('Equipos', 'La importancia de un equipo sube o baja un nivel la severidad de sus alertas.'),
     el('input', {
       type: 'search', class: 'buscar-tabla', placeholder: 'Buscar equipo o IP', value: busqueda.equipos, 'aria-label': 'Buscar equipo o IP', dataset: { foco: 'buscar-equipos' },
-      oninput: (ev) => { busqueda.equipos = ev.target.value; vaciar($('tabla-equipos').tBodies[0], filasEquipos()); },
+      oninput: (ev) => { busqueda.equipos = ev.target.value; paginas.equipos = 1; pintarFilasEquipos(); },
     }),
-    tabla(['Equipo', 'IP', 'Importancia'], filasEquipos(), 'tabla-equipos'),
+    tabla(['Equipo', 'IP', 'Importancia'], filasEquipos(equiposFiltrados()), 'tabla-equipos'),
+    el('div', { id: 'equipos-paginas' }, piePaginas(equiposFiltrados(), 'equipos', pintarFilasEquipos)),
     el('p', { class: 'nota ajustes-leyenda' }, `${IMPORTANCIAS.critico.nombre}: ${IMPORTANCIAS.critico.explicacion.toLowerCase()} ${IMPORTANCIAS.poco_importante.nombre}: ${IMPORTANCIAS.poco_importante.explicacion.toLowerCase()}`),
     esAdmin() ? barraCambios('equipos') : notaSoloAdmin(),
   ];
 }
 
-function filasEquipos() {
+function equiposFiltrados() {
   const buscado = sinTildes(busqueda.equipos.trim());
-  const lista = e.equipos.filter((q) => !buscado || sinTildes(q.nombre).includes(buscado) || q.ip.includes(buscado));
+  return e.equipos.filter((q) => !buscado || sinTildes(q.nombre).includes(buscado) || q.ip.includes(buscado));
+}
+
+/** La búsqueda y las páginas rehacen solo las filas y el pie: el campo no pierde lo escrito ni el foco. */
+function pintarFilasEquipos() {
+  const lista = equiposFiltrados();
+  vaciar($('tabla-equipos').tBodies[0], filasEquipos(lista));
+  vaciar($('equipos-paginas'), piePaginas(lista, 'equipos', pintarFilasEquipos));
+}
+
+function filasEquipos(lista) {
   if (!lista.length) return el('tr', {}, el('td', { colspan: '3', class: 'secundario' }, `Ningún equipo con «${busqueda.equipos.trim()}».`));
-  return lista.map((q) => el('tr', { class: pendientes.equipos.has(q.ip) ? 'cambiada' : null },
+  return enPagina(lista, 'equipos').map((q) => el('tr', { class: pendientes.equipos.has(q.ip) ? 'cambiada' : null },
     el('td', {}, el('strong', {}, q.nombre)),
     el('td', { class: 'secundario', 'data-etiqueta': 'IP' }, q.ip),
     el('td', { 'data-etiqueta': 'Importancia' }, esAdmin()
@@ -601,8 +708,17 @@ async function desvincularTelegram() {
 
 // ---- Registro de cambios ----
 
+// Un navegador del tablero no es una persona (decisión 58): «Sumó el navegador Chrome en Windows», no «Sumó a
+// Tablero web · Chrome en Windows al equipo». Los primeros navegadores se llamaban solo «Tablero web».
+const esNavegador = (nombre) => /^Tablero web/.test(nombre || '');
+function elNavegador(nombre) {
+  const resto = (nombre || '').replace(/^Tablero web\s*·?\s*/, '').trim();
+  return resto ? `el navegador ${resto}` : 'un navegador';
+}
+
 function fraseDe(c) {
   const ant = c.antes; const des = c.despues;
+  if (esNavegador(c.nombre) && ['persona_nueva', 'perfil', 'persona_quitada'].includes(c.tipo)) return fraseDeNavegador(c);
   if (c.tipo === 'severidad') return `${TIPOS[c.objeto] || c.objeto} pasó de ${(NIVEL[ant] || ant || '').toLowerCase()} a ${(NIVEL[des] || des || '').toLowerCase()}`;
   if (c.tipo === 'importancia') return `${c.nombre || c.objeto} pasó de ${(IMPORTANCIAS[ant] || { nombre: ant }).nombre.toLowerCase()} a ${(IMPORTANCIAS[des] || { nombre: des }).nombre.toLowerCase()}`;
   if (c.tipo === 'persona_nueva') return `Sumó a ${c.nombre || 'una persona'} al equipo como ${(PERFILES[des] || des || '').toLowerCase()}`;
@@ -621,6 +737,14 @@ function fraseDe(c) {
   return c.tipo;
 }
 
+function fraseDeNavegador(c) {
+  const perfil = (PERFILES[c.despues] || c.despues || '').toLowerCase();
+  const nav = elNavegador(c.nombre);
+  if (c.tipo === 'persona_nueva') return `Sumó ${nav} como ${perfil}`;
+  if (c.tipo === 'perfil') return `${nav[0].toUpperCase()}${nav.slice(1)} pasó a ${perfil}`;
+  return c.autorId && c.autorId === c.objeto ? 'Salió del tablero' : `Le quitó el acceso a ${nav}`;
+}
+
 function duracionBloqueo(texto) {
   const segundos = Number(texto);
   return segundos % 3600 === 0 ? `${segundos / 3600} h` : `${Math.ceil(segundos / 60)} min`;
@@ -632,10 +756,10 @@ function seccionRegistro() {
     cabecera('Registro de cambios', 'Quién cambió la configuración, cuándo y por qué. Lo ve todo el equipo y no se puede borrar.'),
     el('input', {
       type: 'search', class: 'buscar-tabla', placeholder: 'Buscar en el registro', value: busqueda.registro, 'aria-label': 'Buscar en el registro', dataset: { foco: 'buscar-registro' },
-      oninput: (ev) => { busqueda.registro = ev.target.value; largoRegistro = 50; pintarFilasRegistro(); },
+      oninput: (ev) => { busqueda.registro = ev.target.value; paginas.registro = 1; pintarFilasRegistro(); },
     }),
     tabla(['Cuándo', 'Quién', 'Qué cambió', 'Motivo'], filasRegistro(lista), 'tabla-registro'),
-    el('div', { class: 'tabla-mas', id: 'registro-mas' }, botonMasRegistro(lista)),
+    el('div', { id: 'registro-paginas' }, piePaginas(lista, 'registro', pintarFilasRegistro)),
   ];
 }
 
@@ -649,21 +773,16 @@ function filasRegistro(lista) {
   if (!lista.length) {
     return el('tr', {}, el('td', { colspan: '4', class: 'secundario' }, busqueda.registro.trim() ? `Nada con «${busqueda.registro.trim()}».` : 'Todavía no hay cambios.'));
   }
-  return lista.slice(0, largoRegistro).map((c) => el('tr', {},
+  return enPagina(lista, 'registro').map((c) => el('tr', {},
     el('td', { class: 'secundario' }, fechaHora(Date.parse(c.fecha), ahora)),
     el('td', { 'data-etiqueta': 'Quién' }, c.autor),
     el('td', { class: 'envolver' }, fraseDe(c)),
     el('td', { class: 'envolver secundario', 'data-etiqueta': 'Motivo' }, c.motivo ? `«${c.motivo}»` : '–')));
 }
 
-function botonMasRegistro(lista) {
-  if (lista.length <= largoRegistro) return null;
-  return el('button', { type: 'button', class: 'boton-secundario boton-chico', onclick: () => { largoRegistro += 50; pintarFilasRegistro(); } }, `Ver más (${numero(lista.length - largoRegistro)})`);
-}
-
-/** La búsqueda y «Ver más» rehacen solo las filas: el campo no pierde lo escrito ni el foco. */
+/** La búsqueda y las páginas rehacen solo las filas y el pie: el campo no pierde lo escrito ni el foco. */
 function pintarFilasRegistro() {
   const lista = registroFiltrado();
   vaciar($('tabla-registro').tBodies[0], filasRegistro(lista));
-  vaciar($('registro-mas'), botonMasRegistro(lista));
+  vaciar($('registro-paginas'), piePaginas(lista, 'registro', pintarFilasRegistro));
 }

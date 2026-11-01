@@ -345,7 +345,7 @@ function hojaMasFiltros() {
 function hojaResponsableFiltro() {
   let elegido = f.responsable;
   const valores = { todas: 'Todas', mias: 'Asignadas a mí', sin_asignar: 'Sin asignar' };
-  for (const p of e.personas) if (p.id !== e.miId) valores[`p:${p.id}`] = `Asignadas a ${nombrePersona(p)}`;
+  for (const p of e.personas) if (p.id !== e.miId && p.tipo !== 'navegador') valores[`p:${p.id}`] = `Asignadas a ${nombrePersona(p)}`;
   hojaDeOpciones({ titulo: 'Responsable', grupos: [{ opciones: opcionUnica(valores, () => elegido, (id) => { elegido = id; }) }], alAplicar: () => { f.responsable = elegido; } });
 }
 
