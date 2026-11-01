@@ -6,10 +6,12 @@ import { el, vaciar } from './util.js';
 const abiertas = [];
 
 document.addEventListener('keydown', (evento) => {
-  if (evento.key === 'Escape' && abiertas.length) {
-    evento.stopPropagation();
-    abiertas[abiertas.length - 1].cerrar('escape');
-  }
+  if (evento.key !== 'Escape' || !abiertas.length) return;
+  const ultima = abiertas[abiertas.length - 1];
+  // Una hoja en un lugar de la página (Revisar en el detalle) deja que Esc cierre antes el globito de un «?».
+  if (ultima.enLugar && !document.getElementById('ayuda-flotante').hidden) return;
+  evento.stopPropagation();
+  ultima.cerrar('escape');
 }, true);
 
 /**
@@ -44,30 +46,64 @@ export function abrirHoja(contenido) {
     },
     pintar(nuevo) {
       if (nuevo.alCerrar) alCerrar = nuevo.alCerrar;
-      const titulo = el('h2', { class: 'hoja-titulo', id: `hoja-${abiertas.length}` }, nuevo.titulo);
-      caja.setAttribute('aria-labelledby', titulo.id);
-      const botones = (nuevo.acciones || []).map((accion) => el('button', {
-        type: 'button',
-        class: { principal: 'boton-principal', peligro: 'boton-peligro', texto: 'boton-texto' }[accion.tipo] || 'boton-secundario',
-        disabled: accion.deshabilitado || null,
-        onclick: () => accion.alHacer(hoja),
-      }, accion.texto));
-      vaciar(caja,
-        nuevo.paso ? el('p', { class: 'hoja-paso' }, nuevo.paso) : null,
-        titulo,
-        nuevo.subtitulo ? el('p', { class: 'hoja-subtitulo' }, nuevo.subtitulo) : null,
-        el('div', { class: 'hoja-cuerpo' }, nuevo.cuerpo || []),
-        botones.length ? el('div', { class: 'hoja-acciones' }, botones) : null);
-      // El foco va a un campo si hay; si no, a la hoja: así ninguna opción parece elegida sin tocarla.
-      const campo = caja.querySelector('input, textarea, select');
-      if (campo) campo.focus({ preventScroll: true });
-      else caja.focus({ preventScroll: true });
+      armar(caja, nuevo, hoja, `hoja-${abiertas.length}`);
     },
   };
   velo.addEventListener('mousedown', (evento) => { if (evento.target === velo) hoja.cerrar('afuera'); });
   document.getElementById('hojas').append(velo);
   abiertas.push(hoja);
   actualizarFondo();
+  hoja.pintar(contenido);
+  return hoja;
+}
+
+/** Lo de adentro de una hoja: el paso, el título, el subtítulo, el cuerpo y los botones. */
+function armar(caja, nuevo, hoja, idTitulo) {
+  const titulo = el('h2', { class: 'hoja-titulo', id: idTitulo }, nuevo.titulo);
+  caja.setAttribute('aria-labelledby', titulo.id);
+  const botones = (nuevo.acciones || []).map((accion) => el('button', {
+    type: 'button',
+    class: { principal: 'boton-principal', peligro: 'boton-peligro', texto: 'boton-texto' }[accion.tipo] || 'boton-secundario',
+    disabled: accion.deshabilitado || null,
+    onclick: () => accion.alHacer(hoja),
+  }, accion.texto));
+  vaciar(caja,
+    nuevo.paso ? el('p', { class: 'hoja-paso' }, nuevo.paso) : null,
+    titulo,
+    nuevo.subtitulo ? el('p', { class: 'hoja-subtitulo' }, nuevo.subtitulo) : null,
+    el('div', { class: 'hoja-cuerpo' }, nuevo.cuerpo || []),
+    botones.length ? el('div', { class: 'hoja-acciones' }, botones) : null);
+  // El foco va a un campo si hay; si no, a la hoja: así ninguna opción parece elegida sin tocarla.
+  const campo = caja.querySelector('input, textarea, select');
+  if (campo) campo.focus({ preventScroll: true });
+  else caja.focus({ preventScroll: true });
+}
+
+/**
+ * Una hoja dibujada en la página, justo después de `anterior`, en lugar de flotar sobre un velo: los pasos de
+ * Revisar dentro del panel del detalle, en la compu. Mismo contenido, mismo `pintar` y Esc la cierra igual;
+ * `alCerrar` decide qué se ve después.
+ */
+export function abrirEnLugar(anterior, contenido) {
+  const caja = el('section', { class: 'hoja-en-lugar', tabindex: '-1' });
+  let alCerrar = contenido.alCerrar;
+  const hoja = {
+    cerrado: false,
+    enLugar: true,
+    cerrar(motivo = 'cerrar') {
+      if (hoja.cerrado) return;
+      hoja.cerrado = true;
+      caja.remove();
+      abiertas.splice(abiertas.indexOf(hoja), 1);
+      if (alCerrar) alCerrar(motivo);
+    },
+    pintar(nuevo) {
+      if (nuevo.alCerrar) alCerrar = nuevo.alCerrar;
+      armar(caja, nuevo, hoja, 'hoja-en-lugar-titulo');
+    },
+  };
+  anterior.after(caja);
+  abiertas.push(hoja);
   hoja.pintar(contenido);
   return hoja;
 }

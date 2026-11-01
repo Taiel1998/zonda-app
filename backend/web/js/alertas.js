@@ -9,7 +9,7 @@ import {
   chipEstado, chipSeveridad, comentarioPropuesto, e, esAdmin, guardarAlerta, mandar, metodosDe, nombreEquipo, nombrePersona,
   pedir, responsableId, servicioCorto, servicioDe, tipoCorto,
 } from './comun.js';
-import { abrirHoja, actualizarFondo, avisoInferior } from './hojas.js';
+import { abrirEnLugar, abrirHoja, actualizarFondo, avisoInferior } from './hojas.js';
 import { bajarArchivo, csvDe, nombreConFecha } from './compartir.js';
 import { alternarAyuda, cerrarAyuda } from './ayuda.js';
 import { origenBloqueado, seccionBloqueo } from './bloqueo.js';
@@ -398,6 +398,11 @@ let entradaPropia = false;
 export function abrirDetalle(id, enfocar = true, { sinHistoria = false } = {}) {
   const a = e.alertas.get(id);
   if (!a) return;
+  // Mientras se revisa en el panel, lo que llega de afuera no borra los pasos; abrir otra alerta los cancela.
+  if (revision) {
+    if (revision.id === id && !enfocar) return;
+    revision.hoja.cerrar('otra');
+  }
   if (enfocar && $('detalle').hidden) abridorDetalle = document.activeElement;
   if (!sinHistoria && new URLSearchParams(location.search).get('alerta') !== id) {
     const nueva = $('detalle').hidden;
@@ -504,6 +509,7 @@ function lineasHistorial(a) {
 }
 
 export function cerrarDetalle({ sinHistoria = false } = {}) {
+  if (revision) revision.hoja.cerrar('detalle');
   cerrarAyuda();
   const id = e.detalleAbierto;
   if (sinHistoria) entradaPropia = false;
@@ -520,6 +526,34 @@ export function cerrarDetalle({ sinHistoria = false } = {}) {
   if (volver) volver.focus({ preventScroll: true });
 }
 
+// Los pasos de Revisar abiertos dentro del panel del detalle: { id, hoja }.
+let revision = null;
+
+/** En la compu, los pasos de Revisar van dentro del panel del detalle, debajo del origen y el destino, y el resto
+    del detalle se esconde hasta terminar o cancelar; en el teléfono, la hoja que sube desde abajo, como la app. */
+function abrirRevision(a) {
+  if (matchMedia('(max-width: 720px)').matches) return abrirHoja({ titulo: '', cuerpo: [] });
+  const panel = $('detalle');
+  cerrarAyuda();
+  panel.classList.add('revisando');
+  panel.scrollTop = 0;
+  const hoja = abrirEnLugar(panel.querySelector('.recorrido'), {
+    titulo: '',
+    cuerpo: [],
+    alCerrar: (motivo) => {
+      revision = null;
+      panel.classList.remove('revisando');
+      // Si se cerró el detalle o se abrió otra alerta, eso ya pinta lo que sigue.
+      if (motivo === 'detalle' || motivo === 'otra') return;
+      abrirDetalle(a.id, false);
+      const boton = panel.querySelector('.acciones-detalle .boton-principal');
+      if (boton) boton.focus({ preventScroll: true });
+    },
+  });
+  revision = { id: a.id, hoja };
+  return hoja;
+}
+
 // ---- Revisar: dos pasos, Deshacer y el conflicto ----
 
 /** Con [bloqueado] (el origen ya está bloqueado en el firewall), abre en el paso 2 con «Ataque real» y «Bloqueado
@@ -529,7 +563,7 @@ function revisar(a, bloqueado = false) {
   let motivo = bloqueado ? 'bloqueado_manualmente' : null;
   let comentario = bloqueado ? comentarioPropuesto('bloqueado_manualmente', a) : '';
   let comentarioTocado = false;
-  const hoja = abrirHoja({ titulo: '', cuerpo: [] });
+  const hoja = abrirRevision(a);
 
   function paso1() {
     hoja.pintar({

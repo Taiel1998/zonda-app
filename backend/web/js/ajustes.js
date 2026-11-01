@@ -90,15 +90,21 @@ export async function actualizarAjustes() {
 /** Cuántos cambios faltan guardar, en todas las secciones. */
 export const cambiosSinGuardar = () => Object.values(pendientes).reduce((suma, m) => suma + m.size, 0);
 
+/** El numerito de los cambios sin guardar. El lector dice «1 cambio sin guardar» en lugar de pegar el número al
+    nombre («Ajustes1»). */
+function marcaPendientes(n) {
+  return el('span', { class: 'ajustes-pendientes', title: `${numero(n)} sin guardar` },
+    el('span', { 'aria-hidden': 'true' }, numero(n)),
+    el('span', { class: 'oculto-visual' }, `, ${numero(n)} ${n === 1 ? 'cambio' : 'cambios'} sin guardar`));
+}
+
 /** La pestaña «Ajustes», arriba y en la barra de abajo, también dice cuántos cambios faltan guardar. */
 function marcarPestania() {
   const n = cambiosSinGuardar();
   for (const boton of document.querySelectorAll('.pestania[data-vista="ajustes"], #barra-inferior [data-vista="ajustes"]')) {
-    let marca = boton.querySelector('.ajustes-pendientes');
-    if (!n) { if (marca) marca.remove(); continue; }
-    if (!marca) { marca = el('span', { class: 'ajustes-pendientes' }); boton.append(marca); }
-    marca.textContent = numero(n);
-    marca.title = `${numero(n)} sin guardar`;
+    const marca = boton.querySelector('.ajustes-pendientes');
+    if (marca) marca.remove();
+    if (n) boton.append(marcaPendientes(n));
   }
 }
 
@@ -146,7 +152,7 @@ export function pintarAjustes({ desdeElServidor = false } = {}) {
       return el('button', {
         type: 'button', role: 'tab', id: `ajustes-${s.id}`, 'aria-selected': String(s.id === seccion), 'aria-controls': 'ajustes-panel',
         tabindex: s.id === seccion ? '0' : '-1', dataset: { seccion: s.id }, onclick: () => elegirSeccion(s.id),
-      }, el('span', {}, s.nombre), n ? el('span', { class: 'ajustes-pendientes', title: `${numero(n)} sin guardar` }, numero(n)) : null);
+      }, el('span', {}, s.nombre), n ? marcaPendientes(n) : null);
     }));
   vaciar($('ajustes'), menu,
     el('section', { class: 'tarjeta ajustes-panel', id: 'ajustes-panel', role: 'tabpanel', 'aria-labelledby': `ajustes-${seccion}` }, CONTENIDO[seccion]()));

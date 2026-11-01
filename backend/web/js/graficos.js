@@ -30,7 +30,7 @@ export function colores() {
   const leer = (nombre) => estilo.getPropertyValue(nombre).trim();
   const c = {};
   for (const nombre of ['--superficie', '--superficie-2', '--texto', '--texto-2', '--texto-3', '--grilla', '--eje', '--borde', '--borde-fuerte', '--verde', '--arista',
-    '--alta', '--media', '--baja', '--serie-1', '--serie-2', '--serie-3', '--serie-4', '--serie-otros', '--neutro']) {
+    '--alta', '--media', '--baja', '--media-texto', '--serie-1', '--serie-2', '--serie-3', '--serie-4', '--serie-otros', '--neutro']) {
     c[nombre] = leer(nombre);
   }
   return c;
@@ -157,6 +157,8 @@ function tramoDe(t, paso) {
  */
 function serieMarcas(c, marcas) {
   const orden = marcas.slice().sort((a, b) => (PESO[a.severidad] || 0) - (PESO[b.severidad] || 0) || a.t - b.t || (a.id < b.id ? -1 : 1));
+  // En claro, el naranja de «Media» sobre blanco no llega a 3:1: su marca lleva el borde del texto de las medias.
+  const borde = (severidad) => (severidad === 'media' && document.documentElement.dataset.tema !== 'oscuro' ? c['--media-texto'] : c['--superficie']);
   return {
     id: 'marcas',
     name: 'Alertas',
@@ -175,7 +177,7 @@ function serieMarcas(c, marcas) {
         children: [
           // Un recuadro invisible más grande que la marca, para que sea fácil de apuntar.
           { type: 'rect', shape: { x: x - 7, y: y + 1, width: 14, height: 12 }, style: { fill: 'rgba(0,0,0,0)' } },
-          { type: 'polygon', shape: { points: [[x, y + 2.5], [x - 5.5, y + 11], [x + 5.5, y + 11]] }, style: { fill: c[`--${m.severidad}`], stroke: c['--superficie'], lineWidth: 1 } },
+          { type: 'polygon', shape: { points: [[x, y + 2.5], [x - 5.5, y + 11], [x + 5.5, y + 11]] }, style: { fill: c[`--${m.severidad}`], stroke: borde(m.severidad), lineWidth: 1 } },
         ],
       };
     },
