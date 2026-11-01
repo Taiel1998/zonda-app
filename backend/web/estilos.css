@@ -107,7 +107,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-button, input { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 
 button { cursor: pointer; }
 
@@ -1140,6 +1140,13 @@ html { scrollbar-gutter: stable; }
 .hoja-acciones { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
 .hoja-acciones .boton-principal { width: auto; margin: 0; padding: 11px 20px; }
 .hoja-paso { font-size: 12.5px; font-weight: 600; color: var(--texto-2); margin: 0 0 4px; }
+
+/* Revisar dentro del panel del detalle, en la compu (alertas.js, abrirRevision): los pasos van debajo del origen y
+   el destino, con una línea arriba, y el resto del detalle se esconde hasta terminar o cancelar. */
+.detalle.revisando > :not(.detalle-cabecera):not(.recorrido):not(.hoja-en-lugar) { display: none; }
+.hoja-en-lugar { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--borde); animation: subir 0.18s ease-out; }
+.hoja-en-lugar:focus { outline: none; }
+.hoja-en-lugar .hoja-titulo { font-size: 18px; }
 
 .opcion-grande {
   width: 100%;
