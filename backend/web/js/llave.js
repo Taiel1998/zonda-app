@@ -68,7 +68,7 @@ export function ofrecerLlave() {
   abrirHoja({
     titulo: 'Llave de esta computadora',
     cuerpo: [
-      el('p', { style: 'margin:0' }, 'Para bloquear y para sumar o cambiar gente desde la compu, Windows te va a pedir la huella, la cara o el PIN.'),
+      el('p', { style: 'margin:0' }, 'Para bloquear y para sumar o cambiar personas desde esta computadora, Windows te va a pedir la huella, la cara o el PIN.'),
       el('p', { class: 'nota', style: 'margin:0' }, 'Se crea ahora. Si no, volviendo a parear el tablero.'),
     ],
     acciones: [
