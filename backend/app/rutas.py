@@ -502,7 +502,7 @@ def qr_svg(contenido: str) -> str | None:
 def _persona_activa(con: sqlite3.Connection, persona_id: str) -> sqlite3.Row:
     fila = gente.activo(con, persona_id)
     if fila is None:
-        raise HTTPException(status_code=404, detail="Esa persona no está en el equipo")
+        raise HTTPException(status_code=404, detail="Esa persona no está en la red")
     return fila
 
 

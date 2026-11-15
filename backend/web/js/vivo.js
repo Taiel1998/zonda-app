@@ -14,7 +14,7 @@ import {
   refrescarTablas, servicioDe, tipoCorto,
 } from './comun.js';
 import {
-  claveRango, esRelativo, esperarArrastre, fraseRango, nombrePaso, nombreRango, pasoPara, prepararGraficoDeTiempo, rangoActual,
+  claveRango, esRelativo, esperarArrastre, etiquetaRango, fraseRango, nombrePaso, nombreRango, pasoPara, prepararGraficoDeTiempo, rangoActual,
 } from './tiempo.js';
 import { abrirDetalle } from './alertas.js';
 
@@ -128,10 +128,10 @@ function datoSensor(sistema, ahora) {
   return `Último tráfico hace ${cuanto(ahora - Date.parse(sistema.ultimoFlujo))}`;
 }
 
-/** «Última revisión hace 12 s». */
+/** «Último análisis hace 12 s». */
 function datoAnalisis(sistema, ahora) {
   if (!sistema || !sistema.ultimaCorrida) return 'Sin datos';
-  return `Última revisión hace ${cuanto(ahora - Date.parse(sistema.ultimaCorrida))}`;
+  return `Último análisis hace ${cuanto(ahora - Date.parse(sistema.ultimaCorrida))}`;
 }
 
 /** «Última consulta hace 5 s», como la pieza de la app: el firewall pregunta cada 10 s qué bloquear. */
@@ -140,12 +140,12 @@ function datoFirewall(firewall, ahora) {
   return `Última consulta hace ${cuanto(ahora - Date.parse(firewall.ultimaConsulta))}`;
 }
 
-/** «Última respuesta hace 7 s», «Respondió recién» o «No responde». */
+/** «Última respuesta hace 7 s», «Respondió hace un instante» o «No responde». */
 function datoServidor() {
   if (e.servidorCaido) return 'No responde';
   if (!e.ultimaRespuesta) return 'Sin datos';
   const hace = Date.now() - e.ultimaRespuesta;
-  return hace < 3000 ? 'Respondió recién' : `Última respuesta hace ${cuanto(hace)}`;
+  return hace < 3000 ? 'Respondió hace un instante' : `Última respuesta hace ${cuanto(hace)}`;
 }
 
 /** Cuánto pasó, en una sola unidad para que el dato sea corto: 12 s, 24 min, 3 h, 2 días (como la app). */
@@ -192,7 +192,7 @@ function tablaDelServidor(tramos, paso, filas) {
 }
 
 /** Los gráficos chicos de las piezas, con lo que guarda el servidor de cada una (decisión 60): las
-    conexiones que vio el sensor, las revisiones del análisis, los datos que le llegaron al servidor (con
+    conexiones que vio el sensor, cuántas veces se ejecutó el análisis, los datos que recibió el servidor (con
     las alertas marcadas abajo) y las consultas del firewall. Un hueco es un rato en que esa pieza no anduvo.
     En el tablero, la última hora por minuto; cada pieza es un panel y, en grande, sigue el horario elegido,
     con sus ejes. */
@@ -205,14 +205,17 @@ export function pintarGraficosPiezas() {
   const puntos = (valores) => tramos.map((t, i) => [t * 1000, valores[i]]);
   const cada = p.paso === 60 ? 'por minuto' : `cada ${nombrePaso(p.paso)}`;
   const donde = p.grande ? 'en este horario' : 'en la última hora';
-  // Lo que cabe en un tramo si la pieza anduvo todo el tiempo: tres revisiones y seis consultas por minuto.
+  // Lo que cabe en un tramo si la pieza anduvo todo el tiempo: tres análisis y seis consultas por minuto.
   const lleno = (porMinuto, valores) => Math.max((porMinuto * p.paso) / 60, ...valores);
   $('rango-estado').textContent = p.grande ? nombreRango() : 'Última hora';
+  // Las cuatro piezas van en el mismo verde: cada una tiene su gráfico y su título, y un color distinto en una
+  // sola se leía como si quisiera decir algo.
+  const verde = c['--serie-2'];
 
   const conexiones = new Map(p.trafico.total.map((x) => [x.t, x.conexiones]));
   const vistas = tramos.map((t) => conexiones.get(t) || 0);
   dibujar('pieza-sensor', opcionesMini(c, { ...ventana, puntos: puntos(vistas) },
-    { tipo: 'barras', color: c['--serie-2'], nombre: 'conexiones', paso: p.paso, ejes: e.panelGrande === 'sensor' }));
+    { tipo: 'barras', color: verde, nombre: 'conexiones', paso: p.paso, ejes: e.panelGrande === 'sensor' }));
   avisoMini('sensor', vistas.some((v) => v > 0) ? '' : `Sin conexiones ${donde}`);
   $('pie-sensor').textContent = `Conexiones ${cada}`;
   e.tablas.sensor = tablaPorTramo(tramos, p.paso, vistas, 'Conexiones');
@@ -220,10 +223,10 @@ export function pintarGraficosPiezas() {
   const latidos = new Map(p.latidos.minutos.map((x) => [x.minuto, x.latidos]));
   const revisiones = tramos.map((t) => latidos.get(t) || 0);
   dibujar('pieza-analisis', opcionesMini(c, { ...ventana, puntos: puntos(revisiones) },
-    { tipo: 'barras', color: c['--verde'], nombre: 'revisiones', paso: p.paso, maximo: lleno(3, revisiones), ejes: e.panelGrande === 'analisis' }));
-  avisoMini('analisis', revisiones.some((v) => v > 0) ? '' : `Sin revisiones ${donde}`);
-  $('pie-analisis').textContent = `Revisiones ${cada}`;
-  e.tablas.analisis = tablaPorTramo(tramos, p.paso, revisiones, 'Revisiones');
+    { tipo: 'barras', color: verde, nombre: 'análisis', paso: p.paso, maximo: lleno(3, revisiones), ejes: e.panelGrande === 'analisis' }));
+  avisoMini('analisis', revisiones.some((v) => v > 0) ? '' : `Sin análisis ${donde}`);
+  $('pie-analisis').textContent = `Análisis ${cada}`;
+  e.tablas.analisis = tablaPorTramo(tramos, p.paso, revisiones, 'Análisis');
 
   // El servidor: una línea que se corta donde no hay fila (estuvo apagado) y queda en cero donde estuvo
   // prendido sin recibir nada. El tramo en curso no se dibuja hasta que termina: a medio llenar, parecería
@@ -237,7 +240,7 @@ export function pintarGraficosPiezas() {
     return x && x.minutos < p.paso / 60 ? `Anduvo ${numero(x.minutos)} de ${numero(p.paso / 60)} min` : '';
   };
   dibujar('pieza-servidor', opcionesMini(c, { ...ventana, puntos: recibidos }, {
-    tipo: 'linea', color: c['--serie-1'], nombre: 'datos recibidos', paso: p.paso, marcas: marcasDe(ventana), nota: anduvo, ejes: e.panelGrande === 'servidor',
+    tipo: 'linea', color: verde, nombre: 'datos recibidos', paso: p.paso, marcas: marcasDe(ventana), nota: anduvo, ejes: e.panelGrande === 'servidor',
   }));
   avisoMini('servidor', filas.size ? '' : `Sin datos ${donde}`);
   $('pie-servidor').textContent = `Datos recibidos ${cada}`;
@@ -247,7 +250,7 @@ export function pintarGraficosPiezas() {
   if (!$('pieza-firewall').hidden) {
     const consultas = tramos.map((t) => (filas.has(t) ? filas.get(t).firewall : 0));
     dibujar('pieza-firewall', opcionesMini(c, { ...ventana, puntos: puntos(consultas) },
-      { tipo: 'barras', color: c['--serie-2'], nombre: 'consultas', paso: p.paso, maximo: lleno(6, consultas), ejes: e.panelGrande === 'firewall' }));
+      { tipo: 'barras', color: verde, nombre: 'consultas', paso: p.paso, maximo: lleno(6, consultas), ejes: e.panelGrande === 'firewall' }));
     avisoMini('firewall', consultas.some((v) => v > 0) ? '' : `Sin consultas ${donde}`);
     $('pie-firewall').textContent = `Consultas ${cada}`;
     e.tablas.firewall = tablaPorTramo(tramos, p.paso, consultas, 'Consultas');
@@ -514,14 +517,15 @@ export function pintarTrafico() {
   $('sin-respuesta').textContent = numero(fallidas);
   // Una sola sin respuesta entre cientos no es «0 %»: debajo del 1 %, con un decimal.
   const parte = total ? (100 * fallidas) / total : 0;
-  const proporcion = fallidas && parte < 0.05 ? 'menos del 0,1 %' : porcentaje(fallidas, total, fallidas && parte < 1 ? 1 : 0);
-  // El número grande es del horario elegido, no de ahora: la etiqueta lo dice, como «Ahora» en los otros dos.
-  $('rango-sin-respuesta').textContent = /^\d/.test(nombreRango()) ? 'Horario elegido' : nombreRango();
+  const proporcion = fallidas && parte < 0.05 ? 'menos del 0,1\u00a0%' : porcentaje(fallidas, total, fallidas && parte < 1 ? 1 : 0);
+  // El número grande es del horario elegido, no de ahora: la etiqueta lo dice, como «Ahora» en los otros dos, y
+  // en corto («15 min»), para que entre al lado del título igual que en ellos.
+  $('rango-sin-respuesta').textContent = etiquetaRango();
   $('sin-respuesta-detalle').textContent = total ? `${proporcion} de ${numero(total)} conexiones` : 'Ninguna conexión';
   $('trafico-ahora-detalle').textContent = `${bytes(bytesTotal)} ${frase}`;
   $('conexiones-ahora-detalle').textContent = `Promedio de los últimos 30 segundos. ${numero(total)} conexiones ${frase}.`;
 
-  const aviso = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor. El sensor lo manda cada 5 segundos.'
+  const aviso = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor. El sensor lo envía cada 5 segundos.'
     : `No hubo tráfico ${frase}. Lo último que vio el sensor fue ${cuandoFue(g.ultimoTramo * 1000)}.`;
   const corto = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor.' : `No hubo tráfico ${frase}.`;
   for (const [id, texto] of [['vacio-servicios', aviso], ['vacio-volumen', corto], ['vacio-fallidas', corto]]) {
@@ -592,7 +596,7 @@ function pintarLeyendaServicios(g, presentes) {
       el('th', { scope: 'row' }, el('button', {
         type: 'button',
         'aria-pressed': String(visible),
-        title: 'Elegilo para ver solo este. Con Ctrl, sumalo o sacalo.',
+        title: 'Elegilo para ver solo este. Con Ctrl, se agrega o se quita.',
         onclick: (ev) => tocarServicio(x.id, presentes, ev.ctrlKey || ev.metaKey),
       }, el('i', { style: `background:var(${x.color})` }), x.nombre)),
       el('td', { class: 'num' }, numero(Math.min(...valores))),

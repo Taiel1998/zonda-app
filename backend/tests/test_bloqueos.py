@@ -414,7 +414,7 @@ def test_los_administradores_se_enteran_de_cada_bloqueo_por_telegram_sin_la_ip(c
 
     cliente.post(f"/bloqueos/{pedido['id']}/aprobacion", headers=auth)
     assert asyncio.run(bot.avisar_bloqueos()) == 1
-    assert telegram.enviados[-1]["text"].startswith(f"<b>Teléfono de prueba bloqueó el origen de una alerta ALTA · {servicio} · ")
+    assert telegram.enviados[-1]["text"].startswith(f"<b>Teléfono de prueba ordenó el bloqueo del origen de una alerta ALTA · {servicio} · ")
     assert telegram.enviados[-1]["text"].endswith("</b>\nPor 1 h. Tocá para ver el detalle en Zonda.")
 
     cliente.post(f"/bloqueos/{pedido['id']}/desbloqueo", json={"motivo": "Falsa alarma."}, headers=auth)
@@ -441,7 +441,7 @@ def test_el_analista_con_bloquea_tambien_se_entera_por_telegram(cliente, auth, t
     # Le llega a los dos que pueden aprobarlo.
     assert asyncio.run(bot.avisar_bloqueos()) == 2
     assert {m["chat_id"] for m in telegram.enviados[-2:]} == {"555", "777"}
-    assert telegram.enviados[-1]["text"].endswith("</b>\nLo aprueba desde Zonda, en su teléfono, alguien que puede bloquear.")
+    assert telegram.enviados[-1]["text"].endswith("</b>\nQueda pendiente de aprobación. Tocá para ver el detalle en Zonda.")
 
 
 def test_el_firewall_que_no_aplica_un_bloqueo_se_avisa(cliente, auth, telegram, bot):

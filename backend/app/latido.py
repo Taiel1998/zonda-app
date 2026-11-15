@@ -31,15 +31,15 @@ from .telegram import BotTelegram, ErrorTelegram
 registro = logging.getLogger("zonda.latido")
 
 TEXTO_DETENIDO = (
-    "<b>Análisis en vivo detenido</b>\nZonda no recibe noticias del análisis en vivo desde las {hora}: "
-    "las alertas nuevas no llegan hasta que vuelva.\nRed: {red}"
+    "<b>Análisis en vivo detenido</b>\nZonda no recibe datos del análisis en vivo desde las {hora}: "
+    "las alertas nuevas no llegan hasta que se restablezca.\nRed: {red}"
 )
 TEXTO_VOLVIO = "<b>Análisis en vivo funcionando de nuevo</b>\nZonda volvió a recibir el análisis en vivo a las {hora}.\nRed: {red}"
 TEXTO_PARCIAL = (
-    "<b>Sensor viendo parcialmente</b>\nZeek perdió el {pct} % de lo que pasó por el puerto espejo en la medición "
-    "de las {hora}: puede haber tráfico, y ataques, que Zonda no ve.\nRed: {red}"
+    "<b>Sensor viendo parcialmente</b>\nZeek perdió el {pct} % del tráfico del puerto espejo en la medición "
+    "de las {hora}: puede haber tráfico, y ataques, que Zonda no analiza.\nRed: {red}"
 )
-TEXTO_NORMAL = "<b>Sensor viendo todo de nuevo</b>\nLa pérdida de captura bajó al {pct} % en la medición de las {hora}.\nRed: {red}"
+TEXTO_NORMAL = "<b>Sensor funcionando con normalidad</b>\nLa pérdida de captura bajó al {pct} % en la medición de las {hora}.\nRed: {red}"
 # Con la pérdida simulada del laboratorio (vivo/.perdida_simulada), para que nadie la tome por real.
 LINEA_SIMULADA = "\n(Prueba: pérdida simulada en el laboratorio.)"
 
@@ -134,7 +134,7 @@ def texto_detenido(ultimo: datetime, red: str, zona: tzinfo | None = None, hoy: 
     """El aviso de que el análisis se detuvo, con la hora del último latido que llegó:
 
         Análisis en vivo detenido
-        Zonda no recibe noticias del análisis en vivo desde las 18:41: las alertas nuevas no llegan hasta que vuelva.
+        Zonda no recibe datos del análisis en vivo desde las 18:41: las alertas nuevas no llegan hasta que se restablezca.
         Red: Oficina central
     """
     return TEXTO_DETENIDO.format(hora=_hora(ultimo, zona, hoy), red=html.escape(red))
@@ -156,7 +156,7 @@ def texto_parcial(
     """El aviso de que el sensor ve parcialmente, con el porcentaje y la hora de la medición de Zeek:
 
         Sensor viendo parcialmente
-        Zeek perdió el 3,2 % de lo que pasó por el puerto espejo en la medición de las 18:45: puede haber tráfico, y ataques, que Zonda no ve.
+        Zeek perdió el 3,2 % del tráfico del puerto espejo en la medición de las 18:45: puede haber tráfico, y ataques, que Zonda no analiza.
         Red: Oficina central
     """
     texto = TEXTO_PARCIAL.format(pct=_porcentaje(perdida), hora=_hora(medido, zona, hoy), red=html.escape(red))

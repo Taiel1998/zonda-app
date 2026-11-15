@@ -29,8 +29,8 @@ const EJEMPLOS = {
   rechazar: 'Por ejemplo: es el backup nocturno.',
 };
 const AVISOS = {
-  bloquear: (equipo) => `${equipo} bloqueado. El firewall lo aplica en unos segundos.`,
-  pedir: () => 'Pedido enviado. Lo aprueba alguien que puede bloquear.',
+  bloquear: (equipo) => `Bloqueando ${equipo}. El firewall lo aplica en unos segundos.`,
+  pedir: () => 'Pedido enviado. Queda pendiente de aprobación.',
   aprobar: (equipo) => `Bloqueo de ${equipo} aprobado. El firewall lo aplica en unos segundos.`,
   duracion: (equipo) => `Duración del bloqueo de ${equipo} cambiada.`,
   desbloquear: (equipo) => `${equipo} desbloqueado.`,
@@ -73,10 +73,14 @@ function yoBloqueo() {
   return yo && typeof yo.puedeBloquear === 'boolean' ? yo.puedeBloquear : esAdmin();
 }
 
-/** De cada alerta con un bloqueo vigente o un pedido, cuál de los dos: «bloqueado» o «pedido». Una por equipo. */
+// Cómo se dice cada estado: «bloqueado» es solo el que el firewall ya aplicó. Uno aprobado está «bloqueando»: el
+// firewall lo aplica en unos segundos, y si no responde, el equipo sigue sin bloquear.
+const NOMBRE_ESTADO = { pedido: 'pedido', aprobado: 'bloqueando', aplicado: 'bloqueado' };
+
+/** De cada alerta con un bloqueo o un pedido, cómo está: «bloqueado», «bloqueando» o «pedido». Una por equipo. */
 export function bloqueoPorAlerta() {
   const activos = (e.bloqueos ? e.bloqueos.bloqueos : []).filter((b) => ACTIVOS.includes(b.estado));
-  return new Map(activos.map((b) => [b.alertaId, b.estado === 'pedido' ? 'pedido' : 'bloqueado']));
+  return new Map(activos.map((b) => [b.alertaId, NOMBRE_ESTADO[b.estado]]));
 }
 
 /** El bloqueo o el pedido abierto de una IP, o null. */
@@ -84,10 +88,11 @@ export function activoDe(ip) {
   return (e.bloqueos && e.bloqueos.bloqueos.find((b) => b.ip === ip && ACTIVOS.includes(b.estado))) || null;
 }
 
-/** Si el origen de la alerta ya está bloqueado (no solo pedido): «Revisar» propone «Bloqueado manualmente». */
+/** Si el firewall ya bloqueó el origen de la alerta (no un pedido ni uno aprobado que falta aplicar): «Revisar»
+    propone «Bloqueado manualmente», como en la app. */
 export function origenBloqueado(a) {
   const bloqueo = activoDe(a.origenIp);
-  return Boolean(bloqueo && bloqueo.estado !== 'pedido');
+  return Boolean(bloqueo && bloqueo.estado === 'aplicado');
 }
 
 function numeroIp(ip) {
@@ -150,24 +155,28 @@ export function seccionBloqueo(a) {
     contenido.push(fila('espera', 'media', `Pedido de bloqueo · ${corto(actual.duracion)}`, `Lo pidió ${actual.pedidoPor} · ${fechaHora(Date.parse(actual.pedidoEn))}`));
     contenido.push(el('p', { class: 'nota bloqueo-nota' }, `“${actual.motivo}”`));
     if (!bloquea) {
-      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Espera a alguien que pueda bloquear'));
+      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Pendiente de aprobación'));
     } else {
       contenido.push(el('div', { class: 'fila-bloqueo-botones' },
         boton('Rechazar', () => hojaBloqueo(a, 'rechazar', actual)),
         conLlave ? boton('Aprobar', () => ejecutar(a, 'aprobar', { actual })) : null));
-      if (!conLlave) contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se aprueba desde el celular o con la llave de esta computadora.'));
+      if (!conLlave) contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se aprueba desde el teléfono o con la llave de esta computadora.'));
     }
   } else {
+    // Como en la app: aprobado y todavía sin aplicar dice «Bloqueando…», con el reloj, o «Bloqueo sin aplicar» si el
+    // firewall no responde; «Bloqueado» sale recién cuando el firewall lo confirma.
+    const aplicado = actual.estado === 'aplicado';
     const detalle = !firewall.conectado ? 'El firewall no responde'
-      : actual.estado === 'aprobado' ? 'Esperando al firewall'
+      : !aplicado ? 'El firewall lo aplica en unos segundos'
         : actual.aprobadoEn ? `Lo bloqueó ${actual.aprobadoPor} · ${fechaHora(Date.parse(actual.aprobadoEn))}` : null;
-    contenido.push(fila('candado', 'alta', tituloBloqueado(actual), detalle));
+    const enEspera = firewall.conectado ? 'Bloqueando…' : 'Bloqueo sin aplicar';
+    contenido.push(aplicado ? fila('candado', 'alta', tituloBloqueado(actual), detalle) : fila('espera', 'media', enEspera, detalle));
     if (conLlave) {
       contenido.push(el('div', { class: 'fila-bloqueo-botones' },
         boton('Cambiar duración', () => hojaBloqueo(a, 'duracion', actual)),
         boton('Desbloquear', () => hojaBloqueo(a, 'desbloquear', actual))));
     } else if (bloquea) {
-      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se cambia o se desbloquea desde el celular o con la llave de esta computadora.'));
+      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se cambia o se desbloquea desde el teléfono o con la llave de esta computadora.'));
     }
   }
   return el('section', { class: 'detalle-seccion' }, el('h3', {}, 'Bloqueo'), contenido);
@@ -182,11 +191,11 @@ function hojaBloqueo(a, accion, actual = null) {
   const hoja = abrirHoja({ titulo: '', cuerpo: [] });
 
   function queSeCorta() {
-    if (accion === 'desbloquear') return el('p', { class: 'bloqueo-corte' }, `${equipo} (${a.origenIp}) vuelve a llegar a otras áreas y a internet.`);
+    if (accion === 'desbloquear') return el('p', { class: 'bloqueo-corte' }, `${equipo} (${a.origenIp}) recupera el acceso a otras áreas y a internet.`);
     if (!conDuracion) return null;
     const elegida = DURACIONES.find((d) => d.segundos === duracion) || DURACIONES[0];
     // Hasta desbloquear se puede elegir siempre; la línea pasa a ámbar para que se vea que no vence sola.
-    return el('p', { class: `bloqueo-corte${duracion == null ? ' sin-vencimiento' : ''}` }, `${equipo} (${a.origenIp}) no va a llegar a otras áreas ni a internet ${elegida.durante}.`);
+    return el('p', { class: `bloqueo-corte${duracion == null ? ' sin-vencimiento' : ''}` }, `${equipo} (${a.origenIp}) no podrá acceder a otras áreas ni a internet ${elegida.durante}.`);
   }
 
   function pintar() {
@@ -251,7 +260,7 @@ async function ejecutar(a, accion, { duracion = null, motivo = '', actual = null
     }
     avisoInferior(AVISOS[accion](nombreEquipo(a, 'origen')), { duracion: 5000 });
   } catch (falla) {
-    avisoError(falla.cancelada ? 'No se confirmó con la llave: no se hizo nada.' : `No se pudo: ${falla.message}`, { duracion: 7000 });
+    avisoError(falla.cancelada ? 'No se confirmó con la llave: no se aplicó ningún cambio.' : `No se pudo: ${falla.message}`, { duracion: 7000 });
   }
   await actualizarBloqueos().catch(() => {});
   seguirAlFirewall();
@@ -267,12 +276,16 @@ function seguirAlFirewall() {
 function resumenBloqueos(activos) {
   if (activos.length === 1) {
     const b = activos[0];
-    return b.estado === 'pedido' ? `Pedido de bloqueo: ${b.nombre || b.ip}` : `${b.nombre || b.ip} bloqueado`;
+    const equipo = b.nombre || b.ip;
+    return b.estado === 'pedido' ? `Pedido de bloqueo: ${equipo}` : b.estado === 'aprobado' ? `Bloqueando ${equipo}` : `${equipo} bloqueado`;
   }
-  const pedidos = activos.filter((b) => b.estado === 'pedido').length;
-  const bloqueados = activos.length - pedidos;
+  const cuantos = (estado) => activos.filter((b) => b.estado === estado).length;
+  const bloqueados = cuantos('aplicado');
+  const bloqueando = cuantos('aprobado');
+  const pedidos = cuantos('pedido');
   const partes = [];
   if (bloqueados) partes.push(`${bloqueados} ${bloqueados === 1 ? 'bloqueado' : 'bloqueados'}`);
+  if (bloqueando) partes.push(`${bloqueando} bloqueando`);
   if (pedidos) partes.push(`${pedidos} ${pedidos === 1 ? 'pedido' : 'pedidos'}`);
   return partes.join(' · ');
 }
@@ -286,8 +299,9 @@ export function pintarBloqueos() {
   const activos = e.bloqueos ? e.bloqueos.bloqueos.filter((b) => ACTIVOS.includes(b.estado)) : [];
   enlace.hidden = !activos.length;
   if (!activos.length) return;
-  const hayPedidos = activos.some((b) => b.estado === 'pedido');
-  vaciar(enlace, el('span', { class: `fila-bloqueo-icono ${hayPedidos ? 'media' : 'alta'}` }, icono(hayPedidos ? 'espera' : 'candado')), el('span', {}, resumenBloqueos(activos)));
+  // El reloj, si alguno todavía no está bloqueado (un pedido o uno que el firewall no aplicó); si no, el candado.
+  const enCurso = activos.some((b) => b.estado !== 'aplicado');
+  vaciar(enlace, el('span', { class: `fila-bloqueo-icono ${enCurso ? 'media' : 'alta'}` }, icono(enCurso ? 'espera' : 'candado')), el('span', {}, resumenBloqueos(activos)));
   enlace.title = 'Ver los equipos bloqueados';
   enlace.onclick = () => verBloqueados();
 }

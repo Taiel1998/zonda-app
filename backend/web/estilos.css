@@ -288,6 +288,8 @@ html { overflow-y: scroll; }
   color: var(--texto-2);
 }
 .boton-icono:hover { color: var(--texto); border-color: var(--borde-fuerte); }
+/* «Salir» como ícono, solo en pantalla angosta (abajo), donde no entra el botón con texto. */
+#boton-salir-icono { display: none; }
 .boton-icono svg { width: 18px; height: 18px; }
 
 .boton-secundario {
@@ -451,7 +453,7 @@ html { overflow-y: scroll; }
   #barra-tiempo { flex-wrap: nowrap; width: 100%; }
   #barra-tiempo > .grupo-botones:first-child { flex: 1; min-width: 0; }
   #barra-tiempo .boton-rango { flex: 1; justify-content: center; }
-  #tiempo-alejar, #grupo-actualizar, #copiar-enlace { display: none; }
+  #tiempo-ahora, #tiempo-alejar, #grupo-actualizar, #copiar-enlace { display: none; }
   #tiempo-mas { display: inline-flex; flex: none; }
   .barra-fija { margin: -8px -16px 10px; padding: 8px 16px; }
   /* Los filtros de Alertas en una sola fila que se corre de costado, como en la app: la barra fija ocupa menos. */
@@ -638,6 +640,10 @@ html { overflow-y: scroll; }
 
 .kpi-etiqueta { font-size: 13px; color: var(--texto-2); font-weight: 500; margin: 0 0 8px; }
 .kpi-cabecera { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0 8px; }
+/* En «Alertas sin revisar», la etiqueta «Todas» va centrada con el título y separada de los contadores: con el
+   margen solo en el título, quedaba pegada a ellos. */
+.kpi-cabecera:has(+ .contadores) { align-items: center; margin-bottom: 10px; }
+.kpi-cabecera:has(+ .contadores) > .kpi-etiqueta { margin-bottom: 0; }
 /* Las tres tarjetas chicas de En vivo, cuando van de a seis columnas: la cabecera con el alto de dos renglones, así
    los números quedan a la misma altura aunque «Conexiones por segundo» y su «Ahora» no entren en uno. */
 @media (min-width: 1401px) {
@@ -808,6 +814,9 @@ html { overflow-y: scroll; }
 /* ---- Las filas de En vivo, como las de Grafana (filas.js) ---- */
 
 .fila + .fila { margin-top: 26px; }
+/* Al llegar a una fila desde otro lado (el tráfico de una alerta), su título queda debajo de la cabecera y de la
+   barra del horario, que van pegadas arriba. */
+.fila { scroll-margin-top: calc(var(--alto-cabecera) + 68px); }
 .fila-titulo { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
 .fila-boton {
   display: inline-flex;
@@ -1025,6 +1034,13 @@ html { overflow-y: scroll; }
 .datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 0; }
 .datos dt { font-size: 12.5px; color: var(--texto-2); }
 .datos dd { margin: 1px 0 0; font-size: 14px; font-weight: 500; }
+/* Debajo de los datos, el paso a los gráficos de ese rato: alineado con ellos, sin el margen del botón. */
+.ver-trafico { margin: 10px 0 0 -4px; }
+/* En el teléfono, 44 px de zona de toque sin agrandar el dibujo. */
+@media (max-width: 720px) {
+  .ver-trafico { position: relative; }
+  .ver-trafico::after { content: ""; position: absolute; inset: -6px 0; }
+}
 
 .veredicto {
   display: grid;
@@ -1248,8 +1264,11 @@ html { overflow-y: scroll; }
   border-radius: 12px;
   box-shadow: var(--sombra-flotante);
   font-size: 14px;
-  animation: subir 0.18s ease-out;
+  animation: subir-centrado 0.18s ease-out;
 }
+/* El aviso sube sin correrse de costado: con «subir», la animación de las hojas, perdía el centrado mientras subía
+   (aparecía corrido a la derecha y saltaba al centro). */
+@keyframes subir-centrado { from { transform: translate(-50%, 16px); } to { transform: translate(-50%, 0); } }
 .aviso-inferior { border: 1px solid rgba(255, 255, 255, 0.16); }
 .aviso-texto { display: inline-flex; align-items: center; gap: 10px; }
 .aviso-icono { flex: none; width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; line-height: 1; color: #1b1b19; }
@@ -1317,11 +1336,16 @@ html { overflow-y: scroll; }
 }
 .res-indicador:hover { border-color: var(--borde-fuerte); }
 .res-indicador[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--verde); border-color: transparent; }
-/* Los dos que solo informan (primera revisión y altas a tiempo): no se tocan. */
-.res-indicador.fijo { cursor: default; }
-.res-indicador.fijo:hover { border-color: var(--borde); }
+/* Los dos que solo informan (primera revisión y altas a tiempo): no se tocan, y no llevan el recuadro de los que
+   sí, para que no parezcan botones. */
+.res-indicador.fijo { cursor: default; background: transparent; border-color: transparent; box-shadow: none; }
+.res-indicador.fijo:hover { border-color: transparent; }
 .res-indicador-nombre { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--texto-2); }
-.res-indicador-nombre .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+.res-indicador-nombre .punto, .res-severidad .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+/* En «Alertas», el detalle dice cuántas son de cada severidad, cada una con su punto; si no entran en un renglón,
+   bajan enteras. */
+.res-severidades { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--texto-2); }
+.res-severidad { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .res-indicador strong { font-size: 26px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; }
 .res-indicador-detalle { font-size: 12px; color: var(--texto-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Con las cinco tarjetas angostas, el detalle baja de renglón en lugar de cortarse («mediana del per…»). */
@@ -1366,7 +1390,6 @@ html { overflow-y: scroll; }
 .res-bloque { display: grid; gap: 8px; }
 .res-bloque + .res-bloque { border-top: 1px solid var(--borde-fuerte); margin-top: 10px; padding-top: 10px; }
 .res-bloque-titulo { margin: 0; font-size: 12px; font-weight: 600; color: var(--texto-2); }
-.res-sin-alertas { margin: 0; font-size: 12.5px; line-height: 1.35; color: var(--texto-3); }
 /* Reales y falsos positivos: una sola barra partida, con un hueco de 2 px entre las dos partes, y su leyenda. */
 .res-partida { display: flex; gap: 2px; height: 12px; border-radius: 6px; overflow: hidden; background: var(--neutro); }
 .res-partida i { display: block; height: 100%; }
@@ -1394,14 +1417,15 @@ html { overflow-y: scroll; }
 .res-fila.equipo { grid-template-columns: minmax(0, 260px) minmax(40px, 1fr) 34px; }
 .res-fila.cero { color: var(--texto-2); }
 .res-fila-nombre { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.res-fila-nombre > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Si el nombre no entra, baja de renglón en lugar de cortarse («Fuerza bruta (SSH,…»), como en la app. */
+.res-fila-nombre > span { min-width: 0; overflow-wrap: anywhere; }
 .res-fila-nombre .punto, .res-check .punto, .res-ayuda-tipo .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
 .res-fila-valor { text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
 .res-pista { display: block; height: 10px; border-radius: 999px; background: var(--neutro); overflow: hidden; }
 .res-pista i { display: block; height: 100%; border-radius: 999px; background: var(--verde); }
 .res-pista.fina { height: 8px; }
 .res-pista i.clara { background: var(--precision-clara); }
-.res-fila.elegida, .res-precision.elegida, .res-cobertura.elegida { box-shadow: inset 0 0 0 2px var(--verde); }
+.res-fila.elegida, .res-precision.elegida { box-shadow: inset 0 0 0 2px var(--verde); }
 .res-nota { margin: 10px 0 0; font-size: 12.5px; line-height: 1.3; color: var(--texto-2); }
 .res-nota.arriba { margin: -6px 0 12px; }
 
@@ -1420,7 +1444,6 @@ html { overflow-y: scroll; }
   font-size: 13.5px;
   font-weight: 500;
   color: var(--texto-2);
-  cursor: pointer;
 }
 .res-cobertura strong { color: var(--texto); font-weight: 600; }
 .res-precision {
@@ -1437,7 +1460,7 @@ html { overflow-y: scroll; }
   font-size: 14px;
   color: var(--texto);
 }
-.res-precision strong { text-align: right; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.res-precision strong { text-align: right; font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .res-de { text-align: right; font-size: 12.5px; color: var(--texto-2); }
 
 .res-vacio { display: grid; justify-items: center; gap: 8px; padding: 40px 24px; text-align: center; }
@@ -1462,7 +1485,8 @@ html { overflow-y: scroll; }
   .res-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .res-indicador:first-child { grid-column: 1 / -1; }
   .res-indicador-detalle { white-space: normal; }
-  .res-fila { grid-template-columns: minmax(0, 150px) minmax(30px, 1fr) 30px; }
+  /* El nombre con el mismo lugar que en la compu, así «Fuerza bruta (SSH, FTP)» entra en un renglón; la barra cede. */
+  .res-fila { grid-template-columns: minmax(0, 190px) minmax(30px, 1fr) 30px; }
   .res-precision { grid-template-columns: 120px minmax(30px, 1fr) 42px 54px; font-size: 13px; }
 }
 
@@ -1588,7 +1612,9 @@ html { overflow-y: scroll; }
   #vista-alertas > .tarjeta, .ajustes-panel { border: 0; background: transparent; box-shadow: none; padding: 0; }
   .barra-inferior {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    /* Cuatro lugares, o cinco para un administrador (Administración): se reparten el ancho. */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     position: fixed;
     left: 0; right: 0; bottom: 0;
     z-index: 25;
@@ -1615,6 +1641,7 @@ html { overflow-y: scroll; }
   .marca img { width: 30px; height: 30px; }
   .marca-nombre { font-size: 18px; }
   #boton-tema, #boton-salir { display: none; }
+  #boton-salir-icono { display: inline-grid; flex: none; }
   .tarjeta { padding: 14px 14px 12px; border-radius: 12px; }
   .kpi-valor { font-size: 28px; }
   .grafico { height: 230px; }
@@ -1660,7 +1687,9 @@ html { overflow-y: scroll; }
   .hoja { width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); }
   .hoja-acciones > * { flex: 1; }
   .aviso { top: 66px; }
-  .aviso-inferior { bottom: 82px; }
+  /* El aviso de abajo ocupa el ancho, como el de la app: centrado con left: 50 % no pasaba de media pantalla y
+     partía el texto en varios renglones. */
+  .aviso-inferior { bottom: 82px; left: 16px; right: 16px; transform: none; max-width: none; justify-content: space-between; animation-name: subir; }
   /* La tabla de alertas pasa a tarjetas de cuatro renglones, como la lista de la app: severidad, estado y hora;
      el tipo; origen → destino y servicio; métodos y responsable. Las conexiones quedan en el detalle. */
   #tabla-alertas thead { display: none; }
@@ -1712,6 +1741,11 @@ html { overflow-y: scroll; }
 .bloqueados-enlace .fila-bloqueo-icono { display: inline-grid; flex: none; }
 .bloqueados-enlace .fila-bloqueo-icono svg { width: 14px; height: 14px; }
 .bloqueados-enlace > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* En el teléfono, 44 px de zona de toque sin agrandar el dibujo, como los botones chicos. */
+@media (max-width: 720px) {
+  .bloqueados-enlace { position: relative; }
+  .bloqueados-enlace::after { content: ""; position: absolute; inset: -14px -8px; }
+}
 /* En la lista de Alertas, el candado delante del origen, en la alerta desde la que se bloqueó ese equipo. */
 .par-bloqueo { display: inline-grid; vertical-align: -3px; margin-right: 6px; }
 .par-bloqueo svg { width: 14px; height: 14px; }

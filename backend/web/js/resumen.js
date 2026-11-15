@@ -1,12 +1,12 @@
 // La vista Resumen, igual que el Resumen de la app (RF-07): el período (7 días, 30 días o fechas), la línea de
 // la red, los totales, el tiempo hasta la primera revisión y las altas revisadas en la primera hora, el gráfico
 // por hora, día o semana con su frase, los tipos de ataque, los reales y falsos positivos y la precisión de cada
-// modelo, con los mismos cálculos y textos. Tocar una pieza filtra todo el resumen, como en la app. En la compu
+// método, con los mismos cálculos y textos. Tocar una pieza filtra todo el resumen, como en la app. En la compu
 // las piezas van de a dos y al final está «Equipos con más alertas», que solo existe acá. Se comparte como en la
 // app con una sola imagen, siempre en claro; el PDF es un reporte armado para la hoja A4 (reporte.js).
 
 import { el, icono, numero, vaciar } from './util.js';
-import { $, METODOS, TIPOS, ahoraServidor, e, pedir, tiposDe } from './comun.js';
+import { $, METODOS, TIPOS, ahoraServidor, e, esAdmin, pedir, tiposDe } from './comun.js';
 import { abrirHoja, avisoError, avisoInferior } from './hojas.js';
 import { alternarAyuda } from './ayuda.js';
 import { abrirMenu } from './menu.js';
@@ -30,10 +30,10 @@ const DESCRIPCION_TIPO = {
   fuerza_bruta: 'Muchos intentos de contraseña contra un servicio.',
   sin_tipificar: 'No se parece a ningún ataque conocido. Puede ser uno nuevo.',
   escaneo: 'Prueba puertos para ver qué servicios hay. Suele ser el paso previo a un ataque.',
-  ddos: 'Muchísimo tráfico para saturar un servicio.',
-  probable_falsa_alarma: 'Raro para la IA, pero parecido a tráfico normal, como un backup.',
-  servicio_no_autorizado: 'Las reglas vieron una conexión a un servicio que no está en la lista de permitidos.',
-  volumen_inusual: 'Los umbrales vieron demasiadas conexiones a un mismo servicio en un minuto.',
+  ddos: 'Gran volumen de tráfico para saturar un servicio.',
+  probable_falsa_alarma: 'Inusual para la IA, pero similar al tráfico habitual, como un backup.',
+  servicio_no_autorizado: 'Las reglas detectaron una conexión a un servicio que no está en la lista de permitidos.',
+  volumen_inusual: 'Los umbrales detectaron demasiadas conexiones a un mismo servicio en un minuto.',
 };
 // Lo que dice la frase del gráfico de las alertas de un tipo.
 const DE_TIPO = {
@@ -62,8 +62,8 @@ const DIA_LARGO = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'vierne
 const UN_MINUTO = 60e3;
 const UNA_HORA = 3600e3;
 
-// El período y los filtros: barras (por su comienzo), tipos, la revisión y el modelo.
-const r = { periodo: '7d', fechas: null, barras: new Set(), tipos: new Set(), revision: null, metodo: null };
+// El período y los filtros: barras (por su comienzo), severidades, tipos, la revisión y el método.
+const r = { periodo: '7d', fechas: null, barras: new Set(), severidades: new Set(), tipos: new Set(), revision: null, metodo: null };
 
 // ---- Fechas y textos ----
 
@@ -77,7 +77,7 @@ const mayuscula = (texto) => texto.charAt(0).toUpperCase() + texto.slice(1);
 const minuscula = (texto) => texto.charAt(0).toLowerCase() + texto.slice(1);
 const plural = (n, uno, otros) => (n === 1 ? uno : otros);
 /** «73 %», como la app; null sin base. */
-const porciento = (parte, total) => (total ? `${Math.round((100 * parte) / total)} %` : null);
+const porciento = (parte, total) => (total ? `${Math.round((100 * parte) / total)}\u00a0%` : null);
 /** «a», «a y b», «a, b y c». */
 const enumerar = (lista) => (lista.length < 2 ? lista.join('') : `${lista.slice(0, -1).join(', ')} y ${lista[lista.length - 1]}`);
 
@@ -157,14 +157,11 @@ function nombreBarra(escala, b, forma) {
   return { uno: `${mayuscula(diaLargo(b.inicio))} ${ddMM(b.inicio)}`, varios: diaLargo(b.inicio), chip: `${diaCorto(b.inicio)} ${ddMM(b.inicio)}`, fecha: `${diaLargo(b.inicio)} ${ddMM(b.inicio)}` }[forma];
 }
 
-/** La severidad de cada tipo en esta red (Ajustes → Severidades). */
+/** La severidad de cada tipo en esta red (Administración → Severidades). */
 const severidadDe = (tipo) => (e.severidades && e.severidades[tipo]) || SEVERIDAD_DE_FABRICA[tipo];
-const altasConfiguradas = () => new Set(ORDEN.filter((t) => severidadDe(t) === 'alta'));
-const sonLasAltas = () => {
-  const altas = altasConfiguradas();
-  return altas.size > 0 && r.tipos.size === altas.size && [...altas].every((t) => r.tipos.has(t));
-};
-const cantidadFiltros = () => r.barras.size + r.tipos.size + (r.revision ? 1 : 0) + (r.metodo ? 1 : 0);
+const cantidadFiltros = () => r.barras.size + r.severidades.size + r.tipos.size + (r.revision ? 1 : 0) + (r.metodo ? 1 : 0);
+// Las tres severidades, de la más grave a la más leve, con su nombre para una cuenta («1 alta», «3 altas»).
+const SEVERIDADES_DEL_RESUMEN = [['alta', 'alta', 'altas'], ['media', 'media', 'medias'], ['baja', 'baja', 'bajas']];
 
 /** La primera revisión, con la hora del dispositivo que la hizo (decisión 21), como la app. */
 function primeraRevision(a) {
@@ -176,6 +173,8 @@ const enRango = (a, desde, fin) => { const t = Date.parse(a.inicio); return t >=
 
 function pasaFiltro(a, filtro, barras) {
   if (filtro.barras.size && !barras.some((b) => filtro.barras.has(b.inicio) && enRango(a, b.inicio, b.fin))) return false;
+  // La severidad de la alerta, no la de su tipo: la importancia del equipo la corre un nivel (decisión 41).
+  if (filtro.severidades.size && !filtro.severidades.has(a.severidad)) return false;
   if (filtro.tipos.size && !tiposDe(a).some((t) => filtro.tipos.has(t))) return false;
   const estado = a.estadoRevision;
   if (filtro.revision === 'revisadas' && estado === 'sin_revisar') return false;
@@ -230,6 +229,8 @@ function calcular() {
     mediana,
     altasParte: altas.filter(enHora).length,
     altasTotal: altas.filter((a) => enHora(a) || ahora - Date.parse(a.creadaEn) > UNA_HORA).length,
+    // Con la severidad de cada alerta: la de su tipo, un nivel más o menos según la importancia del equipo.
+    porSeveridad: Object.fromEntries(SEVERIDADES_DEL_RESUMEN.map(([s]) => [s, lista.filter((a) => a.severidad === s).length])),
     porTipo: new Map(ORDEN.map((t) => [t, lista.filter((a) => tiposDe(a).includes(t)).length])),
     precision: METODOS.map((m) => {
       const marcadas = revisadas.filter((a) => a.veredictos[m.id]);
@@ -259,13 +260,14 @@ function lineaDelResumen(x) {
   return partes.join(' · ');
 }
 
-/** Lo elegido en cada clase de filtro, en el orden de la app: cuándo, tipo, revisión y modelo. */
+/** Lo elegido en cada clase de filtro, en el orden de la hoja: cuándo, severidad, tipo, revisión y método. Los
+    tipos se nombran uno por uno, como en la app: «las altas» elegía por tipo, y esas no son las alertas altas. */
 function gruposDeFiltros(x, formaBarra) {
   const grupos = [];
   const barras = x.barras.filter((b) => r.barras.has(b.inicio)).map((b) => nombreBarra(x.escala, b, formaBarra));
   if (barras.length) grupos.push(enumerar(barras));
-  if (sonLasAltas()) grupos.push('las altas');
-  else if (r.tipos.size) grupos.push(enumerar(ORDEN.filter((t) => r.tipos.has(t)).map((t) => minuscula(TIPOS[t]))));
+  if (r.severidades.size) grupos.push(`severidad ${enumerar(SEVERIDADES_DEL_RESUMEN.filter(([s]) => r.severidades.has(s)).map(([s]) => s))}`);
+  if (r.tipos.size) grupos.push(enumerar(ORDEN.filter((t) => r.tipos.has(t)).map((t) => minuscula(TIPOS[t]))));
   if (r.revision) grupos.push(REVISION[r.revision].frase);
   if (r.metodo) grupos.push(MODELO[r.metodo].frase);
   return grupos;
@@ -274,11 +276,13 @@ function gruposDeFiltros(x, formaBarra) {
 /** La frase de abajo del gráfico (fraseDelGrafico de la app). Con filtros dice qué se está mostrando; sin
     filtros, cuenta la barra con más alertas. En la imagen no dice «Elegilo de nuevo». */
 function fraseDelGrafico(x, enImagen = false) {
-  const nombrados = r.barras.size + (sonLasAltas() ? 1 : r.tipos.size) + (r.revision ? 1 : 0) + (r.metodo ? 1 : 0);
+  const nombrados = cantidadFiltros();
   const alertas = `${x.total} ${plural(x.total, 'alerta', 'alertas')}`;
   if (nombrados === 1) {
     const [nombre] = gruposDeFiltros(x, 'uno');
-    return enImagen ? `Mostrando ${nombre}: ${alertas}.` : `Mostrando ${nombre}: ${alertas}. Elegilo de nuevo para sacarlo.`;
+    // La severidad no se elige tocando la pantalla (la línea del total solo informa): se saca desde Filtros, como en la app.
+    const comoSacarlo = r.severidades.size ? 'Se quita desde Filtros.' : 'Elegilo de nuevo para quitarlo.';
+    return enImagen ? `Mostrando ${nombre}: ${alertas}.` : `Mostrando ${nombre}: ${alertas}. ${comoSacarlo}`;
   }
   if (nombrados > 1 && nombrados <= 4) return `Mostrando ${alertas}: ${gruposDeFiltros(x, 'varios').join(' · ')}.`;
   if (nombrados > 4) return `Mostrando ${alertas} con ${cantidadFiltros()} filtros.`;
@@ -311,9 +315,10 @@ function elegirModelo(valor) {
   pintarResumen();
 }
 
-/** Las altas: si ya están todas las de la red entre los tipos, se sacan; si no, se suman. */
+/** Sin filtros: lo hace el total «Alertas» al tocarlo. */
 function limpiarFiltros() {
   r.barras.clear();
+  r.severidades.clear();
   r.tipos.clear();
   r.revision = null;
   r.metodo = null;
@@ -345,8 +350,8 @@ function botonTocable(clase, elegido, alTocar, ...hijos) {
 
 /** Los cinco indicadores de arriba, iguales, como una fila de paneles «Stat» de Grafana: el nombre, el número y
     un detalle, sin bloques de color. Los tres primeros filtran al tocarlos, como en la app. Los otros dos solo
-    informan: en la app se tocan para filtrar por las revisadas o por los tipos en alta, pero un tiempo y un
-    porcentaje no se leen como un filtro, y eso ya se filtra desde «Revisadas» y desde «Por tipo de ataque». */
+    informan, también como en la app: un tiempo y un porcentaje no se leen como un filtro, y por las revisadas
+    se filtra desde «Revisadas». */
 function indicadores(x) {
   const altas = porciento(x.altasParte, x.altasTotal);
   const dato = (nombre, valor, detalle) => el('div', { class: 'res-indicador fijo' },
@@ -357,9 +362,14 @@ function indicadores(x) {
     el('span', { class: 'res-indicador-nombre' }, punto, nombre),
     el('strong', {}, valor),
     el('span', { class: 'res-indicador-detalle' }, detalle));
+  // Debajo del total, cuántas son de cada severidad (solo las que hubo): el gráfico las suma en la misma barra y
+  // el período ya lo dicen los botones y la línea de arriba. Sin alertas, queda el período.
+  const severidades = SEVERIDADES_DEL_RESUMEN.filter(([s]) => x.porSeveridad[s]).map(([s, una, varias]) => el('span', { class: 'res-severidad' },
+    el('i', { class: 'punto', style: `background:var(--${s})` }), `${numero(x.porSeveridad[s])} ${plural(x.porSeveridad[s], una, varias)}`));
+  const periodo = r.fechas ? 'en estas fechas' : r.periodo === '7d' ? 'en 7 días' : 'en 30 días';
   return el('div', { class: 'res-indicadores res-ancho' },
-    indicador(false, limpiarFiltros, 'Alertas', numero(x.total), r.fechas ? 'en estas fechas' : r.periodo === '7d' ? 'en 7 días' : 'en 30 días'),
-    indicador(r.revision === 'revisadas', () => elegirRevision('revisadas'), 'Revisadas', numero(x.revisadas), `${porciento(x.revisadas, x.total) || '0 %'} del total`),
+    indicador(false, limpiarFiltros, 'Alertas', numero(x.total), severidades.length ? el('span', { class: 'res-severidades' }, severidades) : periodo),
+    indicador(r.revision === 'revisadas', () => elegirRevision('revisadas'), 'Revisadas', numero(x.revisadas), `${porciento(x.revisadas, x.total) || '0\u00a0%'} del total`),
     indicador(r.revision === 'sin_revisar', () => elegirRevision('sin_revisar'), 'Sin revisar', numero(x.sinRevisar), x.sinRevisar ? 'esperan revisión' : 'nada pendiente',
       x.sinRevisar ? el('i', { class: 'punto', style: 'background:var(--media)' }) : null),
     dato('Primera revisión', x.mediana === null ? '—' : duracionCorta(x.mediana), x.mediana === null ? 'sin revisiones todavía' : 'mediana del período'),
@@ -402,31 +412,28 @@ function filaDeBarra({ clase, elegida = false, alTocar = null, punto = null, eti
 
 /** Los tipos que tienen fila en «Por tipo de ataque», como en la app (decisión 59): los que tuvieron alertas en
     el período, con o sin filtros, y los elegidos. Uno que el filtro deja en cero sigue con su fila, en gris,
-    para poder sumarlo; los que no tuvieron ninguna van en «Sin alertas». */
+    para poder sumarlo; los que no tuvieron ninguna no se listan. */
 function tiposConFila(x) {
   return new Set(ORDEN.filter((t) => x.porTipo.get(t) || r.tipos.has(t) || x.delPeriodo.some((a) => tiposDe(a).includes(t))));
 }
 
-const lineaSinAlertas = (sin) => `Sin alertas: ${enumerar(sin.map((t) => minuscula(ETIQUETA_TIPO[t])))}.`;
-
-/** Los tipos con alertas en el período, cada uno con su barra; los que no tuvieron van juntos en una línea,
-    debajo de su grupo. */
+/** Los tipos con alertas en el período, cada uno con su barra, en sus dos grupos. Los que no tuvieron ninguna no
+    se listan, como en la app: un renglón que enumera lo que no pasó no dice nada. */
 function tipos(x) {
   const maximo = Math.max(1, ...x.porTipo.values());
   const conFila = tiposConFila(x);
   const bloque = (titulo, lista) => {
     const con = lista.filter((t) => conFila.has(t));
-    const sin = lista.filter((t) => !conFila.has(t));
-    if (conFila.size && !con.length) return null;
+    if (!con.length) return null;
     return el('div', { class: 'res-bloque' }, el('p', { class: 'res-bloque-titulo' }, titulo),
       con.map((t) => filaDeBarra({
         clase: 'tipo', elegida: r.tipos.has(t), alTocar: () => alternar(r.tipos, t), punto: el('i', { class: 'punto', style: `background:var(--${severidadDe(t)})` }),
         etiqueta: ETIQUETA_TIPO[t], valor: x.porTipo.get(t), lleno: (95 * x.porTipo.get(t)) / maximo,
-      })),
-      sin.length ? el('p', { class: 'res-sin-alertas' }, lineaSinAlertas(sin)) : null);
+      })));
   };
   return tarjeta('Por tipo de ataque', { titulo: 'Qué es cada tipo', contenido: ayudaTipos },
-    bloque('Lo que detectó la IA', TIPOS_IA), bloque('Lo que la IA no detectó', TIPOS_SIN_IA));
+    conFila.size ? [bloque('Lo que detectó la IA', TIPOS_IA), bloque('Lo que la IA no detectó', TIPOS_SIN_IA)]
+      : el('p', { class: 'res-nota' }, 'Sin alertas en el período.'));
 }
 
 /** Reales y falsos positivos en una sola barra partida, con su leyenda: tocar una parte filtra, como en la app. */
@@ -446,9 +453,10 @@ function realesYFalsos(x) {
 }
 
 function precision(x) {
-  return tarjeta('Precisión de cada modelo', { titulo: 'Cómo se lee la precisión', contenido: () => ayudaPrecision(x) },
-    botonTocable(`res-cobertura${r.revision === 'revisadas' ? ' elegida' : ''}`, r.revision === 'revisadas', () => elegirRevision('revisadas'),
-      el('span', {}, 'Revisadas'), el('strong', {}, `${porciento(x.revisadas, x.total) || '0 %'} · ${x.revisadas} de ${x.total}`)),
+  // La cobertura solo informa, como en la app: por las revisadas se filtra desde el total «Revisadas».
+  return tarjeta('Precisión de cada método', { titulo: 'Cómo se lee la precisión', contenido: () => ayudaPrecision(x) },
+    el('div', { class: 'res-cobertura' },
+      el('span', {}, 'Revisadas'), el('strong', {}, `${porciento(x.revisadas, x.total) || '0\u00a0%'} · ${x.revisadas} de ${x.total}`)),
     el('div', { class: 'res-filas' }, x.precision.map((p) => botonTocable(`res-precision${r.metodo === p.m.id ? ' elegida' : ''}`, r.metodo === p.m.id, () => elegirModelo(p.m.id),
       el('span', { class: 'res-fila-nombre' }, p.m.resumen),
       el('span', { class: 'res-pista fina' }, el('i', { class: p.total < 30 ? 'clara' : null, style: `width:${p.parte ? `${(100 * p.parte) / p.total}%` : '2px'}` })),
@@ -461,14 +469,15 @@ function equipos(x) {
   return tarjeta('Equipos con más alertas', null,
     el('p', { class: 'res-nota arriba' }, 'Como destino. No se incluye al compartir.'),
     x.equipos.length ? el('div', { class: 'res-filas' }, x.equipos.map((q) => filaDeBarra({ clase: 'equipo', etiqueta: q.nombre, valor: q.n, lleno: (95 * q.n) / maximo, color: 'var(--barra-resumen)' })))
-      : el('p', { class: 'res-nota' }, 'Sin alertas en el período.'));
+      // El período tiene alertas (si no, el Resumen muestra su pantalla vacía): las dejó afuera un filtro.
+      : el('p', { class: 'res-nota' }, 'Ninguna alerta con estos filtros.'));
 }
 
 function vacio() {
   const textos = {
-    '7d': ['Sin alertas en los últimos 7 días', 'El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que la red estuvo tranquila.'],
-    '30d': ['Sin alertas en los últimos 30 días', 'El sensor siguió activo todo el mes. Podés compartir el resumen igual: muestra que la red estuvo tranquila.'],
-    fechas: ['Sin alertas en estas fechas', 'El sensor siguió activo. Podés compartir el resumen igual: muestra que la red estuvo tranquila.'],
+    '7d': ['Sin alertas en los últimos 7 días', 'El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que no hubo alertas.'],
+    '30d': ['Sin alertas en los últimos 30 días', 'El sensor siguió activo todo el mes. Podés compartir el resumen igual: muestra que no hubo alertas.'],
+    fechas: ['Sin alertas en estas fechas', 'El sensor siguió activo. Podés compartir el resumen igual: muestra que no hubo alertas.'],
   }[r.fechas ? 'fechas' : r.periodo];
   return el('div', { class: 'res-vacio' }, el('span', { class: 'res-vacio-circulo' }, icono('check')), el('h3', {}, textos[0]), el('p', {}, textos[1]));
 }
@@ -550,6 +559,8 @@ function hojaFechas() {
       titulo: 'Elegí las fechas',
       cuerpo: [el('label', { class: 'campo' }, el('span', {}, 'Desde'), campoDesde), el('label', { class: 'campo' }, el('span', {}, 'Hasta'), campoHasta), error],
       acciones: [
+        // Con fechas puestas, «Limpiar» las saca y vuelve a regir el período (7 o 30 días), como en la app.
+        ...(r.fechas ? [{ texto: 'Limpiar', tipo: 'secundario', alHacer: (h) => { h.cerrar(); r.fechas = null; r.barras.clear(); pintarResumen(); } }] : []),
         { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
         { texto: `Mostrar ${n} ${plural(n, 'alerta', 'alertas')}`, tipo: 'principal', deshabilitado: !valido, alHacer: (h) => aplicar(h, d, a) },
       ],
@@ -572,7 +583,7 @@ function hojaFechas() {
 
 function hojaFiltros() {
   const x = calcular();
-  const borrador = { barras: new Set(r.barras), tipos: new Set(r.tipos), revision: r.revision, metodo: r.metodo };
+  const borrador = { barras: new Set(r.barras), severidades: new Set(r.severidades), tipos: new Set(r.tipos), revision: r.revision, metodo: r.metodo };
   let hoja = null;
   const unico = (valores, clave) => Object.entries(valores).map(([id, nombre]) => el('button', {
     type: 'button', class: 'chip-filtro', 'aria-pressed': String((borrador[clave] || 'todas') === id),
@@ -591,19 +602,25 @@ function hojaFiltros() {
             type: 'button', class: 'chip-filtro', 'aria-pressed': String(borrador.barras.has(b.inicio)),
             onclick: () => { if (borrador.barras.has(b.inicio)) borrador.barras.delete(b.inicio); else borrador.barras.add(b.inicio); pintar(); },
           }, nombreBarra(x.escala, b, 'chip'))))),
+        // Por la severidad de cada alerta (la del tipo, corrida por la importancia del equipo), como en Alertas.
+        el('div', { class: 'grupo-opciones' }, el('p', {}, 'Severidad · podés elegir varias'),
+          el('div', { class: 'opciones' }, SEVERIDADES_DEL_RESUMEN.map(([s]) => el('button', {
+            type: 'button', class: 'chip-filtro', 'aria-pressed': String(borrador.severidades.has(s)),
+            onclick: () => { if (borrador.severidades.has(s)) borrador.severidades.delete(s); else borrador.severidades.add(s); pintar(); },
+          }, el('i', { class: 'punto', style: `background:var(--${s})` }), mayuscula(s))))),
         el('div', { class: 'grupo-opciones' }, el('p', {}, 'Tipo de ataque · podés elegir varios'),
           el('p', { class: 'res-bloque-titulo' }, 'Lo que detectó la IA'), TIPOS_IA.map(filaTipo),
           el('p', { class: 'res-bloque-titulo' }, 'Lo que la IA no detectó'), TIPOS_SIN_IA.map(filaTipo)),
         el('div', { class: 'grupo-opciones' }, el('p', {}, 'Revisión'),
           el('div', { class: 'opciones' }, unico({ todas: 'Todas', ...Object.fromEntries(Object.entries(REVISION).map(([id, v]) => [id, v.filtro])) }, 'revision'))),
-        el('div', { class: 'grupo-opciones' }, el('p', {}, 'Modelo'),
+        el('div', { class: 'grupo-opciones' }, el('p', {}, 'Método'),
           el('div', { class: 'opciones' }, unico({ todas: 'Todos', ...Object.fromEntries(Object.entries(MODELO).map(([id, v]) => [id, v.filtro])) }, 'metodo'))),
       ],
       acciones: [
-        { texto: 'Limpiar', tipo: 'secundario', alHacer: () => { borrador.barras.clear(); borrador.tipos.clear(); borrador.revision = null; borrador.metodo = null; pintar(); } },
+        { texto: 'Limpiar', tipo: 'secundario', alHacer: () => { borrador.barras.clear(); borrador.severidades.clear(); borrador.tipos.clear(); borrador.revision = null; borrador.metodo = null; pintar(); } },
         {
           texto: `Mostrar ${n} ${plural(n, 'alerta', 'alertas')}`, tipo: 'principal', alHacer: (h) => {
-            Object.assign(r, { barras: borrador.barras, tipos: borrador.tipos, revision: borrador.revision, metodo: borrador.metodo });
+            Object.assign(r, { barras: borrador.barras, severidades: borrador.severidades, tipos: borrador.tipos, revision: borrador.revision, metodo: borrador.metodo });
             h.cerrar();
             pintarResumen();
           },
@@ -620,14 +637,17 @@ function ayudaTipos() {
     el('span', {}, el('b', {}, `${TIPOS[t]}.`), ` ${DESCRIPCION_TIPO[t]}`));
   return [
     el('p', { class: 'res-bloque-titulo' }, 'Lo que detectó la IA'),
-    el('p', { class: 'res-ayuda-texto' }, 'La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.'),
+    el('p', { class: 'res-ayuda-texto' }, 'La IA detectó algo inusual y otro modelo le asigna el tipo de ataque más probable.'),
     TIPOS_IA.map(fila),
     el('hr', { class: 'res-divisor' }),
     el('p', { class: 'res-bloque-titulo' }, 'Lo que la IA no detectó'),
-    el('p', { class: 'res-ayuda-texto' }, 'Lo marcaron los otros dos detectores de Zonda.'),
+    el('p', { class: 'res-ayuda-texto' }, 'Lo marcaron los otros dos métodos de Zonda.'),
     TIPOS_SIN_IA.map(fila),
     el('hr', { class: 'res-divisor' }),
-    el('p', { class: 'res-ayuda-texto' }, 'El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidades.'),
+    // Administración es solo del administrador: al analista no se le indica un lugar que no tiene.
+    el('p', { class: 'res-ayuda-texto' }, `${esAdmin()
+      ? 'El punto de color es la severidad que elegiste para cada tipo. Se cambia en Administración → Severidades.'
+      : 'El punto de color es la severidad de cada tipo en esta red. La cambia un administrador.'} Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.`),
   ];
 }
 
@@ -636,12 +656,11 @@ function recuadroPrecision(x) {
   if (!cantidadFiltros()) return `Sin filtro: la precisión cuenta todas las alertas revisadas ${r.fechas ? 'de las fechas elegidas' : r.periodo === '7d' ? 'de estos 7 días' : 'de estos 30 días'}.`;
   if (r.metodo) {
     return {
-      ia: 'Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese modelo.',
-      umbrales: 'Estás viendo los umbrales estadísticos: cada fila cuenta las alertas que marcaron los umbrales junto con ese modelo.',
-      reglas: 'Estás viendo las reglas estáticas: cada fila cuenta las alertas que marcaron las reglas junto con ese modelo.',
+      ia: 'Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese método.',
+      umbrales: 'Estás viendo los umbrales estadísticos: cada fila cuenta las alertas que marcaron los umbrales junto con ese método.',
+      reglas: 'Estás viendo las reglas estáticas: cada fila cuenta las alertas que marcaron las reglas junto con ese método.',
     }[r.metodo];
   }
-  if (sonLasAltas() && !r.barras.size && !r.revision) return 'Estás viendo las altas: la precisión cuenta solo las alertas altas revisadas.';
   if (cantidadFiltros() > 1) return 'Estás viendo varios filtros juntos: la precisión cuenta solo las alertas revisadas que pasan todos.';
   if (r.barras.size) {
     const b = x.barras.find((barra) => r.barras.has(barra.inicio));
@@ -649,12 +668,13 @@ function recuadroPrecision(x) {
     if (x.escala === 'dia') return `Estás viendo el ${nombreBarra('dia', b, 'fecha')}: la precisión cuenta solo las alertas revisadas de ese día.`;
     return `Estás viendo la ${nombreBarra('semana', b, 'fecha')}: la precisión cuenta solo las alertas revisadas de esa semana.`;
   }
+  if (r.severidades.size) return `Estás viendo la severidad ${[...r.severidades][0]}: la precisión cuenta solo las alertas revisadas de esa severidad.`;
   if (r.tipos.size) return `Estás viendo ${minuscula(TIPOS[[...r.tipos][0]])}: la precisión cuenta solo las alertas revisadas de ese tipo.`;
   return {
     revisadas: 'Estás viendo las revisadas: la precisión cuenta las mismas alertas que sin filtro.',
     sin_revisar: 'Estás viendo las sin revisar: todavía no tienen revisión, así que no hay precisión para calcular.',
-    reales: 'Estás viendo los ataques reales: todas son reales, así que cada modelo da 100 %.',
-    falsos: 'Estás viendo los falsos positivos: ninguna es real, así que cada modelo da 0 %.',
+    reales: 'Estás viendo los ataques reales: todas son reales, así que cada método da 100\u00a0%.',
+    falsos: 'Estás viendo los falsos positivos: ninguna es real, así que cada método da 0\u00a0%.',
   }[r.revision];
 }
 
@@ -667,10 +687,10 @@ function ayudaPrecision(x) {
   }[ejemplo.m.id]}`;
   const bloque = (titulo, texto) => el('div', { class: 'res-ayuda-bloque' }, el('h4', {}, titulo), el('p', {}, texto));
   return [
-    bloque('Precisión', `De las alertas que marcó un modelo y ya revisaste, cuántas eran ataques reales.${frase}`),
+    bloque('Precisión', `De las alertas que marcó un método y ya revisaste, cuántas eran ataques reales.${frase}`),
     bloque('Cobertura de revisión', 'Cuántas alertas del período ya revisaste.'),
-    bloque('Los tres modelos', 'La IA compara el tráfico con lo normal de tu red. Los umbrales cuentan conexiones a un mismo servicio en 60 segundos. Las reglas miran si ese servicio está autorizado.'),
-    bloque('¿Por qué 30 revisiones?', 'Con pocas, un par de casos mueven mucho el porcentaje. Las barras claras tienen menos de 30 revisiones: todavía no se pueden comparar.'),
+    bloque('Los tres métodos', 'La IA compara el tráfico con el comportamiento habitual de la red. Los umbrales cuentan conexiones a un mismo servicio en 60 segundos. Las reglas verifican si ese servicio está autorizado.'),
+    bloque('¿Por qué 30 revisiones?', 'Con pocas revisiones, unos pocos casos cambian mucho el porcentaje. Las barras claras tienen menos de 30 revisiones: todavía no se pueden comparar.'),
     el('p', { class: 'res-recuadro' }, recuadroPrecision(x)),
     el('p', { class: 'res-ayuda-texto' }, 'Se calcula con las alertas que tiene el servidor de esta red.'),
   ];
@@ -769,7 +789,7 @@ function dibujarImagen(x) {
 
   // Los totales: tres tarjetas iguales.
   const anchoTotal = (interno - 20) / 3;
-  const cobertura = porciento(x.revisadas, x.total) || '0 %';
+  const cobertura = porciento(x.revisadas, x.total) || '0\u00a0%';
   [
     { n: x.total, etiqueta: plural(x.total, 'alerta', 'alertas'), fondo: C.crema, color: C.texto, elegida: false },
     { n: x.revisadas, etiqueta: `${plural(x.revisadas, 'revisada', 'revisadas')} · ${cobertura}`, fondo: C.verdeClaro, color: C.verde, elegida: r.revision === 'revisadas' },
@@ -786,14 +806,32 @@ function dibujarImagen(x) {
     while (tamano > 8 && g.measureText(t.etiqueta).width > anchoTotal - 24) { tamano -= 0.25; g.font = fuente(400, tamano); }
     texto(t.etiqueta, x0 + 12, y + 11 + 27 + 2 + 11, { tamano, color: C.texto2 });
   });
-  y += 62 + HUECO;
+  y += 62;
+  // Debajo de los totales, cuántas son de cada severidad (solo las que hubo), como en la pantalla.
+  const conSeveridad = SEVERIDADES_DEL_RESUMEN.filter(([s]) => x.porSeveridad[s]);
+  if (conSeveridad.length) {
+    y += 8;
+    let xs = M + 2;
+    for (const [s, una, varias] of conSeveridad) {
+      g.fillStyle = C[s];
+      g.beginPath();
+      g.arc(xs + 4, y + 7, 4, 0, Math.PI * 2);
+      g.fill();
+      const cuenta = `${numero(x.porSeveridad[s])} ${plural(x.porSeveridad[s], una, varias)}`;
+      texto(cuenta, xs + 13, y + 11, { color: C.texto2 });
+      xs += 13 + g.measureText(cuenta).width + 14;
+    }
+    y += 15;
+  }
+  y += HUECO;
 
-  // Las métricas: dos tarjetas sin fondo; el nombre puede ir en dos renglones, como en la app.
+  // Las métricas: dos tarjetas sin fondo ni marco (solo informan); el nombre puede ir en dos renglones, como
+  // en la app.
   const anchoMetrica = (interno - 10) / 2;
   const altas = porciento(x.altasParte, x.altasTotal);
   const metricasImg = [
-    { valor: x.mediana === null ? '—' : duracionCorta(x.mediana), nombre: 'hasta la primera revisión', detalle: x.mediana === null ? 'sin revisiones todavía' : 'mediana del período', elegida: r.revision === 'revisadas' },
-    { valor: altas || '—', nombre: 'altas revisadas en la primera hora', detalle: x.altasTotal ? `${x.altasParte} de ${x.altasTotal}` : 'ninguna alta con más de 1 h', elegida: sonLasAltas() },
+    { valor: x.mediana === null ? '—' : duracionCorta(x.mediana), nombre: 'hasta la primera revisión', detalle: x.mediana === null ? 'sin revisiones todavía' : 'mediana del período' },
+    { valor: altas || '—', nombre: 'altas revisadas en la primera hora', detalle: x.altasTotal ? `${x.altasParte} de ${x.altasTotal}` : 'ninguna alta con más de 1 h' },
   ];
   g.font = fuente(500, 12);
   for (const m of metricasImg) m.lineas = renglones(g, m.nombre, anchoMetrica - 24);
@@ -801,7 +839,6 @@ function dibujarImagen(x) {
   const altoMetrica = 10 + 27 + 2 + renglonesNombre * 15 + 2 + 14 + 10;
   metricasImg.forEach((m, i) => {
     const x0 = M + i * (anchoMetrica + 10);
-    if (m.elegida) marco(x0, y, anchoMetrica, altoMetrica, 12);
     texto(m.valor, x0 + 12, y + 10 + 22, { peso: 600, tamano: 22, color: C.verde });
     m.lineas.forEach((l, j) => texto(l, x0 + 12, y + 10 + 27 + 2 + 12 + j * 15, { peso: 500, tamano: 12, color: C.texto }));
     texto(m.detalle, x0 + 12, y + 10 + 27 + 2 + renglonesNombre * 15 + 2 + 11, { tamano: 11, color: C.texto2 });
@@ -838,18 +875,14 @@ function dibujarImagen(x) {
   }, 10);
 
   // Los tipos de ataque, en los dos bloques, como en la pantalla: una fila por cada tipo con alertas en el
-  // período y, debajo, los que no tuvieron ninguna en una línea.
+  // período. Sin alertas en el período no hay tipos para contar y la tarjeta no va, como en la app.
   const maximoTipo = Math.max(1, ...x.porTipo.values());
   const conFila = tiposConFila(x);
-  g.font = fuente(400, 12);
   const bloques = [['LO QUE DETECTÓ LA IA', TIPOS_IA], ['LO QUE LA IA NO DETECTÓ', TIPOS_SIN_IA]]
-    .filter(([, lista]) => !conFila.size || lista.some((t) => conFila.has(t)))
-    .map(([titulo, lista]) => {
-      const sin = lista.filter((t) => !conFila.has(t));
-      return { titulo, con: lista.filter((t) => conFila.has(t)), sinAlertas: sin.length ? renglones(g, lineaSinAlertas(sin), interno - 26) : [] };
-    });
-  const altoBloques = bloques.reduce((suma, b, i) => suma + (i ? 21 : 0) + 14 + 6 + b.con.length * 22 + (b.sinAlertas.length ? 2 + b.sinAlertas.length * 15 : 0), 0);
-  tarjetaImg('Por tipo de ataque', altoBloques, (x0, y0, w) => {
+    .map(([titulo, lista]) => ({ titulo, con: lista.filter((t) => conFila.has(t)) }))
+    .filter((b) => b.con.length);
+  const altoBloques = bloques.reduce((suma, b, i) => suma + (i ? 21 : 0) + 14 + 6 + b.con.length * 22, 0);
+  if (bloques.length) tarjetaImg('Por tipo de ataque', altoBloques, (x0, y0, w) => {
     let yy = y0;
     bloques.forEach((b, i) => {
       if (i) { g.fillStyle = C.borde; g.fillRect(x0, yy + 10, w, 1); yy += 21; }
@@ -875,10 +908,6 @@ function dibujarImagen(x) {
         if (r.tipos.has(t)) marco(x0 - 4, yy - 3, w + 8, 22, 8);
         yy += 22;
       });
-      if (b.sinAlertas.length) {
-        b.sinAlertas.forEach((linea, k) => texto(linea, x0, yy + 2 + 11 + k * 15, { color: C.texto2 }));
-        yy += 2 + b.sinAlertas.length * 15;
-      }
     });
   }, 10);
 
@@ -933,7 +962,7 @@ async function compartir(como) {
   if (como === 'copiar') {
     try {
       await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': png })]);
-      avisoInferior('Imagen copiada. Pegala donde quieras.', { duracion: 3000 });
+      avisoInferior('Imagen copiada al portapapeles.', { duracion: 3000 });
     } catch (_) {
       avisoError('No se pudo copiar la imagen. Probá con «Descargar imagen».', { duracion: 4000 });
     }
