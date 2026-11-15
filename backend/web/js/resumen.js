@@ -77,7 +77,7 @@ const mayuscula = (texto) => texto.charAt(0).toUpperCase() + texto.slice(1);
 const minuscula = (texto) => texto.charAt(0).toLowerCase() + texto.slice(1);
 const plural = (n, uno, otros) => (n === 1 ? uno : otros);
 /** «73 %», como la app; null sin base. */
-const porciento = (parte, total) => (total ? `${Math.round((100 * parte) / total)} %` : null);
+const porciento = (parte, total) => (total ? `${Math.round((100 * parte) / total)}\u00a0%` : null);
 /** «a», «a y b», «a, b y c». */
 const enumerar = (lista) => (lista.length < 2 ? lista.join('') : `${lista.slice(0, -1).join(', ')} y ${lista[lista.length - 1]}`);
 
@@ -369,7 +369,7 @@ function indicadores(x) {
   const periodo = r.fechas ? 'en estas fechas' : r.periodo === '7d' ? 'en 7 días' : 'en 30 días';
   return el('div', { class: 'res-indicadores res-ancho' },
     indicador(false, limpiarFiltros, 'Alertas', numero(x.total), severidades.length ? el('span', { class: 'res-severidades' }, severidades) : periodo),
-    indicador(r.revision === 'revisadas', () => elegirRevision('revisadas'), 'Revisadas', numero(x.revisadas), `${porciento(x.revisadas, x.total) || '0 %'} del total`),
+    indicador(r.revision === 'revisadas', () => elegirRevision('revisadas'), 'Revisadas', numero(x.revisadas), `${porciento(x.revisadas, x.total) || '0\u00a0%'} del total`),
     indicador(r.revision === 'sin_revisar', () => elegirRevision('sin_revisar'), 'Sin revisar', numero(x.sinRevisar), x.sinRevisar ? 'esperan revisión' : 'nada pendiente',
       x.sinRevisar ? el('i', { class: 'punto', style: 'background:var(--media)' }) : null),
     dato('Primera revisión', x.mediana === null ? '—' : duracionCorta(x.mediana), x.mediana === null ? 'sin revisiones todavía' : 'mediana del período'),
@@ -456,7 +456,7 @@ function precision(x) {
   // La cobertura solo informa, como en la app: por las revisadas se filtra desde el total «Revisadas».
   return tarjeta('Precisión de cada método', { titulo: 'Cómo se lee la precisión', contenido: () => ayudaPrecision(x) },
     el('div', { class: 'res-cobertura' },
-      el('span', {}, 'Revisadas'), el('strong', {}, `${porciento(x.revisadas, x.total) || '0 %'} · ${x.revisadas} de ${x.total}`)),
+      el('span', {}, 'Revisadas'), el('strong', {}, `${porciento(x.revisadas, x.total) || '0\u00a0%'} · ${x.revisadas} de ${x.total}`)),
     el('div', { class: 'res-filas' }, x.precision.map((p) => botonTocable(`res-precision${r.metodo === p.m.id ? ' elegida' : ''}`, r.metodo === p.m.id, () => elegirModelo(p.m.id),
       el('span', { class: 'res-fila-nombre' }, p.m.resumen),
       el('span', { class: 'res-pista fina' }, el('i', { class: p.total < 30 ? 'clara' : null, style: `width:${p.parte ? `${(100 * p.parte) / p.total}%` : '2px'}` })),
@@ -469,7 +469,8 @@ function equipos(x) {
   return tarjeta('Equipos con más alertas', null,
     el('p', { class: 'res-nota arriba' }, 'Como destino. No se incluye al compartir.'),
     x.equipos.length ? el('div', { class: 'res-filas' }, x.equipos.map((q) => filaDeBarra({ clase: 'equipo', etiqueta: q.nombre, valor: q.n, lleno: (95 * q.n) / maximo, color: 'var(--barra-resumen)' })))
-      : el('p', { class: 'res-nota' }, 'Sin alertas en el período.'));
+      // El período tiene alertas (si no, el Resumen muestra su pantalla vacía): las dejó afuera un filtro.
+      : el('p', { class: 'res-nota' }, 'Ninguna alerta con estos filtros.'));
 }
 
 function vacio() {
@@ -558,6 +559,8 @@ function hojaFechas() {
       titulo: 'Elegí las fechas',
       cuerpo: [el('label', { class: 'campo' }, el('span', {}, 'Desde'), campoDesde), el('label', { class: 'campo' }, el('span', {}, 'Hasta'), campoHasta), error],
       acciones: [
+        // Con fechas puestas, «Limpiar» las saca y vuelve a regir el período (7 o 30 días), como en la app.
+        ...(r.fechas ? [{ texto: 'Limpiar', tipo: 'secundario', alHacer: (h) => { h.cerrar(); r.fechas = null; r.barras.clear(); pintarResumen(); } }] : []),
         { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
         { texto: `Mostrar ${n} ${plural(n, 'alerta', 'alertas')}`, tipo: 'principal', deshabilitado: !valido, alHacer: (h) => aplicar(h, d, a) },
       ],
@@ -670,8 +673,8 @@ function recuadroPrecision(x) {
   return {
     revisadas: 'Estás viendo las revisadas: la precisión cuenta las mismas alertas que sin filtro.',
     sin_revisar: 'Estás viendo las sin revisar: todavía no tienen revisión, así que no hay precisión para calcular.',
-    reales: 'Estás viendo los ataques reales: todas son reales, así que cada método da 100 %.',
-    falsos: 'Estás viendo los falsos positivos: ninguna es real, así que cada método da 0 %.',
+    reales: 'Estás viendo los ataques reales: todas son reales, así que cada método da 100\u00a0%.',
+    falsos: 'Estás viendo los falsos positivos: ninguna es real, así que cada método da 0\u00a0%.',
   }[r.revision];
 }
 
@@ -786,7 +789,7 @@ function dibujarImagen(x) {
 
   // Los totales: tres tarjetas iguales.
   const anchoTotal = (interno - 20) / 3;
-  const cobertura = porciento(x.revisadas, x.total) || '0 %';
+  const cobertura = porciento(x.revisadas, x.total) || '0\u00a0%';
   [
     { n: x.total, etiqueta: plural(x.total, 'alerta', 'alertas'), fondo: C.crema, color: C.texto, elegida: false },
     { n: x.revisadas, etiqueta: `${plural(x.revisadas, 'revisada', 'revisadas')} · ${cobertura}`, fondo: C.verdeClaro, color: C.verde, elegida: r.revision === 'revisadas' },

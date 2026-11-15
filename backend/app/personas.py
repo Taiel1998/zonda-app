@@ -15,7 +15,7 @@ from .auth import ahora, iso, nombre_de
 from .modelos import Persona
 from .registro import anotar
 
-SIN_ADMINISTRADOR = "Tiene que quedar al menos un administrador en el equipo"
+SIN_ADMINISTRADOR = "Tiene que quedar al menos un administrador en la red"
 # Cómo queda «Bloqueos» en el registro de cambios.
 BLOQUEA = "bloquea"
 PIDE_APROBACION = "pide_aprobacion"

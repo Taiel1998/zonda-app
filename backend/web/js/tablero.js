@@ -237,7 +237,7 @@ function tic() {
     correr(nombre);
   }
   pintarEnVivo();
-  // El dato de cada pieza del estado cuenta los segundos («Última revisión hace 12 s»).
+  // El dato de cada pieza del estado cuenta los segundos («Último análisis hace 12 s»).
   pintarEstado();
   // El perfil puede cambiar mientras el tablero está abierto (lo trae la lista de personas).
   mostrarAdministracion();
@@ -508,6 +508,8 @@ function iniciar() {
     boton.addEventListener('click', () => alternarAyuda(boton, boton.dataset.ayudaTitulo, [...$(`ayuda-${boton.dataset.ayuda}`).content.cloneNode(true).children]));
   }
   $('boton-salir').addEventListener('click', salir);
+  // En pantalla angosta «Salir» es un ícono en la barra de arriba: salir tiene que estar a la vista.
+  $('boton-salir-icono').addEventListener('click', salir);
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.addEventListener('click', () => cambiarVista(boton.dataset.vista));
   $('ver-todas-alertas').addEventListener('click', () => cambiarVista('alertas'));
   $('velo').addEventListener('click', cerrarDetalle);

@@ -145,7 +145,7 @@ def texto_de_asignacion(por: str, severidad: str, servicio: str, deteccion: date
 # Lo que dice el aviso de cada momento de un bloqueo (decisión 51). Nunca la IP ni el nombre del equipo.
 TITULO_BLOQUEO = {
     "pedido": "{persona} pidió bloquear el origen de una alerta {alerta}",
-    "aprobado": "{persona} bloqueó el origen de una alerta {alerta}",
+    "aprobado": "{persona} ordenó el bloqueo del origen de una alerta {alerta}",
     "desbloqueado": "{persona} desbloqueó el origen de una alerta {alerta}",
     "rechazado": "El firewall no aplicó el bloqueo de una alerta {alerta}",
 }
@@ -158,7 +158,7 @@ def texto_de_bloqueo(
     """El aviso a quienes bloquean (los administradores y los analistas con «Bloquea») de cada bloqueo
     (decisión 51), con la misma hora que el aviso de la alerta:
 
-        Taiel bloqueó el origen de una alerta ALTA · SSH · 09:51
+        Taiel ordenó el bloqueo del origen de una alerta ALTA · SSH · 09:51
         Por 1 h. Tocá para ver el detalle en Zonda.
 
     Sale cuando se pide, cuando se aprueba, cuando se desbloquea y cuando el firewall no lo aplica: un

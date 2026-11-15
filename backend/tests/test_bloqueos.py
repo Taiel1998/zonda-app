@@ -414,7 +414,7 @@ def test_los_administradores_se_enteran_de_cada_bloqueo_por_telegram_sin_la_ip(c
 
     cliente.post(f"/bloqueos/{pedido['id']}/aprobacion", headers=auth)
     assert asyncio.run(bot.avisar_bloqueos()) == 1
-    assert telegram.enviados[-1]["text"].startswith(f"<b>Teléfono de prueba bloqueó el origen de una alerta ALTA · {servicio} · ")
+    assert telegram.enviados[-1]["text"].startswith(f"<b>Teléfono de prueba ordenó el bloqueo del origen de una alerta ALTA · {servicio} · ")
     assert telegram.enviados[-1]["text"].endswith("</b>\nPor 1 h. Tocá para ver el detalle en Zonda.")
 
     cliente.post(f"/bloqueos/{pedido['id']}/desbloqueo", json={"motivo": "Falsa alarma."}, headers=auth)

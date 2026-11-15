@@ -288,6 +288,8 @@ html { overflow-y: scroll; }
   color: var(--texto-2);
 }
 .boton-icono:hover { color: var(--texto); border-color: var(--borde-fuerte); }
+/* «Salir» como ícono, solo en pantalla angosta (abajo), donde no entra el botón con texto. */
+#boton-salir-icono { display: none; }
 .boton-icono svg { width: 18px; height: 18px; }
 
 .boton-secundario {
@@ -1415,7 +1417,8 @@ html { overflow-y: scroll; }
 .res-fila.equipo { grid-template-columns: minmax(0, 260px) minmax(40px, 1fr) 34px; }
 .res-fila.cero { color: var(--texto-2); }
 .res-fila-nombre { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.res-fila-nombre > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Si el nombre no entra, baja de renglón en lugar de cortarse («Fuerza bruta (SSH,…»), como en la app. */
+.res-fila-nombre > span { min-width: 0; overflow-wrap: anywhere; }
 .res-fila-nombre .punto, .res-check .punto, .res-ayuda-tipo .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
 .res-fila-valor { text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
 .res-pista { display: block; height: 10px; border-radius: 999px; background: var(--neutro); overflow: hidden; }
@@ -1457,7 +1460,7 @@ html { overflow-y: scroll; }
   font-size: 14px;
   color: var(--texto);
 }
-.res-precision strong { text-align: right; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.res-precision strong { text-align: right; font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .res-de { text-align: right; font-size: 12.5px; color: var(--texto-2); }
 
 .res-vacio { display: grid; justify-items: center; gap: 8px; padding: 40px 24px; text-align: center; }
@@ -1482,7 +1485,8 @@ html { overflow-y: scroll; }
   .res-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .res-indicador:first-child { grid-column: 1 / -1; }
   .res-indicador-detalle { white-space: normal; }
-  .res-fila { grid-template-columns: minmax(0, 150px) minmax(30px, 1fr) 30px; }
+  /* El nombre con el mismo lugar que en la compu, así «Fuerza bruta (SSH, FTP)» entra en un renglón; la barra cede. */
+  .res-fila { grid-template-columns: minmax(0, 190px) minmax(30px, 1fr) 30px; }
   .res-precision { grid-template-columns: 120px minmax(30px, 1fr) 42px 54px; font-size: 13px; }
 }
 
@@ -1637,6 +1641,7 @@ html { overflow-y: scroll; }
   .marca img { width: 30px; height: 30px; }
   .marca-nombre { font-size: 18px; }
   #boton-tema, #boton-salir { display: none; }
+  #boton-salir-icono { display: inline-grid; flex: none; }
   .tarjeta { padding: 14px 14px 12px; border-radius: 12px; }
   .kpi-valor { font-size: 28px; }
   .grafico { height: 230px; }

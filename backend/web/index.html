@@ -48,6 +48,9 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       </button>
       <button class="boton-secundario" id="boton-salir" type="button">Salir</button>
+      <button class="boton-icono" id="boton-salir-icono" type="button" aria-label="Salir del tablero" title="Salir del tablero">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
     </div>
   </header>
 
@@ -88,11 +91,11 @@
             </div>
             <template id="ayuda-estado">
               <p><b>Sensor de red:</b> recibe una copia del tráfico de la red.</p>
-              <p><b>Análisis en vivo:</b> revisa ese tráfico cada 20 s.</p>
+              <p><b>Análisis en vivo:</b> analiza ese tráfico cada 20 s.</p>
               <p><b>Servidor de alertas:</b> guarda las alertas y avisa por Telegram.</p>
               <p class="solo-firewall"><b>Firewall:</b> aplica los bloqueos que aprueba una persona; pregunta cada 10 s.</p>
               <p>Verde: funciona. Ámbar: el sensor pierde tráfico. Rojo: no funciona o no hay datos.</p>
-              <p>Los gráficos son de la última hora, por minuto: las conexiones que vio el sensor, las revisiones del análisis, los datos que recibió el servidor y las consultas del firewall. Un hueco indica un período en que esa pieza no funcionó.</p>
+              <p>Los gráficos son de la última hora, por minuto: las conexiones que vio el sensor, cuántas veces se ejecutó el análisis, los datos que recibió el servidor y las consultas del firewall. Un hueco indica un período en que esa pieza no funcionó.</p>
               <p>En grande, cada gráfico sigue el horario elegido, hasta una semana.</p>
             </template>
             <div class="piezas">
@@ -121,10 +124,10 @@
                 </div>
                 <div class="pieza-dato" id="dato-analisis">–</div>
                 <div class="mini-envoltura">
-                  <div class="grafico mini" id="grafico-pieza-analisis" role="img" aria-label="Revisiones por minuto en la última hora. Los datos están en el menú del panel."></div>
+                  <div class="grafico mini" id="grafico-pieza-analisis" role="img" aria-label="Análisis por minuto en la última hora. Los datos están en el menú del panel."></div>
                   <div class="vacio-mini" id="vacio-pieza-analisis" hidden></div>
                 </div>
-                <div class="pieza-pie" id="pie-analisis">Revisiones por minuto</div>
+                <div class="pieza-pie" id="pie-analisis">Análisis por minuto</div>
               </div>
               <div class="pieza" id="pieza-servidor" data-panel="servidor">
                 <div class="pieza-cabecera">
@@ -282,7 +285,7 @@
               <div>
                 <h3 class="tarjeta-titulo">Últimas alertas</h3>
               </div>
-              <div class="tarjeta-acciones"><span class="etiqueta-rango" title="Sin importar el horario">Las 8 más nuevas</span><button class="boton-texto" type="button" id="ver-todas-alertas">Ver todas</button></div>
+              <div class="tarjeta-acciones"><span class="etiqueta-rango" title="Sin importar el horario">Las 8 más nuevas</span><button class="boton-texto" type="button" id="ver-todas-alertas">Ir a Alertas</button></div>
             </div>
             <ul class="feed" id="ultimas-alertas"></ul>
           </article>

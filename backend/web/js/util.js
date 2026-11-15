@@ -107,7 +107,7 @@ export function ejeNumero(valor) {
 
 export function porcentaje(parte, total, decimales = 0) {
   if (!total) return '–';
-  return `${numero((100 * parte) / total, decimales)} %`;
+  return `${numero((100 * parte) / total, decimales)}\u00a0%`;
 }
 
 const UNIDADES_BITS = ['bit/s', 'kbit/s', 'Mbit/s', 'Gbit/s'];

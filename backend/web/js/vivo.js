@@ -128,10 +128,10 @@ function datoSensor(sistema, ahora) {
   return `Último tráfico hace ${cuanto(ahora - Date.parse(sistema.ultimoFlujo))}`;
 }
 
-/** «Última revisión hace 12 s». */
+/** «Último análisis hace 12 s». */
 function datoAnalisis(sistema, ahora) {
   if (!sistema || !sistema.ultimaCorrida) return 'Sin datos';
-  return `Última revisión hace ${cuanto(ahora - Date.parse(sistema.ultimaCorrida))}`;
+  return `Último análisis hace ${cuanto(ahora - Date.parse(sistema.ultimaCorrida))}`;
 }
 
 /** «Última consulta hace 5 s», como la pieza de la app: el firewall pregunta cada 10 s qué bloquear. */
@@ -192,7 +192,7 @@ function tablaDelServidor(tramos, paso, filas) {
 }
 
 /** Los gráficos chicos de las piezas, con lo que guarda el servidor de cada una (decisión 60): las
-    conexiones que vio el sensor, las revisiones del análisis, los datos que le llegaron al servidor (con
+    conexiones que vio el sensor, cuántas veces se ejecutó el análisis, los datos que recibió el servidor (con
     las alertas marcadas abajo) y las consultas del firewall. Un hueco es un rato en que esa pieza no anduvo.
     En el tablero, la última hora por minuto; cada pieza es un panel y, en grande, sigue el horario elegido,
     con sus ejes. */
@@ -205,7 +205,7 @@ export function pintarGraficosPiezas() {
   const puntos = (valores) => tramos.map((t, i) => [t * 1000, valores[i]]);
   const cada = p.paso === 60 ? 'por minuto' : `cada ${nombrePaso(p.paso)}`;
   const donde = p.grande ? 'en este horario' : 'en la última hora';
-  // Lo que cabe en un tramo si la pieza anduvo todo el tiempo: tres revisiones y seis consultas por minuto.
+  // Lo que cabe en un tramo si la pieza anduvo todo el tiempo: tres análisis y seis consultas por minuto.
   const lleno = (porMinuto, valores) => Math.max((porMinuto * p.paso) / 60, ...valores);
   $('rango-estado').textContent = p.grande ? nombreRango() : 'Última hora';
   // Las cuatro piezas van en el mismo verde: cada una tiene su gráfico y su título, y un color distinto en una
@@ -223,10 +223,10 @@ export function pintarGraficosPiezas() {
   const latidos = new Map(p.latidos.minutos.map((x) => [x.minuto, x.latidos]));
   const revisiones = tramos.map((t) => latidos.get(t) || 0);
   dibujar('pieza-analisis', opcionesMini(c, { ...ventana, puntos: puntos(revisiones) },
-    { tipo: 'barras', color: verde, nombre: 'revisiones', paso: p.paso, maximo: lleno(3, revisiones), ejes: e.panelGrande === 'analisis' }));
-  avisoMini('analisis', revisiones.some((v) => v > 0) ? '' : `Sin revisiones ${donde}`);
-  $('pie-analisis').textContent = `Revisiones ${cada}`;
-  e.tablas.analisis = tablaPorTramo(tramos, p.paso, revisiones, 'Revisiones');
+    { tipo: 'barras', color: verde, nombre: 'análisis', paso: p.paso, maximo: lleno(3, revisiones), ejes: e.panelGrande === 'analisis' }));
+  avisoMini('analisis', revisiones.some((v) => v > 0) ? '' : `Sin análisis ${donde}`);
+  $('pie-analisis').textContent = `Análisis ${cada}`;
+  e.tablas.analisis = tablaPorTramo(tramos, p.paso, revisiones, 'Análisis');
 
   // El servidor: una línea que se corta donde no hay fila (estuvo apagado) y queda en cero donde estuvo
   // prendido sin recibir nada. El tramo en curso no se dibuja hasta que termina: a medio llenar, parecería
@@ -517,7 +517,7 @@ export function pintarTrafico() {
   $('sin-respuesta').textContent = numero(fallidas);
   // Una sola sin respuesta entre cientos no es «0 %»: debajo del 1 %, con un decimal.
   const parte = total ? (100 * fallidas) / total : 0;
-  const proporcion = fallidas && parte < 0.05 ? 'menos del 0,1 %' : porcentaje(fallidas, total, fallidas && parte < 1 ? 1 : 0);
+  const proporcion = fallidas && parte < 0.05 ? 'menos del 0,1\u00a0%' : porcentaje(fallidas, total, fallidas && parte < 1 ? 1 : 0);
   // El número grande es del horario elegido, no de ahora: la etiqueta lo dice, como «Ahora» en los otros dos, y
   // en corto («15 min»), para que entre al lado del título igual que en ellos.
   $('rango-sin-respuesta').textContent = etiquetaRango();

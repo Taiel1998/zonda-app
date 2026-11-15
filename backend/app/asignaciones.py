@@ -56,7 +56,7 @@ def asignar(con: sqlite3.Connection, alerta: sqlite3.Row, entrada: AsignacionEnt
     if nuevo_id is not None:
         responsable = activo(con, nuevo_id)
         if responsable is None:
-            raise HTTPException(status_code=422, detail="Esa persona no está en el equipo")
+            raise HTTPException(status_code=422, detail="Esa persona no está en la red")
     momento = iso(ahora())
     con.execute(
         "INSERT INTO asignaciones (alerta_id, accion_id, responsable_id, responsable, por_id, por, fecha) VALUES (?, ?, ?, ?, ?, ?, ?)",
