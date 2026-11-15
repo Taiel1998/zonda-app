@@ -1,12 +1,13 @@
 // El bloqueo del origen de una alerta en el tablero (decisión 51), como la tarjeta «Bloqueo» de la app: cómo
 // está ese equipo en el firewall y lo que puede hacer cada uno. Quien bloquea (un administrador, o un analista
 // con permiso) lo hace en el acto con la llave de esta computadora; sin la llave, o con «Pide aprobación», lo
-// pide y lo aprueba alguien que bloquea. También la lista de bloqueos de la pieza «Firewall».
+// pide y lo aprueba alguien que bloquea. También la tarjeta «Bloqueos» de En vivo y su página (decisión 63).
 
-import { el, fechaHora, icono, nuevoId, vaciar } from './util.js';
+import { el, fechaHora, icono, nuevoId, numero, vaciar } from './util.js';
 import { $, TIPOS, e, esAdmin, nombreEquipo, pedir } from './comun.js';
 import { abrirHoja, avisoError, avisoInferior } from './hojas.js';
 import { cabecerasConLlave, tieneLlave } from './llave.js';
+import { contarPaneles } from './filas.js';
 
 // Lo que está abierto: un pedido que espera, uno aprobado que el firewall todavía no confirmó y uno aplicado.
 const ACTIVOS = ['pedido', 'aprobado', 'aplicado'];
@@ -38,12 +39,16 @@ const AVISOS = {
 };
 
 let alCambiar = () => {};
-let verBloqueados = () => {};
+let abrirAlerta = () => {};
+let verPagina = () => {};
 let siguiendo = [];
 
-/** Qué se vuelve a pintar cuando cambian los bloqueos (el detalle abierto y la lista) y qué abre «12 bloqueados». */
+/** Qué se vuelve a pintar cuando cambian los bloqueos (el detalle abierto y las listas) y qué abre la tarjeta
+    «Bloqueos» de En vivo: el detalle de una alerta o la página. */
 export function configurarBloqueos(opciones) {
-  ({ alCambiar, verBloqueados } = opciones);
+  ({ alCambiar, abrirAlerta, verPagina } = opciones);
+  // El buscador de la página rehace solo los grupos: el campo no pierde lo escrito ni el foco.
+  $('buscar-bloqueos').addEventListener('input', () => pintarPaginaBloqueos());
 }
 
 /** Lo que se ve de los bloqueos: si cambia, se vuelve a pintar (la hora de la última consulta va en la pieza). */
@@ -272,36 +277,123 @@ function seguirAlFirewall() {
   siguiendo = [4000, 8000, 12000].map((ms) => setTimeout(() => actualizarBloqueos().catch(() => {}), ms));
 }
 
-/** «pc-rrhh bloqueado», «12 bloqueados» o «11 bloqueados · 1 pedido»: lo que dice la pieza en una sola línea. */
-function resumenBloqueos(activos) {
-  if (activos.length === 1) {
-    const b = activos[0];
-    const equipo = b.nombre || b.ip;
-    return b.estado === 'pedido' ? `Pedido de bloqueo: ${equipo}` : b.estado === 'aprobado' ? `Bloqueando ${equipo}` : `${equipo} bloqueado`;
-  }
-  const cuantos = (estado) => activos.filter((b) => b.estado === estado).length;
-  const bloqueados = cuantos('aplicado');
-  const bloqueando = cuantos('aprobado');
-  const pedidos = cuantos('pedido');
-  const partes = [];
-  if (bloqueados) partes.push(`${bloqueados} ${bloqueados === 1 ? 'bloqueado' : 'bloqueados'}`);
-  if (bloqueando) partes.push(`${bloqueando} bloqueando`);
-  if (pedidos) partes.push(`${pedidos} ${pedidos === 1 ? 'pedido' : 'pedidos'}`);
-  return partes.join(' · ');
+// Los tres números de la tarjeta, en el orden de la página: lo que espera a una persona, lo que espera al firewall y
+// lo que ya está bloqueado. El ícono y el color, como en cada grupo de la página; si el firewall no responde, los
+// aprobados dicen «Sin aplicar», como el título de su grupo.
+const NUMEROS = [
+  { estado: 'pedido', nombre: () => 'Pedidos', icono: 'espera', tono: 'media', titulo: 'Ver los pedidos de bloqueo' },
+  { estado: 'aprobado', nombre: (conectado) => (conectado ? 'Bloqueando' : 'Sin aplicar'), icono: 'espera', tono: 'media', titulo: 'Ver los equipos que se están bloqueando' },
+  { estado: 'aplicado', nombre: () => 'Bloqueados', icono: 'candado', tono: 'alta', titulo: 'Ver los equipos bloqueados' },
+];
+let activosAhora = [];
+
+/** Con un solo bloqueo o pedido, el detalle de su alerta; si no, la página «Bloqueos». */
+function abrirBloqueos() {
+  if (activosAhora.length === 1) abrirAlerta(activosAhora[0].alertaId);
+  else verPagina();
 }
 
-/** Los bloqueos en la pieza «Firewall» de Estado del sistema: una sola línea al pie con cuántos hay, que abre la
-    lista de Alertas con esos equipos (ahí se ve cada uno y se desbloquea desde su detalle). Con la lista adentro
-    de la pieza, doce bloqueos la estiraban y arrastraban a las otras tres. */
+/** La tarjeta «Bloqueos» de En vivo (decisión 63), al lado de «Alertas sin revisar» y con su forma: cuántos pedidos,
+    cuántos que el firewall está aplicando y cuántos equipos bloqueados hay ahora. Solo en una red con firewall; sin
+    él, la fila queda como siempre. Antes era una línea chica al pie de la pieza «Firewall», que no se veía. */
 export function pintarBloqueos() {
-  const enlace = $('bloqueados-enlace');
-  if (!enlace) return;
-  const activos = e.bloqueos ? e.bloqueos.bloqueos.filter((b) => ACTIVOS.includes(b.estado)) : [];
-  enlace.hidden = !activos.length;
-  if (!activos.length) return;
-  // El reloj, si alguno todavía no está bloqueado (un pedido o uno que el firewall no aplicó); si no, el candado.
-  const enCurso = activos.some((b) => b.estado !== 'aplicado');
-  vaciar(enlace, el('span', { class: `fila-bloqueo-icono ${enCurso ? 'media' : 'alta'}` }, icono(enCurso ? 'espera' : 'candado')), el('span', {}, resumenBloqueos(activos)));
-  enlace.title = 'Ver los equipos bloqueados';
-  enlace.onclick = () => verBloqueados();
+  const tarjeta = $('tarjeta-bloqueos');
+  if (!tarjeta) return;
+  const habilitado = Boolean(e.bloqueos && e.bloqueos.firewall && e.bloqueos.firewall.habilitado);
+  activosAhora = habilitado ? e.bloqueos.bloqueos.filter((b) => ACTIVOS.includes(b.estado)) : [];
+  if (tarjeta.hidden === habilitado) {
+    tarjeta.hidden = !habilitado;
+    $('grilla-estado').classList.toggle('con-bloqueos', habilitado);
+    contarPaneles();
+  }
+  if (!habilitado) return;
+  const lugar = $('bloqueos-vivo');
+  const conectado = Boolean(e.bloqueos.firewall.conectado);
+  const cuantos = (estado) => numero(activosAhora.filter((b) => b.estado === estado).length);
+  // Como los contadores de sin revisar: si ya están, cambian solo los nombres y los números, así no se pierde el foco
+  // del teclado.
+  if (lugar.children.length) {
+    for (const n of NUMEROS) {
+      const boton = lugar.querySelector(`[data-estado="${n.estado}"]`);
+      boton.querySelector('.contador-nombre').textContent = n.nombre(conectado);
+      boton.querySelector('.contador-numero').textContent = cuantos(n.estado);
+    }
+    return;
+  }
+  vaciar(lugar, NUMEROS.map((n) => el('button', { type: 'button', class: 'contador', dataset: { estado: n.estado }, title: n.titulo, onclick: abrirBloqueos },
+    el('span', { class: 'contador-titulo' }, el('span', { class: `fila-bloqueo-icono ${n.tono}` }, icono(n.icono)), el('span', { class: 'contador-nombre' }, n.nombre(conectado))),
+    el('span', { class: 'contador-numero' }, cuantos(n.estado)))));
+}
+
+// Los grupos de la página, en este orden y con los títulos de la app: lo que espera a una persona, lo que espera al
+// firewall (o «Sin aplicar», si no responde) y lo que ya está bloqueado.
+const GRUPOS = [
+  { estado: 'pedido', titulo: () => 'Esperan aprobación', icono: 'espera', tono: 'media' },
+  { estado: 'aprobado', titulo: (conectado) => (conectado ? 'Bloqueando' : 'Sin aplicar'), icono: 'espera', tono: 'media' },
+  { estado: 'aplicado', titulo: () => 'Bloqueados', icono: 'candado', tono: 'alta' },
+];
+
+// De cuántos equipos en adelante aparece el buscador de la página: más o menos lo que entra en la pantalla de un
+// teléfono. Con menos, la página queda limpia, como en la app.
+const LISTA_LARGA = 8;
+// Para buscar sin importar las tildes ni las mayúsculas, como en Ajustes → Equipos.
+const sinTildes = (texto) => String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** El texto gris de cada fila, como en la app: «Pedido de Laura», «El firewall lo aplica en unos segundos» (o «El
+    firewall no responde») y «Vence 13:34», con el día si no es hoy, o «Hasta desbloquear». */
+function textoDeLaFila(b, conectado) {
+  if (b.estado === 'pedido') return `Pedido de ${b.pedidoPor}`;
+  if (b.estado === 'aprobado') return conectado ? 'El firewall lo aplica en unos segundos' : 'El firewall no responde';
+  return b.venceEn ? `Vence ${fechaHora(Date.parse(b.venceEn))}` : 'Hasta desbloquear';
+}
+
+// El orden dentro de cada grupo, como la app: los pedidos, con el más viejo arriba; los que el firewall está
+// aplicando, por la hora en que se aprobaron; los bloqueados, con el que vence antes arriba y los que no vencen al
+// final.
+const TURNO = { pedido: 0, aprobado: 1, aplicado: 2 };
+
+const antes = (x, y) => (x === y ? 0 : x < y ? -1 : 1);
+
+function compararBloqueos(x, y) {
+  if (x.estado !== y.estado) return TURNO[x.estado] - TURNO[y.estado];
+  if (x.estado === 'pedido') return antes(Date.parse(x.pedidoEn), Date.parse(y.pedidoEn));
+  if (x.estado === 'aprobado') return antes(Date.parse(x.aprobadoEn || x.pedidoEn), Date.parse(y.aprobadoEn || y.pedidoEn));
+  return antes(x.venceEn ? Date.parse(x.venceEn) : Infinity, y.venceEn ? Date.parse(y.venceEn) : Infinity);
+}
+
+/** La página «Bloqueos» (decisión 63), como la pantalla de la app: lo activo ahora, en grupos con título, cada uno
+    en su tarjeta. Un grupo vacío no aparece. Cada fila abre su alerta: ahí se aprueba, se rechaza, se cambia la
+    duración o se desbloquea, como siempre. Lo terminado queda en el registro de cambios. Se vuelve a pintar con cada
+    consulta de los bloqueos (cada 15 s). */
+export function pintarPaginaBloqueos() {
+  const lugar = $('lista-bloqueos');
+  if (!lugar) return;
+  const conectado = Boolean(e.bloqueos && e.bloqueos.firewall && e.bloqueos.firewall.conectado);
+  const activos = (e.bloqueos ? e.bloqueos.bloqueos : []).filter((b) => ACTIVOS.includes(b.estado)).sort(compararBloqueos);
+  // Con una lista larga, el buscador por equipo o IP, como el de Ajustes → Equipos. No se va mientras tenga algo
+  // escrito, aunque la lista se acorte.
+  const campo = $('buscar-bloqueos');
+  const buscado = sinTildes(campo.value.trim());
+  campo.hidden = activos.length <= LISTA_LARGA && !buscado;
+  const coincide = (b) => !buscado || sinTildes(b.nombre).includes(buscado) || b.ip.includes(buscado);
+  const grupos = GRUPOS.map((g) => ({ ...g, filas: activos.filter((b) => b.estado === g.estado && coincide(b)) })).filter((g) => g.filas.length);
+  // Se arma de nuevo con cada consulta: si el foco estaba en una fila, vuelve a la misma.
+  const enfocada = lugar.contains(document.activeElement) ? document.activeElement.dataset.id : null;
+  // Con nombre, la dirección va delante del texto gris, como en la app: el catálogo puede darle el mismo nombre a dos
+  // direcciones (pc-rrhh en la demo) y el firewall bloquea por dirección.
+  const texto = (b) => (b.nombre ? `${b.ip} · ${textoDeLaFila(b, conectado)}` : textoDeLaFila(b, conectado));
+  vaciar(lugar, grupos.length
+    ? grupos.map((g) => el('section', { class: 'tarjeta grupo-bloqueos' },
+      el('h2', { class: 'grupo-titulo' }, g.titulo(conectado)),
+      el('ul', { class: 'lista-bloqueos' }, g.filas.map((b) => el('li', {},
+        el('button', { type: 'button', class: 'fila-bloqueo', dataset: { id: b.id }, onclick: () => abrirAlerta(b.alertaId) },
+          el('span', { class: `fila-bloqueo-icono ${g.tono}` }, icono(g.icono)),
+          el('span', { class: 'fila-bloqueo-texto' }, el('strong', {}, b.nombre || b.ip), el('span', { class: 'nota' }, texto(b))),
+          el('span', { class: 'fila-bloqueo-ir' }, icono('derecha'))))))))
+    : el('article', { class: 'tarjeta' }, el('p', { class: 'vacio-lista' },
+      activos.length ? `Ningún equipo coincide con «${campo.value.trim()}».` : 'No hay equipos bloqueados ni pedidos de bloqueo.')));
+  if (enfocada) {
+    const boton = lugar.querySelector(`[data-id="${CSS.escape(enfocada)}"]`);
+    if (boton) boton.focus({ preventScroll: true });
+  }
 }

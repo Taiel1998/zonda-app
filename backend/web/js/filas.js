@@ -44,16 +44,24 @@ export function abrirFilaDe(tarjeta) {
   if (fila && fila.classList.contains('plegada')) cambiarFila(fila, true);
 }
 
+/** «(5 paneles)»: lo que dice cada fila plegada. La tarjeta «Bloqueos» cuenta solo si se ve (en una red con
+    firewall); bloqueo.js vuelve a contar cuando aparece o se va. */
+export function contarPaneles() {
+  for (const fila of document.querySelectorAll('.fila')) {
+    const paneles = fila.querySelectorAll('.grilla > .tarjeta:not(#tarjeta-bloqueos[hidden])').length;
+    fila.querySelector('.fila-cuenta').textContent = paneles === 1 ? ' (1 panel)' : ` (${paneles} paneles)`;
+  }
+}
+
 /** alCambiar(fila, abierta): al desplegar una fila, sus gráficos se dibujan con el tamaño que tienen. */
 export function configurarFilas(opciones) {
   alCambiar = opciones.alCambiar;
   const plegadas = leerPlegadas();
   for (const fila of document.querySelectorAll('.fila')) {
     const boton = fila.querySelector('.fila-boton');
-    const paneles = fila.querySelectorAll('.grilla > .tarjeta').length;
     boton.prepend(icono('abajo'));
-    boton.querySelector('.fila-cuenta').textContent = paneles === 1 ? ' (1 panel)' : ` (${paneles} paneles)`;
     ponerFila(fila, !plegadas.has(fila.dataset.fila));
     boton.addEventListener('click', () => cambiarFila(fila, fila.classList.contains('plegada')));
   }
+  contarPaneles();
 }

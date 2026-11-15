@@ -77,13 +77,6 @@ export function verSinRevisar(severidad) {
   primeraPagina('alertas');
 }
 
-/** La lista con las alertas de los equipos bloqueados o con un pedido de bloqueo, de cualquier fecha: lo que abre
-    «12 bloqueados» en la pieza del firewall. Una fila por equipo, y desde su detalle se desbloquea. */
-export function verBloqueados() {
-  Object.assign(f, filtrosNuevos(), { bloqueos: new Set(['bloqueado', 'pedido']), rango: { desde: 'todo', hasta: 'now' } });
-  primeraPagina('alertas');
-}
-
 /** Los servicios con chip propio: los diez con más alertas; el resto entra en "Los demás" (decisión 46). */
 function serviciosConChip() {
   const cuenta = new Map();
@@ -115,22 +108,32 @@ function pasa(a, horario, conChip, porBloqueo) {
 }
 
 // El orden de la lista, como las tablas de Grafana: se toca el encabezado (Severidad, Empezó o Conexiones) y,
-// tocándolo otra vez, se da vuelta. De fábrica, las más nuevas primero; a igual valor, también.
+// tocándolo otra vez, se da vuelta. De fábrica, las más nuevas primero, salvo las sin revisar de más de una
+// severidad, que van con las más graves primero (decisión 63, como la app): arriba, lo que hay que atender. A
+// igual valor, las más nuevas primero.
 const ORDENES = {
   severidad: { valor: (a) => ORDEN_SEVERIDAD.length - ORDEN_SEVERIDAD.indexOf(a.severidad), frases: ['las más graves primero', 'las menos graves primero'] },
   empezo: { valor: (a) => Date.parse(a.inicio), frases: ['las más nuevas primero', 'las más antiguas primero'] },
   conexiones: { valor: (a) => a.cantidadFlujos, frases: ['las de más conexiones primero', 'las de menos conexiones primero'] },
 };
-const orden = { columna: 'empezo', descendente: true };
+// Sin columna, el de fábrica, que depende de los filtros; tocar un encabezado lo fija hasta recargar la página.
+const orden = { columna: null, descendente: true };
 
-function comparar(x, y) {
-  const { valor } = ORDENES[orden.columna];
-  return (valor(y) - valor(x)) * (orden.descendente ? 1 : -1) || Date.parse(y.inicio) - Date.parse(x.inicio);
+function ordenActual() {
+  if (orden.columna) return orden;
+  const graves = f.estado === 'sin_revisar' && f.severidades.size !== 1;
+  return { columna: graves ? 'severidad' : 'empezo', descendente: true };
+}
+
+function comparador() {
+  const { columna, descendente } = ordenActual();
+  const { valor } = ORDENES[columna];
+  return (x, y) => (valor(y) - valor(x)) * (descendente ? 1 : -1) || Date.parse(y.inicio) - Date.parse(x.inicio);
 }
 
 function ordenarPor(columna) {
-  if (orden.columna === columna) orden.descendente = !orden.descendente;
-  else Object.assign(orden, { columna, descendente: true });
+  const actual = ordenActual();
+  Object.assign(orden, { columna, descendente: actual.columna === columna ? !actual.descendente : true });
   primeraPagina('alertas');
   pintarAlertas();
 }
@@ -140,7 +143,7 @@ export function alertasFiltradas() {
   const horario = rangoActual(f.rango);
   const conChip = serviciosConChip();
   const porBloqueo = f.bloqueos.size ? bloqueoPorAlerta() : null;
-  return [...e.alertas.values()].filter((a) => pasa(a, horario, conChip, porBloqueo)).sort(comparar);
+  return [...e.alertas.values()].filter((a) => pasa(a, horario, conChip, porBloqueo)).sort(comparador());
 }
 
 const cantidadMasFiltros = () => f.servicios.size + (f.otrosServicios ? 1 : 0) + f.destinos.size + f.metodos.size;
@@ -173,12 +176,13 @@ export function pintarAlertas() {
   const lista = alertasFiltradas();
   const porBloqueo = bloqueoPorAlerta();
   const sinRevisar = lista.filter((a) => a.estadoRevision === 'sin_revisar').length;
+  const actual = ordenActual();
   // Hasta la primera sincronización la lista no está vacía: está cargando.
   if (!e.sincronizada) vaciar($('resumen-filtros-alertas'), 'Cargando las alertas…');
-  else vaciar($('resumen-filtros-alertas'), el('strong', {}, `${numero(lista.length)} ${lista.length === 1 ? 'alerta' : 'alertas'}`), ` ${fraseRango(f.rango)} · ${numero(sinRevisar)} sin revisar · ${ORDENES[orden.columna].frases[orden.descendente ? 0 : 1]}`);
-  // Solo la columna elegida lleva aria-sort, y su flecha (estilos.css) dice para qué lado.
+  else vaciar($('resumen-filtros-alertas'), el('strong', {}, `${numero(lista.length)} ${lista.length === 1 ? 'alerta' : 'alertas'}`), ` ${fraseRango(f.rango)} · ${numero(sinRevisar)} sin revisar · ${ORDENES[actual.columna].frases[actual.descendente ? 0 : 1]}`);
+  // Solo la columna del orden lleva aria-sort, y su flecha (estilos.css) dice para qué lado.
   for (const th of $('tabla-alertas').tHead.querySelectorAll('th[data-orden]')) {
-    if (th.dataset.orden === orden.columna) th.setAttribute('aria-sort', orden.descendente ? 'descending' : 'ascending');
+    if (th.dataset.orden === actual.columna) th.setAttribute('aria-sort', actual.descendente ? 'descending' : 'ascending');
     else th.removeAttribute('aria-sort');
   }
   const cuerpo = $('tabla-alertas').tBodies[0];

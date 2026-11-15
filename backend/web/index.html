@@ -144,8 +144,8 @@
                 </div>
                 <div class="pieza-pie" id="pie-servidor">Datos recibidos por minuto</div>
               </div>
-              <!-- Solo si la red tiene firewall (decisión 51): sus consultas por minuto (decisión 60) y los equipos
-                   bloqueados o pedidos, cada uno abre su alerta. -->
+              <!-- Solo si la red tiene firewall (decisión 51): sus consultas por minuto (decisión 60). Los bloqueos
+                   van en su tarjeta, al lado de «Alertas sin revisar» (decisión 63). -->
               <div class="pieza" id="pieza-firewall" data-panel="firewall" hidden>
                 <div class="pieza-cabecera">
                   <span class="pieza-nombre"><i class="punto" id="punto-firewall"></i><span class="pieza-titulo">Firewall</span></span>
@@ -159,7 +159,7 @@
                   <div class="grafico mini" id="grafico-pieza-firewall" role="img" aria-label="Consultas del firewall por minuto en la última hora. Los datos están en el menú del panel."></div>
                   <div class="vacio-mini" id="vacio-pieza-firewall" hidden></div>
                 </div>
-                <div class="pieza-pie pie-con-enlace"><span id="pie-firewall">Consultas por minuto</span><button class="boton-texto bloqueados-enlace" type="button" id="bloqueados-enlace" hidden></button></div>
+                <div class="pieza-pie" id="pie-firewall">Consultas por minuto</div>
               </div>
             </div>
           </article>
@@ -167,6 +167,13 @@
           <article class="tarjeta c-6" aria-labelledby="titulo-sin-revisar">
             <div class="kpi-cabecera"><p class="kpi-etiqueta" id="titulo-sin-revisar">Alertas sin revisar</p><span class="etiqueta-rango" title="Cuentan todas las alertas sin revisar, sin importar el horario">Todas</span></div>
             <div class="contadores" id="sin-revisar"></div>
+          </article>
+
+          <!-- Solo si la red tiene firewall (decisión 63, bloqueo.js): los pedidos, los que el firewall está aplicando y
+               los equipos bloqueados ahora. Cada número abre la página «Bloqueos» (o la alerta, si hay uno solo). -->
+          <article class="tarjeta c-6" id="tarjeta-bloqueos" aria-labelledby="titulo-bloqueos" hidden>
+            <div class="kpi-cabecera"><p class="kpi-etiqueta" id="titulo-bloqueos">Bloqueos</p><span class="etiqueta-rango" title="Los pedidos y los bloqueos de este momento, sin importar el horario">Ahora</span></div>
+            <div class="contadores" id="bloqueos-vivo"></div>
           </article>
 
           <article class="tarjeta c-2" aria-labelledby="titulo-ahora">
@@ -333,6 +340,16 @@
     <section id="vista-ajustes" aria-labelledby="titulo-vista-ajustes" hidden>
       <h1 class="oculto-visual" id="titulo-vista-ajustes">Ajustes</h1>
       <div class="ajustes" id="ajustes"></div>
+    </section>
+
+    <section id="vista-bloqueos" aria-labelledby="titulo-vista-bloqueos" hidden>
+      <!-- Los equipos bloqueados y los pedidos de bloqueo (decisión 63, bloqueo.js): se abre desde su tarjeta en En vivo. -->
+      <div class="pagina-cabecera">
+        <button class="boton-texto pagina-volver" type="button" id="volver-de-bloqueos" aria-label="Volver a En vivo" title="Volver a En vivo">En vivo</button>
+        <h1 class="pagina-titulo" id="titulo-vista-bloqueos">Bloqueos</h1>
+      </div>
+      <input type="search" class="buscar-tabla buscar-bloqueos" id="buscar-bloqueos" placeholder="Buscar equipo o IP" aria-label="Buscar equipo o IP" autocomplete="off" hidden>
+      <div class="grupos-bloqueos" id="lista-bloqueos"></div>
     </section>
   </main>
 
