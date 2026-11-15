@@ -1291,10 +1291,11 @@
     <string name="bloqueo_rechazar">Rechazar</string>
     <string name="bloqueo_aprobar">Aprobar</string>
     <!-- Aprobado no es bloqueado: hasta que el firewall dice que lo aplicó (cada 10 s pregunta), la tarjeta
-         no lo da por hecho. "Bloqueado" sale recién con el bloqueo aplicado. -->
-    <string name="bloqueo_aprobado_esperando">Aprobado · esperando al firewall</string>
-    <string name="bloqueo_aprobado_sin_firewall">Aprobado · el firewall no responde</string>
-    <string name="bloqueo_lo_aprobo">Lo aprobó %1$s · %2$s</string>
+         no lo da por hecho. "Bloqueado" sale recién con el bloqueo aplicado. Con el firewall caído, el
+         bloqueo queda sin aplicar. -->
+    <string name="bloqueo_bloqueando">Bloqueando…</string>
+    <string name="bloqueo_bloqueando_detalle">El firewall lo aplica en unos segundos</string>
+    <string name="bloqueo_sin_aplicar">Bloqueo sin aplicar</string>
     <string name="bloqueo_lo_bloqueo">Lo bloqueó %1$s · %2$s</string>
     <string name="bloqueo_cambiar_duracion">Cambiar duración</string>
     <string name="bloqueo_desbloquear">Desbloquear</string>

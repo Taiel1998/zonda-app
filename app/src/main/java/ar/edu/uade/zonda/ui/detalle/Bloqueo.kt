@@ -103,14 +103,16 @@ fun TarjetaBloqueo(
                 }
             }
             // Aprobado no es bloqueado: hasta que el firewall dice que lo aplicó, la tarjeta no lo da por
-            // hecho. Con el firewall caído puede quedar así, sin haber cortado nada.
+            // hecho. Conectado tarda unos segundos ("Bloqueando…"); caído puede quedar así, sin haber
+            // cortado nada ("Bloqueo sin aplicar").
             actual.estado == EstadoBloqueo.APROBADO -> {
-                val titulo = if (seccion.firewall.conectado) R.string.bloqueo_aprobado_esperando else R.string.bloqueo_aprobado_sin_firewall
-                val detalle = actual.aprobadoEn?.let { aprobado ->
-                    val cuando = "${Formato.diaRelativo(aprobado, ahora, zona)} ${Formato.hora(aprobado, zona)}"
-                    stringResource(R.string.bloqueo_lo_aprobo, actual.aprobadoPor.orEmpty(), cuando)
-                }
-                FilaBloqueo(Icons.Outlined.HourglassEmpty, Tonos.Media.texto, stringResource(titulo), detalle)
+                val conectado = seccion.firewall.conectado
+                FilaBloqueo(
+                    icono = Icons.Outlined.HourglassEmpty,
+                    color = Tonos.Media.texto,
+                    titulo = stringResource(if (conectado) R.string.bloqueo_bloqueando else R.string.bloqueo_sin_aplicar),
+                    detalle = stringResource(if (conectado) R.string.bloqueo_bloqueando_detalle else R.string.bloqueo_firewall_no_responde),
+                )
                 if (puedeBloquear) {
                     BotonesBloqueo(
                         primero = stringResource(R.string.bloqueo_cambiar_duracion) to acciones.alCambiarDuracionBloqueo,

@@ -133,19 +133,20 @@ class BloqueoContenidoTest {
     }
 
     @Test
-    fun `aprobado no dice bloqueado - espera al firewall y un analista no tiene botones`() {
+    fun `aprobado no dice bloqueado - dice Bloqueando y un analista no tiene botones`() {
         // Aprobado no es bloqueado: "Bloqueado" sale recién cuando el firewall dijo que lo aplicó.
         detalle(actual = bloqueo(estado = EstadoBloqueo.APROBADO, segundos = null), perfil = Perfil.ANALISTA)
 
-        compose.onNodeWithText("Aprobado · esperando al firewall").performScrollTo().assertExists()
-        compose.onNodeWithText("Lo aprobó Este teléfono · hoy 11:58").assertExists()
+        compose.onNodeWithText("Bloqueando…").performScrollTo().assertExists()
+        compose.onNodeWithText("El firewall lo aplica en unos segundos").assertExists()
         compose.onAllNodesWithText("Bloqueado", substring = true).assertCountEquals(0)
         compose.onNodeWithText("Desbloquear").assertDoesNotExist()
     }
 
     @Test
-    fun `aprobado con el firewall caido lo dice en el titulo y el administrador puede soltarlo`() {
-        // Con el firewall caído no cortó nada: no puede quedar como "Bloqueado · vence 12:58".
+    fun `aprobado con el firewall caido queda sin aplicar y el administrador puede soltarlo`() {
+        // Con el firewall caído no cortó nada: no puede quedar como "Bloqueado · vence 12:58" ni como
+        // "Bloqueando…", que promete unos segundos.
         var desbloquear = 0
         detalle(
             actual = bloqueo(estado = EstadoBloqueo.APROBADO),
@@ -153,7 +154,9 @@ class BloqueoContenidoTest {
             acciones = AccionesDetalle(alDesbloquear = { desbloquear++ }),
         )
 
-        compose.onNodeWithText("Aprobado · el firewall no responde").performScrollTo().assertExists()
+        compose.onNodeWithText("Bloqueo sin aplicar").performScrollTo().assertExists()
+        compose.onNodeWithText("El firewall no responde").assertExists()
+        compose.onAllNodesWithText("Bloqueando", substring = true).assertCountEquals(0)
         compose.onAllNodesWithText("Bloqueado", substring = true).assertCountEquals(0)
         compose.onNodeWithText("Cambiar duración").assertExists()
         compose.onNodeWithText("Desbloquear").performScrollTo().performClick()
@@ -317,14 +320,23 @@ class BloqueoContenidoTest {
             bloqueo(id = "b-2", alertaId = "a-2", estado = EstadoBloqueo.PEDIDO, pedidoPor = "Laura").copy(ip = "192.168.30.50", nombre = "pc-rrhh"),
             bloqueo(id = "b-3", alertaId = "a-3", estado = EstadoBloqueo.APROBADO).copy(ip = "192.168.30.51", nombre = "pc-ventas"),
         )
-        compose.setContent { ZondaTheme { TarjetaBloqueos(bloqueos, utc, Fixtures.AHORA, { abierta = it }) } }
+        compose.setContent { ZondaTheme { TarjetaBloqueos(bloqueos, firewallConectado = true, utc, Fixtures.AHORA, { abierta = it }) } }
 
-        // Solo el aplicado dice "Bloqueado"; el aprobado espera al firewall.
+        // Solo el aplicado dice "Bloqueado"; el aprobado todavía se está bloqueando.
         compose.onNodeWithText("Bloqueado · vence 12:58").assertExists()
-        compose.onNodeWithText("Aprobado · esperando al firewall").assertExists()
+        compose.onNodeWithText("Bloqueando…").assertExists()
         compose.onNodeWithText("Pedido de Laura · espera aprobación").assertExists()
         compose.onNodeWithText("pc-rrhh").performClick()
         assertEquals("a-2", abierta)
+    }
+
+    @Test
+    fun `en la tarjeta de bloqueos de Estado, un aprobado con el firewall caido queda sin aplicar`() {
+        val aprobado = bloqueo(id = "b-3", alertaId = "a-3", estado = EstadoBloqueo.APROBADO)
+        compose.setContent { ZondaTheme { TarjetaBloqueos(listOf(aprobado), firewallConectado = false, utc, Fixtures.AHORA, {}) } }
+
+        compose.onNodeWithText("Bloqueo sin aplicar").assertExists()
+        compose.onAllNodesWithText("Bloqueando", substring = true).assertCountEquals(0)
     }
 
     @Test
