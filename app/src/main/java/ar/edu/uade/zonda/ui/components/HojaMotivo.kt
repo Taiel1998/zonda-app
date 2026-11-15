@@ -22,9 +22,9 @@ import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.theme.tituloHoja
 
 /**
- * "¿Por qué la cambiás?" (corrección 3, decisión 40; Figma 468-3463): cada cambio con sus etiquetas, el
+ * "Motivo del cambio" (corrección 3, decisión 40; Figma 468-3463): cada cambio con sus etiquetas, el
  * motivo obligatorio con su ejemplo y la línea que dice dónde queda, y "Cancelar" o "Guardar cambios".
- * Sin motivo no guarda ("Escribí por qué la cambiás."). La usan las severidades y la importancia de un
+ * Sin motivo no guarda ("Escribí el motivo del cambio."). La usan las severidades y la importancia de un
  * equipo. Cerrarla deslizando es Cancelar.
  */
 @Composable

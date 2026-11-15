@@ -5,7 +5,7 @@ import java.time.Instant
 /**
  * Los dos perfiles de la red (corrección 2, decisión 39). El analista revisa alertas y elige sus
  * avisos; el administrador, además, cambia las severidades y la importancia de los equipos, asigna
- * alertas a cualquiera y suma o quita gente. Lo controla el servidor; la app esconde los botones.
+ * alertas a cualquiera y agrega o quita personas. Lo controla el servidor; la app esconde los botones.
  */
 enum class Perfil {
     ADMINISTRADOR,
@@ -16,7 +16,7 @@ enum class Perfil {
 }
 
 /**
- * Una persona del equipo: su teléfono pareado, con su nombre y su perfil (Ajustes → Personas). Sin
+ * Una persona del equipo: su teléfono pareado, con su nombre y su perfil (Administración → Personas). Sin
  * cuentas ni correos. [nombre] es null en los teléfonos pareados antes de la 1.0.5: se muestra el del
  * teléfono.
  */
@@ -90,4 +90,11 @@ data class CodigoPersona(
     val contenido: String,
     val nombre: String,
     val perfil: Perfil,
-)
+) {
+    /**
+     * La dirección del servidor que lleva el código, sin el protocolo ("zonda-empresa.duckdns.org"): lo que
+     * la otra persona escribe a mano, junto con el código, si no puede escanear el QR.
+     */
+    val direccion: String?
+        get() = contenido.removePrefix("zonda:").substringBefore('#', missingDelimiterValue = "").substringAfter("://").ifEmpty { null }
+}

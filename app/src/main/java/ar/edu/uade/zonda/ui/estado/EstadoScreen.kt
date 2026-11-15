@@ -75,6 +75,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
+import ar.edu.uade.zonda.domain.model.EstadoPieza
 import ar.edu.uade.zonda.domain.model.Semaforo
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.Formato
@@ -336,10 +337,12 @@ private fun LazyListScope.datosDeLaRed(
         )
     }
     estado.sistema?.let { sistema -> item(key = "estado-del-sistema") { TarjetaEstadoSistema(sistema, ahoraDelSistema) } }
-    estado.sistema?.bloqueos?.takeIf { it.isNotEmpty() }?.let { bloqueos ->
+    estado.sistema?.takeIf { it.bloqueos.isNotEmpty() }?.let { sistema ->
         // La hora solo decide si "vence 13:34" lleva la fecha: con el reloj de 30 s alcanza y la tarjeta no se
         // vuelve a armar cada segundo, como pasaba con el segundero de Estado del sistema.
-        item(key = "bloqueos") { TarjetaBloqueos(bloqueos, zona, ahora, acciones.alAbrirDetalle) }
+        item(key = "bloqueos") {
+            TarjetaBloqueos(sistema.bloqueos, sistema.firewall == EstadoPieza.FUNCIONA, zona, ahora, acciones.alAbrirDetalle)
+        }
     }
     item {
         // "Ver todas" no está con la red tranquila y sin filtro (Figma 1-178): la leyenda ocupa ese lugar.

@@ -125,7 +125,7 @@ class ModoOscuroTest {
         compose.onNodeWithText("Apariencia").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Oscuro").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Tema").performScrollTo().performClick()
-        compose.onNodeWithText("Cambia solo cuando el teléfono pasa a oscuro.").assertIsDisplayed()
+        compose.onNodeWithText("Sigue el modo claro u oscuro del teléfono.").assertIsDisplayed()
         compose.onNodeWithText("Como el teléfono").performClick()
         compose.waitForIdle()
 

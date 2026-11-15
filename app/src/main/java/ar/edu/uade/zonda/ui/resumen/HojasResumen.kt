@@ -16,7 +16,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.ResumenActividad
-import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.ui.components.BloqueDeAyuda
 import ar.edu.uade.zonda.ui.components.EntendidoDeHoja
 import ar.edu.uade.zonda.ui.components.HojaInferior
@@ -28,9 +27,9 @@ enum class AyudaResumen { PRECISION, TIPOS }
 
 /** "Cómo se lee la precisión" (cambio 15; Figma 443-2314 y 443-2505), con las cifras y el filtro de [resumen]. */
 @Composable
-fun HojaPrecision(resumen: ResumenActividad, alCerrar: () -> Unit, altas: Set<TipoAtaque> = emptySet()) {
+fun HojaPrecision(resumen: ResumenActividad, alCerrar: () -> Unit) {
     HojaInferior(alCerrar = alCerrar) {
-        ContenidoHojaPrecision(resumen, alCerrar, altas)
+        ContenidoHojaPrecision(resumen, alCerrar)
     }
 }
 
@@ -40,7 +39,7 @@ fun HojaPrecision(resumen: ResumenActividad, alCerrar: () -> Unit, altas: Set<Ti
  * 30 revisiones, el recuadro azul que cambia con los filtros elegidos (cambios 10 y 16) y de dónde sale.
  */
 @Composable
-fun ColumnScope.ContenidoHojaPrecision(resumen: ResumenActividad, alCerrar: () -> Unit, altas: Set<TipoAtaque> = emptySet()) {
+fun ColumnScope.ContenidoHojaPrecision(resumen: ResumenActividad, alCerrar: () -> Unit) {
     val recursos = LocalResources.current
     Text(text = stringResource(R.string.precision_ayuda), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
     val definicion = stringResource(R.string.precision_texto_precision)
@@ -49,7 +48,7 @@ fun ColumnScope.ContenidoHojaPrecision(resumen: ResumenActividad, alCerrar: () -
     BloqueDeAyuda(stringResource(R.string.precision_titulo_cobertura), stringResource(R.string.precision_texto_cobertura))
     BloqueDeAyuda(stringResource(R.string.precision_titulo_modelos), stringResource(R.string.precision_texto_modelos))
     BloqueDeAyuda(stringResource(R.string.precision_titulo_30), stringResource(R.string.precision_texto_30))
-    RecuadroDelFiltro(recuadroDePrecision(resumen, recursos, altas))
+    RecuadroDelFiltro(recuadroDePrecision(resumen, recursos))
     Text(text = stringResource(R.string.precision_pie), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
     EntendidoDeHoja(alCerrar)
 }

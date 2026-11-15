@@ -10,6 +10,7 @@ import ar.edu.uade.zonda.domain.model.EscalaBarra
 import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.Franja
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
+import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.RevisionResumen
@@ -90,6 +91,18 @@ class ResumenViewModelTest {
     }
 
     @Test
+    fun `sabe si este telefono es administrador, para decirle donde se cambian las severidades`() = runTest {
+        conRedYAlertas()
+
+        viewModel().estado.test {
+            assertTrue(esperar { it.datos != null }.esAdministrador)
+            redes.actualizar(Fixtures.red("red-1").copy(perfil = Perfil.ANALISTA))
+            esperar { !it.esAdministrador }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `30 dias suma las alertas de hace mas de una semana`() = runTest {
         conRedYAlertas()
         val viewModel = viewModel()
@@ -147,22 +160,6 @@ class ResumenViewModelTest {
             viewModel.tocar(ToqueResumen.Total)
             val todas = esperar { it.filtro.vacio && it.datos?.resumen?.filtro?.vacio == true }
             assertEquals(2, todas.datos!!.resumen.total)
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `las altas son los tipos que la red tiene en alta`() = runTest {
-        conRedYAlertas()
-        redes.guardarSeveridadesLocal("red-1", SeveridadPorTipo.RECOMENDADA.con(TipoAtaque.ESCANEO, Severidad.ALTA))
-        val viewModel = viewModel()
-
-        viewModel.estado.test {
-            esperar { it.datos != null && it.severidades.severidadDe(TipoAtaque.ESCANEO) == Severidad.ALTA }
-            viewModel.tocar(ToqueResumen.Altas)
-            val altas = esperar { it.filtro.tipos.isNotEmpty() }
-            assertEquals(setOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR, TipoAtaque.ESCANEO), altas.filtro.tipos)
-            assertTrue(altas.filtro.tiposSonLasAltas(altas.altas))
             cancelAndIgnoreRemainingEvents()
         }
     }

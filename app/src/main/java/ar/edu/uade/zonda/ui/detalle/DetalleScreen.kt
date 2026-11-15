@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -51,6 +52,7 @@ import ar.edu.uade.zonda.domain.model.AvisoRecibido
 import ar.edu.uade.zonda.domain.model.CambioDeSeveridad
 import ar.edu.uade.zonda.domain.model.DuracionBloqueo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoBloqueo
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.Motivo
@@ -316,7 +318,7 @@ fun DetalleContenido(
     }
 
     val alertaVisible = (estado as? DetalleUiState.Contenido)?.alerta
-    val textoParaCompartir = (estado as? DetalleUiState.Contenido)?.let { textoParaCompartir(it.alerta, it.nombreDeLaRed, zona) }
+    val textoParaCompartir = (estado as? DetalleUiState.Contenido)?.let { textoParaCompartir(it.alerta, it.nombreDeLaRed, zona, ahora) }
 
     // Sin barra de pestañas: los márgenes por defecto dejan el aviso y el final del contenido arriba de la
     // barra de navegación de Android, que con los tres botones ocupa 48 dp (decisión 30).
@@ -431,7 +433,8 @@ private fun CuerpoDetalle(
                 DatosDelFlujo(alerta, zona)
                 Veredictos(alerta)
                 // Con el origen bloqueado, la revisión viene propuesta como "Bloqueado manualmente" (decisión 51).
-                val bloqueada = estado.bloqueo?.actual?.estado?.enElFirewall == true
+                // Bloqueado es aplicado por el firewall: con el bloqueo solo aprobado no se propone.
+                val bloqueada = estado.bloqueo?.actual?.estado == EstadoBloqueo.APLICADO
                 val recursos = LocalResources.current
                 BotonPrincipal(
                     texto = stringResource(R.string.detalle_revisar),
@@ -534,7 +537,8 @@ private fun DatosDelFlujo(alerta: Alerta, zona: ZoneId) {
         FilaDato(stringResource(R.string.detalle_origen), Formato.ipYNombre(alerta.origen))
         FilaDato(stringResource(R.string.detalle_destino), Formato.ipYNombre(alerta.destino))
         FilaDato(stringResource(R.string.detalle_servicio), Formato.servicioProtocoloYPuerto(alerta.servicio, alerta.protocolo, alerta.puerto))
-        FilaDato(stringResource(R.string.detalle_inicio), Formato.horaConSegundos(alerta.inicio, zona))
+        // Con el día: el teléfono guarda 30 días, y al detalle se llega también desde un aviso o un enlace.
+        FilaDato(stringResource(R.string.detalle_inicio), "${Formato.dia(alerta.inicio, zona)} · ${Formato.horaConSegundos(alerta.inicio, zona)}")
         FilaDato(stringResource(R.string.detalle_duracion), Formato.duracion(alerta.duracion))
         FilaDato(stringResource(R.string.detalle_conexiones_60s), alerta.veredictos.umbrales.contexto60s.toString())
         FilaDato(stringResource(R.string.detalle_conexiones_total), alerta.cantidadFlujos.toString())
@@ -758,7 +762,8 @@ private fun TarjetaEnvioFallido(accion: AccionPendiente, acciones: AccionesDetal
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(text = stringResource(R.string.envio_error_titulo), style = MaterialTheme.typography.labelLarge, color = Tonos.Alta.texto)
             Text(
-                text = stringResource(R.string.envio_error_detalle, accion.intentos, accion.ultimoError.orEmpty()),
+                // Sin el texto interno del último error ("Error del servidor"): alcanza con cuántas veces se intentó.
+                text = pluralStringResource(R.plurals.envio_error_intentos, accion.intentos, accion.intentos),
                 style = MaterialTheme.typography.bodySmall,
                 color = Tonos.Alta.texto,
             )
@@ -841,14 +846,15 @@ private fun LoQueTrajoElAviso(aviso: AvisoRecibido, zona: ZoneId) {
 
 /**
  * Lo que comparte el detalle: lo mismo que el aviso de Telegram, sin direcciones IP ni nombres de
- * equipos ("Alerta ALTA · SSH · 02:09", de qué red viene) y el enlace que abre la alerta en Zonda.
+ * equipos ("Alerta ALTA · SSH · 02:09", de qué red viene) y el enlace que abre la alerta en Zonda. Si la
+ * alerta no es de hoy, la hora va con la fecha ("27/09 02:09"), como en el aviso.
  */
 @Composable
-private fun textoParaCompartir(alerta: Alerta, red: String, zona: ZoneId): String = stringResource(
+private fun textoParaCompartir(alerta: Alerta, red: String, zona: ZoneId, ahora: Instant): String = stringResource(
     R.string.detalle_compartir_texto,
     stringResource(alerta.severidad.etiqueta()).uppercase(),
     Formato.servicio(alerta.servicio),
-    Formato.hora(alerta.inicio, zona),
+    if (Formato.mismoDia(alerta.inicio, ahora, zona)) Formato.hora(alerta.inicio, zona) else Formato.fechaYHora(alerta.inicio, zona),
     red,
     RutaDetalle.enlaceDelAviso(alerta),
 )

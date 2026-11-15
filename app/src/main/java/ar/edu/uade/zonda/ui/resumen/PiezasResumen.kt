@@ -2,12 +2,13 @@ package ar.edu.uade.zonda.ui.resumen
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
@@ -38,6 +40,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -48,10 +52,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.components.BotonAyuda
 import ar.edu.uade.zonda.ui.components.PuntoDeSeveridad
+import ar.edu.uade.zonda.ui.components.tono
 import ar.edu.uade.zonda.ui.theme.Tonos
+import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.rotulo
 import ar.edu.uade.zonda.ui.theme.zonda
@@ -123,28 +130,65 @@ fun TarjetaTotal(
 
 /**
  * Una métrica de éxito (Figma 52-2629): el valor SemiBold 22 verde, el rótulo Medium 12 y el detalle
- * Regular 11 gris. No tiene fondo ni borde; elegida, el borde verde (Figma 100-7158 y 100-7426).
+ * Regular 11 gris. No tiene fondo ni borde. Solo informa: no se toca ni se marca, y TalkBack la lee de
+ * una vez, sin anunciarla como botón.
  */
 @Composable
 fun TarjetaMetrica(
     valor: String,
     rotulo: String,
     detalle: String,
-    elegida: Boolean,
-    alTocar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
-            .clip(FormaTarjeta)
-            .then(if (elegida) Modifier.border(BordeElegido, MaterialTheme.colorScheme.primary, FormaTarjeta) else Modifier)
-            .selectable(selected = elegida, onClick = alTocar, role = Role.Button)
+            .semantics(mergeDescendants = true) {}
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(text = valor, style = estiloNumero, color = MaterialTheme.colorScheme.primary, maxLines = 1)
         Text(text = rotulo, style = MaterialTheme.typography.rotulo, color = MaterialTheme.colorScheme.onSurface)
         Text(text = detalle, style = estiloRotuloChicoResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Para encontrar la línea de las severidades en las pruebas. */
+const val ETIQUETA_SEVERIDADES = "resumen_severidades"
+
+/**
+ * Debajo de los totales, cuántas alertas son de cada severidad, de la más grave a la más leve y solo las
+ * que hubo: "● 38 altas  ● 500 medias  ● 8 bajas", como el tablero. Cuenta la severidad de cada alerta y
+ * sigue los filtros, igual que los totales. Regular 12 gris, con el punto de 8 de cada severidad. Solo
+ * informa: por severidad se filtra desde la hoja de filtros, y TalkBack la lee de una vez. Si no entran
+ * en un renglón, bajan enteras; sin alertas no se dibuja.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun LineaDeSeveridades(resumen: ResumenActividad, modifier: Modifier = Modifier) {
+    val conAlertas = Severidad.entries.filter { (resumen.porSeveridad[it] ?: 0) > 0 }
+    if (conAlertas.isEmpty()) return
+    val recursos = LocalResources.current
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp)
+            .semantics(mergeDescendants = true) {}
+            .testTag(ETIQUETA_SEVERIDADES),
+    ) {
+        conAlertas.forEach { severidad ->
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                // El punto va sin descripción: el texto de al lado ya dice la severidad.
+                Box(modifier = Modifier.size(8.dp).background(severidad.tono().punto, CircleShape))
+                Text(
+                    text = cuentaDeSeveridad(severidad, resumen.porSeveridad.getValue(severidad), recursos),
+                    style = MaterialTheme.typography.nota,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -360,9 +404,41 @@ fun FilaTipo(
     }
 }
 
+/**
+ * Una fila de "Equipos con más alertas" (como el tablero, 15/11): el nombre del equipo o su dirección
+ * Regular 13 en 150, la pista gris de 10 con la barra verde proporcional al primero y el valor Medium 13 a
+ * la derecha. Solo informa: no se toca, y TalkBack la lee de una vez ("srv-facturacion, 285").
+ */
+@Composable
+fun FilaDeEquipo(rotulo: String, valor: Int, maximo: Int, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {},
+    ) {
+        Text(
+            text = rotulo,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(150.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        PistaConBarra(fraccion = fraccionDe(valor, maximo), color = MaterialTheme.colorScheme.primary, alto = 10.dp, modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.width(8.dp))
+        ValorDeFila(valor = valor, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
 private fun fraccionDe(valor: Int, maximo: Int): Float = if (maximo == 0) 0f else valor.toFloat() / maximo * FRACCION_MAXIMA
 
-/** El número de una fila con barra: Medium 13 a la derecha, en 28 (Figma 52-2629). */
+/**
+ * El número de una fila con barra: Medium 13 a la derecha, en 28 (Figma 52-2629). Los 28 son el mínimo:
+ * con la letra grande del teléfono o con cuatro cifras crece lo que haga falta y la barra cede, en lugar
+ * de cortarse ("213" se veía "21").
+ */
 @Composable
 private fun ValorDeFila(valor: Int, color: Color) {
     Text(
@@ -371,7 +447,7 @@ private fun ValorDeFila(valor: Int, color: Color) {
         color = color,
         textAlign = TextAlign.End,
         maxLines = 1,
-        modifier = Modifier.width(28.dp),
+        modifier = Modifier.widthIn(min = 28.dp),
     )
 }
 
@@ -409,7 +485,8 @@ fun FilaPrecision(
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.End,
             maxLines = 1,
-            modifier = Modifier.width(46.dp),
+            // 46 como mínimo: con letra grande "100 %" no entra y se cortaba.
+            modifier = Modifier.widthIn(min = 46.dp),
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
@@ -423,18 +500,19 @@ fun FilaPrecision(
     }
 }
 
-/** "Cobertura de revisión · 73 % · 33 de 45" en el recuadro crema (Figma 52-2629), que también se toca. */
+/**
+ * "Cobertura de revisión · 73 % · 33 de 45" en el recuadro crema (Figma 52-2629). Solo informa, como las
+ * métricas: por las revisadas se filtra desde el total "revisadas".
+ */
 @Composable
-fun CajaCobertura(valor: String, rotulo: String, elegida: Boolean, alTocar: () -> Unit, modifier: Modifier = Modifier) {
+fun CajaCobertura(valor: String, rotulo: String, modifier: Modifier = Modifier) {
     val forma = RoundedCornerShape(8.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .clip(forma)
             .background(MaterialTheme.colorScheme.surfaceContainer, forma)
-            .then(if (elegida) Modifier.border(BordeElegido, MaterialTheme.colorScheme.primary, forma) else Modifier)
-            .selectable(selected = elegida, onClick = alTocar, role = Role.Button)
+            .semantics(mergeDescendants = true) {}
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         Text(text = rotulo, style = MaterialTheme.typography.opcion, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))

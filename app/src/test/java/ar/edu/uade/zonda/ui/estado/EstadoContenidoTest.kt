@@ -90,7 +90,7 @@ class EstadoContenidoTest {
         compose.onNodeWithContentDescription("1 sin revisar de severidad Media").assertIsDisplayed()
         compose.onNodeWithContentDescription("0 sin revisar de severidad Baja").assertIsDisplayed()
         compose.onNodeWithText("Sin revisar").assertIsDisplayed()
-        compose.onNodeWithText("Ver todas →").assertIsDisplayed()
+        compose.onNodeWithText("Ir a Alertas →").assertIsDisplayed()
         compose.onAllNodesWithText("pc-09 → srv-web").assertCountEquals(3)
         // Con datos, la barra tiene los dos íconos (Figma 1-3).
         compose.onNodeWithContentDescription("Sincronizar ahora").assertIsDisplayed()
@@ -137,7 +137,7 @@ class EstadoContenidoTest {
         )
 
         compose.onNodeWithContentDescription("1 sin revisar de severidad Media").performClick()
-        compose.onNodeWithText("Ver todas →").performClick()
+        compose.onNodeWithText("Ir a Alertas →").performClick()
         compose.onAllNodesWithText("pc-09 → srv-web")[0].performClick()
         compose.onNodeWithContentDescription("Sincronizar ahora").performClick()
         compose.onNodeWithContentDescription("Abrir el Resumen").performClick()
@@ -157,7 +157,7 @@ class EstadoContenidoTest {
 
         compose.onNodeWithText("Mostrando solo altas sin revisar. Tocá de nuevo para ver todas.").assertIsDisplayed()
         compose.onNodeWithText("Solo altas sin revisar").assertIsDisplayed()
-        compose.onNodeWithText("Ver todas →").assertIsDisplayed()
+        compose.onNodeWithText("Ir a Alertas →").assertIsDisplayed()
         compose.onNodeWithContentDescription("2 sin revisar de severidad Alta").assertIsSelected()
         compose.onNodeWithContentDescription("1 sin revisar de severidad Media").assertIsNotSelected()
     }
@@ -204,7 +204,7 @@ class EstadoContenidoTest {
         compose.onNodeWithText("Rojo: hay alertas altas sin revisar").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Amarillo: solo quedan medias sin revisar").assertIsDisplayed()
         compose.onNodeWithText("Verde: no queda ninguna alta ni media; las bajas esperan en la lista").assertIsDisplayed()
-        compose.onAllNodesWithText("Ver todas →").assertCountEquals(0)
+        compose.onAllNodesWithText("Ir a Alertas →").assertCountEquals(0)
     }
 
     @Test
@@ -226,7 +226,7 @@ class EstadoContenidoTest {
         )
 
         compose.onNodeWithText("Ninguna alerta sin revisar · actualizado ayer 12:00").assertIsDisplayed()
-        compose.onNodeWithText("No queda ninguna alerta sin revisar. Las nuevas aparecen acá apenas se sincronizan.").assertIsDisplayed()
+        compose.onNodeWithText("No queda ninguna alerta sin revisar. Las nuevas aparecen aquí en cuanto se sincronizan.").assertIsDisplayed()
     }
 
     @Test
@@ -242,7 +242,7 @@ class EstadoContenidoTest {
         compose.onNodeWithText("La red está tranquila").assertIsDisplayed()
         compose.onNodeWithText("Ninguna alerta sin revisar · actualizado 12:00").assertIsDisplayed()
         compose.onNodeWithText("Verde: no queda ninguna alta ni media; las bajas esperan en la lista").performScrollTo().assertIsDisplayed()
-        compose.onAllNodesWithText("Ver todas →").assertCountEquals(0)
+        compose.onAllNodesWithText("Ir a Alertas →").assertCountEquals(0)
     }
 
     @Test
@@ -265,7 +265,7 @@ class EstadoContenidoTest {
         var conectar = 0
         dibujar(EstadoUiState(contenido = ContenidoEstado.SinRed), AccionesEstado(alConectar = { conectar++ }))
 
-        compose.onNodeWithText("Necesitás el código de pareo que el administrador genera en la computadora del servidor Zonda.").assertIsDisplayed()
+        compose.onNodeWithText("Necesitás el código de pareo que te da un administrador desde su Zonda.").assertIsDisplayed()
         compose.onNodeWithText("Configurar conexión").performClick()
         assertEquals(1, conectar)
     }

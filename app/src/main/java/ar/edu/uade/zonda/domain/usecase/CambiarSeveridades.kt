@@ -25,7 +25,7 @@ class CambiarSeveridades(
 ) {
     suspend operator fun invoke(redId: String, severidades: SeveridadPorTipo, motivo: String): AccionPendiente {
         val texto = motivo.trim()
-        if (texto.isEmpty()) throw ErrorZonda.Validacion("motivo", "Escribí por qué la cambiás")
+        if (texto.isEmpty()) throw ErrorZonda.Validacion("motivo", "Escribí el motivo del cambio")
         redes.guardarSeveridadesLocal(redId, severidades)
         val accion = AccionPendiente(
             id = ids.nuevo(),

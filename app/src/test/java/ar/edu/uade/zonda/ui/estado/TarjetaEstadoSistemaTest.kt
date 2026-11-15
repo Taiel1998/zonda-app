@@ -68,8 +68,8 @@ class TarjetaEstadoSistemaTest {
         compose.onNodeWithContentDescription("Servidor de alertas: Funciona").assertIsDisplayed()
         // Debajo, un dato corto y con la misma forma en las tres piezas.
         compose.onNodeWithText("Último tráfico hace 4 min").assertIsDisplayed()
-        compose.onNodeWithText("Última revisión hace 12 s").assertIsDisplayed()
-        compose.onNodeWithText("Respondió recién").assertIsDisplayed()
+        compose.onNodeWithText("Último análisis hace 12 s").assertIsDisplayed()
+        compose.onNodeWithText("Respondió hace un instante").assertIsDisplayed()
     }
 
     @Test
@@ -83,7 +83,7 @@ class TarjetaEstadoSistemaTest {
     fun `un solo signo de pregunta, junto al titulo, explica las piezas y los colores`() {
         dibujar(sistema())
         val ayuda = "Sensor de red: recibe una copia del tráfico de la red.\n" +
-            "Análisis en vivo: revisa ese tráfico cada 20 s.\n" +
+            "Análisis en vivo: analiza ese tráfico cada 20 s.\n" +
             "Servidor de alertas: guarda las alertas y avisa por Telegram.\n" +
             "Verde: funciona. Ámbar: el sensor pierde tráfico. Rojo: no funciona o no hay datos."
 
@@ -102,7 +102,7 @@ class TarjetaEstadoSistemaTest {
         compose.onNodeWithContentDescription("Sensor de red: Sin datos").assertIsDisplayed()
         compose.onNodeWithContentDescription("Servidor de alertas: Funciona").assertIsDisplayed()
         // Una sola unidad: "24 min", no "24 min 0 s".
-        compose.onNodeWithText("Última revisión hace 24 min").assertIsDisplayed()
+        compose.onNodeWithText("Último análisis hace 24 min").assertIsDisplayed()
         compose.onNodeWithText("Sin datos").assertIsDisplayed()
     }
 

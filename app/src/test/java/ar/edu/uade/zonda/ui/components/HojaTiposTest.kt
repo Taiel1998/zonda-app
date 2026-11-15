@@ -35,11 +35,11 @@ class HojaTiposTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun dibujar(severidades: SeveridadPorTipo, alCerrar: () -> Unit = {}) {
+    private fun dibujar(severidades: SeveridadPorTipo, alCerrar: () -> Unit = {}, esAdministrador: Boolean = true) {
         compose.setContent {
             ZondaTheme {
                 // Como en la hoja: se desplaza si no entra en la pantalla.
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) { ContenidoHojaTipos(severidades, alCerrar) }
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) { ContenidoHojaTipos(severidades, alCerrar, esAdministrador) }
             }
         }
     }
@@ -50,29 +50,41 @@ class HojaTiposTest {
 
         compose.onNodeWithText("Qué es cada tipo").assertIsDisplayed()
         compose.onNodeWithText("LO QUE DETECTÓ LA IA").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("La IA detectó algo inusual y otro modelo le asigna el tipo de ataque más probable.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Sin tipo identificado. No se parece a ningún ataque conocido. Puede ser uno nuevo.")
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithText("Escaneo de puertos. Prueba puertos para ver qué servicios hay. Suele ser el paso previo a un ataque.")
             .performScrollTo()
             .assertIsDisplayed()
-        compose.onNodeWithText("Probable falsa alarma. Raro para la IA, pero parecido a tráfico normal, como un backup.")
+        compose.onNodeWithText("Probable falsa alarma. Inusual para la IA, pero similar al tráfico habitual, como un backup.")
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithText("LO QUE LA IA NO DETECTÓ").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Lo marcaron los otros dos detectores de Zonda.").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Servicio no autorizado. Las reglas vieron una conexión a un servicio que no está en la lista de permitidos.")
+        compose.onNodeWithText("Lo marcaron los otros dos métodos de Zonda.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Servicio no autorizado. Las reglas detectaron una conexión a un servicio que no está en la lista de permitidos.")
             .performScrollTo()
             .assertIsDisplayed()
-        compose.onNodeWithText("Volumen inusual. Los umbrales vieron demasiadas conexiones a un mismo servicio en un minuto.")
+        compose.onNodeWithText("Volumen inusual. Los umbrales detectaron demasiadas conexiones a un mismo servicio en un minuto.")
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithText(
-            "El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque.",
+            "El punto de color es la severidad que elegiste para cada tipo. Se cambia en Administración → Severidad por tipo de ataque. " +
+                "Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.",
         ).performScrollTo().assertIsDisplayed()
         // Un renglón por tipo, sin "Otros".
         compose.onAllNodesWithText("Otros", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `al analista no le nombra Administracion, que no tiene - le dice que las cambia un administrador`() {
+        dibujar(SeveridadPorTipo.RECOMENDADA, esAdministrador = false)
+
+        compose.onNodeWithText(
+            "El punto de color es la severidad de cada tipo en esta red. La cambia un administrador. " +
+                "Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.",
+        ).performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Administración", substring = true).assertCountEquals(0)
     }
 
     @Test

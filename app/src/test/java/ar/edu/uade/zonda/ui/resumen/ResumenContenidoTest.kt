@@ -2,25 +2,34 @@ package ar.edu.uade.zonda.ui.resumen
 
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.Alerta
@@ -45,6 +54,7 @@ import ar.edu.uade.zonda.ui.theme.ZondaTheme
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.math.ceil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -98,13 +108,16 @@ class ResumenContenidoTest {
         sinConexion = sinConexion,
     )
 
-    /** El color con que se dibujó un texto. */
-    private fun colorDelTexto(texto: String): Color {
+    /** Cómo quedó dibujado un texto: en cuántos renglones, si se cortó y con qué estilo. */
+    private fun disposicionDelTexto(texto: String): TextLayoutResult {
         val resultados = mutableListOf<TextLayoutResult>()
         compose.onNodeWithText(texto, useUnmergedTree = true).fetchSemanticsNode()
             .config[SemanticsActions.GetTextLayoutResult].action?.invoke(resultados)
-        return resultados.first().layoutInput.style.color
+        return resultados.first()
     }
+
+    /** El color con que se dibujó un texto. */
+    private fun colorDelTexto(texto: String): Color = disposicionDelTexto(texto).layoutInput.style.color
 
     private fun dibujar(
         estado: ResumenUiState,
@@ -143,7 +156,7 @@ class ResumenContenidoTest {
         compose.onNodeWithText("Alertas por día").assertIsDisplayed()
         compose.onNodeWithText("El lunes concentra 2 alertas: 2 de fuerza bruta sobre el mismo servidor.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Por tipo de ataque").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Precisión de cada modelo (de las revisadas)").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Precisión de cada método (de las revisadas)").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("50 % · 2 de 4").performScrollTo().assertIsDisplayed()
         // Sin la fórmula, la frase del ganador ni la nota del recall (cambios 4, 10 y 15).
         compose.onAllNodesWithText("Precisión =", substring = true).assertCountEquals(0)
@@ -160,27 +173,138 @@ class ResumenContenidoTest {
 
         compose.onNodeWithText("sin revisar").performClick()
         compose.onNodeWithText("alertas").performClick()
-        compose.onNodeWithText("altas revisadas en la primera hora").performScrollTo().performClick()
         compose.onNodeWithText("vie").performScrollTo().performClick()
         compose.onNodeWithText("Probable falsa alarma").performScrollTo().performClick()
         compose.onNodeWithText("Falsos positivos").performScrollTo().performClick()
         compose.onNodeWithText("Umbrales estadísticos").performScrollTo().performClick()
-        compose.onNodeWithText("Cobertura de revisión").performScrollTo().performClick()
 
         val viernes = Franja.dia(LocalDate.of(2026, 10, 9))
         assertEquals(
             listOf(
                 ToqueResumen.Revision(RevisionResumen.SIN_REVISAR),
                 ToqueResumen.Total,
-                ToqueResumen.Altas,
                 ToqueResumen.Barra(viernes),
                 ToqueResumen.Tipo(TipoAtaque.PROBABLE_FALSA_ALARMA),
                 ToqueResumen.Revision(RevisionResumen.FALSOS_POSITIVOS),
                 ToqueResumen.Metodo(MetodoDeteccion.UMBRALES),
-                ToqueResumen.Revision(RevisionResumen.REVISADAS),
             ),
             tocadas,
         )
+    }
+
+    @Test
+    fun `las dos metricas y la cobertura solo informan - no se tocan, no se marcan y no son un boton`() {
+        val tocadas = mutableListOf<ToqueResumen>()
+        // Con "revisadas" y los tipos que la red tiene en alta elegidos, antes quedaban las tres marcadas.
+        val filtro = FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR), revision = RevisionResumen.REVISADAS)
+        dibujar(estado(resumen(filtro)), alTocar = { tocadas += it })
+
+        listOf("hasta la primera revisión", "altas revisadas en la primera hora", "Cobertura de revisión").forEach { rotulo ->
+            compose.onNodeWithText(rotulo).performScrollTo()
+                .assertHasNoClickAction()
+                .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Role))
+                .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected))
+                .performClick()
+        }
+        // TalkBack lee cada una de una vez: el valor, el rótulo y el detalle.
+        compose.onNode(hasText("hasta la primera revisión") and hasText("14 min") and hasText("mediana del período")).assertExists()
+        compose.onNode(hasText("Cobertura de revisión") and hasText("100 % · 1 de 1")).assertExists()
+
+        assertEquals(emptyList<ToqueResumen>(), tocadas)
+    }
+
+    @Test
+    fun `debajo de los totales dice cuantas son de cada severidad y solo informa`() {
+        val tocadas = mutableListOf<ToqueResumen>()
+        dibujar(estado(resumen()), alTocar = { tocadas += it })
+
+        // Dos altas, una media y una baja, de la más grave a la más leve. TalkBack las lee de una vez.
+        compose.onNodeWithTag(ETIQUETA_SEVERIDADES)
+            .assertIsDisplayed()
+            .assert(hasText("2 altas") and hasText("1 media") and hasText("1 baja"))
+            .assertHasNoClickAction()
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Role))
+            .performClick()
+
+        assertEquals(emptyList<ToqueResumen>(), tocadas)
+    }
+
+    @Test
+    fun `la linea de las severidades sigue los filtros y muestra solo las que hubo`() {
+        dibujar(estado(resumen(FiltroResumen(severidades = setOf(Severidad.MEDIA, Severidad.BAJA)))))
+
+        compose.onNodeWithTag(ETIQUETA_SEVERIDADES).assert(hasText("1 media") and hasText("1 baja"))
+        compose.onAllNodesWithText("2 altas").assertCountEquals(0)
+        // El filtro por severidad se cuenta y se nombra como los demás.
+        compose.onNodeWithText("Filtros (2)").assertIsDisplayed()
+        compose.onNodeWithText("Mostrando 2 alertas: severidad media y baja.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `con una sola severidad la frase dice de donde se saca, porque en la pantalla no hay que tocar`() {
+        dibujar(estado(resumen(FiltroResumen(severidades = setOf(Severidad.ALTA)))))
+
+        compose.onNodeWithTag(ETIQUETA_SEVERIDADES).assert(hasText("2 altas"))
+        compose.onNodeWithText("Filtros (1)").assertIsDisplayed()
+        compose.onNodeWithText("Mostrando severidad alta: 2 alertas. Se quita desde Filtros.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `si el filtro no deja alertas, la linea de las severidades no se dibuja`() {
+        dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.DDOS)))))
+
+        compose.onAllNodesWithTag(ETIQUETA_SEVERIDADES).assertCountEquals(0)
+    }
+
+    @Test
+    fun `al final, los equipos con mas alertas solo informan`() {
+        val tocadas = mutableListOf<ToqueResumen>()
+        dibujar(estado(resumen()), alTocar = { tocadas += it })
+
+        compose.onNodeWithText("Equipos con más alertas").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Como destino. No se incluye al compartir.").assertExists()
+        // Las cuatro alertas de prueba van a srv-web. TalkBack lee la fila de una vez, y no es un botón.
+        compose.onNode(hasText("srv-web") and hasText("4")).performScrollTo()
+            .assertHasNoClickAction()
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Role))
+            .performClick()
+        assertEquals(emptyList<ToqueResumen>(), tocadas)
+    }
+
+    @Test
+    fun `si los filtros no dejan alertas, los equipos lo dicen como la lista del Resumen`() {
+        dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.DDOS)))))
+
+        compose.onNodeWithText("Equipos con más alertas").performScrollTo()
+        compose.onNodeWithText("Ninguna alerta con estos filtros").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("srv-web").assertCountEquals(0)
+    }
+
+    @Test
+    fun `con la letra grande las cifras de las filas no se cortan`() {
+        // Con la letra del teléfono al 150 %, "213" se veía "21" y "100 %" se veía "100": el lugar de la
+        // cifra era fijo. Ahora crece lo que haga falta y la barra cede.
+        compose.setContent {
+            ZondaTheme {
+                CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 1.5f)) {
+                    Column(modifier = Modifier.width(354.dp)) {
+                        FilaTipo(rotulo = "Fuerza bruta (SSH, FTP)", severidad = Severidad.ALTA, valor = 213, maximo = 213, elegida = false, alTocar = {})
+                        FilaPrecision(rotulo = "Modelo de IA", porcentaje = "100 %", xDeY = "27 de 27", fraccion = 1f, elegida = false, alTocar = {})
+                    }
+                }
+            }
+        }
+
+        listOf("213", "100 %").forEach { cifra ->
+            val disposicion = disposicionDelTexto(cifra)
+            // Lo que mide el texto escrito entero contra el lugar que le dieron. No sirve hasVisualOverflow:
+            // la acción de TalkBack rehace el párrafo con el ancho máximo y lo da cortado aunque entre.
+            val anchoDelTexto = ceil(disposicion.multiParagraph.maxIntrinsicWidth).toInt()
+            val medidas = "lugar de ${disposicion.size.width} px para un texto de $anchoDelTexto px"
+            assertTrue("«$cifra» se corta: $medidas", disposicion.size.width >= anchoDelTexto)
+            assertFalse("«$cifra» pasa de un renglón: $medidas", disposicion.multiParagraph.didExceedMaxLines)
+            assertEquals("«$cifra» no entra en un renglón: $medidas", cifra.length, disposicion.getLineEnd(0, visibleEnd = true))
+        }
     }
 
     @Test
@@ -188,7 +312,7 @@ class ResumenContenidoTest {
         dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA)))))
 
         compose.onNodeWithText("Filtros (1)").assertIsDisplayed()
-        compose.onNodeWithText("Mostrando fuerza bruta: 2 alertas. Tocá de nuevo para sacarlo.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Mostrando fuerza bruta: 2 alertas. Tocá de nuevo para quitarlo.").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -232,13 +356,15 @@ class ResumenContenidoTest {
         compose.onNodeWithText("Filtrar el resumen").assertIsDisplayed()
         compose.onNodeWithText("Cuándo · podés elegir varios").assertExists()
         compose.onNodeWithText("vie 09/10").assertExists()
+        compose.onNodeWithText("Severidad · podés elegir varias").assertExists()
+        listOf("Alta", "Media", "Baja").forEach { compose.onNodeWithText(it).assertExists() }
         compose.onNodeWithText("Tipo de ataque · podés elegir varios").assertExists()
         compose.onNodeWithText("Volumen inusual de conexiones").assertExists()
         // Figma 463-1317: "Sin tipo identificado", como en la tarjeta "Por tipo de ataque".
         compose.onNode(hasText("Sin tipo identificado") and SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)).assertExists()
         assertTrue(compose.onAllNodesWithText("Tráfico anómalo sin tipo identificado").fetchSemanticsNodes().isEmpty())
         compose.onNodeWithText("Revisión").assertExists()
-        compose.onNodeWithText("Modelo").assertExists()
+        compose.onNodeWithText("Método").assertExists()
         compose.onNodeWithText("Ver estas 4 alertas en la lista →").assertExists()
         compose.onNodeWithText("Mostrar 4 alertas").assertExists()
     }
@@ -256,6 +382,35 @@ class ResumenContenidoTest {
 
         assertEquals(listOf(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA), revision = RevisionResumen.SIN_REVISAR)), aplicados)
         compose.onAllNodesWithText("Filtrar el resumen").assertCountEquals(0)
+    }
+
+    @Test
+    fun `en la hoja la severidad se elige de a varias y Mostrar la aplica`() {
+        val aplicados = mutableListOf<FiltroResumen>()
+        dibujar(estado(resumen()), alAplicarFiltro = { aplicados += it })
+
+        compose.onNodeWithText("Filtros").performClick()
+        // Por la severidad de cada alerta: las dos de fuerza bruta son altas.
+        compose.onNodeWithText("Alta").performScrollTo().performClick()
+        compose.onNodeWithText("Alta").assertIsSelected()
+        compose.onNodeWithText("Mostrar 2 alertas").performScrollTo()
+        compose.onNodeWithText("Baja").performScrollTo().performClick()
+        compose.onNodeWithText("Mostrar 3 alertas").performScrollTo().performClick()
+
+        assertEquals(listOf(FiltroResumen(severidades = setOf(Severidad.ALTA, Severidad.BAJA))), aplicados)
+        compose.onAllNodesWithText("Filtrar el resumen").assertCountEquals(0)
+    }
+
+    @Test
+    fun `la hoja muestra elegida la severidad del filtro y tocarla de nuevo la saca`() {
+        val aplicados = mutableListOf<FiltroResumen>()
+        dibujar(estado(resumen(FiltroResumen(severidades = setOf(Severidad.MEDIA)))), alAplicarFiltro = { aplicados += it })
+
+        compose.onNodeWithText("Filtros (1)").performClick()
+        compose.onNodeWithText("Media").performScrollTo().assertIsSelected().performClick()
+        compose.onNodeWithText("Mostrar 4 alertas").performScrollTo().performClick()
+
+        assertEquals(listOf(FiltroResumen()), aplicados)
     }
 
     @Test
@@ -319,10 +474,14 @@ class ResumenContenidoTest {
             .flatMap { nodo -> nodo.config[SemanticsProperties.Text].map { it.text } }
         assertTrue(textos.contains("Resumen semanal"))
         assertTrue(textos.contains("Generado con Zonda · no incluye IPs ni nombres de equipos"))
+        // "Equipos con más alertas" lleva nombres y direcciones: se ve en la pantalla, no en lo que se comparte.
+        assertFalse(textos.contains("Equipos con más alertas"))
+        // Debajo de los totales, cuántas son de cada severidad, como en la pantalla.
+        assertTrue(textos.containsAll(listOf("2 altas", "1 media", "1 baja")))
         // Cambio 18: suma "Por tipo de ataque" y "Reales y falsos positivos", sin la precisión ni los ⓘ.
         assertTrue(textos.contains("Por tipo de ataque"))
         assertTrue(textos.contains("Reales y falsos positivos (de las revisadas)"))
-        assertFalse(textos.contains("Precisión de cada modelo (de las revisadas)"))
+        assertFalse(textos.contains("Precisión de cada método (de las revisadas)"))
         assertFalse(textos.contains("Un falso positivo con motivo sirve para ajustar la detección."))
         assertTrue(compose.onAllNodes(hasContentDescription("Qué es cada tipo")).fetchSemanticsNodes().isEmpty())
         // Las alertas de prueba van de pc-09 (192.168.10.9) a srv-web (192.168.10.50) (RNF02).
@@ -425,15 +584,17 @@ class ResumenContenidoTest {
     }
 
     @Test
-    fun `por tipo de ataque va en dos bloques, con los tipos sin alertas en una linea y sin el bloque vacio`() {
+    fun `por tipo de ataque va en dos bloques, solo con los tipos que tuvieron alertas y sin el bloque vacio`() {
         // Fuerza bruta, escaneo y probable falsa alarma: lo que la IA no detectó no tuvo alertas y se
-        // oculta con su título (cambio 14). Los tipos sin alertas van juntos debajo de su bloque, como en
-        // el tablero web.
+        // oculta con su título (cambio 14). Los tipos sin alertas no se nombran: la tarjeta cuenta lo que
+        // pasó.
         dibujar(estado(resumen()))
 
         compose.onNodeWithText("LO QUE DETECTÓ LA IA").performScrollTo().assertIsDisplayed()
         assertEquals(Texto, colorDelTexto("Fuerza bruta (SSH, FTP)"))
-        compose.onNodeWithText("Sin alertas: sin tipo identificado y denegación de servicio.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Escaneo de puertos").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Probable falsa alarma").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Sin alertas", substring = true).assertCountEquals(0)
         compose.onAllNodesWithText("Sin tipo identificado").assertCountEquals(0)
         compose.onAllNodesWithText("Denegación de servicio").assertCountEquals(0)
         compose.onAllNodesWithText("LO QUE LA IA NO DETECTÓ").assertCountEquals(0)
@@ -445,13 +606,14 @@ class ResumenContenidoTest {
     @Test
     fun `con un filtro, los tipos que tuvieron alertas en el periodo siguen en su fila aunque queden en cero`() {
         // Con fuerza bruta elegida, escaneo y probable falsa alarma quedan en cero, pero tuvieron alertas en
-        // la semana: siguen en gris y se pueden tocar para sumarlos. La línea no los nombra.
+        // la semana: siguen en gris y se pueden tocar para sumarlos.
         val tocadas = mutableListOf<ToqueResumen>()
         dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA)))), alTocar = { tocadas += it })
 
         compose.onNodeWithText("Escaneo de puertos").performScrollTo().assertIsDisplayed()
         assertEquals(TextoSecundario, colorDelTexto("Escaneo de puertos"))
-        compose.onNodeWithText("Sin alertas: sin tipo identificado y denegación de servicio.").performScrollTo().assertIsDisplayed()
+        // Los que no tuvieron alertas en la semana siguen sin fila.
+        compose.onAllNodesWithText("Denegación de servicio").assertCountEquals(0)
         compose.onNodeWithText("Probable falsa alarma").performScrollTo().performClick()
 
         assertEquals(listOf(ToqueResumen.Tipo(TipoAtaque.PROBABLE_FALSA_ALARMA)), tocadas)
@@ -459,32 +621,34 @@ class ResumenContenidoTest {
 
     @Test
     fun `un tipo elegido sin alertas en el periodo sigue en su fila para poder sacarlo`() {
-        // Pasa al cambiar de 30 a 7 días con un tipo elegido: "Tocá de nuevo para sacarlo" tiene que tener
+        // Pasa al cambiar de 30 a 7 días con un tipo elegido: "Tocá de nuevo para quitarlo" tiene que tener
         // qué tocar.
         val tocadas = mutableListOf<ToqueResumen>()
         dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.DDOS)))), alTocar = { tocadas += it })
 
-        compose.onNodeWithText("Sin alertas: sin tipo identificado.").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Sin tipo identificado").assertCountEquals(0)
         compose.onNodeWithText("Denegación de servicio").performScrollTo().performClick()
 
         assertEquals(listOf(ToqueResumen.Tipo(TipoAtaque.DDOS)), tocadas)
     }
 
     @Test
-    fun `la imagen de un periodo sin alertas nombra todos los tipos en una linea por bloque`() {
+    fun `la imagen de un periodo sin alertas va sin la tarjeta de los tipos`() {
         compose.setContent {
             ZondaTheme {
                 ImagenResumen(resumen = resumen(lista = emptyList()), red = "Oficina central", datosDe = ahora, sinConexion = false, zona = utc)
             }
         }
 
-        compose.onNodeWithText("LO QUE DETECTÓ LA IA").assertExists()
-        compose.onNodeWithText(
-            "Sin alertas: fuerza bruta (SSH, FTP), sin tipo identificado, escaneo de puertos, denegación de servicio y probable falsa alarma.",
-        ).assertExists()
-        compose.onNodeWithText("LO QUE LA IA NO DETECTÓ").assertExists()
-        compose.onNodeWithText("Sin alertas: servicio no autorizado y volumen inusual.").assertExists()
-        compose.onAllNodesWithText("Escaneo de puertos").assertCountEquals(0)
+        // No hubo nada para contar por tipo: ni la tarjeta vacía ni la lista de lo que no pasó.
+        compose.onAllNodesWithText("Por tipo de ataque").assertCountEquals(0)
+        compose.onAllNodesWithText("LO QUE DETECTÓ LA IA").assertCountEquals(0)
+        compose.onAllNodesWithText("LO QUE LA IA NO DETECTÓ").assertCountEquals(0)
+        compose.onAllNodesWithText("Sin alertas", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithTag(ETIQUETA_SEVERIDADES).assertCountEquals(0)
+        // El resto de la imagen sigue: los totales en cero, el gráfico y los reales y falsos positivos.
+        compose.onNodeWithText("Alertas por día").assertExists()
+        compose.onNodeWithText("Reales y falsos positivos (de las revisadas)").assertExists()
     }
 
     @Test
@@ -498,13 +662,24 @@ class ResumenContenidoTest {
 
         compose.onNodeWithText("LO QUE LA IA NO DETECTÓ").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Servicio no autorizado").performScrollTo().assertIsDisplayed()
-        // Volumen inusual no tuvo alertas: va en la línea de abajo, no en una fila.
-        compose.onNodeWithText("Sin alertas: volumen inusual.").performScrollTo().assertIsDisplayed()
+        // Volumen inusual no tuvo alertas: no tiene fila.
         compose.onAllNodesWithText("Volumen inusual").assertCountEquals(0)
         // El punto de color también lo lee TalkBack.
         compose.onNode(hasText("Escaneo de puertos") and hasContentDescription("Severidad alta")).assertExists()
         compose.onNode(hasText("Probable falsa alarma") and hasContentDescription("Severidad baja")).assertExists()
         compose.onNode(hasText("Servicio no autorizado") and hasContentDescription("Severidad media")).assertExists()
+    }
+
+    @Test
+    fun `al analista, que es cada tipo le dice que las severidades las cambia un administrador`() {
+        dibujar(estado(resumen()).copy(esAdministrador = false))
+
+        compose.onNodeWithContentDescription("Qué es cada tipo").performScrollTo().performClick()
+
+        compose.onNodeWithText(
+            "El punto de color es la severidad de cada tipo en esta red. La cambia un administrador. " +
+                "Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.",
+        ).assertExists()
     }
 
     @Test
@@ -514,9 +689,9 @@ class ResumenContenidoTest {
         compose.onNodeWithContentDescription("Qué es cada tipo").performScrollTo().performClick()
 
         compose.onNodeWithText("Qué es cada tipo").assertIsDisplayed()
-        compose.onNodeWithText("La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.").assertExists()
+        compose.onNodeWithText("La IA detectó algo inusual y otro modelo le asigna el tipo de ataque más probable.").assertExists()
         compose.onNodeWithText("Fuerza bruta. Muchos intentos de contraseña contra un servicio.").assertExists()
-        compose.onNodeWithText("Lo marcaron los otros dos detectores de Zonda.").assertExists()
+        compose.onNodeWithText("Lo marcaron los otros dos métodos de Zonda.").assertExists()
         compose.onNodeWithText("Entendido").performScrollTo().performClick()
         compose.onAllNodesWithText("Qué es cada tipo").assertCountEquals(0)
     }
@@ -529,7 +704,7 @@ class ResumenContenidoTest {
 
         compose.onNodeWithText("Cómo se lee la precisión").assertIsDisplayed()
         compose.onNodeWithText(
-            "De las alertas que marcó un modelo y ya revisaste, cuántas eran ataques reales. " +
+            "De las alertas que marcó un método y ya revisaste, cuántas eran ataques reales. " +
                 "Por ejemplo, la IA tiene 1 de 2: marcó 2 alertas que ya revisaste y 1 era un ataque.",
         ).assertExists()
         compose.onNodeWithText("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 7 días.").assertExists()

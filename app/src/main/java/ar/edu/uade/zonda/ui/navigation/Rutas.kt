@@ -11,6 +11,9 @@ object Rutas {
     const val ALERTAS = "alertas"
     const val AJUSTES = "ajustes"
 
+    /** Solo del administrador de la red activa (como el tablero): Personas, Navegadores, Equipos, Severidades y Registro. */
+    const val ADMINISTRACION = "administracion"
+
     // Primer inicio (RF05): un grafo anidado con su propio ViewModel compartido
     const val PRIMER_INICIO = "primer_inicio"
     const val BIENVENIDA = "bienvenida"
@@ -24,7 +27,7 @@ object Rutas {
     /** Conexión fuera del primer inicio: sin red pareada después de la introducción, agregar otra red o conectar de nuevo. */
     const val CONEXION = "conexion"
 
-    // Pantallas que se abren desde Ajustes (Figma 4-66)
+    // Pantallas que se abren desde Ajustes (Figma 4-66) o desde Administración
     const val REDES = "redes"
     const val DETALLES_TECNICOS = "detalles_tecnicos"
     const val AVISOS_POR_SEVERIDAD = "avisos_por_severidad"
@@ -97,6 +100,18 @@ fun NavHostController.irAPestania(ruta: String) {
         launchSingleTop = true
         restoreState = true
     }
+}
+
+/**
+ * Administración es solo del administrador (como el tablero): a quien deja de serlo mientras la mira (le
+ * cambiaron el perfil, o pasó a una red donde es analista) lo lleva a su Ajustes, también desde una
+ * pantalla que se abrió desde ahí. Lo que tenía abierto en esa pestaña se descarta, para que no vuelva a
+ * aparecer si después lo hacen administrador.
+ */
+fun NavHostController.salirDeAdministracion() {
+    val enAdministracion = runCatching { getBackStackEntry(Rutas.ADMINISTRACION) }.isSuccess
+    if (enAdministracion) irAPestania(Rutas.AJUSTES)
+    clearBackStack(Rutas.ADMINISTRACION)
 }
 
 /**

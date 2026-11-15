@@ -47,7 +47,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * Ajustes → Registro de cambios (corrección 3, decisión 40; Figma 468-3283): quién cambió la
+ * Administración → Registro de cambios, y Ajustes para el analista (corrección 3, decisión 40; Figma 468-3283): quién cambió la
  * configuración de la red, cuándo, de qué a qué y por qué, de lo más nuevo a lo más viejo. Lo guarda el
  * servidor y desde la app no se puede borrar ni editar. Usa el ViewModel de Ajustes.
  */
@@ -180,7 +180,7 @@ fun tituloDelCambio(cambio: CambioRegistro): String {
             }
         }
         TipoCambio.DESBLOQUEO -> stringResource(R.string.registro_desbloqueo, nombre)
-        // "Le dio permiso de bloquear a Laura" o "Le sacó el permiso de bloquear a Laura".
+        // "Le dio permiso de bloquear a Laura" o "Le quitó el permiso de bloquear a Laura".
         TipoCambio.PERMISO_BLOQUEO -> stringResource(
             if (cambio.dioPermisoDeBloquear) R.string.registro_permiso_bloqueo else R.string.registro_sin_permiso_bloqueo,
             nombre,

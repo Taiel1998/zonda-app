@@ -28,8 +28,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
@@ -52,6 +55,7 @@ import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.components.BotonTonal
 import ar.edu.uade.zonda.ui.components.BotonTonalPeligro
 import ar.edu.uade.zonda.ui.components.FilaDato
+import ar.edu.uade.zonda.ui.components.HojaConfirmacion
 import ar.edu.uade.zonda.ui.components.NotaAlPie
 import ar.edu.uade.zonda.ui.components.Panel
 import ar.edu.uade.zonda.ui.components.TarjetaDatos
@@ -176,6 +180,20 @@ fun TelegramContenido(estado: TelegramUiState, acciones: AccionesTelegram, desde
     }
 
     val vinculadoDesdeAjustes = estado.vinculado && desdeAjustes
+    // Desvincular pregunta antes: para volver hay que repetir los pasos en Telegram.
+    var desvinculando by rememberSaveable { mutableStateOf(false) }
+    if (desvinculando) {
+        HojaConfirmacion(
+            titulo = stringResource(R.string.telegram_desvincular_titulo),
+            texto = stringResource(R.string.telegram_desvincular_texto, estado.red?.nombre.orEmpty()),
+            textoConfirmar = stringResource(R.string.telegram_desvincular_confirmar),
+            alConfirmar = {
+                desvinculando = false
+                acciones.alDesvincular()
+            },
+            alCerrar = { desvinculando = false },
+        )
+    }
     Scaffold(
         topBar = {
             BarraSuperior(
@@ -195,7 +213,7 @@ fun TelegramContenido(estado: TelegramUiState, acciones: AccionesTelegram, desde
         ) {
             when {
                 !estado.vinculado -> Conectar(estado, acciones, bot)
-                desdeAjustes -> Vinculado(estado, acciones, bot)
+                desdeAjustes -> Vinculado(estado, acciones.copy(alDesvincular = { desvinculando = true }), bot)
                 else -> RecienConectado(estado, acciones, bot)
             }
         }
@@ -220,8 +238,12 @@ private fun ColumnScope.Conectar(estado: TelegramUiState, acciones: AccionesTele
         }
     }
     BotonPrincipal(texto = stringResource(R.string.telegram_abrir), alTocar = acciones.alAbrirTelegram, habilitado = !estado.ocupado)
-    BotonEnlace(texto = stringResource(R.string.telegram_ahora_no), alTocar = acciones.alAhoraNo, modifier = Modifier.fillMaxWidth())
-    NotaAlPie(stringResource(R.string.telegram_despues))
+    // "Ahora no" y "Podés hacerlo después desde Ajustes → Telegram." son del primer inicio: entrando desde
+    // Ajustes → Telegram (con flecha) sobran, porque ya se está ahí y se vuelve con la flecha.
+    if (acciones.alVolver == null) {
+        BotonEnlace(texto = stringResource(R.string.telegram_ahora_no), alTocar = acciones.alAhoraNo, modifier = Modifier.fillMaxWidth())
+        NotaAlPie(stringResource(R.string.telegram_despues))
+    }
 }
 
 /**

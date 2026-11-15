@@ -169,6 +169,8 @@ fun FiltrosAlertas(
                 cuantas = { rango -> iniciosParaFechas.count { LocalDateTime.ofInstant(it, zona) in rango } },
                 alMostrar = { alCambiar(filtro.copy(fechas = it)); hoja = null },
                 alCancelar = { hoja = null },
+                // Con fechas puestas, "Limpiar" las saca y vuelve a regir el período del chip de al lado.
+                alQuitar = if (filtro.fechas != null) ({ alCambiar(filtro.copy(fechas = null)); hoja = null }) else null,
             )
         }
         HojaFiltro.MAS -> HojaMasFiltros(

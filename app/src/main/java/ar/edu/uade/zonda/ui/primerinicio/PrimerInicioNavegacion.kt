@@ -34,7 +34,7 @@ fun NavGraphBuilder.primerInicio(navController: NavHostController) {
             BienvenidaScreen(
                 alEmpezar = { navController.navigate(Rutas.TUTORIAL) },
                 alOmitirIntroduccion = {
-                    viewModel.terminarIntroduccion()
+                    viewModel.omitirIntroduccion()
                     navController.navigate(Rutas.CONEXION_INICIAL)
                 },
             )

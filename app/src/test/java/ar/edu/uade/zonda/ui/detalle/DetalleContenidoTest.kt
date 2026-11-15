@@ -64,9 +64,10 @@ class DetalleContenidoTest {
         estado: DetalleUiState,
         acciones: AccionesDetalle = AccionesDetalle(),
         aviso: AvisoDetalle? = null,
+        ahora: java.time.Instant = Fixtures.AHORA,
     ) {
         compose.setContent {
-            ZondaTheme { DetalleContenido(estado = estado, acciones = acciones, aviso = aviso, zona = utc, ahora = Fixtures.AHORA) }
+            ZondaTheme { DetalleContenido(estado = estado, acciones = acciones, aviso = aviso, zona = utc, ahora = ahora) }
         }
     }
 
@@ -84,6 +85,19 @@ class DetalleContenidoTest {
     )
 
     @Test
+    fun `lo que se comparte de una alerta de otro dia lleva la fecha, como el aviso de Telegram`() {
+        var compartido = ""
+        dibujar(
+            contenido(Fixtures.alerta("a-1")),
+            AccionesDetalle(alCompartir = { compartido = it }),
+            ahora = Fixtures.AHORA.plus(Duration.ofDays(2)),
+        )
+
+        compose.onNodeWithContentDescription("Compartir").performClick()
+        assertTrue(compartido, compartido.startsWith("Alerta ALTA · SSH · 12/10 10:50\nTocá para ver el detalle en Zonda.\nRed: Oficina central\n"))
+    }
+
+    @Test
     fun `sin revisar muestra el encabezado, los datos y Revisar, y comparte sin IP ni nombres`() {
         var abierta = false
         var compartido = ""
@@ -97,6 +111,8 @@ class DetalleContenidoTest {
         compose.onNodeWithText("pc-09 → srv-web").assert(hasContentDescription("De pc-09 a srv-web")).assert(isHeading())
         compose.onNodeWithText("SSH · TCP/22 · 10:50:00 · detectada por IA").assertIsDisplayed()
         compose.onNodeWithText("Datos del flujo").assertIsDisplayed()
+        // El inicio dice también el día: el teléfono guarda 30 días.
+        compose.onNodeWithText("lun 12/10 · 10:50:00").assertExists()
         compose.onNodeWithText("Predicción por método").performScrollTo().assertIsDisplayed()
         // Menos texto (decisión 48): el botón se entiende solo, sin la frase de arriba.
         compose.onAllNodesWithText("Al revisar vas a indicar", substring = true).assertCountEquals(0)
@@ -134,10 +150,10 @@ class DetalleContenidoTest {
         dibujar(contenido(Fixtures.alerta("a-1")))
         val ayudaDatos = "Conexiones en 60 s: cuántas veces el origen se conectó a este servicio en un minuto.\n" +
             "Conexiones en total: todas las de estos dos equipos, hasta que pasan 15 minutos sin ninguna."
-        val ayudaMetodos = "Modelo de IA: aprendió el tráfico normal de tu red y marca lo que se aleja de eso.\n" +
+        val ayudaMetodos = "Modelo de IA: aprendió el tráfico habitual de la red y marca lo que se aparta de él.\n" +
             "Umbrales: marcan si hay más conexiones a un servicio por minuto que en un día normal.\n" +
             "Reglas: marcan los servicios que no están en la lista de autorizados.\n" +
-            "Alcanza con que uno marque para que haya alerta."
+            "Basta con que uno la marque para que se genere una alerta."
 
         // Antes eran seis (decisión 37); ahora uno en "Datos del flujo" y otro en "Predicción por método" (decisión 48).
         compose.onAllNodes(hasContentDescription("Qué es", substring = true)).assertCountEquals(2)
@@ -180,7 +196,8 @@ class DetalleContenidoTest {
         )
 
         compose.onNodeWithText("Sin conexión · tu revisión se enviará al reconectar").assertIsDisplayed()
-        compose.onNodeWithText("PENDIENTE DE SINCRONIZAR").assertIsDisplayed()
+        // La etiqueta dice lo mismo que la tarjeta de abajo ("pendiente de envío"), no "de sincronizar".
+        compose.onNodeWithText("PENDIENTE DE ENVÍO").assertIsDisplayed()
         compose.onNodeWithText("11:55 · Celular Martín · pendiente de envío").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Cambiar revisión").assertDoesNotExist()
     }
@@ -231,7 +248,7 @@ class DetalleContenidoTest {
         dibujar(contenido(alerta, accion), AccionesDetalle(alReintentarEnvio = { reintentada = true }))
 
         compose.onNodeWithText("No se pudo enviar la revisión").assertExists()
-        compose.onNodeWithText("Intentos: 5. Último error: Error del servidor.").assertExists()
+        compose.onNodeWithText("Zonda lo intentó 5 veces.").assertExists()
         compose.onNodeWithText("Reintentar").performScrollTo().performClick()
         assertTrue(reintentada)
     }
@@ -269,7 +286,7 @@ class DetalleContenidoTest {
         compose.onNodeWithText("PENDIENTE DE DESCARGA").assertIsDisplayed()
         compose.onAllNodesWithText("SSH").assertCountEquals(2)
         compose.onNodeWithText("Aviso de Telegram de las 05:10").assertIsDisplayed()
-        compose.onNodeWithText("Lo que trajo el aviso").assertIsDisplayed()
+        compose.onNodeWithText("Datos del aviso").assertIsDisplayed()
         compose.onNodeWithText("Alta").assertIsDisplayed()
         compose.onNodeWithText("Hora de detección").assertIsDisplayed()
         compose.onNodeWithText("05:09").assertIsDisplayed()
@@ -336,8 +353,13 @@ class DetalleContenidoTest {
         compose.onNodeWithText("* Obligatorio").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
         compose.onNodeWithText("Confirmar revisión").assertIsNotEnabled()
         compose.onNodeWithText("Backup").performClick()
-        // El comentario del Figma, con los equipos de esta alerta.
-        assertEquals(Motivo.BACKUP to "Es el backup semanal de pc-09 hacia srv-web.", motivoElegido)
+        // El comentario propuesto dice solo lo que el motivo afirma, con los equipos de esta alerta.
+        assertEquals(Motivo.BACKUP to "Es un backup de pc-09 a srv-web.", motivoElegido)
+        compose.onNodeWithText("Tarea programada").performClick()
+        assertEquals(Motivo.TAREA_PROGRAMADA to "Es una tarea programada de pc-09 a srv-web.", motivoElegido)
+        // "Otro" no propone ninguno: el comentario lo escribe la persona.
+        compose.onNodeWithText("Otro").performClick()
+        assertEquals(Motivo.OTRO to "", motivoElegido)
 
         formulario = formulario.copy(motivo = Motivo.BACKUP, comentario = "Backup semanal")
         compose.onNodeWithText("Confirmar revisión").assertIsEnabled().performClick()

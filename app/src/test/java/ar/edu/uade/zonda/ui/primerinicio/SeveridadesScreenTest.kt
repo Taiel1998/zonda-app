@@ -105,7 +105,7 @@ class SeveridadesScreenTest {
         compose.onNodeWithContentDescription("Qué es cada tipo").performClick()
 
         compose.onNodeWithText("Qué es cada tipo").assertIsDisplayed()
-        compose.onNodeWithText("Lo marcaron los otros dos detectores de Zonda.").assertExists()
+        compose.onNodeWithText("Lo marcaron los otros dos métodos de Zonda.").assertExists()
     }
 
     @Test

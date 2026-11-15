@@ -143,11 +143,11 @@ class ResponsableYCalculoTest {
             }
         }
 
-        compose.onNodeWithText("Le llega un aviso por Telegram y la ve en Estado.").assertIsDisplayed()
+        compose.onNodeWithText("Recibe un aviso por Telegram y la ve en Estado.").assertIsDisplayed()
         compose.onNodeWithText("Taiel (vos)").assertIsDisplayed()
         compose.onNodeWithText("Meli").performClick()
         assertEquals("d-3", elegida?.id)
-        compose.onNodeWithText("Sacar la asignación").performClick()
+        compose.onNodeWithText("Quitar la asignación").performClick()
         assertNull(elegida)
     }
 
@@ -199,7 +199,7 @@ class ResponsableYCalculoTest {
         compose.onNodeWithText("Asignada a Laura").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Laura la soltó").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Meli se la asignó").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Taiel sacó la asignación").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Taiel quitó la asignación").performScrollTo().assertIsDisplayed()
         // La revisión dice la persona y su teléfono, en la tarjeta y en el historial.
         compose.onAllNodesWithText("Laura · Teléfono de Laura").assertCountEquals(2)
     }

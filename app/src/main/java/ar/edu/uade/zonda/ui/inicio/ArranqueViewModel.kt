@@ -7,6 +7,7 @@ import ar.edu.uade.zonda.domain.repository.RedesRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -40,6 +41,15 @@ class ArranqueViewModel(
         combine(redes.observarRedActiva(), preferencias.observarPrimerInicioHecho()) { red, hecho ->
             DestinoInicial.para(hayRedPareada = red != null, primerInicioHecho = hecho)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /**
+     * Si este teléfono es administrador en la red activa: la pestaña Administración es solo suya. Es null
+     * hasta que se lee la base, para no sacar a nadie de Administración mientras tanto (por ejemplo, si
+     * Android cerró la app con esa pestaña abierta).
+     */
+    val esAdministrador: StateFlow<Boolean?> = redes.observarRedActiva()
+        .map { red -> red != null && red.perfil.esAdministrador }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Un enlace interno de otra red (la notificación de esa red) la deja activa antes de mostrar sus alertas. */
     fun activarRed(redId: String) {

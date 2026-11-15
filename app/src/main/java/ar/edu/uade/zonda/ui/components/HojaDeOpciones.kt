@@ -276,7 +276,7 @@ private fun PiezasDeFiltroPreview() {
                 ChipOpcion("Todas", elegido = true, alTocar = {})
                 ChipOpcion("Severidad", elegido = false, alTocar = {})
             }
-            FilaRadio(Opcion(1, "Sin revisar", "Las que todavía nadie marcó"), elegida = true, alElegir = {})
+            FilaRadio(Opcion(1, "Sin revisar", "Las que todavía no tienen revisión"), elegida = true, alElegir = {})
             FilaCasilla(Opcion(2, "Alta"), marcada = true, alCambiar = {})
             FilaCasilla(Opcion(3, "Media"), marcada = false, alCambiar = {})
         }

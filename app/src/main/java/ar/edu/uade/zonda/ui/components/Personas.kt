@@ -28,6 +28,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Importancia
@@ -153,7 +155,9 @@ fun AvatarNavegador(modifier: Modifier = Modifier) {
 
 /**
  * Un navegador de Navegadores, como la fila de una persona con la computadora en el círculo: "Chrome en
- * Windows" y "Administrador · hoy 14:33". Con [alTocar], la flecha a la derecha (la ve el administrador).
+ * Windows" y "Administrador · hoy 14:33". Con [alQuitar], el botón "Quitar acceso" a la derecha (lo ve el
+ * administrador). Es lo único que se le hace a un navegador, así que la fila no lleva flecha: una flecha
+ * promete una pantalla, y abría directo la pregunta de quitarlo.
  */
 @Composable
 fun FilaNavegador(
@@ -161,14 +165,22 @@ fun FilaNavegador(
     ahora: Instant,
     zona: ZoneId,
     modifier: Modifier = Modifier,
-    alTocar: (() -> Unit)? = null,
+    alQuitar: (() -> Unit)? = null,
 ) {
+    val nombre = nombreDeNavegador(navegador, LocalResources.current)
     FilaDeLaLista(
         circulo = { AvatarNavegador() },
-        titulo = nombreDeNavegador(navegador, LocalResources.current),
+        titulo = nombre,
         detalle = detalleDeNavegador(navegador, ahora, zona),
         modifier = modifier,
-        alTocar = alTocar,
+        alTocar = null,
+        accion = alQuitar?.let { quitar ->
+            {
+                // TalkBack dice de qué navegador es el botón: con varios, todos dirían "Quitar acceso".
+                val descripcion = stringResource(R.string.navegadores_quitar_descripcion, nombre)
+                BotonChico(stringResource(R.string.navegadores_quitar_confirmar), quitar, Modifier.semantics { contentDescription = descripcion })
+            }
+        },
     )
 }
 
@@ -179,6 +191,8 @@ private fun FilaDeLaLista(
     detalle: String,
     modifier: Modifier,
     alTocar: (() -> Unit)?,
+    /** Lo que va a la derecha en lugar de la flecha (el botón de un navegador). */
+    accion: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -201,6 +215,7 @@ private fun FilaDeLaLista(
                 modifier = Modifier.size(20.dp),
             )
         }
+        accion?.invoke()
     }
 }
 

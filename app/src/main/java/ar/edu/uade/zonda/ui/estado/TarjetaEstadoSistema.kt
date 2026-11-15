@@ -189,7 +189,7 @@ private fun detalleDelAnalisis(sistema: EstadoSistema, ahora: Instant): String {
     return stringResource(R.string.estado_sistema_analisis_ultima, cuanto(Duration.between(corrida, ahora)))
 }
 
-/** El servidor: "Última respuesta hace 7 s" a la consulta de la app (cada 20 s), "Respondió recién" o "No responde". */
+/** El servidor: "Última respuesta hace 7 s" a la consulta de la app (cada 20 s), "Respondió hace un instante" o "No responde". */
 @Composable
 private fun detalleDelServidor(sistema: EstadoSistema, ahora: Instant): String {
     if (sistema.servidor == EstadoPieza.NO_RESPONDE) return stringResource(R.string.estado_sistema_no_responde)

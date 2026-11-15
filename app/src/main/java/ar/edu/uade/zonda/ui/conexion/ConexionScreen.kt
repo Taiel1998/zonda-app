@@ -80,7 +80,6 @@ import ar.edu.uade.zonda.ui.components.TituloSeccion
 import ar.edu.uade.zonda.ui.theme.Tonos
 import ar.edu.uade.zonda.ui.theme.cuerpo
 import ar.edu.uade.zonda.ui.theme.encabezado
-import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.rotulo
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import java.time.ZoneId
@@ -126,6 +125,8 @@ fun ConexionScreen(
     // Mientras conecta no se puede volver; con la red ya conectada, Volver equivale a Continuar.
     BackHandler(enabled = estado is ConexionUiState.Conectando) { }
     BackHandler(enabled = estado is ConexionUiState.Conectada) { continuar() }
+    // Con un error a la vista, Atrás vuelve al formulario con la dirección puesta, en lugar de cerrar Conexión.
+    BackHandler(enabled = estado is ConexionUiState.Fallo) { viewModel.ingresarAMano() }
     ConexionContenido(
         estado = estado,
         acciones = AccionesConexion(
@@ -185,7 +186,7 @@ fun ConexionContenido(
                 is ConexionUiState.Formulario -> Formulario(estado, acciones, alAyuda = { ayuda = it })
                 is ConexionUiState.Conectando -> Conectando(estado)
                 is ConexionUiState.Conectada -> Conectada(estado, acciones)
-                is ConexionUiState.Fallo -> Fallo(estado, acciones, zona)
+                is ConexionUiState.Fallo -> Fallo(estado, acciones, zona, alAyuda = { ayuda = it })
                 is ConexionUiState.Escaneando -> Unit
             }
         }
@@ -222,7 +223,7 @@ fun ConexionContenido(
 
 /**
  * El formulario (Figma 35-432). Al tocar un campo se oculta la parte de arriba y queda la
- * explicación "Escribí los dos datos que trae el código…" (Figma 49-10 y 49-131).
+ * explicación "Escribí los dos datos del código…" (Figma 49-10 y 49-131).
  */
 @Composable
 private fun ColumnScope.Formulario(estado: ConexionUiState.Formulario, acciones: AccionesConexion, alAyuda: (Ayuda) -> Unit) {
@@ -341,7 +342,7 @@ private fun RequisitoDeRed(alVerQueSignifica: () -> Unit) {
     }
 }
 
-/** "o ingresalo a mano" entre dos líneas (Figma 35-453). */
+/** "o ingresalo manualmente" entre dos líneas (Figma 35-453). */
 @Composable
 private fun Divisor() {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -453,7 +454,7 @@ private fun Conectada(estado: ConexionUiState.Conectada, acciones: AccionesConex
  * cuadro del servidor no verificado con su propio texto (el Figma no tiene ese caso).
  */
 @Composable
-private fun Fallo(estado: ConexionUiState.Fallo, acciones: AccionesConexion, zona: ZoneId) {
+private fun Fallo(estado: ConexionUiState.Fallo, acciones: AccionesConexion, zona: ZoneId, alAyuda: (Ayuda) -> Unit) {
     PanelRed(estado.direccion)
     val error = estado.error
     val textos = when (error) {
@@ -494,9 +495,10 @@ private fun Fallo(estado: ConexionUiState.Fallo, acciones: AccionesConexion, zon
             modifier = Modifier.fillMaxWidth(),
         )
     }
-    Text(
-        text = stringResource(R.string.conexion_donde_codigo_pie),
-        style = MaterialTheme.typography.opcion,
-        color = MaterialTheme.colorScheme.primary,
+    // El mismo enlace del formulario, que abre la ayuda: antes era un texto verde que no se tocaba.
+    BotonEnlace(
+        texto = stringResource(R.string.conexion_donde_codigo),
+        alTocar = { alAyuda(Ayuda.CODIGO) },
+        modifier = Modifier.fillMaxWidth(),
     )
 }

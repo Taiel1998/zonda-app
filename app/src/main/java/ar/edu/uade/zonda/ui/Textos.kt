@@ -250,8 +250,9 @@ fun resumenDeAvisos(avisos: PreferenciasAvisos): String =
 fun nombreDelBot(red: Red?): String = red?.telegramBot?.let { "@$it" } ?: stringResource(R.string.telegram_bot)
 
 /**
- * El comentario que propone cada motivo al revisar, el de su pantalla del Figma; la persona lo puede
- * editar (RF04). Los que nombran equipos usan los de la alerta, para no proponer un nombre ajeno.
+ * El comentario que propone cada motivo al revisar; la persona lo puede editar (RF04). Dice solo lo que
+ * el motivo afirma, porque se confirma tal cual y queda en el historial. Los que nombran equipos usan los
+ * de la alerta, para no proponer un nombre ajeno. "Otro" no propone ninguno: lo escribe la persona.
  */
 fun Motivo.comentarioPropuesto(recursos: Resources, alerta: Alerta): String = when (this) {
     Motivo.ESCALADO_AL_PROVEEDOR -> recursos.getString(R.string.comentario_escalado_al_proveedor)
@@ -259,11 +260,11 @@ fun Motivo.comentarioPropuesto(recursos: Resources, alerta: Alerta): String = wh
         recursos.getString(R.string.comentario_bloqueado_manualmente, Formato.servicio(alerta.servicio), alerta.origen.etiqueta)
     Motivo.CONTRASENA_CAMBIADA -> recursos.getString(R.string.comentario_contrasena_cambiada)
     Motivo.INVESTIGANDO -> recursos.getString(R.string.comentario_investigando)
-    Motivo.TAREA_PROGRAMADA -> recursos.getString(R.string.comentario_tarea_programada)
+    Motivo.TAREA_PROGRAMADA -> recursos.getString(R.string.comentario_tarea_programada, alerta.origen.etiqueta, alerta.destino.etiqueta)
     Motivo.BACKUP -> recursos.getString(R.string.comentario_backup, alerta.origen.etiqueta, alerta.destino.etiqueta)
     Motivo.EQUIPO_NUEVO -> recursos.getString(R.string.comentario_equipo_nuevo, alerta.origen.etiqueta)
     Motivo.USUARIO_AUTORIZADO -> recursos.getString(R.string.comentario_usuario_autorizado)
-    Motivo.OTRO -> recursos.getString(R.string.comentario_otro)
+    Motivo.OTRO -> ""
 }
 
 /** El mensaje que ve la persona por cada error de datos (informe, sección 14.3). */

@@ -20,7 +20,7 @@ class ConfirmacionDelDuenoTest {
 
     private fun confirmar(pide: Boolean, dialogo: ConfirmacionDelDueno?): String {
         var paso = "nada"
-        confirmarConHuella(pide, dialogo, "Confirmá que sos vos", "Bloquear pc-rrhh · 1 hora", alConfirmar = { paso = "confirmado" }, alNoPoder = { paso = "no se puede" })
+        confirmarConHuella(pide, dialogo, "Confirmá tu identidad", "Bloquear pc-rrhh · 1 hora", alConfirmar = { paso = "confirmado" }, alNoPoder = { paso = "no se puede" })
         return paso
     }
 
@@ -39,7 +39,7 @@ class ConfirmacionDelDuenoTest {
         val dialogo = DialogoFalso(Confirmacion.CONFIRMADA)
 
         assertEquals("confirmado", confirmar(pide = true, dialogo = dialogo))
-        assertEquals(listOf("Confirmá que sos vos | Bloquear pc-rrhh · 1 hora"), dialogo.pedidos)
+        assertEquals(listOf("Confirmá tu identidad | Bloquear pc-rrhh · 1 hora"), dialogo.pedidos)
     }
 
     @Test

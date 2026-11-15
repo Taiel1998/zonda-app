@@ -124,7 +124,8 @@ fun SeveridadesScreen(
     }
 
     if (verTipos) {
-        HojaTipos(severidades = severidades, alCerrar = { verTipos = false })
+        // Solo lectura es la del analista: no le dice que se cambian en Administración, que no tiene.
+        HojaTipos(severidades = severidades, alCerrar = { verTipos = false }, esAdministrador = !soloLectura)
     }
 }
 

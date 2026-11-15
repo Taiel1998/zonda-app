@@ -40,7 +40,7 @@ import java.time.ZoneId
 import kotlinx.coroutines.launch
 
 /**
- * Ajustes → Navegadores: las computadoras que abren el tablero web, aparte de las personas, como en el
+ * Administración → Navegadores: las computadoras que abren el tablero web, aparte de las personas, como en el
  * tablero. Cada una entra con su propio código, como un teléfono, pero no recibe avisos ni se le asignan
  * alertas. Todos la ven; el administrador le quita el acceso a una con la huella o el PIN, como cuando
  * quita a una persona (decisión 51). Usa el ViewModel de Personas.
@@ -69,8 +69,9 @@ fun NavegadoresScreen(viewModel: PersonasViewModel, alVolver: () -> Unit) {
 }
 
 /**
- * La lista de Navegadores: cada computadora con su perfil y su último uso. El administrador toca una y
- * confirma "Quitar acceso", con los textos del tablero; es lo único que se le hace a un navegador.
+ * La lista de Navegadores: cada computadora con su perfil y su último uso. El administrador tiene en cada
+ * fila el botón "Quitar acceso" y lo confirma, con los textos del tablero; es lo único que se le hace a un
+ * navegador.
  */
 @Composable
 fun NavegadoresContenido(
@@ -121,7 +122,7 @@ fun NavegadoresContenido(
                             navegador = navegador,
                             ahora = ahora,
                             zona = zona,
-                            alTocar = if (estado.esAdministrador) ({ aQuitarId = navegador.id }) else null,
+                            alQuitar = if (estado.esAdministrador) ({ aQuitarId = navegador.id }) else null,
                         )
                     }
                 }

@@ -66,7 +66,7 @@ sealed interface AvisoPersonas {
 }
 
 /**
- * Ajustes → Personas (corrección 2, decisión 39): la gente de la red activa. Todos la ven; el
+ * Administración → Personas (corrección 2, decisión 39): la gente de la red activa. Todos la ven; el
  * administrador suma gente con un código de un uso y cambia el perfil o quita a los demás. Todo pasa
  * por el servidor, que no deja al equipo sin administradores. Al abrir, pide la lista al servidor.
  */
@@ -170,7 +170,7 @@ class PersonasViewModel(
         controles.update { it.copy(aviso = AvisoPersonas.PerfilCambiado(persona.nombreVisible, perfil)) }
     }
 
-    /** "Darle permiso de bloquear" o "Sacarle el permiso de bloquear" a un analista (decisión 51). */
+    /** "Darle permiso de bloquear" o "Quitarle el permiso de bloquear" a un analista (decisión 51). */
     fun cambiarPermisoBloqueo(persona: Persona, puedeBloquear: Boolean) = conRedActiva { redId ->
         gestionar.cambiarPermisoBloqueo(redId, persona.id, puedeBloquear)
         controles.update { it.copy(aviso = AvisoPersonas.PermisoBloqueoCambiado(persona.nombreVisible, puedeBloquear)) }

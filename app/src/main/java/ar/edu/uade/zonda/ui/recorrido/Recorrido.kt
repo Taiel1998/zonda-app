@@ -75,6 +75,8 @@ enum class PasoRecorrido(
     val objetivo: ObjetivoRecorrido,
     @param:StringRes val titulo: Int,
     @param:StringRes val texto: Int,
+    /** Lo que lee el administrador, si es otro: en el paso de Ajustes, que lo de la red está en Administración. */
+    @param:StringRes val textoAdministrador: Int = texto,
 ) {
     SEMAFORO(PantallaRecorrido.ESTADO, ObjetivoRecorrido.SEMAFORO, R.string.recorrido_1_titulo, R.string.recorrido_1_texto),
     CONTADORES(PantallaRecorrido.ESTADO, ObjetivoRecorrido.CONTADORES, R.string.recorrido_2_titulo, R.string.recorrido_2_texto),
@@ -86,7 +88,13 @@ enum class PasoRecorrido(
     REVISAR(PantallaRecorrido.DETALLE, ObjetivoRecorrido.BOTON_REVISAR, R.string.recorrido_8_titulo, R.string.recorrido_8_texto),
     CIFRAS(PantallaRecorrido.RESUMEN, ObjetivoRecorrido.CIFRAS_RESUMEN, R.string.recorrido_9_titulo, R.string.recorrido_9_texto),
     PERIODO(PantallaRecorrido.RESUMEN, ObjetivoRecorrido.PERIODO_RESUMEN, R.string.recorrido_10_titulo, R.string.recorrido_10_texto),
-    AJUSTES(PantallaRecorrido.AJUSTES, ObjetivoRecorrido.TARJETA_AVISOS, R.string.recorrido_11_titulo, R.string.recorrido_11_texto),
+    AJUSTES(
+        PantallaRecorrido.AJUSTES,
+        ObjetivoRecorrido.TARJETA_AVISOS,
+        R.string.recorrido_11_titulo,
+        R.string.recorrido_11_texto,
+        R.string.recorrido_11_texto_administrador,
+    ),
 }
 
 /**
@@ -152,6 +160,8 @@ fun CapaRecorrido(
     alSiguiente: () -> Unit,
     alOmitir: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Si este teléfono es administrador en la red activa: hay pasos que le dicen algo más ([PasoRecorrido.textoAdministrador]). */
+    esAdministrador: Boolean = false,
 ) {
     // Al terminar u omitir el recorrido no queda ningún objetivo pedido: si quedaba el último, cada vez que
     // esa pantalla se abría se desplazaba sola hasta él (Avisos en Ajustes, o Revisar en el detalle).
@@ -193,7 +203,7 @@ fun CapaRecorrido(
             }
         }
         UbicacionDeTarjeta(objetivo = objetivo) {
-            TarjetaRecorrido(paso = paso, alSiguiente = alSiguiente, alOmitir = alOmitir)
+            TarjetaRecorrido(paso = paso, alSiguiente = alSiguiente, alOmitir = alOmitir, esAdministrador = esAdministrador)
         }
     }
 }
@@ -223,7 +233,13 @@ private fun UbicacionDeTarjeta(objetivo: Rect?, contenido: @Composable () -> Uni
  * Siguiente (en el último, Listo).
  */
 @Composable
-fun TarjetaRecorrido(paso: PasoRecorrido, alSiguiente: () -> Unit, alOmitir: () -> Unit, modifier: Modifier = Modifier) {
+fun TarjetaRecorrido(
+    paso: PasoRecorrido,
+    alSiguiente: () -> Unit,
+    alOmitir: () -> Unit,
+    modifier: Modifier = Modifier,
+    esAdministrador: Boolean = false,
+) {
     val ultimo = paso == PasoRecorrido.entries.last()
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -247,7 +263,11 @@ fun TarjetaRecorrido(paso: PasoRecorrido, alSiguiente: () -> Unit, alOmitir: () 
                     liveRegion = LiveRegionMode.Polite
                 },
             )
-            Text(text = stringResource(paso.texto), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = stringResource(if (esAdministrador) paso.textoAdministrador else paso.texto),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (paso == PasoRecorrido.SEMAFORO) ColoresDelSemaforo()
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 BotonEnlace(texto = stringResource(R.string.recorrido_omitir), alTocar = alOmitir)

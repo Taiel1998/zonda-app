@@ -28,7 +28,7 @@ enum class TipoAtaque {
 
     companion object {
         /**
-         * Lo que detectó la IA: el modelo vio algo raro y el clasificador le puso el tipo (cambios 8 y 14).
+         * Lo que detectó la IA: el modelo detectó algo inusual y el clasificador le asignó el tipo (cambios 8 y 14).
          * En este orden van en la pantalla de severidades, en "Por tipo de ataque" del Resumen y en la
          * hoja "Qué es cada tipo".
          */

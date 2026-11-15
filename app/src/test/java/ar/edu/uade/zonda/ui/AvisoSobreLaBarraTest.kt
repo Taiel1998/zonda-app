@@ -146,7 +146,7 @@ class AvisoSobreLaBarraTest {
             )
         }
 
-        quedaArribaDeLaBarra("Aviso de prueba enviado. Fijate en el chat de @zonda_alertas_bot.")
+        quedaArribaDeLaBarra("Aviso de prueba enviado al chat de @zonda_alertas_bot.")
         quedaArribaDeLaBarra("OK")
     }
 
@@ -192,6 +192,6 @@ class AvisoSobreLaBarraTest {
             )
         }
 
-        quedaArribaDeLaBarra("Imagen copiada. Pegala donde quieras.")
+        quedaArribaDeLaBarra("Imagen copiada al portapapeles.")
     }
 }

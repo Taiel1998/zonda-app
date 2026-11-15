@@ -174,10 +174,7 @@ sealed interface ToqueResumen {
     /** Una fila de "Por tipo de ataque". */
     data class Tipo(val tipo: TipoAtaque) : ToqueResumen
 
-    /** "altas revisadas en la primera hora": los tipos que la red tiene en alta. */
-    data object Altas : ToqueResumen
-
-    /** "revisadas", "sin revisar", la cobertura, el tiempo hasta la revisión, reales o falsos positivos. */
+    /** "revisadas", "sin revisar", reales o falsos positivos. */
     data class Revision(val revision: RevisionResumen) : ToqueResumen
 
     /** Una fila de la precisión: la IA, los umbrales o las reglas. */
@@ -186,20 +183,26 @@ sealed interface ToqueResumen {
 
 /**
  * Los filtros del Resumen (cambio 16), que se suman: con el domingo y fuerza bruta quedan las de fuerza
- * bruta del domingo. Los días (o semanas) y los tipos van de a varios, como casillas: una alerta empieza
- * un solo día y tiene un solo tipo, así que "domingo y lunes" o "fuerza bruta y escaneo" se leen de una
- * sola manera ("uno u otro"). La revisión y el modelo van de a uno: dos revisiones no dicen nada nuevo y
- * una alerta puede tener dos modelos, así que "IA y umbrales" se leería de dos maneras.
+ * bruta del domingo. Los días (o semanas), las severidades y los tipos van de a varios, como casillas:
+ * una alerta empieza un solo día, tiene una sola severidad y un solo tipo, así que "domingo y lunes",
+ * "alta y media" o "fuerza bruta y escaneo" se leen de una sola manera ("uno u otro"). La revisión y el
+ * modelo van de a uno: dos revisiones no dicen nada nuevo y una alerta puede tener dos modelos, así que
+ * "IA y umbrales" se leería de dos maneras.
+ *
+ * [severidades] es la severidad de cada alerta (la de su tipo, un nivel más o menos según la importancia
+ * del equipo), como el filtro de Alertas: no es lo mismo que elegir los tipos que la red tiene en alta.
+ * Se elige desde la hoja de filtros.
  */
 data class FiltroResumen(
     val barras: Set<Franja> = emptySet(),
+    val severidades: Set<Severidad> = emptySet(),
     val tipos: Set<TipoAtaque> = emptySet(),
     val revision: RevisionResumen? = null,
     val metodo: MetodoDeteccion? = null,
 ) {
     /** Cuántos hay puestos: lo que dice el botón "Filtros (4)". */
     val cantidad: Int
-        get() = barras.size + tipos.size + (if (revision == null) 0 else 1) + (if (metodo == null) 0 else 1)
+        get() = barras.size + severidades.size + tipos.size + (if (revision == null) 0 else 1) + (if (metodo == null) 0 else 1)
 
     val vacio: Boolean
         get() = cantidad == 0
@@ -213,6 +216,7 @@ data class FiltroResumen(
             val momento = alerta.inicio.atZone(zona).toLocalDateTime()
             if (barras.none { momento in it }) return false
         }
+        if (severidades.isNotEmpty() && alerta.severidad !in severidades) return false
         if (tipos.isNotEmpty() && tipos.none { it in alerta.tiposDeAtaque }) return false
         if (revision != null && !revision.incluye(alerta)) return false
         if (metodo != null && metodo !in alerta.metodos) return false
@@ -221,33 +225,33 @@ data class FiltroResumen(
 
     /**
      * Lo que pasa al tocar una cifra: los días y los tipos se suman o se sacan, la revisión y el modelo
-     * reemplazan al que estaba (o se sacan si se toca el mismo), y el total saca todo. [altas] son los
-     * tipos que la red tiene en alta: tocar "altas revisadas en la primera hora" los suma, o los saca si
-     * ya estaban todos.
+     * reemplazan al que estaba (o se sacan si se toca el mismo), y el total saca todo.
      */
-    fun tocar(toque: ToqueResumen, altas: Set<TipoAtaque>): FiltroResumen = when (toque) {
+    fun tocar(toque: ToqueResumen): FiltroResumen = when (toque) {
         ToqueResumen.Total -> FiltroResumen()
         is ToqueResumen.Barra -> copy(barras = barras.alternar(toque.franja))
         is ToqueResumen.Tipo -> copy(tipos = tipos.alternar(toque.tipo))
-        ToqueResumen.Altas -> copy(tipos = if (altas.isNotEmpty() && tipos.containsAll(altas)) tipos - altas else tipos + altas)
         is ToqueResumen.Revision -> copy(revision = toque.revision.takeUnless { it == revision })
         is ToqueResumen.Metodo -> copy(metodo = toque.metodo.takeUnless { it == metodo })
     }
 
+    /** Suma o saca una severidad: las casillas de "Severidad" de la hoja de filtros. */
+    fun alternarSeveridad(severidad: Severidad): FiltroResumen = copy(severidades = severidades.alternar(severidad))
+
     /** Al cambiar de período, los días elegidos eran del otro: se sacan y queda lo demás. */
     fun sinBarras(): FiltroResumen = copy(barras = emptySet())
-
-    /**
-     * Si los tipos elegidos son justo los que la red tiene en alta: la métrica de las altas queda
-     * resaltada y la frase los nombra como "las altas".
-     */
-    fun tiposSonLasAltas(altas: Set<TipoAtaque>): Boolean = altas.isNotEmpty() && tipos == altas
 
     private fun <T> Set<T>.alternar(elemento: T): Set<T> = if (elemento in this) this - elemento else this + elemento
 }
 
 /** Una barra del gráfico de actividad y cuántas alertas empezaron en ella. */
 data class BarraActividad(val franja: Franja, val cantidad: Int)
+
+/**
+ * Un equipo de destino de "Equipos con más alertas" (como el tablero, 15/11): su nombre del catálogo o, si
+ * no tiene, su dirección, y cuántas alertas fueron a él.
+ */
+data class CuentaDeEquipo(val ip: String, val etiqueta: String, val alertas: Int)
 
 /**
  * Lo que dice la frase debajo del gráfico (Figma 52-2629 y 100-7024): la barra con más alertas, el tipo
@@ -282,11 +286,23 @@ data class ResumenActividad(
     /** Una barra por hora, por día o por semana ([RangoResumen.escala]), con las que quedaron en cero. */
     val barras: List<BarraActividad>,
     /**
-     * Cada tipo de ataque, en el orden de la pantalla de severidades y aunque esté en cero (cambio 14):
-     * un tipo en cero también dice algo ("esta semana no hubo DDoS"). La tarjeta lo dice en la línea
-     * "Sin alertas: …" ([tiposConFila]).
+     * Cada tipo de ataque, en el orden de la pantalla de severidades y aunque esté en cero (cambio 14).
+     * La tarjeta muestra solo los que tienen fila ([tiposConFila]).
      */
     val porTipo: Map<TipoAtaque, Int>,
+    /**
+     * Cuántas alertas hay de cada severidad, de la más grave a la más leve y aunque esté en cero: la línea
+     * de debajo de los totales, que muestra solo las que hubo. Es la severidad de cada alerta (la de su
+     * tipo, un nivel más o menos según la importancia del equipo), por eso no coincide con sumar los tipos
+     * que la red tiene en alta.
+     */
+    val porSeveridad: Map<Severidad, Int>,
+    /**
+     * Los equipos de destino con más alertas, de más a menos y hasta [EQUIPOS_CON_MAS_ALERTAS], con los
+     * filtros puestos. Llevan nombres y direcciones: se ven en la pantalla, pero no van en la imagen ni en el
+     * PDF que se comparten (RNF02).
+     */
+    val equiposConMasAlertas: List<CuentaDeEquipo> = emptyList(),
     /** Métrica de éxito 1: tiempo mediano entre la creación de una alerta y su primera revisión. */
     val tiempoMedianoHastaRevision: Duration?,
     /**
@@ -317,8 +333,8 @@ data class ResumenActividad(
     /**
      * Los tipos que van con su fila en "Por tipo de ataque", en el orden de la pantalla: los que tuvieron
      * alertas en el período, aunque los filtros los dejen en cero (quedan en gris y se pueden tocar), y
-     * los elegidos en el filtro, que se sacan tocándolos. Los demás van juntos en "Sin alertas: …", como
-     * en el tablero web; esa línea nunca nombra un tipo que tuvo alertas en el período.
+     * los elegidos en el filtro, que se sacan tocándolos. Los demás no se muestran: la tarjeta cuenta lo
+     * que pasó, y todos los tipos siguen en la hoja de filtros.
      */
     val tiposConFila: Set<TipoAtaque>
         get() = TipoAtaque.EN_PANTALLA.filter { tipo ->
@@ -341,6 +357,9 @@ data class ResumenActividad(
          * los otros: su barra va clara (cambio 4). Se cuenta por modelo.
          */
         const val REVISIONES_PARA_COMPARAR = 30
+
+        /** Cuántos equipos muestra "Equipos con más alertas", como el tablero. */
+        const val EQUIPOS_CON_MAS_ALERTAS = 8
 
         /** Calcula el resumen del [periodo] que termina hoy. */
         fun calcular(
@@ -413,6 +432,8 @@ data class ResumenActividad(
                 falsosPositivos = revisadas.count { it.estadoRevision == EstadoRevision.FALSO_POSITIVO },
                 barras = barras,
                 porTipo = TipoAtaque.EN_PANTALLA.associateWith { tipo -> lista.count { tipo in it.tiposDeAtaque } },
+                porSeveridad = Severidad.entries.associateWith { severidad -> lista.count { it.severidad == severidad } },
+                equiposConMasAlertas = equiposConMasAlertas(lista),
                 tiempoMedianoHastaRevision = mediana,
                 altasRevisadasEnUnaHora = Proporcion(altasEnUnaHora, altasConsideradas),
                 cobertura = Proporcion(revisadas.size, lista.size),
@@ -425,6 +446,17 @@ data class ResumenActividad(
                 todas = alertas,
             )
         }
+
+        /**
+         * Los equipos de destino de [lista], de más a menos alertas (si empatan, por nombre), con el nombre
+         * más reciente que tuvo cada uno o, si nunca tuvo, su dirección. La lista viene de la más nueva a la
+         * más vieja.
+         */
+        private fun equiposConMasAlertas(lista: List<Alerta>): List<CuentaDeEquipo> =
+            lista.groupBy { it.destino.ip }
+                .map { (ip, alertas) -> CuentaDeEquipo(ip, alertas.firstNotNullOfOrNull { it.destino.nombre } ?: ip, alertas.size) }
+                .sortedWith(compareByDescending<CuentaDeEquipo> { it.alertas }.thenBy { it.etiqueta })
+                .take(EQUIPOS_CON_MAS_ALERTAS)
 
         /**
          * La barra con más alertas (si empatan, la más reciente), el tipo que más se repite en ella (si

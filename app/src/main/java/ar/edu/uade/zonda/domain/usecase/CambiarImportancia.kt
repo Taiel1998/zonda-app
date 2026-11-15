@@ -23,7 +23,7 @@ class CambiarImportancia(
 ) {
     suspend operator fun invoke(redId: String, ip: String, importancia: Importancia, motivo: String): AccionPendiente {
         val texto = motivo.trim()
-        if (texto.isEmpty()) throw ErrorZonda.Validacion("motivo", "Escribí por qué la cambiás")
+        if (texto.isEmpty()) throw ErrorZonda.Validacion("motivo", "Escribí el motivo del cambio")
         redes.guardarImportanciaLocal(redId, ip, importancia)
         val accion = AccionPendiente(
             id = ids.nuevo(),

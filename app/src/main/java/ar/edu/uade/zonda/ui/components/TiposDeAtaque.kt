@@ -71,25 +71,31 @@ fun PuntoDeSeveridad(severidad: Severidad, modifier: Modifier = Modifier) {
 /**
  * "Qué es cada tipo" (cambios 8 y 14; Figma 443-2683 y 443-3488): los dos bloques con su frase, una
  * oración por tipo con el punto de la severidad elegida y de dónde se cambia. Se abre desde el ⓘ de
- * "Por tipo de ataque" del Resumen y desde el de la pantalla de severidades.
+ * "Por tipo de ataque" del Resumen y desde el de la pantalla de severidades. Al administrador le dice
+ * que se cambian en Administración; al analista, que las cambia un administrador, sin nombrarle un
+ * lugar que no tiene (como el tablero, 15/11).
  */
 @Composable
-fun HojaTipos(severidades: SeveridadPorTipo, alCerrar: () -> Unit) {
+fun HojaTipos(severidades: SeveridadPorTipo, alCerrar: () -> Unit, esAdministrador: Boolean = true) {
     HojaInferior(alCerrar = alCerrar) {
-        ContenidoHojaTipos(severidades, alCerrar)
+        ContenidoHojaTipos(severidades, alCerrar, esAdministrador)
     }
 }
 
 /** El contenido de [HojaTipos], aparte para dibujarlo en las pruebas sin la ventana de la hoja. Va con 10 entre piezas, como el Figma. */
 @Composable
-fun ContenidoHojaTipos(severidades: SeveridadPorTipo, alCerrar: () -> Unit) {
+fun ContenidoHojaTipos(severidades: SeveridadPorTipo, alCerrar: () -> Unit, esAdministrador: Boolean = true) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(text = stringResource(R.string.tipos_titulo), style = MaterialTheme.typography.tituloHoja, modifier = Modifier.semantics { heading() })
         BloqueDeLaHoja(R.string.tipos_bloque_ia, R.string.tipos_bloque_ia_frase, TipoAtaque.DETECTADOS_POR_LA_IA, severidades)
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         BloqueDeLaHoja(R.string.tipos_bloque_sin_ia, R.string.tipos_bloque_sin_ia_frase, TipoAtaque.NO_DETECTADOS_POR_LA_IA, severidades)
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Text(text = stringResource(R.string.tipos_pie), style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = stringResource(if (esAdministrador) R.string.tipos_pie else R.string.tipos_pie_analista),
+            style = MaterialTheme.typography.nota,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         EntendidoDeHoja(alCerrar)
     }
 }

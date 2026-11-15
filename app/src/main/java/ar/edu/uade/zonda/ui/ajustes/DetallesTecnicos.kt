@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.ui.ajustes
 
+import android.content.res.Resources
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -9,6 +10,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -133,15 +135,12 @@ fun DetallesTecnicosContenido(
                 val emitido = red?.accesoEmitido
                 val vence = detalles?.accesoVence ?: red?.accesoVence
                 FilaDato(etiqueta = stringResource(R.string.detalles_emitido), valor = emitido?.let { Formato.fecha(it, zona) } ?: stringResource(R.string.detalles_sin_registro))
+                val vencido = red?.accesoVencido == true || (vence != null && vence.isBefore(ahora))
+                val recursos = LocalResources.current
                 FilaDato(
                     etiqueta = stringResource(R.string.detalles_vence),
-                    valor = when {
-                        vence == null -> stringResource(R.string.detalles_sin_registro)
-                        emitido != null -> stringResource(R.string.detalles_vence_con_dias, Formato.fecha(vence, zona), Formato.diasEntre(emitido, vence))
-                        else -> Formato.fecha(vence, zona)
-                    },
+                    valor = vence?.let { textoDeVencimiento(it, ahora, vencido, recursos, zona) } ?: stringResource(R.string.detalles_sin_registro),
                 )
-                val vencido = red?.accesoVencido == true || (vence != null && vence.isBefore(ahora))
                 FilaDato(
                     etiqueta = stringResource(R.string.detalles_estado),
                     valor = stringResource(if (vencido) R.string.detalles_vencido else R.string.detalles_activo),
@@ -154,3 +153,16 @@ fun DetallesTecnicosContenido(
 
 /** "TLSv1.3" → "TLS 1.3". */
 fun versionLegible(versionTls: String): String = versionTls.replace("TLSv", "TLS ")
+
+/**
+ * "27/12/2026 · faltan 12 días": cuándo vence el acceso y lo que falta, no lo que dura (antes decía "(90
+ * días)", que se leía como lo que quedaba). Vencido, solo la fecha: lo dice la fila "Estado".
+ */
+fun textoDeVencimiento(vence: Instant, ahora: Instant, vencido: Boolean, recursos: Resources, zona: ZoneId): String {
+    val fecha = Formato.fecha(vence, zona)
+    if (vencido) return fecha
+    return when (val dias = Formato.diasEntre(ahora, vence).toInt()) {
+        0 -> recursos.getString(R.string.detalles_vence_menos_de_un_dia, fecha)
+        else -> recursos.getQuantityString(R.plurals.detalles_vence_faltan, dias, fecha, dias)
+    }
+}

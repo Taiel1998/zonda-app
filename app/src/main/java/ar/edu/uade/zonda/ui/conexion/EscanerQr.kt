@@ -166,7 +166,7 @@ fun PantallaEscaner(
 
 /**
  * La cámara (Figma 35-464): la indicación arriba, el visor de 272 con las esquinas verdes, el aviso
- * con el candado y, abajo de todo, "Ingresar el código a mano".
+ * con el candado y, abajo de todo, "Ingresar el código manualmente".
  */
 @Composable
 private fun ColumnScope.Visor(qrNoValido: Boolean, alLeer: (String) -> Unit, alIngresarAMano: () -> Unit) {

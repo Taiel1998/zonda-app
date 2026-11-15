@@ -5,7 +5,6 @@ import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
-import ar.edu.uade.zonda.domain.model.TipoAtaque
 import java.time.Instant
 
 /** Qué se muestra en el cuerpo del Resumen (Figma 52-2629, 100-7024 y 52-2976). */
@@ -29,7 +28,7 @@ sealed interface AvisoResumen {
     /** "Resumen enviado por Telegram." */
     data class Enviado(val destino: DestinoCompartir) : AvisoResumen
 
-    /** "Imagen copiada. Pegala donde quieras." */
+    /** "Imagen copiada al portapapeles." */
     data object Copiado : AvisoResumen
 
     /** No se pudo armar la imagen o abrir la app elegida. */
@@ -56,8 +55,6 @@ data class ResumenUiState(
     val aviso: AvisoResumen? = null,
     /** La severidad que eligió la red para cada tipo: el punto de color de "Por tipo de ataque" (cambio 14). */
     val severidades: SeveridadPorTipo = SeveridadPorTipo.RECOMENDADA,
-) {
-    /** Los tipos que la red tiene en alta: los que filtra "altas revisadas en la primera hora" (cambio 16). */
-    val altas: Set<TipoAtaque>
-        get() = severidades.tiposAltos
-}
+    /** Si este teléfono es administrador en la red activa: "Qué es cada tipo" le dice dónde se cambian las severidades. */
+    val esAdministrador: Boolean = true,
+)

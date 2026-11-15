@@ -49,6 +49,7 @@ import ar.edu.uade.zonda.ui.components.Panel
 import ar.edu.uade.zonda.ui.descripcion
 import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.mensaje
+import ar.edu.uade.zonda.ui.primerinicio.NotaSoloLectura
 import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.theme.tituloHoja
 import ar.edu.uade.zonda.ui.viewModelDeZonda
@@ -60,7 +61,7 @@ fun equiposViewModel(): EquiposViewModel = viewModelDeZonda { contenedor ->
 }
 
 /**
- * Ajustes → Equipos (decisión 41; Figma 468-3089): cada equipo con nombre, su dirección y su importancia.
+ * Administración → Equipos (decisión 41; Figma 468-3089), y Ajustes → Equipos para el analista: cada equipo con nombre, su dirección y su importancia.
  * El administrador toca uno para cambiarla (Figma 468-3178) y después escribe el motivo (468-3463).
  */
 @Composable
@@ -117,6 +118,8 @@ fun EquiposContenido(
                 .padding(MargenAjustes),
             verticalArrangement = EntreTarjetas,
         ) {
+            // El analista la ve sin poder cambiarla, como las severidades (como el tablero, 15/11).
+            if (!estado.esAdministrador) NotaSoloLectura(stringResource(R.string.equipos_la_cambia))
             Text(text = stringResource(R.string.equipos_intro), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (estado.equipos.isEmpty()) {
                 Text(text = stringResource(R.string.equipos_vacio), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

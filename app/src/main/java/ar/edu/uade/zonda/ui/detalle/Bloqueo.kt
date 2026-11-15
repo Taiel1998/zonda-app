@@ -102,10 +102,27 @@ fun TarjetaBloqueo(
                     Text(text = stringResource(R.string.bloqueo_espera_administrador), style = MaterialTheme.typography.nota, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            // Aprobado no es bloqueado: hasta que el firewall dice que lo aplicó, la tarjeta no lo da por
+            // hecho. Conectado tarda unos segundos ("Bloqueando…"); caído puede quedar así, sin haber
+            // cortado nada ("Bloqueo sin aplicar").
+            actual.estado == EstadoBloqueo.APROBADO -> {
+                val conectado = seccion.firewall.conectado
+                FilaBloqueo(
+                    icono = Icons.Outlined.HourglassEmpty,
+                    color = Tonos.Media.texto,
+                    titulo = stringResource(if (conectado) R.string.bloqueo_bloqueando else R.string.bloqueo_sin_aplicar),
+                    detalle = stringResource(if (conectado) R.string.bloqueo_bloqueando_detalle else R.string.bloqueo_firewall_no_responde),
+                )
+                if (puedeBloquear) {
+                    BotonesBloqueo(
+                        primero = stringResource(R.string.bloqueo_cambiar_duracion) to acciones.alCambiarDuracionBloqueo,
+                        segundo = stringResource(R.string.bloqueo_desbloquear) to acciones.alDesbloquear,
+                    )
+                }
+            }
             else -> {
                 val detalle = when {
                     !seccion.firewall.conectado -> stringResource(R.string.bloqueo_firewall_no_responde)
-                    actual.estado == EstadoBloqueo.APROBADO -> stringResource(R.string.bloqueo_esperando_firewall)
                     else -> actual.aprobadoEn?.let { aprobado ->
                         val cuando = "${Formato.diaRelativo(aprobado, ahora, zona)} ${Formato.hora(aprobado, zona)}"
                         stringResource(R.string.bloqueo_lo_bloqueo, actual.aprobadoPor.orEmpty(), cuando)

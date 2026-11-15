@@ -2,20 +2,12 @@ package ar.edu.uade.zonda.ui.navigation
 
 import android.os.Bundle
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -23,9 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
@@ -36,10 +26,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
-import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
 import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.ui.ajustes.AdministracionScreen
 import ar.edu.uade.zonda.ui.ajustes.AjustesScreen
 import ar.edu.uade.zonda.ui.ajustes.AjustesViewModel
 import ar.edu.uade.zonda.ui.ajustes.AvisosPorSeveridadScreen
@@ -69,16 +59,13 @@ import ar.edu.uade.zonda.ui.primerinicio.TutorialScreen
 import ar.edu.uade.zonda.ui.primerinicio.primerInicio
 import ar.edu.uade.zonda.ui.recorrido.CapaRecorrido
 import ar.edu.uade.zonda.ui.recorrido.LocalRegistroRecorrido
-import ar.edu.uade.zonda.ui.recorrido.ObjetivoRecorrido
 import ar.edu.uade.zonda.ui.recorrido.PantallaRecorrido
 import ar.edu.uade.zonda.ui.recorrido.RecorridoViewModel
 import ar.edu.uade.zonda.ui.recorrido.RegistroRecorrido
-import ar.edu.uade.zonda.ui.recorrido.objetivoDelRecorrido
 import ar.edu.uade.zonda.ui.resumen.AlertasDelResumenScreen
 import ar.edu.uade.zonda.ui.resumen.ResumenScreen
 import ar.edu.uade.zonda.ui.resumen.resumenViewModel
 import ar.edu.uade.zonda.ui.telegram.TelegramScreen
-import ar.edu.uade.zonda.ui.theme.etiquetaBarra
 import ar.edu.uade.zonda.ui.viewModelDeZonda
 import kotlinx.coroutines.flow.MutableSharedFlow
 
@@ -92,8 +79,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
  *   Zonda en su propia tarea con Estado debajo del detalle, también si se toca dos veces el mismo
  *   aviso (cambio 23). Si el detalle quedara como única pantalla, la flecha abre Zonda en su tarea,
  *   en Estado ([volver]).
- * - Una barra inferior con Estado, Alertas y Ajustes, y una pila de pantallas que se cierran con Volver
- *   (el Resumen se abre desde Estado). La barra solo se ve en los tres destinos principales.
+ * - Una barra inferior con Estado, Alertas y Ajustes, más Administración para el administrador de la red
+ *   activa, y una pila de pantallas que se cierran con Volver (el Resumen se abre desde Estado). La barra
+ *   solo se ve en los destinos principales.
  * - El recorrido de once pasos se muestra sobre las pestañas la primera vez (RF05).
  */
 @Composable
@@ -115,7 +103,10 @@ fun ZondaNavHost(
 
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
-    val enPestania = Destino.barraInferior.any { it.ruta == rutaActual }
+    // Administración es solo del administrador de la red activa (como el tablero, 15/11).
+    val esAdministrador by arranque.esAdministrador.collectAsStateWithLifecycle()
+    val pestanias = Destino.barraInferior(conAdministracion = esAdministrador == true)
+    val enPestania = pestanias.any { it.ruta == rutaActual }
     val pasoRecorrido by recorrido.paso.collectAsStateWithLifecycle()
     val alertaDelRecorrido by recorrido.alertaDelDetalle.collectAsStateWithLifecycle()
     val enDetalle = rutaActual == RutaDetalle.PATRON
@@ -144,6 +135,12 @@ fun ZondaNavHost(
         // Al dejar el detalle o el Resumen se cierran, para que no se vuelvan a abrir después.
         if (enDetalle || enResumen) navController.popBackStack()
         if (rutaActual != ruta) navController.irAPestania(ruta)
+    }
+
+    // Si deja de ser administrador mientras mira Administración (le cambiaron el perfil, o pasó a una red
+    // donde es analista), la pestaña desaparece y la app lo lleva a su Ajustes.
+    LaunchedEffect(esAdministrador) {
+        if (esAdministrador == false) navController.salirDeAdministracion()
     }
 
     /** Sin ninguna red pareada (se quitó la última), la app vuelve a Conexión como única pantalla. */
@@ -175,37 +172,12 @@ fun ZondaNavHost(
                 },
                 bottomBar = {
                     if (enPestania) {
-                        Column {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-                                Destino.barraInferior.forEach { destino ->
-                                    val elegida = rutaActual == destino.ruta
-                                    NavigationBarItem(
-                                        selected = elegida,
-                                        onClick = {
-                                            if (elegida) pestaniaRetocada.tryEmit(destino.ruta) else navController.irAPestania(destino.ruta)
-                                        },
-                                        modifier = if (destino.ruta == Rutas.ALERTAS) Modifier.objetivoDelRecorrido(ObjetivoRecorrido.PESTANIA_ALERTAS) else Modifier,
-                                        icon = { Icon(destino.icono, contentDescription = null) },
-                                        // Figma: la pestaña elegida en SemiBold 12 y las otras en Medium 12.
-                                        label = {
-                                            Text(
-                                                text = stringResource(destino.titulo),
-                                                style = MaterialTheme.typography.etiquetaBarra,
-                                                fontWeight = if (elegida) FontWeight.SemiBold else FontWeight.Medium,
-                                            )
-                                        },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        ),
-                                    )
-                                }
-                            }
-                        }
+                        BarraDePestanias(
+                            pestanias = pestanias,
+                            rutaActual = rutaActual,
+                            alElegir = { navController.irAPestania(it.ruta) },
+                            alRetocar = { pestaniaRetocada.tryEmit(it.ruta) },
+                        )
                     }
                 },
             ) { relleno ->
@@ -309,8 +281,6 @@ fun ZondaNavHost(
                         composable(Rutas.AJUSTES) {
                             AjustesScreen(
                                 alAbrirRedes = { navController.navigate(Rutas.REDES) },
-                                alAbrirPersonas = { navController.navigate(Rutas.PERSONAS) },
-                                alAbrirNavegadores = { navController.navigate(Rutas.NAVEGADORES) },
                                 alAbrirEquipos = { navController.navigate(Rutas.EQUIPOS) },
                                 alAbrirRegistro = { navController.navigate(Rutas.REGISTRO) },
                                 alAbrirDetallesTecnicos = { navController.navigate(Rutas.DETALLES_TECNICOS) },
@@ -321,6 +291,16 @@ fun ZondaNavHost(
                                 alVerCondiciones = { navController.navigate(Rutas.CONDICIONES_DE_USO) },
                                 alAgregarRed = { navController.navigate(Rutas.CONEXION) },
                                 alQuedarSinRedes = irAConexionSinVolver,
+                            )
+                        }
+                        // Solo del administrador: lo que vale para toda la red activa (como el tablero, 15/11).
+                        composable(Rutas.ADMINISTRACION) {
+                            AdministracionScreen(
+                                alAbrirPersonas = { navController.navigate(Rutas.PERSONAS) },
+                                alAbrirNavegadores = { navController.navigate(Rutas.NAVEGADORES) },
+                                alAbrirEquipos = { navController.navigate(Rutas.EQUIPOS) },
+                                alAbrirSeveridades = { navController.navigate(Rutas.SEVERIDADES) },
+                                alAbrirRegistro = { navController.navigate(Rutas.REGISTRO) },
                             )
                         }
                         composable(Rutas.REDES) { entrada ->
@@ -388,7 +368,13 @@ fun ZondaNavHost(
             }
             val paso = pasoRecorrido
             if (paso != null && (enPestania || enDetalle || enResumen)) {
-                CapaRecorrido(paso = paso, registro = registroRecorrido, alSiguiente = recorrido::siguiente, alOmitir = recorrido::terminar)
+                CapaRecorrido(
+                    paso = paso,
+                    registro = registroRecorrido,
+                    alSiguiente = recorrido::siguiente,
+                    alOmitir = recorrido::terminar,
+                    esAdministrador = esAdministrador == true,
+                )
             }
         }
     }
@@ -409,12 +395,15 @@ private fun rutaDe(destino: DestinoInicial): String = when (destino) {
 }
 
 /**
- * Redes, Avisos por severidad y Severidad por tipo de ataque usan el ViewModel de Ajustes, que es desde donde
- * se llega: así comparten los borradores y los avisos.
+ * Redes, Avisos por severidad, Severidad por tipo de ataque y el Registro usan el ViewModel de la pestaña
+ * desde la que se llega, Ajustes o Administración: así comparten los borradores y los avisos. Las dos
+ * nunca están juntas en la pila, porque cambiar de pestaña guarda la otra.
  */
 @Composable
 private fun viewModelDeAjustes(navController: NavHostController, entrada: NavBackStackEntry): AjustesViewModel {
-    val dueño = remember(entrada) { navController.getBackStackEntry(Rutas.AJUSTES) }
+    val dueño = remember(entrada) {
+        runCatching { navController.getBackStackEntry(Rutas.AJUSTES) }.getOrNull() ?: navController.getBackStackEntry(Rutas.ADMINISTRACION)
+    }
     return ajustesViewModel(dueño)
 }
 
