@@ -38,7 +38,7 @@ const val ETIQUETA_IMAGEN = "imagen_resumen"
 /**
  * La imagen que se comparte (cambio 18; Figma 107-4862 y 463-3007): "Zonda" y "Resumen semanal" o
  * "mensual", la línea de la red con las fechas, los filtros si hay ("Filtros: viernes 25/09 · fuerza
- * bruta"), los totales, las dos métricas, el gráfico con su frase, "Por tipo de ataque" en los dos
+ * bruta"), los totales con cuántas son de cada severidad, las dos métricas, el gráfico con su frase, "Por tipo de ataque" en los dos
  * bloques (si hubo alertas en el período) y "Reales y falsos positivos", y el pie "Generado con Zonda · no incluye IPs ni nombres de
  * equipos". Sin la precisión de cada modelo ni los ⓘ. Solo cantidades: nada de direcciones ni nombres
  * de equipos (RNF02). Fondo blanco, 16 de margen y 12 entre piezas. El PDF es esta misma imagen.
@@ -102,6 +102,11 @@ fun ImagenResumen(
         }
         Spacer(modifier = Modifier.height(12.dp))
         FilaDeTotales(resumen = resumen, alTocar = {})
+        // Pegada a los totales, cuántas son de cada severidad; sin alertas, la línea no va.
+        if (resumen.total > 0) {
+            Spacer(modifier = Modifier.height(8.dp))
+            LineaDeSeveridades(resumen = resumen)
+        }
         Spacer(modifier = Modifier.height(12.dp))
         FilaDeMetricas(resumen = resumen)
         Spacer(modifier = Modifier.height(12.dp))

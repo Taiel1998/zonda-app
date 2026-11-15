@@ -13,6 +13,7 @@ import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.RevisionResumen
+import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import java.time.Duration
 import java.time.Instant
@@ -44,8 +45,12 @@ class TextosResumenTest {
         tipo: TipoAtaque = TipoAtaque.FUERZA_BRUTA,
         destinoIp: String = "192.168.10.50",
         revision: Revision? = null,
+        severidad: Severidad = Severidad.ALTA,
     ) = Instant.parse("${dia}T10:00:00Z").let { inicio ->
-        Fixtures.alerta(id, tipoAtaque = tipo, destinoIp = destinoIp, inicio = inicio, creadaEn = inicio.plus(Duration.ofMinutes(5)), revision = revision)
+        Fixtures.alerta(
+            id, severidad = severidad, tipoAtaque = tipo, destinoIp = destinoIp, inicio = inicio,
+            creadaEn = inicio.plus(Duration.ofMinutes(5)), revision = revision,
+        )
     }
 
     @Test
@@ -120,6 +125,36 @@ class TextosResumenTest {
             "Mostrando 0 alertas con 5 filtros.",
             frase(FiltroResumen(barras = setOf(sabado, viernes), tipos = setOf(TipoAtaque.ESCANEO, TipoAtaque.FUERZA_BRUTA), revision = RevisionResumen.REALES)),
         )
+    }
+
+    @Test
+    fun `la severidad se cuenta debajo de los totales y se nombra en las frases, en el orden de la hoja`() {
+        val viernes = Franja.dia(LocalDate.of(2026, 9, 25))
+        val lista = listOf(
+            alertaDel("2026-09-25", "v-1"),
+            alertaDel("2026-09-25", "v-2", severidad = Severidad.MEDIA),
+            alertaDel("2026-09-26", "s-1", severidad = Severidad.MEDIA),
+        )
+        fun resumen(filtro: FiltroResumen) = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, filtro)
+
+        assertEquals("1 alta", cuentaDeSeveridad(Severidad.ALTA, 1, recursos))
+        assertEquals("2 medias", cuentaDeSeveridad(Severidad.MEDIA, 2, recursos))
+        assertEquals("38 bajas", cuentaDeSeveridad(Severidad.BAJA, 38, recursos))
+
+        // Sola, no dice "Tocá de nuevo": la severidad se elige en la hoja de filtros y en la pantalla no se toca.
+        val medias = resumen(FiltroResumen(severidades = setOf(Severidad.MEDIA)))
+        assertEquals("Mostrando severidad media: 2 alertas. Se saca desde Filtros.", fraseDelGrafico(medias, recursos))
+        assertEquals("Mostrando severidad media: 2 alertas.", fraseDelGrafico(medias, recursos, enImagen = true))
+        assertEquals(
+            "Estás viendo la severidad media: la precisión cuenta solo las alertas revisadas de esa severidad.",
+            recuadroDePrecision(medias, recursos),
+        )
+
+        // Con otros filtros va en el orden de la hoja: cuándo, severidad y tipo.
+        val varios = FiltroResumen(barras = setOf(viernes), severidades = setOf(Severidad.MEDIA, Severidad.ALTA), tipos = setOf(TipoAtaque.FUERZA_BRUTA))
+        assertEquals(listOf("viernes", "severidad alta y media", "fuerza bruta"), varios.grupos(recursos, conFecha = false))
+        assertEquals("Mostrando 2 alertas: viernes · severidad alta y media · fuerza bruta.", fraseDelGrafico(resumen(varios), recursos))
+        assertEquals("Del Resumen: viernes 25/09 · severidad alta y media · fuerza bruta", lineaDeLaLista(resumen(varios), recursos))
     }
 
     @Test

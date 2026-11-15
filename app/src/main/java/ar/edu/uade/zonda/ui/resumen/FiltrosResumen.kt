@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +41,7 @@ import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.Franja
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
 import ar.edu.uade.zonda.domain.model.RevisionResumen
+import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.model.ToqueResumen
@@ -50,6 +53,8 @@ import ar.edu.uade.zonda.ui.components.HojaInferior
 import ar.edu.uade.zonda.ui.components.MarcaCasilla
 import ar.edu.uade.zonda.ui.components.PuntoDeSeveridad
 import ar.edu.uade.zonda.ui.components.TituloDeBloque
+import ar.edu.uade.zonda.ui.components.tono
+import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.nombreEnFiltro
 import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.tituloHoja
@@ -163,6 +168,17 @@ fun ColumnScope.ContenidoFiltrosResumen(
             )
         }
     }
+    // Por la severidad de cada alerta (la de su tipo, un nivel más o menos según la importancia del
+    // equipo), como en Alertas y en el tablero. Solo se elige acá: en la pantalla la línea solo informa.
+    GrupoDeChips(titulo = stringResource(R.string.resumen_filtrar_severidad)) {
+        Severidad.entries.forEach { severidad ->
+            ChipDeSeveridad(
+                severidad = severidad,
+                elegido = severidad in borrador.severidades,
+                alTocar = { borrador = borrador.alternarSeveridad(severidad) },
+            )
+        }
+    }
     Column {
         Text(
             text = stringResource(R.string.resumen_filtrar_tipos),
@@ -226,6 +242,33 @@ fun ColumnScope.ContenidoFiltrosResumen(
         alLimpiar = { borrador = FiltroResumen() },
         textoAplicar = pluralStringResource(R.plurals.resumen_mostrar_alertas, quedan, quedan),
     )
+}
+
+/**
+ * El chip de una severidad en la hoja: como los chips de siempre (Medium 13, 12 por 6 y esquinas de 8),
+ * con el punto de su color a 6 del nombre, el mismo punto que lleva cada tipo de más abajo. El punto va
+ * sin descripción: el nombre ya dice la severidad.
+ */
+@Composable
+private fun ChipDeSeveridad(severidad: Severidad, elegido: Boolean, alTocar: () -> Unit, modifier: Modifier = Modifier) {
+    val colores = MaterialTheme.colorScheme
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(EntreIconoYTexto),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .clip(FormaChip)
+            .then(if (elegido) Modifier.background(colores.secondaryContainer, FormaChip) else Modifier.border(1.dp, colores.outlineVariant, FormaChip))
+            .selectable(selected = elegido, onClick = alTocar, role = Role.Checkbox)
+            .padding(horizontal = bordeDelChip(elegido), vertical = if (elegido) 6.dp else 7.dp),
+    ) {
+        Box(modifier = Modifier.size(8.dp).background(severidad.tono().punto, CircleShape))
+        Text(
+            text = stringResource(severidad.etiqueta()),
+            style = MaterialTheme.typography.opcion,
+            color = if (elegido) colores.primary else colores.onSurface,
+            maxLines = 1,
+        )
+    }
 }
 
 /**

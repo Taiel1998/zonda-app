@@ -183,20 +183,26 @@ sealed interface ToqueResumen {
 
 /**
  * Los filtros del Resumen (cambio 16), que se suman: con el domingo y fuerza bruta quedan las de fuerza
- * bruta del domingo. Los días (o semanas) y los tipos van de a varios, como casillas: una alerta empieza
- * un solo día y tiene un solo tipo, así que "domingo y lunes" o "fuerza bruta y escaneo" se leen de una
- * sola manera ("uno u otro"). La revisión y el modelo van de a uno: dos revisiones no dicen nada nuevo y
- * una alerta puede tener dos modelos, así que "IA y umbrales" se leería de dos maneras.
+ * bruta del domingo. Los días (o semanas), las severidades y los tipos van de a varios, como casillas:
+ * una alerta empieza un solo día, tiene una sola severidad y un solo tipo, así que "domingo y lunes",
+ * "alta y media" o "fuerza bruta y escaneo" se leen de una sola manera ("uno u otro"). La revisión y el
+ * modelo van de a uno: dos revisiones no dicen nada nuevo y una alerta puede tener dos modelos, así que
+ * "IA y umbrales" se leería de dos maneras.
+ *
+ * [severidades] es la severidad de cada alerta (la de su tipo, un nivel más o menos según la importancia
+ * del equipo), como el filtro de Alertas: no es lo mismo que elegir los tipos que la red tiene en alta.
+ * Se elige desde la hoja de filtros.
  */
 data class FiltroResumen(
     val barras: Set<Franja> = emptySet(),
+    val severidades: Set<Severidad> = emptySet(),
     val tipos: Set<TipoAtaque> = emptySet(),
     val revision: RevisionResumen? = null,
     val metodo: MetodoDeteccion? = null,
 ) {
     /** Cuántos hay puestos: lo que dice el botón "Filtros (4)". */
     val cantidad: Int
-        get() = barras.size + tipos.size + (if (revision == null) 0 else 1) + (if (metodo == null) 0 else 1)
+        get() = barras.size + severidades.size + tipos.size + (if (revision == null) 0 else 1) + (if (metodo == null) 0 else 1)
 
     val vacio: Boolean
         get() = cantidad == 0
@@ -210,6 +216,7 @@ data class FiltroResumen(
             val momento = alerta.inicio.atZone(zona).toLocalDateTime()
             if (barras.none { momento in it }) return false
         }
+        if (severidades.isNotEmpty() && alerta.severidad !in severidades) return false
         if (tipos.isNotEmpty() && tipos.none { it in alerta.tiposDeAtaque }) return false
         if (revision != null && !revision.incluye(alerta)) return false
         if (metodo != null && metodo !in alerta.metodos) return false
@@ -227,6 +234,9 @@ data class FiltroResumen(
         is ToqueResumen.Revision -> copy(revision = toque.revision.takeUnless { it == revision })
         is ToqueResumen.Metodo -> copy(metodo = toque.metodo.takeUnless { it == metodo })
     }
+
+    /** Suma o saca una severidad: las casillas de "Severidad" de la hoja de filtros. */
+    fun alternarSeveridad(severidad: Severidad): FiltroResumen = copy(severidades = severidades.alternar(severidad))
 
     /** Al cambiar de período, los días elegidos eran del otro: se sacan y queda lo demás. */
     fun sinBarras(): FiltroResumen = copy(barras = emptySet())
@@ -274,6 +284,13 @@ data class ResumenActividad(
      * La tarjeta muestra solo los que tienen fila ([tiposConFila]).
      */
     val porTipo: Map<TipoAtaque, Int>,
+    /**
+     * Cuántas alertas hay de cada severidad, de la más grave a la más leve y aunque esté en cero: la línea
+     * de debajo de los totales, que muestra solo las que hubo. Es la severidad de cada alerta (la de su
+     * tipo, un nivel más o menos según la importancia del equipo), por eso no coincide con sumar los tipos
+     * que la red tiene en alta.
+     */
+    val porSeveridad: Map<Severidad, Int>,
     /** Métrica de éxito 1: tiempo mediano entre la creación de una alerta y su primera revisión. */
     val tiempoMedianoHastaRevision: Duration?,
     /**
@@ -400,6 +417,7 @@ data class ResumenActividad(
                 falsosPositivos = revisadas.count { it.estadoRevision == EstadoRevision.FALSO_POSITIVO },
                 barras = barras,
                 porTipo = TipoAtaque.EN_PANTALLA.associateWith { tipo -> lista.count { tipo in it.tiposDeAtaque } },
+                porSeveridad = Severidad.entries.associateWith { severidad -> lista.count { it.severidad == severidad } },
                 tiempoMedianoHastaRevision = mediana,
                 altasRevisadasEnUnaHora = Proporcion(altasEnUnaHora, altasConsideradas),
                 cobertura = Proporcion(revisadas.size, lista.size),

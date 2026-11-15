@@ -382,7 +382,11 @@ private fun CuerpoDelResumen(
     ) {
         FilaDePeriodo(estado, alElegir = alElegirPeriodo, alAbrirFechas = alAbrirFechas, alAbrirFiltros = alAbrirFiltros)
         LineaDelResumen(estado, resumen, zona)
-        FilaDeTotales(resumen, alTocar, modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.CIFRAS_RESUMEN))
+        // Los totales y, pegada debajo, cuántas son de cada severidad.
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilaDeTotales(resumen, alTocar, modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.CIFRAS_RESUMEN))
+            LineaDeSeveridades(resumen)
+        }
         FilaDeMetricas(resumen)
         TarjetaGrafico(resumen, alTocar, frase = fraseDelGrafico(resumen, recursos))
         TarjetaTipos(resumen, estado.severidades, alTocar, alPedirAyuda = { alPedirAyuda(AyudaResumen.TIPOS) })

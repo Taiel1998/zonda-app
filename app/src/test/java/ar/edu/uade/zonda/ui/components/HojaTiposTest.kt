@@ -69,7 +69,8 @@ class HojaTiposTest {
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithText(
-            "El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque.",
+            "El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque. " +
+                "Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.",
         ).performScrollTo().assertIsDisplayed()
         // Un renglón por tipo, sin "Otros".
         compose.onAllNodesWithText("Otros", substring = true).assertCountEquals(0)

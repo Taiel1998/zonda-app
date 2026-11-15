@@ -368,7 +368,7 @@
     <string name="tipos_bloque_ia_frase">La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.</string>
     <string name="tipos_bloque_sin_ia">Lo que la IA no detectó</string>
     <string name="tipos_bloque_sin_ia_frase">Lo marcaron los otros dos métodos de Zonda.</string>
-    <string name="tipos_pie">El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque.</string>
+    <string name="tipos_pie">El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque. Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.</string>
     <string name="tipos_punto">Severidad %1$s</string>
     <string name="modo_sonido">Con sonido</string>
     <string name="modo_silencio">En silencio</string>
@@ -825,6 +825,19 @@
         <item quantity="other">revisadas · %1$s</item>
     </plurals>
     <string name="resumen_total_sin_revisar">sin revisar</string>
+    <!-- Debajo de los totales: cuántas alertas son de cada severidad, solo las que hubo, como el tablero. -->
+    <plurals name="resumen_cuenta_altas">
+        <item quantity="one">%d alta</item>
+        <item quantity="other">%d altas</item>
+    </plurals>
+    <plurals name="resumen_cuenta_medias">
+        <item quantity="one">%d media</item>
+        <item quantity="other">%d medias</item>
+    </plurals>
+    <plurals name="resumen_cuenta_bajas">
+        <item quantity="one">%d baja</item>
+        <item quantity="other">%d bajas</item>
+    </plurals>
     <string name="resumen_sin_dato">—</string>
     <string name="resumen_hasta_primera_revision">hasta la primera revisión</string>
     <string name="resumen_mediana">mediana del período</string>
@@ -903,6 +916,13 @@
         <item quantity="one">Mostrando %1$s: %2$d alerta. Tocá de nuevo para sacarlo.</item>
         <item quantity="other">Mostrando %1$s: %2$d alertas. Tocá de nuevo para sacarlo.</item>
     </plurals>
+    <!-- La severidad se elige en la hoja de filtros: en la pantalla no hay nada para tocar de nuevo. -->
+    <plurals name="resumen_mostrando_desde_filtros">
+        <item quantity="one">Mostrando %1$s: %2$d alerta. Se saca desde Filtros.</item>
+        <item quantity="other">Mostrando %1$s: %2$d alertas. Se saca desde Filtros.</item>
+    </plurals>
+    <!-- "severidad alta", "severidad alta y media": las severidades elegidas, dentro de una frase. -->
+    <string name="resumen_severidad_de">severidad %1$s</string>
     <!-- Cambio 16 (1.0.4): con varios filtros la frase los nombra (Figma 463-1145); con más de cuatro, dice cuántos son. -->
     <plurals name="resumen_mostrando_filtros">
         <item quantity="one">Mostrando %1$d alerta: %2$s.</item>
@@ -918,6 +938,7 @@
     <!-- La hoja "Filtrar el resumen" (Figma 463-1317) -->
     <string name="resumen_filtrar_titulo">Filtrar el resumen</string>
     <string name="resumen_filtrar_cuando">Cuándo · podés elegir varios</string>
+    <string name="resumen_filtrar_severidad">Severidad · podés elegir varias</string>
     <string name="resumen_filtrar_tipos">Tipo de ataque · podés elegir varios</string>
     <string name="resumen_filtrar_revision">Revisión</string>
     <string name="resumen_filtrar_modelo">Método</string>
@@ -987,6 +1008,7 @@
     <string name="precision_filtro_hora">Estás viendo %1$s: la precisión cuenta solo las alertas revisadas de esa hora.</string>
     <string name="precision_filtro_semana">Estás viendo la %1$s: la precisión cuenta solo las alertas revisadas de esa semana.</string>
     <string name="precision_filtro_tipo">Estás viendo %1$s: la precisión cuenta solo las alertas revisadas de ese tipo.</string>
+    <string name="precision_filtro_severidad">Estás viendo la severidad %1$s: la precisión cuenta solo las alertas revisadas de esa severidad.</string>
     <string name="precision_filtro_revisadas">Estás viendo las revisadas: la precisión cuenta las mismas alertas que sin filtro.</string>
     <string name="precision_filtro_sin_revisar">Estás viendo las sin revisar: todavía no tienen revisión, así que no hay precisión para calcular.</string>
     <string name="precision_filtro_reales">Estás viendo los ataques reales: todas son reales, así que cada método da 100 %.</string>

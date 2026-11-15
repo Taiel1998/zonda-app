@@ -13,6 +13,7 @@ import ar.edu.uade.zonda.domain.model.Proporcion
 import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.RevisionResumen
+import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.domain.model.Tramo
 import ar.edu.uade.zonda.ui.Formato
@@ -162,15 +163,31 @@ private fun enumerar(partes: List<String>, recursos: Resources): String = when (
 
 private fun String.minuscula(): String = replaceFirstChar { it.lowercase(LOCALE) }
 
+/** "38 altas", "1 media": cuántas alertas hay de una severidad, en la línea de debajo de los totales. */
+fun cuentaDeSeveridad(severidad: Severidad, cantidad: Int, recursos: Resources): String = recursos.getQuantityString(
+    when (severidad) {
+        Severidad.ALTA -> R.plurals.resumen_cuenta_altas
+        Severidad.MEDIA -> R.plurals.resumen_cuenta_medias
+        Severidad.BAJA -> R.plurals.resumen_cuenta_bajas
+    },
+    cantidad,
+    cantidad,
+)
+
 /**
- * Cada filtro puesto, con palabras y en el orden de la hoja (cuándo, tipo, revisión y modelo), un
- * grupo por clase: "sábado y domingo", "fuerza bruta y escaneo de puertos". Con [conFecha], los días
- * llevan la fecha (la lista y la imagen); si no, solo el nombre (la frase del gráfico).
+ * Cada filtro puesto, con palabras y en el orden de la hoja (cuándo, severidad, tipo, revisión y
+ * método), un grupo por clase: "sábado y domingo", "severidad alta y media", "fuerza bruta y escaneo de
+ * puertos". Con [conFecha], los días llevan la fecha (la lista y la imagen); si no, solo el nombre (la
+ * frase del gráfico).
  */
 fun FiltroResumen.grupos(recursos: Resources, conFecha: Boolean): List<String> {
     val grupos = mutableListOf<String>()
     if (barras.isNotEmpty()) {
         grupos += enumerar(barras.sortedBy { it.desde }.map { if (conFecha) it.conFecha(recursos) else it.enFrase(recursos) }, recursos)
+    }
+    if (severidades.isNotEmpty()) {
+        val nombres = Severidad.entries.filter { it in severidades }.map { recursos.getString(it.etiqueta()).minuscula() }
+        grupos += recursos.getString(R.string.resumen_severidad_de, enumerar(nombres, recursos))
     }
     if (tipos.isNotEmpty()) {
         grupos += enumerar(TipoAtaque.EN_PANTALLA.filter { it in tipos }.map { recursos.getString(it.nombreCorto()).minuscula() }, recursos)
@@ -196,7 +213,8 @@ private fun FiltroResumen.unoSolo(recursos: Resources): String {
  * fuerza bruta: 15 alertas. Tocá de nuevo para sacarlo."; con más, los nombra ("Mostrando 9 alertas:
  * sábado y domingo · fuerza bruta y escaneo de puertos.") y, si quedan más de cuatro, dice cuántos son
  * ("Mostrando 20 alertas con 5 filtros."). Sin filtros, lo que más pasó. En la imagen no se puede
- * tocar nada: la de un filtro no dice "Tocá de nuevo" ([enImagen]).
+ * tocar nada: la de un filtro no dice "Tocá de nuevo" ([enImagen]). La severidad se elige en la hoja de
+ * filtros y en la pantalla no hay nada para tocar de nuevo: sola, dice "Se saca desde Filtros.".
  */
 fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources, enImagen: Boolean = false): String? {
     val filtro = resumen.filtro
@@ -204,7 +222,11 @@ fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources, enImagen: Bo
     if (!filtro.vacio) {
         return when {
             filtro.cantidad == 1 -> recursos.getQuantityString(
-                if (enImagen) R.plurals.resumen_mostrando_imagen else R.plurals.resumen_mostrando,
+                when {
+                    enImagen -> R.plurals.resumen_mostrando_imagen
+                    filtro.severidades.isNotEmpty() -> R.plurals.resumen_mostrando_desde_filtros
+                    else -> R.plurals.resumen_mostrando
+                },
                 total,
                 filtro.unoSolo(recursos),
                 total,
@@ -311,6 +333,9 @@ fun recuadroDePrecision(resumen: ResumenActividad, recursos: Resources): String 
             },
             barra.conFecha(recursos),
         )
+    }
+    filtro.severidades.singleOrNull()?.let { severidad ->
+        return recursos.getString(R.string.precision_filtro_severidad, recursos.getString(severidad.etiqueta()).minuscula())
     }
     filtro.tipos.singleOrNull()?.let { tipo ->
         return recursos.getString(R.string.precision_filtro_tipo, recursos.getString(tipo.nombreCorto()).minuscula())

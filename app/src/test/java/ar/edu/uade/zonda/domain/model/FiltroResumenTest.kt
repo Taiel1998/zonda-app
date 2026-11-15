@@ -108,6 +108,27 @@ class FiltroResumenTest {
     }
 
     @Test
+    fun `las severidades van de a varias, cuentan como filtros y se suman o se sacan de a una`() {
+        val alta = FiltroResumen().alternarSeveridad(Severidad.ALTA)
+        val altaYMedia = alta.alternarSeveridad(Severidad.MEDIA)
+
+        assertEquals(setOf(Severidad.ALTA, Severidad.MEDIA), altaYMedia.severidades)
+        assertEquals(2, altaYMedia.cantidad)
+        assertEquals(setOf(Severidad.MEDIA), altaYMedia.alternarSeveridad(Severidad.ALTA).severidades)
+        assertTrue(alta.alternarSeveridad(Severidad.ALTA).vacio)
+
+        // Las seis de la tabla son altas: con "alta" pasan todas y con "media", ninguna.
+        assertEquals(tabla.map { it.id }, ids(alta))
+        assertEquals(emptyList<String>(), ids(FiltroResumen(severidades = setOf(Severidad.MEDIA))))
+        // Con el domingo se suman, como los demás filtros.
+        assertEquals(listOf("a-3", "a-4", "a-5"), ids(alta.copy(barras = setOf(domingo))))
+        // El total las saca; cambiar de período, no.
+        val conDia = altaYMedia.copy(barras = setOf(domingo))
+        assertTrue(conDia.tocar(ToqueResumen.Total).vacio)
+        assertEquals(altaYMedia, conDia.sinBarras())
+    }
+
+    @Test
     fun `tocar el total saca todo y cambiar de periodo saca solo los dias`() {
         val filtro = FiltroResumen(barras = setOf(domingo), tipos = setOf(TipoAtaque.FUERZA_BRUTA), revision = RevisionResumen.REALES, metodo = MetodoDeteccion.IA)
 

@@ -223,6 +223,40 @@ class ResumenActividadTest {
     }
 
     @Test
+    fun `cuenta cuantas hay de cada severidad, de la mas grave a la mas leve, y sigue los filtros`() {
+        val resumen = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc)
+
+        // La severidad de cada alerta; la alta de hace diez días queda fuera del período.
+        assertEquals(listOf(Severidad.ALTA, Severidad.MEDIA, Severidad.BAJA), resumen.porSeveridad.keys.toList())
+        assertEquals(listOf(2, 2, 1), resumen.porSeveridad.values.toList())
+        assertEquals(resumen.total, resumen.porSeveridad.values.sum())
+
+        // Sin revisar quedan una media y una baja: las altas quedan en cero.
+        val sinRevisar = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc, FiltroResumen(revision = RevisionResumen.SIN_REVISAR))
+        assertEquals(listOf(0, 1, 1), sinRevisar.porSeveridad.values.toList())
+    }
+
+    @Test
+    fun `la severidad es un filtro, de a varias y sumado a los demas`() {
+        fun resumen(filtro: FiltroResumen) = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc, filtro)
+
+        // Todo se recalcula sobre las altas: las dos están revisadas y una era un ataque real.
+        val altas = resumen(FiltroResumen(severidades = setOf(Severidad.ALTA)))
+        assertEquals(2, altas.total)
+        assertEquals(5, altas.totalDelPeriodo)
+        assertEquals(listOf(2, 0, 0), altas.porSeveridad.values.toList())
+        assertEquals(Proporcion(2, 2), altas.cobertura)
+        assertEquals(1, altas.reales)
+
+        // Media y baja: las de cualquiera de las dos.
+        assertEquals(3, resumen(FiltroResumen(severidades = setOf(Severidad.MEDIA, Severidad.BAJA))).total)
+        // Con otro filtro se suman: la media sin revisar.
+        assertEquals(1, resumen(FiltroResumen(severidades = setOf(Severidad.MEDIA), revision = RevisionResumen.SIN_REVISAR)).total)
+        // Las tres juntas son todas.
+        assertEquals(5, resumen(FiltroResumen(severidades = Severidad.entries.toSet())).total)
+    }
+
+    @Test
     fun `tienen fila los tipos con alertas en el periodo, aunque el filtro los deje en cero, y los elegidos`() {
         val sinFiltro = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc)
         // Sin tipo identificado no tuvo alertas, pero está elegido: se saca tocando su fila.
