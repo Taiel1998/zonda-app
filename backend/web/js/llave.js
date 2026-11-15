@@ -4,7 +4,7 @@
 
 import { el } from './util.js';
 import { e, pedir } from './comun.js';
-import { abrirHoja, avisoInferior } from './hojas.js';
+import { abrirHoja, avisoError, avisoInferior } from './hojas.js';
 
 /** base64url, como lo manda el servidor, a bytes, y al revés. */
 function aBytes(texto) {
@@ -68,8 +68,8 @@ export function ofrecerLlave() {
   abrirHoja({
     titulo: 'Llave de esta computadora',
     cuerpo: [
-      el('p', { style: 'margin:0' }, 'Para bloquear y para sumar o cambiar personas desde esta computadora, Windows te va a pedir la huella, la cara o el PIN.'),
-      el('p', { class: 'nota', style: 'margin:0' }, 'Se crea ahora. Si no, volviendo a parear el tablero.'),
+      el('p', { style: 'margin:0' }, 'Windows te pide la huella, la cara o el PIN para confirmar que sos vos antes de bloquear o de cambiar personas.'),
+      el('p', { class: 'nota', style: 'margin:0' }, 'No da permisos: eso lo define tu perfil. Solo se puede crear ahora, al entrar.'),
     ],
     acciones: [
       { texto: 'Ahora no', tipo: 'secundario', alHacer: (h) => h.cerrar() },
@@ -83,7 +83,7 @@ export function ofrecerLlave() {
             avisoInferior('Listo: esta computadora tiene su llave.', { duracion: 4000 });
           } catch (falla) {
             const cancelada = falla && falla.name === 'NotAllowedError';
-            avisoInferior(cancelada ? 'No se creó la llave: se canceló.' : `No se creó la llave: ${falla.message || falla}`, { duracion: 7000 });
+            avisoError(cancelada ? 'No se creó la llave: se canceló.' : `No se creó la llave: ${falla.message || falla}`, { duracion: 7000 });
           }
         },
       },

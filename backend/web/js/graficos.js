@@ -244,6 +244,17 @@ export function opcionesServicios(c, datos) {
         itemStyle: { color: c[g.color], borderColor: c['--superficie'], borderWidth: 2 },
         data: datos.tiempos.map((t, i) => [t, datos.porGrupo[g.id][i]]),
       })),
+      // Sin conexiones en el horario, una línea en cero: el gráfico sigue a la vista, con su eje, en lugar de quedar vacío.
+      ...(grupos.length ? [] : [{
+        id: 'sin-conexiones',
+        name: 'Conexiones',
+        type: 'line',
+        showSymbol: false,
+        silent: true,
+        lineStyle: { width: 2, color: c['--texto-3'] },
+        itemStyle: { color: c['--texto-3'] },
+        data: datos.tiempos.map((t) => [t, 0]),
+      }]),
     ],
   };
 }
@@ -302,18 +313,21 @@ export function opcionesAlertasTiempo(c, datos) {
 /**
  * Un gráfico chico para las piezas del estado del sistema: sin ejes ni grilla, solo la línea de base, y
  * el valor de cada punto en el globito. Con `paso`, cada barra es un tramo de ese largo. Con `ejes` (el
- * panel en grande), lleva las horas abajo y los valores a la izquierda.
- * datos: { desde, hasta (ms), puntos: [[t (ms), valor o null]] }
+ * panel en grande), lleva las horas abajo y los valores a la izquierda. Con `marcas`, debajo del eje van las
+ * de las alertas, como en los gráficos de tráfico, pero sin globito ni clic. Con `nota(t)`, el globito
+ * suma una línea chica debajo del valor.
+ * datos: { desde, hasta (ms), puntos: [[t (ms), valor o null]] }; un punto en null corta la línea.
  */
-export function opcionesMini(c, datos, { tipo, color, nombre, formato = (v) => numero(v), paso = 0, maximo, ejes = false } = {}) {
+export function opcionesMini(c, datos, { tipo, color, nombre, formato = (v) => numero(v), paso = 0, maximo, ejes = false, marcas = null, nota = null } = {}) {
+  const conMarcas = Boolean(marcas && marcas.length);
   const serie = tipo === 'linea'
     ? { type: 'line', showSymbol: false, symbolSize: 5, lineStyle: { width: 1.5, color }, itemStyle: { color }, areaStyle: { color, opacity: 0.12 }, data: datos.puntos }
     : { type: 'bar', barMaxWidth: ejes ? 12 : 5, barMinWidth: 1, itemStyle: { color, borderRadius: [2, 2, 0, 0] }, data: datos.puntos, emphasis: { disabled: true } };
   return {
     ...base(c),
     animation: false,
-    grid: ejes ? { left: 8, right: 12, top: 10, bottom: 4, containLabel: true } : { left: 0, right: 0, top: 4, bottom: 1 },
-    xAxis: ejes ? ejeTiempo(c, datos.desde, datos.hasta) : {
+    grid: ejes ? { left: 8, right: 12, top: 10, bottom: 4, containLabel: true } : { left: 0, right: 0, top: 4, bottom: conMarcas ? 13 : 1 },
+    xAxis: ejes ? ejeTiempo(c, datos.desde, datos.hasta, conMarcas) : {
       type: 'time',
       min: datos.desde,
       max: datos.hasta,
@@ -328,14 +342,15 @@ export function opcionesMini(c, datos, { tipo, color, nombre, formato = (v) => n
       trigger: 'axis',
       axisPointer: { type: 'line', lineStyle: { color: c['--texto-3'] } },
       formatter: (params) => {
-        const punto = params[0];
+        const punto = params.find((x) => x.seriesId === 'valores');
         if (!punto) return '';
         const [t, valor] = punto.value;
-        const titulo = paso ? `${hora(t)} a ${hora(t + paso * 1000)}` : horaConSegundos(t);
-        return `<div class="globito"><div class="globito-titulo">${escapar(titulo)}</div>${filaGlobito(color, valor == null ? 'Sin respuesta' : formato(valor), valor == null ? '' : nombre)}</div>`;
+        const titulo = paso ? tramoDe(t, paso) : horaConSegundos(t);
+        const aparte = nota ? nota(t) : '';
+        return `<div class="globito"><div class="globito-titulo">${escapar(titulo)}</div>${filaGlobito(color, valor == null ? 'Sin datos' : formato(valor), valor == null ? '' : nombre)}${aparte ? `<div class="globito-nota">${escapar(aparte)}</div>` : ''}</div>`;
       },
     },
-    series: [{ name: nombre, ...serie }],
+    series: [...(conMarcas ? [{ ...serieMarcas(c, marcas), silent: true }] : []), { id: 'valores', name: nombre, ...serie }],
   };
 }
 

@@ -64,10 +64,10 @@ export const e = {
   alertasPorBarra: null,
   ahora: null,
   pares: null,
-  // Los gráficos chicos del estado del sistema: el tráfico del sensor y los latidos de la última hora, y
-  // cuánto tardó el servidor en contestar cada consulta de /salud desde que se abrió el tablero.
+  // Los gráficos chicos del estado del sistema, con lo que guarda el servidor (decisión 60): el tráfico del
+  // sensor, los latidos del análisis y lo que le llegó al servidor, con las consultas del firewall. En el
+  // tablero, la última hora; con una pieza en grande, el horario elegido.
   piezas: null,
-  respuestas: [],
   personas: [],
   equipos: [],
   severidades: {},
@@ -104,7 +104,8 @@ export async function pedir(ruta, opciones = {}) {
     if (falla instanceof ErrorApi && falla.estado === 401) {
       alExpirar('El acceso de este navegador venció o lo quitaron. Pedí un código nuevo.');
     }
-    if (falla.estado === 0) e.servidorCaido = true;
+    // Sin respuesta, o con el 502, 503 o 504 de quien atiende el HTTPS cuando el servidor de alertas está caído.
+    if (falla.estado === 0 || (falla.estado >= 502 && falla.estado <= 504)) e.servidorCaido = true;
     throw falla;
   }
 }

@@ -258,6 +258,17 @@ CREATE TABLE IF NOT EXISTS latidos (
 );
 CREATE INDEX IF NOT EXISTS latidos_t ON latidos (t);
 
+-- Lo que le llega al servidor desde la red, por minuto (decisión 60): los envíos del sensor, del análisis en
+-- vivo y del firewall. minuto es el comienzo del minuto en segundos desde 1970 (UTC), con el reloj del
+-- servidor, que además deja la fila de cada minuto en que anduvo: una fila en cero es un minuto prendido sin
+-- recibir nada, y un minuto sin fila, uno apagado. Se guarda lo mismo que el tráfico (dias_trafico).
+CREATE TABLE IF NOT EXISTS recibidos (
+    minuto INTEGER PRIMARY KEY,
+    sensor INTEGER NOT NULL DEFAULT 0,
+    analisis INTEGER NOT NULL DEFAULT 0,
+    firewall INTEGER NOT NULL DEFAULT 0
+);
+
 -- La llave de acceso de cada computadora con el tablero web (decisión 51): solo la parte pública. La privada
 -- vive en el chip de seguridad de la computadora (Windows Hello) y nunca sale de ahí.
 CREATE TABLE IF NOT EXISTS llaves (

@@ -115,7 +115,9 @@ button { cursor: pointer; }
 
 [hidden] { display: none !important; }
 
-html { scrollbar-gutter: stable; }
+/* La barra de desplazamiento va siempre: sin ella, en una página corta quedaba una franja del color de la página
+   al lado de la cabecera, que parecía cortada; y así el contenido tampoco salta al cambiar de vista. */
+html { overflow-y: scroll; }
 
 .oculto-visual {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -543,6 +545,7 @@ html { scrollbar-gutter: stable; }
 }
 .tarjeta-titulo { font-size: 15px; font-weight: 600; margin: 0; }
 .tarjeta-sub { font-size: 13px; color: var(--texto-2); margin: 2px 0 0; }
+.titulo-con-ayuda { display: flex; align-items: center; gap: 8px; }
 .tarjeta-acciones { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 
 /* El menú de cada panel (⋮), como en Grafana, y la marca del horario fijo de un panel («Última hora»). */
@@ -634,7 +637,7 @@ html { scrollbar-gutter: stable; }
 /* ---- Indicadores ---- */
 
 .kpi-etiqueta { font-size: 13px; color: var(--texto-2); font-weight: 500; margin: 0 0 8px; }
-.kpi-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.kpi-cabecera { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0 8px; }
 /* Las tres tarjetas chicas de En vivo, cuando van de a seis columnas: la cabecera con el alto de dos renglones, así
    los números quedan a la misma altura aunque «Conexiones por segundo» y su «Ahora» no entren en uno. */
 @media (min-width: 1401px) {
@@ -711,6 +714,9 @@ html { scrollbar-gutter: stable; }
 .grafico.mini { height: 64px; }
 /* Sin datos, el gráfico chico dice por qué en el medio, como los paneles grandes con .vacio. */
 .mini-envoltura { position: relative; }
+/* Con el gráfico dibujado en cero, el aviso de que no hubo tráfico va debajo, sin taparlo. */
+.vacio.al-pie { position: static; inset: auto; display: block; text-align: left; font-size: 12.5px; margin-top: 6px; }
+
 .vacio-mini {
   position: absolute;
   inset: 0;
@@ -1213,7 +1219,6 @@ html { scrollbar-gutter: stable; }
 .campo textarea { min-height: 84px; resize: vertical; line-height: 1.45; }
 .campo input:focus, .campo textarea:focus, .campo select:focus { outline: 2px solid var(--verde); outline-offset: 0; border-color: transparent; }
 .campo small { font-size: 12.5px; color: var(--texto-2); }
-.leyenda-obligatorio { font-size: 12.5px; color: var(--texto-2); }
 .error-hoja { padding: 9px 12px; border-radius: 10px; background: var(--alta-fondo); color: var(--alta-texto); font-size: 13.5px; }
 
 .opciones { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1245,6 +1250,11 @@ html { scrollbar-gutter: stable; }
   font-size: 14px;
   animation: subir 0.18s ease-out;
 }
+.aviso-inferior { border: 1px solid rgba(255, 255, 255, 0.16); }
+.aviso-texto { display: inline-flex; align-items: center; gap: 10px; }
+.aviso-icono { flex: none; width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; line-height: 1; color: #1b1b19; }
+.aviso-inferior.ok .aviso-icono { background: #5dcaa5; }
+.aviso-inferior.error .aviso-icono { background: #f09595; }
 .aviso-inferior button { border: 0; background: transparent; color: #9fe1cb; font-weight: 600; font-size: 14px; padding: 4px 6px; }
 
 /* ---- Lista de alertas ---- */
@@ -1340,7 +1350,13 @@ html { scrollbar-gutter: stable; }
 .res-barra.hoy { background: var(--verde); }
 .res-barra.cero { height: 0; }
 .res-columna:hover .res-columna-pista { background: var(--superficie-2); }
-.res-columna.elegida { box-shadow: 0 0 0 2px var(--superficie), 0 0 0 4px var(--verde); }
+/* El día elegido va con un fondo y una línea verde abajo, adentro de su columna: con el borde por afuera, dos días
+   seguidos se encimaban. Dos elegidos seguidos forman una sola franja. */
+.res-columna.elegida { background: var(--neutro); box-shadow: inset 0 -2px 0 var(--verde); }
+.res-columna.elegida .res-columna-etiqueta { color: var(--verde-texto); font-weight: 600; }
+.res-columna.elegida:hover .res-columna-pista { background: transparent; }
+.res-columna.elegida + .res-columna.elegida { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.res-columna.elegida:has(+ .res-columna.elegida) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .res-columna.apagada { opacity: 0.35; }
 .res-frase { margin: 10px 0 0; font-size: 12.5px; line-height: 1.3; color: var(--texto-2); }
 
@@ -1686,29 +1702,16 @@ html { scrollbar-gutter: stable; }
 .bloqueo-corte.sin-vencimiento { color: var(--media-texto); }
 .campo .error-campo { color: var(--alta-texto); }
 
-.lista-bloqueos { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
-.lista-bloqueos > li.nota { padding: 4px 0 0 18px; }
-.bloqueo-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 44px;
-  padding: 6px 10px;
-  border: 1px solid var(--borde);
-  border-radius: var(--radio-chico);
-  background: var(--superficie-2);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.bloqueo-item:hover { border-color: var(--verde); }
-.bloqueo-item:focus-visible { outline: 2px solid var(--verde); outline-offset: 1px; }
-.bloqueo-item .fila-bloqueo-icono svg { width: 18px; height: 18px; }
-.bloqueo-item-texto { display: grid; gap: 1px; min-width: 0; }
-.bloqueo-item-texto strong { font-size: 13.5px; font-weight: 600; }
-.bloqueo-item-texto .nota { font-size: 12.5px; }
+/* Los bloqueos son una línea al pie de la pieza («12 bloqueados»), a la derecha de «Consultas por minuto»: así las
+   cuatro piezas miden lo mismo. Al tocarla se abre la lista de Alertas con esos equipos. */
+.pie-con-enlace { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bloqueados-enlace { display: inline-flex; align-items: center; gap: 5px; min-width: 0; padding: 0; font-size: 12.5px; font-weight: 600; }
+.bloqueados-enlace .fila-bloqueo-icono { display: inline-grid; flex: none; }
+.bloqueados-enlace .fila-bloqueo-icono svg { width: 14px; height: 14px; }
+.bloqueados-enlace > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* En la lista de Alertas, el candado delante del origen, en la alerta desde la que se bloqueó ese equipo. */
+.par-bloqueo { display: inline-grid; vertical-align: -3px; margin-right: 6px; }
+.par-bloqueo svg { width: 14px; height: 14px; }
 
 /* Con firewall, cuatro piezas: de a dos, o las cuatro en fila en una pantalla ancha. En el teléfono, una debajo de la otra. */
 @media (min-width: 721px) {

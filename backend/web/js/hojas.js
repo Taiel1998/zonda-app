@@ -126,10 +126,17 @@ export function confirmar({ titulo, texto, aceptar = 'Aceptar', peligro = false 
 
 let avisoActual = null;
 
+/** El aviso de algo que falló, y el que solo informa (sin marca). */
+export const avisoError = (texto, opciones = {}) => avisoInferior(texto, { ...opciones, tono: 'error' });
+export const avisoNeutro = (texto, opciones = {}) => avisoInferior(texto, { ...opciones, tono: 'neutro' });
+
 /** El aviso de abajo, como el de la app: un texto y, si hace falta, una acción ("Deshacer", "Reintentar"). */
-export function avisoInferior(texto, { accion, alAccion, duracion = 5000, alTerminar } = {}) {
+export function avisoInferior(texto, { accion, alAccion, duracion = 5000, alTerminar, tono = 'ok' } = {}) {
   if (avisoActual) avisoActual.cerrar(true);
-  const caja = el('div', { class: 'aviso-inferior', role: 'status' }, el('span', {}, texto));
+  // Un tilde si salió bien y un signo si falló: sobre el fondo oscuro, el mismo cartel no decía cuál de las dos.
+  const marca = { ok: '✓', error: '!' }[tono];
+  const caja = el('div', { class: `aviso-inferior${marca ? ` ${tono}` : ''}`, role: 'status' },
+    el('span', { class: 'aviso-texto' }, marca ? el('span', { class: 'aviso-icono', 'aria-hidden': 'true' }, marca) : null, el('span', {}, texto)));
   let cerrado = false;
   const aviso = {
     cerrar(porOtro = false) {

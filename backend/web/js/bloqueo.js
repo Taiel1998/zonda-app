@@ -5,7 +5,7 @@
 
 import { el, fechaHora, icono, nuevoId, vaciar } from './util.js';
 import { $, TIPOS, e, esAdmin, nombreEquipo, pedir } from './comun.js';
-import { abrirHoja, avisoInferior } from './hojas.js';
+import { abrirHoja, avisoError, avisoInferior } from './hojas.js';
 import { cabecerasConLlave, tieneLlave } from './llave.js';
 
 // Lo que está abierto: un pedido que espera, uno aprobado que el firewall todavía no confirmó y uno aplicado.
@@ -29,21 +29,21 @@ const EJEMPLOS = {
   rechazar: 'Por ejemplo: es el backup nocturno.',
 };
 const AVISOS = {
-  bloquear: 'Bloqueado. El firewall lo aplica en unos segundos.',
-  pedir: 'Pedido enviado. Lo aprueba alguien que puede bloquear.',
-  aprobar: 'Aprobado. El firewall lo aplica en unos segundos.',
-  duracion: 'Duración cambiada.',
-  desbloquear: 'Desbloqueado.',
-  rechazar: 'Pedido rechazado.',
+  bloquear: (equipo) => `${equipo} bloqueado. El firewall lo aplica en unos segundos.`,
+  pedir: () => 'Pedido enviado. Lo aprueba alguien que puede bloquear.',
+  aprobar: (equipo) => `Bloqueo de ${equipo} aprobado. El firewall lo aplica en unos segundos.`,
+  duracion: (equipo) => `Duración del bloqueo de ${equipo} cambiada.`,
+  desbloquear: (equipo) => `${equipo} desbloqueado.`,
+  rechazar: () => 'Pedido rechazado.',
 };
 
-let abrirAlerta = () => {};
 let alCambiar = () => {};
+let verBloqueados = () => {};
 let siguiendo = [];
 
-/** Qué abre cada bloqueo de la lista (su alerta) y qué se vuelve a pintar cuando cambian (el detalle abierto). */
+/** Qué se vuelve a pintar cuando cambian los bloqueos (el detalle abierto y la lista) y qué abre «12 bloqueados». */
 export function configurarBloqueos(opciones) {
-  ({ abrirAlerta, alCambiar } = opciones);
+  ({ alCambiar, verBloqueados } = opciones);
 }
 
 /** Lo que se ve de los bloqueos: si cambia, se vuelve a pintar (la hora de la última consulta va en la pieza). */
@@ -71,6 +71,12 @@ export async function actualizarBloqueos() {
 function yoBloqueo() {
   const yo = e.personas.find((p) => p.vos);
   return yo && typeof yo.puedeBloquear === 'boolean' ? yo.puedeBloquear : esAdmin();
+}
+
+/** De cada alerta con un bloqueo vigente o un pedido, cuál de los dos: «bloqueado» o «pedido». Una por equipo. */
+export function bloqueoPorAlerta() {
+  const activos = (e.bloqueos ? e.bloqueos.bloqueos : []).filter((b) => ACTIVOS.includes(b.estado));
+  return new Map(activos.map((b) => [b.alertaId, b.estado === 'pedido' ? 'pedido' : 'bloqueado']));
 }
 
 /** El bloqueo o el pedido abierto de una IP, o null. */
@@ -201,9 +207,7 @@ function hojaBloqueo(a, accion, actual = null) {
             type: 'button', class: `chip-filtro${duracion === d.segundos ? ' activo' : ''}`, role: 'radio', 'aria-checked': String(duracion === d.segundos),
             onclick: () => { duracion = d.segundos; pintar(); },
           }, d.nombre)))) : null,
-        el('label', { class: 'campo' }, el('span', {}, 'Motivo', el('span', { class: 'asterisco' }, ' *')), texto, falta,
-          el('small', {}, 'Queda en el registro de cambios con tu nombre y la hora.')),
-        el('p', { class: 'leyenda-obligatorio', style: 'margin:0' }, el('span', { class: 'asterisco' }, '*'), ' Obligatorio'),
+        el('label', { class: 'campo' }, el('span', {}, 'Motivo', el('span', { class: 'asterisco', title: 'Obligatorio' }, ' *')), texto, falta),
       ],
       acciones: [
         { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
@@ -245,9 +249,9 @@ async function ejecutar(a, accion, { duracion = null, motivo = '', actual = null
     } else {
       await pedir(`${ruta}/rechazo`, { metodo: 'POST', cuerpo: { motivo } });
     }
-    avisoInferior(AVISOS[accion], { duracion: 5000 });
+    avisoInferior(AVISOS[accion](nombreEquipo(a, 'origen')), { duracion: 5000 });
   } catch (falla) {
-    avisoInferior(falla.cancelada ? 'No se confirmó con la llave: no se hizo nada.' : `No se pudo: ${falla.message}`, { duracion: 7000 });
+    avisoError(falla.cancelada ? 'No se confirmó con la llave: no se hizo nada.' : `No se pudo: ${falla.message}`, { duracion: 7000 });
   }
   await actualizarBloqueos().catch(() => {});
   seguirAlFirewall();
@@ -259,19 +263,31 @@ function seguirAlFirewall() {
   siguiendo = [4000, 8000, 12000].map((ms) => setTimeout(() => actualizarBloqueos().catch(() => {}), ms));
 }
 
-/** La lista de la pieza «Firewall» de Estado del sistema: los equipos bloqueados o pedidos; cada uno abre su alerta. */
-export function pintarBloqueos() {
-  const lista = $('lista-bloqueos');
-  if (!lista) return;
-  const activos = e.bloqueos ? e.bloqueos.bloqueos.filter((b) => ACTIVOS.includes(b.estado)) : [];
-  if (!activos.length) {
-    vaciar(lista, el('li', { class: 'nota' }, 'Sin bloqueos'));
-    return;
+/** «pc-rrhh bloqueado», «12 bloqueados» o «11 bloqueados · 1 pedido»: lo que dice la pieza en una sola línea. */
+function resumenBloqueos(activos) {
+  if (activos.length === 1) {
+    const b = activos[0];
+    return b.estado === 'pedido' ? `Pedido de bloqueo: ${b.nombre || b.ip}` : `${b.nombre || b.ip} bloqueado`;
   }
-  vaciar(lista, activos.map((b) => el('li', {},
-    el('button', { type: 'button', class: 'bloqueo-item', onclick: () => abrirAlerta(b.alertaId) },
-      el('span', { class: `fila-bloqueo-icono ${b.estado === 'pedido' ? 'media' : 'alta'}` }, icono(b.estado === 'pedido' ? 'espera' : 'candado')),
-      el('span', { class: 'bloqueo-item-texto' },
-        el('strong', {}, b.nombre || b.ip),
-        el('span', { class: 'nota' }, b.estado === 'pedido' ? `Pedido de ${b.pedidoPor} · espera aprobación` : tituloBloqueado(b)))))));
+  const pedidos = activos.filter((b) => b.estado === 'pedido').length;
+  const bloqueados = activos.length - pedidos;
+  const partes = [];
+  if (bloqueados) partes.push(`${bloqueados} ${bloqueados === 1 ? 'bloqueado' : 'bloqueados'}`);
+  if (pedidos) partes.push(`${pedidos} ${pedidos === 1 ? 'pedido' : 'pedidos'}`);
+  return partes.join(' · ');
+}
+
+/** Los bloqueos en la pieza «Firewall» de Estado del sistema: una sola línea al pie con cuántos hay, que abre la
+    lista de Alertas con esos equipos (ahí se ve cada uno y se desbloquea desde su detalle). Con la lista adentro
+    de la pieza, doce bloqueos la estiraban y arrastraban a las otras tres. */
+export function pintarBloqueos() {
+  const enlace = $('bloqueados-enlace');
+  if (!enlace) return;
+  const activos = e.bloqueos ? e.bloqueos.bloqueos.filter((b) => ACTIVOS.includes(b.estado)) : [];
+  enlace.hidden = !activos.length;
+  if (!activos.length) return;
+  const hayPedidos = activos.some((b) => b.estado === 'pedido');
+  vaciar(enlace, el('span', { class: `fila-bloqueo-icono ${hayPedidos ? 'media' : 'alta'}` }, icono(hayPedidos ? 'espera' : 'candado')), el('span', {}, resumenBloqueos(activos)));
+  enlace.title = 'Ver los equipos bloqueados';
+  enlace.onclick = () => verBloqueados();
 }

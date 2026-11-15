@@ -7,7 +7,7 @@
 
 import { el, icono, numero, vaciar } from './util.js';
 import { $, METODOS, TIPOS, ahoraServidor, e, pedir, tiposDe } from './comun.js';
-import { abrirHoja, avisoInferior } from './hojas.js';
+import { abrirHoja, avisoError, avisoInferior } from './hojas.js';
 import { alternarAyuda } from './ayuda.js';
 import { abrirMenu } from './menu.js';
 import { bajarArchivo, pngDe } from './compartir.js';
@@ -403,20 +403,30 @@ function filaDeBarra({ clase, elegida = false, alTocar = null, punto = null, eti
   return alTocar ? botonTocable(clases, elegida, alTocar, ...hijos) : el('div', { class: clases }, ...hijos);
 }
 
-/** Los tipos con alertas, cada uno con su barra; los que no tuvieron van juntos en una línea, debajo de su grupo. */
+/** Los tipos que tienen fila en «Por tipo de ataque», como en la app (decisión 59): los que tuvieron alertas en
+    el período, con o sin filtros, y los elegidos. Uno que el filtro deja en cero sigue con su fila, en gris,
+    para poder sumarlo; los que no tuvieron ninguna van en «Sin alertas». */
+function tiposConFila(x) {
+  return new Set(ORDEN.filter((t) => x.porTipo.get(t) || r.tipos.has(t) || x.delPeriodo.some((a) => tiposDe(a).includes(t))));
+}
+
+const lineaSinAlertas = (sin) => `Sin alertas: ${enumerar(sin.map((t) => minuscula(ETIQUETA_TIPO[t])))}.`;
+
+/** Los tipos con alertas en el período, cada uno con su barra; los que no tuvieron van juntos en una línea,
+    debajo de su grupo. */
 function tipos(x) {
   const maximo = Math.max(1, ...x.porTipo.values());
-  const todoCero = [...x.porTipo.values()].every((n) => n === 0);
+  const conFila = tiposConFila(x);
   const bloque = (titulo, lista) => {
-    const con = lista.filter((t) => x.porTipo.get(t));
-    const sin = lista.filter((t) => !x.porTipo.get(t));
-    if (!todoCero && !con.length) return null;
+    const con = lista.filter((t) => conFila.has(t));
+    const sin = lista.filter((t) => !conFila.has(t));
+    if (conFila.size && !con.length) return null;
     return el('div', { class: 'res-bloque' }, el('p', { class: 'res-bloque-titulo' }, titulo),
       con.map((t) => filaDeBarra({
         clase: 'tipo', elegida: r.tipos.has(t), alTocar: () => alternar(r.tipos, t), punto: el('i', { class: 'punto', style: `background:var(--${severidadDe(t)})` }),
         etiqueta: ETIQUETA_TIPO[t], valor: x.porTipo.get(t), lleno: (95 * x.porTipo.get(t)) / maximo,
       })),
-      sin.length ? el('p', { class: 'res-sin-alertas' }, `Sin alertas: ${enumerar(sin.map((t) => minuscula(ETIQUETA_TIPO[t])))}.`) : null);
+      sin.length ? el('p', { class: 'res-sin-alertas' }, lineaSinAlertas(sin)) : null);
   };
   return tarjeta('Por tipo de ataque', { titulo: 'Qué es cada tipo', contenido: ayudaTipos },
     bloque('Lo que detectó la IA', TIPOS_IA), bloque('Lo que la IA no detectó', TIPOS_SIN_IA));
@@ -434,7 +444,7 @@ function realesYFalsos(x) {
       parte('reales', x.reales, 'var(--verde)', 'real', 'reales', 'reales'),
       parte('falsos', x.falsos, 'var(--media)', 'falso positivo', 'falsos positivos', 'falsos')),
     el('p', { class: 'res-nota' }, x.revisadas
-      ? `De las ${numero(x.revisadas)} revisadas. Un falso positivo con motivo sirve para ajustar la detección.`
+      ? `${x.revisadas === 1 ? 'De 1 revisada' : `De las ${numero(x.revisadas)} revisadas`}. Un falso positivo con motivo sirve para ajustar la detección.`
       : 'Todavía no hay alertas revisadas en el período.'));
 }
 
@@ -830,20 +840,27 @@ function dibujarImagen(x) {
     lineasFrase.forEach((l, i) => texto(l, x0, y0 + 126 + 8 + 12 + i * 15, { color: C.texto2 }));
   }, 10);
 
-  // Los tipos de ataque, en los dos bloques.
+  // Los tipos de ataque, en los dos bloques, como en la pantalla: una fila por cada tipo con alertas en el
+  // período y, debajo, los que no tuvieron ninguna en una línea.
   const maximoTipo = Math.max(1, ...x.porTipo.values());
-  const todoCero = [...x.porTipo.values()].every((n) => n === 0);
-  const bloques = [['LO QUE DETECTÓ LA IA', TIPOS_IA], ['LO QUE LA IA NO DETECTÓ', TIPOS_SIN_IA]].filter(([, lista]) => todoCero || lista.some((t) => x.porTipo.get(t)));
-  const altoBloques = bloques.reduce((suma, [, lista], i) => suma + (i ? 21 : 0) + 14 + 6 + lista.length * 22, 0);
+  const conFila = tiposConFila(x);
+  g.font = fuente(400, 12);
+  const bloques = [['LO QUE DETECTÓ LA IA', TIPOS_IA], ['LO QUE LA IA NO DETECTÓ', TIPOS_SIN_IA]]
+    .filter(([, lista]) => !conFila.size || lista.some((t) => conFila.has(t)))
+    .map(([titulo, lista]) => {
+      const sin = lista.filter((t) => !conFila.has(t));
+      return { titulo, con: lista.filter((t) => conFila.has(t)), sinAlertas: sin.length ? renglones(g, lineaSinAlertas(sin), interno - 26) : [] };
+    });
+  const altoBloques = bloques.reduce((suma, b, i) => suma + (i ? 21 : 0) + 14 + 6 + b.con.length * 22 + (b.sinAlertas.length ? 2 + b.sinAlertas.length * 15 : 0), 0);
   tarjetaImg('Por tipo de ataque', altoBloques, (x0, y0, w) => {
     let yy = y0;
-    bloques.forEach(([titulo, lista], i) => {
+    bloques.forEach((b, i) => {
       if (i) { g.fillStyle = C.borde; g.fillRect(x0, yy + 10, w, 1); yy += 21; }
       g.letterSpacing = '0.5px';
-      texto(titulo, x0, yy + 11, { peso: 600, tamano: 11, color: C.texto2 });
+      texto(b.titulo, x0, yy + 11, { peso: 600, tamano: 11, color: C.texto2 });
       g.letterSpacing = '0px';
       yy += 14 + 6;
-      lista.forEach((t) => {
+      b.con.forEach((t) => {
         const n = x.porTipo.get(t);
         g.fillStyle = C[severidadDe(t)];
         g.beginPath();
@@ -861,6 +878,10 @@ function dibujarImagen(x) {
         if (r.tipos.has(t)) marco(x0 - 4, yy - 3, w + 8, 22, 8);
         yy += 22;
       });
+      if (b.sinAlertas.length) {
+        b.sinAlertas.forEach((linea, k) => texto(linea, x0, yy + 2 + 11 + k * 15, { color: C.texto2 }));
+        yy += 2 + b.sinAlertas.length * 15;
+      }
     });
   }, 10);
 
@@ -917,7 +938,7 @@ async function compartir(como) {
       await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': png })]);
       avisoInferior('Imagen copiada. Pegala donde quieras.', { duracion: 3000 });
     } catch (_) {
-      avisoInferior('No se pudo copiar la imagen. Probá con «Descargar imagen».', { duracion: 4000 });
+      avisoError('No se pudo copiar la imagen. Probá con «Descargar imagen».', { duracion: 4000 });
     }
     return;
   }
