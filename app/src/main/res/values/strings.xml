@@ -1337,6 +1337,22 @@
     <string name="error_bloqueo_no_posible">El servidor no aceptó el cambio del bloqueo.</string>
     <string name="bloqueos_titulo">Bloqueos</string>
     <string name="bloqueos_pedido_por">Pedido de %1$s · espera aprobación</string>
+    <!-- La línea de Bloqueos en Estado (decisión 63), igual que la pieza Firewall del tablero: con uno solo lo
+         nombra; con varios, cuántos hay de cada estado, sin los que están en cero. -->
+    <string name="bloqueos_uno_bloqueado">%1$s bloqueado</string>
+    <string name="bloqueos_uno_bloqueando">Bloqueando %1$s</string>
+    <string name="bloqueos_uno_pedido">Pedido de bloqueo: %1$s</string>
+    <plurals name="bloqueos_cuenta_bloqueados">
+        <item quantity="one">%d bloqueado</item>
+        <item quantity="other">%d bloqueados</item>
+    </plurals>
+    <string name="bloqueos_cuenta_bloqueando">%d bloqueando</string>
+    <plurals name="bloqueos_cuenta_pedidos">
+        <item quantity="one">%d pedido</item>
+        <item quantity="other">%d pedidos</item>
+    </plurals>
+    <!-- La pantalla Bloqueos cuando se desbloqueó el último mientras estaba abierta. -->
+    <string name="bloqueos_vacio">No hay equipos bloqueados ni pedidos de bloqueo.</string>
     <string name="estado_sistema_firewall">Firewall</string>
     <string name="estado_sistema_firewall_ultima">Última consulta hace %1$s</string>
     <string name="estado_sistema_ayuda_con_firewall">Sensor de red: recibe una copia del tráfico de la red.\nAnálisis en vivo: analiza ese tráfico cada 20 s.\nServidor de alertas: guarda las alertas y avisa por Telegram.\nFirewall: aplica los bloqueos que aprueba una persona; pregunta cada 10 s.\nVerde: funciona. Ámbar: el sensor pierde tráfico. Rojo: no funciona o no hay datos.</string>

@@ -58,6 +58,9 @@ object Rutas {
 
     /** "Ver estas alertas" del Resumen (cambio 16): la lista encima del Resumen, con sus filtros. */
     const val ALERTAS_DEL_RESUMEN = "resumen/alertas"
+
+    /** Los bloqueos y los pedidos de bloqueo de la red activa (decisión 63), desde la línea de Estado si hay más de uno. */
+    const val BLOQUEOS = "bloqueos"
 }
 
 /**

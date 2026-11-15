@@ -69,13 +69,13 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ContadoresSinRevisar
-import ar.edu.uade.zonda.domain.model.EstadoPieza
 import ar.edu.uade.zonda.domain.model.Semaforo
 import ar.edu.uade.zonda.domain.model.Severidad
 import ar.edu.uade.zonda.ui.Formato
@@ -117,9 +117,8 @@ fun EstadoScreen(
     alConectar: () -> Unit,
     alVerNoAplicadas: () -> Unit = {},
     alVerAsignadas: () -> Unit = {},
-    viewModel: EstadoViewModel = viewModelDeZonda {
-        EstadoViewModel(it.obtenerEstadoRed, it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad, it.accionesPendientes, it.observarEstadoSistema)
-    },
+    alVerBloqueos: () -> Unit = {},
+    viewModel: EstadoViewModel = estadoViewModel(),
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val ahora by relojDeLaPantalla()
@@ -136,10 +135,20 @@ fun EstadoScreen(
             alAvisoMostrado = viewModel::avisoMostrado,
             alVerNoAplicadas = alVerNoAplicadas,
             alVerAsignadas = alVerAsignadas,
+            alVerBloqueos = alVerBloqueos,
         ),
         ahora = ahora,
         ahoraDelSistema = { segundero.value },
     )
+}
+
+/**
+ * El ViewModel de Estado. Con [dueño] (la entrada de Estado) es el mismo que usa Estado: así la pantalla
+ * Bloqueos muestra enseguida lo último que contestó el servidor y no pregunta dos veces (decisión 63).
+ */
+@Composable
+fun estadoViewModel(dueño: ViewModelStoreOwner? = null): EstadoViewModel = viewModelDeZonda(dueño) {
+    EstadoViewModel(it.obtenerEstadoRed, it.observarAlertas, it.sincronizarAlertas, it.redes, it.alertas, it.conectividad, it.accionesPendientes, it.observarEstadoSistema)
 }
 
 /** Lo que se puede hacer en Estado. Cada acción tiene un valor por defecto para las pruebas. */
@@ -157,6 +166,8 @@ data class AccionesEstado(
     val alVerNoAplicadas: () -> Unit = {},
     /** "Ver" del aviso de alertas asignadas: Alertas con "Asignadas a mí" (decisión 42; Figma 468-2018). */
     val alVerAsignadas: () -> Unit = {},
+    /** La línea de Bloqueos con más de uno: la pantalla Bloqueos (decisión 63). Con uno, se abre su alerta. */
+    val alVerBloqueos: () -> Unit = {},
 )
 
 /**
@@ -338,11 +349,8 @@ private fun LazyListScope.datosDeLaRed(
     }
     estado.sistema?.let { sistema -> item(key = "estado-del-sistema") { TarjetaEstadoSistema(sistema, ahoraDelSistema) } }
     estado.sistema?.takeIf { it.bloqueos.isNotEmpty() }?.let { sistema ->
-        // La hora solo decide si "vence 13:34" lleva la fecha: con el reloj de 30 s alcanza y la tarjeta no se
-        // vuelve a armar cada segundo, como pasaba con el segundero de Estado del sistema.
-        item(key = "bloqueos") {
-            TarjetaBloqueos(sistema.bloqueos, sistema.firewall == EstadoPieza.FUNCIONA, zona, ahora, acciones.alAbrirDetalle)
-        }
+        // Una sola línea, por más bloqueos que haya (decisión 63): la lista de alertas no baja.
+        item(key = "bloqueos") { TarjetaBloqueos(sistema.bloqueos, acciones.alAbrirDetalle, acciones.alVerBloqueos) }
     }
     item {
         // "Ver todas" no está con la red tranquila y sin filtro (Figma 1-178): la leyenda ocupa ese lugar.
@@ -701,9 +709,12 @@ private class EnElMedioDeLaPantalla(private val barraDeEstado: Int) : PopupPosit
         IntOffset((windowSize.width - popupContentSize.width) / 2, barraDeEstado + (windowSize.height - popupContentSize.height) / 2)
 }
 
-/** La hora de ahora, que avanza cada 30 segundos: así "Última alta sin revisar: hace 5 min" no se queda quieta. */
+/**
+ * La hora de ahora, que avanza cada 30 segundos: así "Última alta sin revisar: hace 5 min" no se queda quieta.
+ * También la usa la pantalla Bloqueos para saber si "vence 13:34" lleva la fecha.
+ */
 @Composable
-private fun relojDeLaPantalla(): State<Instant> = relojQueAvanza(cada = 30_000)
+internal fun relojDeLaPantalla(): State<Instant> = relojQueAvanza(cada = 30_000)
 
 /** La hora de ahora, que avanza cada segundo, para "Última corrida hace 12 s" de la tarjeta Estado del sistema. */
 @Composable

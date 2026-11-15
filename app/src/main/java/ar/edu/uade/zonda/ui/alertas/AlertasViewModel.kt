@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import ar.edu.uade.zonda.domain.model.Alerta
 import ar.edu.uade.zonda.domain.model.ErrorZonda
 import ar.edu.uade.zonda.domain.model.FiltroAlertas
+import ar.edu.uade.zonda.domain.model.FiltroEstado
 import ar.edu.uade.zonda.domain.model.FiltroResponsable
 import ar.edu.uade.zonda.domain.model.OpcionesDeFiltro
 import ar.edu.uade.zonda.domain.model.Red
+import ar.edu.uade.zonda.domain.model.enOrdenDePrioridad
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.Conectividad
 import ar.edu.uade.zonda.domain.repository.RedesRepository
@@ -58,8 +60,14 @@ class AlertasViewModel(
     /** El error de la última sincronización, o null si salió bien; sin nada guardado, reemplaza la lista. */
     private val ultimoError = MutableStateFlow<ErrorZonda?>(null)
 
+    /**
+     * La lista del filtro. Con «Sin revisar» es una cola de trabajo: las altas primero, como en Estado y en el
+     * tablero (decisión 63). Con cualquier otro estado, por fecha, porque es el historial.
+     */
     private val lista: Flow<List<Alerta>> = filtro
-        .flatMapLatest { observarAlertas(it) }
+        .flatMapLatest { elegido ->
+            observarAlertas(elegido).map { alertas -> if (elegido.estado == FiltroEstado.SIN_REVISAR) alertas.enOrdenDePrioridad() else alertas }
+        }
         .onEach { primeraLectura.value = true }
 
     /** Las horas de inicio con los demás filtros y sin período ni fechas: cuenta "Mostrar N alertas" de Fechas. */

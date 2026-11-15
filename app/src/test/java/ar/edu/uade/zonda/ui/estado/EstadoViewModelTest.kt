@@ -79,7 +79,7 @@ class EstadoViewModelTest {
         ResultadoSincronizacion(nuevas = nuevas, modificadas = 0, altasNuevas = 0, accionesEnviadas = 0, accionesConError = 0, hora = hora)
 
     @Test
-    fun `con datos muestra el semaforo, los contadores y las sin revisar de la mas reciente a la mas vieja`() = runTest {
+    fun `con datos muestra el semaforo, los contadores y las sin revisar, primero las altas y de la mas reciente a la mas vieja`() = runTest {
         conRedYAlertas()
 
         viewModel().estado.test {
@@ -87,7 +87,8 @@ class EstadoViewModelTest {
 
             assertEquals(Semaforo.ROJO, estado.datos.semaforo)
             assertEquals(ContadoresSinRevisar(altas = 2, medias = 1, bajas = 1), estado.datos.sinRevisar)
-            assertEquals(listOf("baja", "alta-nueva", "media", "alta-vieja"), estado.datos.alertas.map { it.id })
+            // La baja es la más nueva, pero las altas van arriba (decisión 63).
+            assertEquals(listOf("alta-nueva", "alta-vieja", "media", "baja"), estado.datos.alertas.map { it.id })
             assertEquals(Fixtures.AHORA, estado.datosDe)
             assertFalse(estado.sinConexion)
             assertNull(estado.severidadElegida)
@@ -154,7 +155,7 @@ class EstadoViewModelTest {
 
             // Los contadores y la lista son dos consultas: se espera a que lleguen las dos.
             val estado = esperar { (it.contenido as? ContenidoEstado.Datos)?.let { d -> d.semaforo == Semaforo.AMARILLO && d.alertas.size == 2 } == true }
-            assertEquals(listOf("baja", "media"), estado.datos.alertas.map { it.id })
+            assertEquals(listOf("media", "baja"), estado.datos.alertas.map { it.id })
             assertEquals(Fixtures.AHORA.minus(Duration.ofHours(1)).minus(Duration.ofMinutes(10)), estado.datos.ultimaDeteccion)
             cancelAndIgnoreRemainingEvents()
         }

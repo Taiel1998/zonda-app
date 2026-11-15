@@ -14,6 +14,7 @@ import ar.edu.uade.zonda.domain.model.Periodo
 import ar.edu.uade.zonda.domain.model.ProgresoDescarga
 import ar.edu.uade.zonda.domain.model.Semaforo
 import ar.edu.uade.zonda.domain.model.Severidad
+import ar.edu.uade.zonda.domain.model.enOrdenDePrioridad
 import ar.edu.uade.zonda.domain.repository.AccionesPendientesRepository
 import ar.edu.uade.zonda.domain.repository.AlertasRepository
 import ar.edu.uade.zonda.domain.repository.Conectividad
@@ -233,7 +234,8 @@ class EstadoViewModel(
                 semaforo = red.semaforo,
                 sinRevisar = red.sinRevisar,
                 ultimaDeteccion = ultimaDeteccion(red.semaforo, sinRevisar),
-                alertas = if (elegida == null) sinRevisar else sinRevisar.filter { it.severidad == elegida },
+                // Primero las altas, después las medias y al final las bajas, cada grupo por fecha (decisión 63).
+                alertas = (if (elegida == null) sinRevisar else sinRevisar.filter { it.severidad == elegida }).enOrdenDePrioridad(),
             )
         }
 
