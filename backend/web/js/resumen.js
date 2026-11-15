@@ -312,13 +312,6 @@ function elegirModelo(valor) {
 }
 
 /** Las altas: si ya están todas las de la red entre los tipos, se sacan; si no, se suman. */
-function tocarAltas() {
-  const altas = altasConfiguradas();
-  const todas = altas.size > 0 && [...altas].every((t) => r.tipos.has(t));
-  for (const t of altas) { if (todas) r.tipos.delete(t); else r.tipos.add(t); }
-  pintarResumen();
-}
-
 function limpiarFiltros() {
   r.barras.clear();
   r.tipos.clear();
@@ -351,9 +344,15 @@ function botonTocable(clase, elegido, alTocar, ...hijos) {
 }
 
 /** Los cinco indicadores de arriba, iguales, como una fila de paneles «Stat» de Grafana: el nombre, el número y
-    un detalle, sin bloques de color. Tocarlos filtra igual que en la app. */
+    un detalle, sin bloques de color. Los tres primeros filtran al tocarlos, como en la app. Los otros dos solo
+    informan: en la app se tocan para filtrar por las revisadas o por los tipos en alta, pero un tiempo y un
+    porcentaje no se leen como un filtro, y eso ya se filtra desde «Revisadas» y desde «Por tipo de ataque». */
 function indicadores(x) {
   const altas = porciento(x.altasParte, x.altasTotal);
+  const dato = (nombre, valor, detalle) => el('div', { class: 'res-indicador fijo' },
+    el('span', { class: 'res-indicador-nombre' }, nombre),
+    el('strong', {}, valor),
+    el('span', { class: 'res-indicador-detalle' }, detalle));
   const indicador = (elegido, alTocar, nombre, valor, detalle, punto = null) => botonTocable('res-indicador', elegido, alTocar,
     el('span', { class: 'res-indicador-nombre' }, punto, nombre),
     el('strong', {}, valor),
@@ -363,10 +362,8 @@ function indicadores(x) {
     indicador(r.revision === 'revisadas', () => elegirRevision('revisadas'), 'Revisadas', numero(x.revisadas), `${porciento(x.revisadas, x.total) || '0 %'} del total`),
     indicador(r.revision === 'sin_revisar', () => elegirRevision('sin_revisar'), 'Sin revisar', numero(x.sinRevisar), x.sinRevisar ? 'esperan revisión' : 'nada pendiente',
       x.sinRevisar ? el('i', { class: 'punto', style: 'background:var(--media)' }) : null),
-    indicador(r.revision === 'revisadas', () => elegirRevision('revisadas'), 'Primera revisión', x.mediana === null ? '—' : duracionCorta(x.mediana),
-      x.mediana === null ? 'sin revisiones todavía' : 'mediana del período'),
-    indicador(sonLasAltas(), tocarAltas, 'Altas revisadas a tiempo', altas || '—',
-      x.altasTotal ? `${x.altasParte} de ${x.altasTotal} en la primera hora` : 'ninguna alta con más de 1 h'));
+    dato('Primera revisión', x.mediana === null ? '—' : duracionCorta(x.mediana), x.mediana === null ? 'sin revisiones todavía' : 'mediana del período'),
+    dato('Altas revisadas a tiempo', altas || '—', x.altasTotal ? `${x.altasParte} de ${x.altasTotal} en la primera hora` : 'ninguna alta con más de 1 h'));
 }
 
 /** Las barras llenan el alto de su tarjeta, que es el de la de al lado. El número va solo arriba de las barras
