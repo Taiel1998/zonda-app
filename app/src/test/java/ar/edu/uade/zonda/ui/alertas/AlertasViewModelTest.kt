@@ -108,6 +108,30 @@ class AlertasViewModelTest {
     }
 
     @Test
+    fun `con el filtro Sin revisar van primero las altas, y con los demas la lista va por fecha`() = runTest {
+        redes.agregar(Fixtures.red("red-1"))
+        alertas.agregar(
+            Fixtures.alerta("media-nueva", severidad = Severidad.MEDIA, creadaEn = Fixtures.AHORA),
+            Fixtures.alerta("alta-vieja", severidad = Severidad.ALTA, creadaEn = Fixtures.AHORA.minus(Duration.ofHours(3))),
+            Fixtures.alerta("baja", severidad = Severidad.BAJA, creadaEn = Fixtures.AHORA.minus(Duration.ofHours(1))),
+            Fixtures.alerta("revisada", severidad = Severidad.ALTA, creadaEn = Fixtures.AHORA.minus(Duration.ofHours(2)), revision = Fixtures.revision(origen = OrigenRevision.SERVIDOR)),
+        )
+        val viewModel = viewModel()
+
+        viewModel.estado.test {
+            val todas = esperar { (it.contenido as? ContenidoAlertas.Lista)?.alertas?.size == 4 }
+            assertEquals(listOf("media-nueva", "baja", "revisada", "alta-vieja"), (todas.contenido as ContenidoAlertas.Lista).alertas.map { it.id })
+
+            // Las sin revisar son una cola de trabajo: las altas arriba, como en Estado y en el tablero (decisión 63).
+            // Se espera la lista de tres: el filtro nuevo llega antes que la consulta nueva.
+            viewModel.aplicarFiltro(FiltroAlertas(estado = FiltroEstado.SIN_REVISAR))
+            val sinRevisar = esperar { it.filtro.estado == FiltroEstado.SIN_REVISAR && (it.contenido as? ContenidoAlertas.Lista)?.alertas?.size == 3 }
+            assertEquals(listOf("alta-vieja", "media-nueva", "baja"), (sinRevisar.contenido as ContenidoAlertas.Lista).alertas.map { it.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `sin alertas guardadas y sin filtro el vacio no ofrece quitar filtros`() = runTest {
         redes.agregar(Fixtures.red("red-1"))
 
