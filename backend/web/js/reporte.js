@@ -31,7 +31,8 @@ const C = {
 };
 // En cada barra, de abajo hacia arriba; la leyenda va al revés.
 const SEVERIDADES = ['baja', 'media', 'alta'];
-const NOMBRE_SEVERIDAD = { alta: 'Alta', media: 'Media', baja: 'Baja' };
+// La leyenda del gráfico cuenta las de cada severidad, como la tarjeta «Alertas» del Resumen: «38 altas».
+const CUENTA_SEVERIDAD = { alta: ['alta', 'altas'], media: ['media', 'medias'], baja: ['baja', 'bajas'] };
 const TITULO_GRAFICO = { hora: 'Alertas por hora', dia: 'Alertas por día', semana: 'Alertas por semana' };
 const DIA_CORTO = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 const DIA_LARGO = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -190,13 +191,15 @@ export async function dibujarReporte(x, o) {
   // Las alertas por día (o por hora o por semana), con la severidad apilada y el total arriba.
   caja(0, y, ANCHO, altoGrafico, 6, null, C.borde);
   titulo(TITULO_GRAFICO[x.escala] || 'Alertas', 0, y);
+  // La leyenda: solo las severidades que hubo, con cuántas alertas de cada una en todo el período.
   g.font = fuente(400, 8.5);
-  const leyenda = [...SEVERIDADES].reverse();
-  let lx = ANCHO - 10 - leyenda.reduce((suma, s) => suma + 10 + g.measureText(NOMBRE_SEVERIDAD[s]).width + 10, -10);
-  for (const s of leyenda) {
-    caja(lx, y + 11.5, 6.5, 6.5, 1, C[s]);
-    texto(NOMBRE_SEVERIDAD[s], lx + 10, y + 17.5, { tamano: 8.5, color: C.texto2 });
-    lx += 10 + g.measureText(NOMBRE_SEVERIDAD[s]).width + 10;
+  const leyenda = [...SEVERIDADES].reverse().filter((s) => x.porSeveridad[s])
+    .map((s) => ({ s, nombre: `${numero(x.porSeveridad[s])} ${plural(x.porSeveridad[s], ...CUENTA_SEVERIDAD[s])}` }));
+  let lx = ANCHO - 10 - leyenda.reduce((suma, l) => suma + 10 + g.measureText(l.nombre).width + 10, -10);
+  for (const l of leyenda) {
+    caja(lx, y + 11.5, 6.5, 6.5, 1, C[l.s]);
+    texto(l.nombre, lx + 10, y + 17.5, { tamano: 8.5, color: C.texto2 });
+    lx += 10 + g.measureText(l.nombre).width + 10;
   }
   const arriba = y + 30 + 13;
   const base = y + altoGrafico - 23;

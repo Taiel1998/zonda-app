@@ -62,6 +62,7 @@
             <button class="boton-barra boton-rango" id="tiempo-rango" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="selector-tiempo"><span data-icono="reloj"></span><span id="tiempo-texto">Últimos 15 minutos</span><span data-icono="abajo"></span></button>
             <button class="boton-barra" id="tiempo-adelante" type="button" data-icono="derecha" aria-label="Correr el horario para adelante" title="Correr el horario para adelante"></button>
           </div>
+          <button class="boton-barra" id="tiempo-ahora" type="button" title="Volver al horario que termina ahora" hidden>Volver a ahora</button>
           <button class="boton-barra" id="tiempo-alejar" type="button" data-icono="alejar" aria-label="Alejar: el doble de tiempo" title="Alejar: el doble de tiempo"></button>
           <div class="grupo-botones" id="grupo-actualizar">
             <button class="boton-barra" id="boton-actualizar" type="button" title="Actualizar ahora"><span data-icono="actualizar"></span><span class="texto-boton">Actualizar</span></button>
@@ -192,7 +193,7 @@
               <div>
                 <div class="titulo-con-ayuda"><h3 class="tarjeta-titulo">Conexiones por servicio</h3><button class="boton-ayuda" type="button" data-ayuda="servicios" data-ayuda-titulo="Conexiones por servicio" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Cómo se lee Conexiones por servicio" title="Cómo se lee">?</button></div>
                 <p class="tarjeta-sub">Cuántas conexiones hubo, por servicio.</p>
-                <template id="ayuda-servicios"><p>Cada barra suma las conexiones de ese tramo, con un color por servicio.</p><p>Las marcas de abajo son las alertas.</p><p>Arrastrá sobre el gráfico para acercarte.</p></template>
+                <template id="ayuda-servicios"><p>Cada punto suma las conexiones de ese tramo, con un color por servicio.</p><p>Las marcas de abajo son las alertas.</p><p>Arrastrá sobre el gráfico para acercarte.</p></template>
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="servicios" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Conexiones por servicio" title="Menú del panel"></button></div>
             </div>

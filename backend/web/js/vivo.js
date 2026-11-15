@@ -14,7 +14,7 @@ import {
   refrescarTablas, servicioDe, tipoCorto,
 } from './comun.js';
 import {
-  claveRango, esRelativo, esperarArrastre, fraseRango, nombrePaso, nombreRango, pasoPara, prepararGraficoDeTiempo, rangoActual,
+  claveRango, esRelativo, esperarArrastre, etiquetaRango, fraseRango, nombrePaso, nombreRango, pasoPara, prepararGraficoDeTiempo, rangoActual,
 } from './tiempo.js';
 import { abrirDetalle } from './alertas.js';
 
@@ -208,11 +208,14 @@ export function pintarGraficosPiezas() {
   // Lo que cabe en un tramo si la pieza anduvo todo el tiempo: tres revisiones y seis consultas por minuto.
   const lleno = (porMinuto, valores) => Math.max((porMinuto * p.paso) / 60, ...valores);
   $('rango-estado').textContent = p.grande ? nombreRango() : 'Última hora';
+  // Las cuatro piezas van en el mismo verde: cada una tiene su gráfico y su título, y un color distinto en una
+  // sola se leía como si quisiera decir algo.
+  const verde = c['--serie-2'];
 
   const conexiones = new Map(p.trafico.total.map((x) => [x.t, x.conexiones]));
   const vistas = tramos.map((t) => conexiones.get(t) || 0);
   dibujar('pieza-sensor', opcionesMini(c, { ...ventana, puntos: puntos(vistas) },
-    { tipo: 'barras', color: c['--serie-2'], nombre: 'conexiones', paso: p.paso, ejes: e.panelGrande === 'sensor' }));
+    { tipo: 'barras', color: verde, nombre: 'conexiones', paso: p.paso, ejes: e.panelGrande === 'sensor' }));
   avisoMini('sensor', vistas.some((v) => v > 0) ? '' : `Sin conexiones ${donde}`);
   $('pie-sensor').textContent = `Conexiones ${cada}`;
   e.tablas.sensor = tablaPorTramo(tramos, p.paso, vistas, 'Conexiones');
@@ -220,7 +223,7 @@ export function pintarGraficosPiezas() {
   const latidos = new Map(p.latidos.minutos.map((x) => [x.minuto, x.latidos]));
   const revisiones = tramos.map((t) => latidos.get(t) || 0);
   dibujar('pieza-analisis', opcionesMini(c, { ...ventana, puntos: puntos(revisiones) },
-    { tipo: 'barras', color: c['--verde'], nombre: 'revisiones', paso: p.paso, maximo: lleno(3, revisiones), ejes: e.panelGrande === 'analisis' }));
+    { tipo: 'barras', color: verde, nombre: 'revisiones', paso: p.paso, maximo: lleno(3, revisiones), ejes: e.panelGrande === 'analisis' }));
   avisoMini('analisis', revisiones.some((v) => v > 0) ? '' : `Sin revisiones ${donde}`);
   $('pie-analisis').textContent = `Revisiones ${cada}`;
   e.tablas.analisis = tablaPorTramo(tramos, p.paso, revisiones, 'Revisiones');
@@ -237,7 +240,7 @@ export function pintarGraficosPiezas() {
     return x && x.minutos < p.paso / 60 ? `Anduvo ${numero(x.minutos)} de ${numero(p.paso / 60)} min` : '';
   };
   dibujar('pieza-servidor', opcionesMini(c, { ...ventana, puntos: recibidos }, {
-    tipo: 'linea', color: c['--serie-1'], nombre: 'datos recibidos', paso: p.paso, marcas: marcasDe(ventana), nota: anduvo, ejes: e.panelGrande === 'servidor',
+    tipo: 'linea', color: verde, nombre: 'datos recibidos', paso: p.paso, marcas: marcasDe(ventana), nota: anduvo, ejes: e.panelGrande === 'servidor',
   }));
   avisoMini('servidor', filas.size ? '' : `Sin datos ${donde}`);
   $('pie-servidor').textContent = `Datos recibidos ${cada}`;
@@ -247,7 +250,7 @@ export function pintarGraficosPiezas() {
   if (!$('pieza-firewall').hidden) {
     const consultas = tramos.map((t) => (filas.has(t) ? filas.get(t).firewall : 0));
     dibujar('pieza-firewall', opcionesMini(c, { ...ventana, puntos: puntos(consultas) },
-      { tipo: 'barras', color: c['--serie-2'], nombre: 'consultas', paso: p.paso, maximo: lleno(6, consultas), ejes: e.panelGrande === 'firewall' }));
+      { tipo: 'barras', color: verde, nombre: 'consultas', paso: p.paso, maximo: lleno(6, consultas), ejes: e.panelGrande === 'firewall' }));
     avisoMini('firewall', consultas.some((v) => v > 0) ? '' : `Sin consultas ${donde}`);
     $('pie-firewall').textContent = `Consultas ${cada}`;
     e.tablas.firewall = tablaPorTramo(tramos, p.paso, consultas, 'Consultas');
@@ -515,8 +518,9 @@ export function pintarTrafico() {
   // Una sola sin respuesta entre cientos no es «0 %»: debajo del 1 %, con un decimal.
   const parte = total ? (100 * fallidas) / total : 0;
   const proporcion = fallidas && parte < 0.05 ? 'menos del 0,1 %' : porcentaje(fallidas, total, fallidas && parte < 1 ? 1 : 0);
-  // El número grande es del horario elegido, no de ahora: la etiqueta lo dice, como «Ahora» en los otros dos.
-  $('rango-sin-respuesta').textContent = /^\d/.test(nombreRango()) ? 'Horario elegido' : nombreRango();
+  // El número grande es del horario elegido, no de ahora: la etiqueta lo dice, como «Ahora» en los otros dos, y
+  // en corto («15 min»), para que entre al lado del título igual que en ellos.
+  $('rango-sin-respuesta').textContent = etiquetaRango();
   $('sin-respuesta-detalle').textContent = total ? `${proporcion} de ${numero(total)} conexiones` : 'Ninguna conexión';
   $('trafico-ahora-detalle').textContent = `${bytes(bytesTotal)} ${frase}`;
   $('conexiones-ahora-detalle').textContent = `Promedio de los últimos 30 segundos. ${numero(total)} conexiones ${frase}.`;

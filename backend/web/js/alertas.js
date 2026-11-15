@@ -15,7 +15,7 @@ import { alternarAyuda, cerrarAyuda } from './ayuda.js';
 import { enPagina, piePaginas, primeraPagina } from './paginas.js';
 import { bloqueoPorAlerta, origenBloqueado, seccionBloqueo } from './bloqueo.js';
 import {
-  RANGOS_ALERTAS, claveRango, esRelativo, fraseRango, horasDe, nombreRango, rangoActual, rangoCorrido, selectorDeHorario,
+  RANGOS_ALERTAS, claveRango, esRelativo, fraseRango, guardaTrafico, horasDe, nombreRango, rangoActual, rangoCorrido, selectorDeHorario,
 } from './tiempo.js';
 
 // ---- Sincronización por cursor, como la app ----
@@ -266,8 +266,12 @@ function ponerRangoAlertas(rango) {
   pintarAlertas();
 }
 
+// Del detalle de una alerta a los gráficos de En vivo en ese rato: lo arma tablero.js, que es quien cambia de vista.
+let verTraficoDe = null;
+
 /** El selector del horario de la lista: los rangos de las alertas, que se guardan más que el tráfico. */
-export function configurarAlertas() {
+export function configurarAlertas({ verTrafico = null } = {}) {
+  verTraficoDe = verTrafico;
   for (const lugar of document.querySelectorAll('#barra-tiempo-alertas [data-icono], #alertas-csv [data-icono]')) lugar.prepend(icono(lugar.dataset.icono));
   $('alertas-csv').addEventListener('click', bajarCsvAlertas);
   for (const boton of $('tabla-alertas').tHead.querySelectorAll('button[data-orden]')) {
@@ -501,7 +505,10 @@ export function abrirDetalle(id, enfocar = true, { sinHistoria = false } = {}) {
         el('div', {}, el('dt', {}, 'Conexiones en 60 s'), el('dd', {}, numero(v.contexto60s))),
         el('div', {}, el('dt', {}, 'Aviso de Telegram'), el('dd', {}, a.avisoTelegram ? `Salió a las ${horaConSegundos(Date.parse(a.avisoTelegram))}` : 'No salió')),
         // Como en la app: un solo puerto no dice nada; varios, que el origen probó puertos.
-        a.puertosDistintos > 1 ? el('div', {}, el('dt', {}, 'Puertos distintos'), el('dd', {}, numero(a.puertosDistintos))) : null)),
+        a.puertosDistintos > 1 ? el('div', {}, el('dt', {}, 'Puertos distintos'), el('dd', {}, numero(a.puertosDistintos))) : null),
+      // Los gráficos de En vivo en el rato de la alerta, mientras el servidor guarda ese tráfico (una semana).
+      verTraficoDe && guardaTrafico(Date.parse(a.inicio))
+        ? el('button', { type: 'button', class: 'boton-texto ver-trafico', onclick: () => verTraficoDe(a) }, 'Ver el tráfico de ese momento') : null),
     el('section', { class: 'detalle-seccion' },
       el('h3', {}, 'Predicción por método'),
       METODOS.map((m) => el('div', { class: `veredicto ${v[m.id] ? 'anomalo' : 'normal'}` },

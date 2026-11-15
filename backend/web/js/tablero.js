@@ -3,7 +3,7 @@
 // navegador queda como un dispositivo más, con su perfil y su vencimiento.
 
 import { api, borrarAcceso, cambiarUrl, guardarAcceso, horaConSegundos, icono, leerAcceso, vaciar, el } from './util.js';
-import { $, alCambiarAlertas, cuandoExpire, e } from './comun.js';
+import { $, ahoraServidor, alCambiarAlertas, cuandoExpire, e } from './comun.js';
 import {
   PIEZAS, actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
   configurarVivo, pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
@@ -16,11 +16,11 @@ import { avisarEnLaCompu, avisosActivados, configurarAvisos } from './avisos.js'
 import { pintarResumen } from './resumen.js';
 import { actualizarAjustes, actualizarPersonas, cambiosSinGuardar, configurarAjustes, pintarAjustes } from './ajustes.js';
 import { avisoError, confirmar } from './hojas.js';
-import { cadaCuanto, cerrarSelector, configurarTiempo, leerUrl, pintarBarra } from './tiempo.js';
+import { cadaCuanto, cerrarSelector, configurarTiempo, esRelativo, leerUrl, pintarBarra, ponerRango } from './tiempo.js';
 import { cerrarInspector, configurarPaneles, salirDeGrande, teclaDePanel, verEnGrande } from './paneles.js';
 import { cerrarMenu, configurarMenu } from './menu.js';
 import { alternarAyuda, cerrarAyuda, configurarAyuda } from './ayuda.js';
-import { configurarFilas, filaAbierta } from './filas.js';
+import { abrirFilaDe, configurarFilas, filaAbierta } from './filas.js';
 import { actualizarBloqueos, configurarBloqueos } from './bloqueo.js';
 import { actualizarLlave, ofrecerLlave } from './llave.js';
 
@@ -245,11 +245,14 @@ function pintarEnVivo() {
   texto.textContent = e.servidorCaido ? `Sin respuesta desde las ${horaConSegundos(e.ultimaRespuesta)}`
     : segundos <= 2 ? 'En vivo · recién' : `En vivo · hace ${segundos} s`;
   // Con la actualización apagada los gráficos quedan quietos: la cabecera no dice «En vivo», como en Grafana.
-  if (!e.servidorCaido && segundos <= 60 && cadaCuanto() === Infinity) {
+  // Tampoco mientras En vivo muestra un horario que no termina ahora: sus gráficos son de ese rato.
+  const horarioFijo = e.vista === 'vivo' && !esRelativo();
+  const quieto = !e.servidorCaido && segundos <= 60 && (horarioFijo || cadaCuanto() === Infinity);
+  if (quieto) {
     indicador.dataset.estado = 'pausa';
-    texto.textContent = 'Actualización apagada';
+    texto.textContent = horarioFijo ? 'Horario fijo' : 'Actualización apagada';
   }
-  indicador.title = texto.textContent;
+  indicador.title = quieto && horarioFijo ? 'Los gráficos muestran el horario elegido, no lo de ahora' : texto.textContent;
   const banda = $('banda-error');
   banda.hidden = !(e.servidorCaido || segundos > 60);
   banda.textContent = 'El servidor de alertas no contesta. El tablero muestra lo último que recibió y sigue intentando.';
@@ -387,6 +390,24 @@ function alNavegar() {
   cambiarUrl({ vista: e.vista === 'vivo' ? null : e.vista });
 }
 
+/** Del detalle de una alerta, a los gráficos de En vivo en el rato de la alerta: desde cinco minutos antes de que
+    empezara hasta cinco después de que terminara, sin pasarse de ahora. Se vuelve con «Volver a ahora». El detalle
+    se cierra sin ir para atrás en el historial: Atrás lleva de los gráficos a la lista de la que se vino. */
+function verTraficoDeAlerta(a) {
+  const margen = 5 * 60e3;
+  const desde = Math.floor((Date.parse(a.inicio) - margen) / 1000) * 1000;
+  const hasta = Math.ceil(Math.min(Date.parse(a.fin) + margen, ahoraServidor()) / 1000) * 1000;
+  cerrarDetalle({ sinHistoria: true });
+  cambiarUrl({ alerta: null });
+  ponerRango({ desde: String(desde), hasta: String(hasta) });
+  cambiarVista('vivo');
+  // Los gráficos del tráfico están en su fila: se despliega si estaba plegada y la pantalla baja hasta ella
+  // (cambiarVista la deja arriba de todo).
+  const servicios = $('tarjeta-servicios');
+  abrirFilaDe(servicios);
+  servicios.closest('.fila').scrollIntoView({ block: 'start' });
+}
+
 /** Las sin revisar de una severidad en la lista de Alertas: los contadores de En vivo y el aviso de varias altas. */
 function abrirSinRevisar(severidad) {
   verSinRevisar(severidad);
@@ -446,7 +467,7 @@ function iniciar() {
   configurarFilas({ alCambiar: alCambiarFila });
   configurarMapa();
   configurarTiempo({ alCambiarRango: actualizarHorario, actualizarAhora: actualizarTodo });
-  configurarAlertas();
+  configurarAlertas({ verTrafico: verTraficoDeAlerta });
   configurarPaneles({
     // El mapa y las piezas del estado del sistema (que en grande llevan ejes) se arman según el tamaño del
     // panel; los otros gráficos se ajustan solos.
