@@ -1336,7 +1336,6 @@
     <string name="bloqueo_sin_conexion">Sin conexión: el bloqueo no se envió.</string>
     <string name="error_bloqueo_no_posible">El servidor no aceptó el cambio del bloqueo.</string>
     <string name="bloqueos_titulo">Bloqueos</string>
-    <string name="bloqueos_pedido_por">Pedido de %1$s · espera aprobación</string>
     <!-- La línea de Bloqueos en Estado (decisión 63), igual que la pieza Firewall del tablero: con uno solo lo
          nombra; con varios, cuántos hay de cada estado, sin los que están en cero. -->
     <string name="bloqueos_uno_bloqueado">%1$s bloqueado</string>
@@ -1353,6 +1352,21 @@
     </plurals>
     <!-- La pantalla Bloqueos cuando se desbloqueó el último mientras estaba abierta. -->
     <string name="bloqueos_vacio">No hay equipos bloqueados ni pedidos de bloqueo.</string>
+    <!-- La pantalla Bloqueos, en grupos con su título; un grupo vacío no aparece. Cada fila dice lo que agrega
+         al título de su grupo. -->
+    <string name="bloqueos_grupo_pedidos">Esperan aprobación</string>
+    <string name="bloqueos_grupo_bloqueando">Bloqueando</string>
+    <string name="bloqueos_grupo_sin_aplicar">Sin aplicar</string>
+    <string name="bloqueos_grupo_bloqueados">Bloqueados</string>
+    <string name="bloqueos_fila_pedido">Pedido de %1$s</string>
+    <string name="bloqueos_fila_vence">Vence %1$s</string>
+    <string name="bloqueos_fila_hasta_desbloquear">Hasta desbloquear</string>
+    <!-- La dirección delante, si el equipo tiene nombre: dos direcciones pueden llamarse igual en el catálogo. -->
+    <string name="bloqueos_fila_con_ip">%1$s · %2$s</string>
+    <!-- El buscador de la pantalla Bloqueos, desde 9 equipos, con los textos del de Equipos del tablero. -->
+    <string name="bloqueos_buscar">Buscar equipo o IP</string>
+    <string name="bloqueos_buscar_ejemplo">Por ejemplo: rrhh o 30.50</string>
+    <string name="bloqueos_sin_coincidencias">Ningún equipo coincide con «%1$s».</string>
     <string name="estado_sistema_firewall">Firewall</string>
     <string name="estado_sistema_firewall_ultima">Última consulta hace %1$s</string>
     <string name="estado_sistema_ayuda_con_firewall">Sensor de red: recibe una copia del tráfico de la red.\nAnálisis en vivo: analiza ese tráfico cada 20 s.\nServidor de alertas: guarda las alertas y avisa por Telegram.\nFirewall: aplica los bloqueos que aprueba una persona; pregunta cada 10 s.\nVerde: funciona. Ámbar: el sensor pierde tráfico. Rojo: no funciona o no hay datos.</string>
