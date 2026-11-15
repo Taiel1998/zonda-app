@@ -256,14 +256,14 @@ function hojaMotivo({ titulo, lineas, ejemplo, alGuardar }) {
     titulo,
     cuerpo: [
       el('ul', { class: 'lista-cambios' }, lineas.map((linea) => el('li', {}, linea))),
-      el('label', { class: 'campo' }, el('span', {}, uno ? '¿Por qué lo cambiás?' : '¿Por qué los cambiás?', el('span', { class: 'asterisco', title: 'Obligatorio' }, ' *')), motivo),
+      el('label', { class: 'campo' }, el('span', {}, uno ? 'Motivo del cambio' : 'Motivo de los cambios', el('span', { class: 'asterisco', title: 'Obligatorio' }, ' *')), motivo),
       error,
     ],
     acciones: [
       { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
       {
         texto: 'Guardar', tipo: 'principal', alHacer: async (h) => {
-          if (!motivo.value.trim()) { error.hidden = false; error.textContent = uno ? 'Escribí por qué lo cambiás.' : 'Escribí por qué los cambiás.'; return; }
+          if (!motivo.value.trim()) { error.hidden = false; error.textContent = uno ? 'Escribí el motivo del cambio.' : 'Escribí el motivo de los cambios.'; return; }
           try {
             await alGuardar(motivo.value.trim());
             h.cerrar();
@@ -436,13 +436,13 @@ function mostrarCodigo(hoja, codigo) {
 }
 
 async function quitarPersona(p) {
-  if (!await confirmar({ titulo: `¿Quitar a ${nombrePersona(p)} del equipo?`, texto: 'Su dispositivo deja de recibir alertas y no puede volver a entrar sin un código nuevo.', aceptar: 'Quitar', peligro: true })) return;
+  if (!await confirmar({ titulo: `¿Quitar a ${nombrePersona(p)} de la red?`, texto: 'Su dispositivo deja de recibir alertas y no puede volver a entrar sin un código nuevo.', aceptar: 'Quitar', peligro: true })) return;
   try {
     const cabeceras = await cabecerasConLlave({ tipo: 'quitar', personaId: p.id });
     await pedir(`/personas/${encodeURIComponent(p.id)}`, { metodo: 'DELETE', cabeceras });
     pendientes.personas.delete(p.id);
     pendientes.bloqueos.delete(p.id);
-    avisoInferior(`Se quitó a ${nombrePersona(p)} del equipo.`);
+    avisoInferior(`${nombrePersona(p)} ya no está en la red.`);
   } catch (falla) { avisoError(falla.cancelada ? 'No se confirmó con la llave: no se quitó a nadie.' : falla.message, { duracion: 7000 }); }
   actualizarAjustes();
 }
@@ -618,16 +618,16 @@ function notificacionesNavegador() {
   }
   return bloque(titulo, 'Las notificaciones están permitidas: llegan las alertas altas cuando el tablero no está a la vista.',
     el('div', { class: 'acciones-detalle' },
-      el('button', { type: 'button', class: 'boton-secundario', onclick: () => { if (!avisoDePrueba()) avisoError('Este navegador no mostró la notificación.'); } }, 'Mandar una de prueba'),
+      el('button', { type: 'button', class: 'boton-secundario', onclick: () => { if (!avisoDePrueba()) avisoError('Este navegador no mostró la notificación.'); } }, 'Enviar una notificación de prueba'),
       el('button', { type: 'button', class: 'boton-texto', onclick: () => { apagarAvisos(); pintarAjustes(); } }, 'Desactivar')),
-    el('p', { class: 'nota' }, 'Si la de prueba no aparece, revisá que Windows tenga activadas las notificaciones de este navegador.'));
+    el('p', { class: 'nota' }, 'Si la notificación de prueba no aparece, revisá que Windows tenga activadas las notificaciones de este navegador.'));
 }
 
 function notificacionesTelegram() {
   const t = e.telegram;
   if (!t) return bloque('Telegram', 'Cargando…');
   if (!t.vinculado) {
-    return bloque('Telegram', 'Recibí los avisos de alertas en Telegram, en el chat con el bot de Zonda. Solo viajan la severidad, el servicio, la hora y la red.',
+    return bloque('Telegram', 'Recibí los avisos de alertas en Telegram, en el chat con el bot de Zonda. Solo se envían la severidad, el servicio, la hora y la red.',
       el('div', { class: 'acciones-detalle' }, el('button', { type: 'button', class: 'boton-principal', onclick: conectarTelegram }, 'Conectar Telegram')));
   }
   const filas = ORDEN_SEVERIDAD.map((s) => el('tr', {},
@@ -642,7 +642,7 @@ function notificacionesTelegram() {
   return bloque('Telegram', `Vinculado con @${t.bot}${t.vinculadoEn ? ` desde el ${fechaHora(Date.parse(t.vinculadoEn), 0)}` : ''}.`,
     tabla(['Severidad', 'Aviso'], filas),
     el('div', { class: 'acciones-detalle' },
-      el('button', { type: 'button', class: 'boton-secundario', onclick: async () => { try { await mandar('/telegram/prueba', 'POST'); avisoInferior('Aviso de prueba enviado.'); } catch (falla) { avisoError(falla.message); } } }, 'Mandar un aviso de prueba'),
+      el('button', { type: 'button', class: 'boton-secundario', onclick: async () => { try { await mandar('/telegram/prueba', 'POST'); avisoInferior('Aviso de prueba enviado.'); } catch (falla) { avisoError(falla.message); } } }, 'Enviar un aviso de prueba'),
       el('button', { type: 'button', class: 'boton-texto', onclick: desvincularTelegram }, 'Desvincular')));
 }
 
@@ -659,9 +659,9 @@ async function conectarTelegram() {
     subtitulo: `El enlace vence a las ${hora(Date.parse(vinculo.vence))}.`,
     cuerpo: [
       el('ol', { style: 'margin:0;padding-left:20px;display:grid;gap:6px' },
-        el('li', {}, 'Apretá «Abrir Telegram»: se abre el chat con el bot de Zonda.'),
-        el('li', {}, 'Apretá «Iniciar». El bot reconoce este navegador.'),
-        el('li', {}, 'Volvé acá: se actualiza solo.')),
+        el('li', {}, 'Seleccioná «Abrir Telegram»: se abre el chat con el bot de Zonda.'),
+        el('li', {}, 'Seleccioná «Iniciar». El bot reconoce este navegador.'),
+        el('li', {}, 'Volvé a esta página: se actualiza automáticamente.')),
     ],
     acciones: [
       { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
@@ -679,7 +679,7 @@ async function conectarTelegram() {
 }
 
 async function desvincularTelegram() {
-  if (!await confirmar({ titulo: '¿Desvincular Telegram?', texto: 'Este navegador deja de mandar avisos a ese chat.', aceptar: 'Desvincular', peligro: true })) return;
+  if (!await confirmar({ titulo: '¿Desvincular Telegram?', texto: 'Este navegador deja de enviar avisos a ese chat.', aceptar: 'Desvincular', peligro: true })) return;
   try { await mandar('/telegram/vinculo', 'DELETE'); e.telegram = await pedir('/telegram'); pintarAjustes(); } catch (falla) { avisoError(falla.message); }
 }
 
@@ -698,9 +698,9 @@ function fraseDe(c) {
   if (esNavegador(c.nombre) && ['persona_nueva', 'perfil', 'persona_quitada'].includes(c.tipo)) return fraseDeNavegador(c);
   if (c.tipo === 'severidad') return `${TIPOS[c.objeto] || c.objeto} pasó de ${(NIVEL[ant] || ant || '').toLowerCase()} a ${(NIVEL[des] || des || '').toLowerCase()}`;
   if (c.tipo === 'importancia') return `${c.nombre || c.objeto} pasó de ${(IMPORTANCIAS[ant] || { nombre: ant }).nombre.toLowerCase()} a ${(IMPORTANCIAS[des] || { nombre: des }).nombre.toLowerCase()}`;
-  if (c.tipo === 'persona_nueva') return `Sumó a ${c.nombre || 'una persona'} al equipo como ${(PERFILES[des] || des || '').toLowerCase()}`;
+  if (c.tipo === 'persona_nueva') return `Sumó a ${c.nombre || 'una persona'} como ${(PERFILES[des] || des || '').toLowerCase()}`;
   if (c.tipo === 'perfil') return `${c.nombre || 'Una persona'} pasó a ${(PERFILES[des] || des || '').toLowerCase()}`;
-  if (c.tipo === 'persona_quitada') return c.autorId && c.autorId === c.objeto ? 'Quitó su dispositivo del equipo' : `Quitó a ${c.nombre || 'una persona'} del equipo`;
+  if (c.tipo === 'persona_quitada') return c.autorId && c.autorId === c.objeto ? 'Quitó su dispositivo de la red' : `Quitó a ${c.nombre || 'una persona'} de la red`;
   // Decisión 51, como en la app: «Bloqueó pc-rrhh por 1 h», «Cambió el bloqueo de pc-rrhh a 24 h», «Desbloqueó
   // pc-rrhh». Un cambio de duración trae la de antes; «hasta desbloquear» viaja como texto, no como segundos.
   if (c.tipo === 'bloqueo') {
@@ -710,7 +710,7 @@ function fraseDe(c) {
     return hasta ? `Dejó ${equipo} bloqueado hasta desbloquear` : `Cambió el bloqueo de ${equipo} a ${duracionBloqueo(des)}`;
   }
   if (c.tipo === 'desbloqueo') return `Desbloqueó ${c.nombre || c.objeto}`;
-  if (c.tipo === 'permiso_bloqueo') return `${des === 'bloquea' ? 'Le dio' : 'Le sacó el'} permiso de bloquear a ${c.nombre || 'una persona'}`;
+  if (c.tipo === 'permiso_bloqueo') return `${des === 'bloquea' ? 'Le dio' : 'Le quitó el'} permiso de bloquear a ${c.nombre || 'una persona'}`;
   return c.tipo;
 }
 
@@ -731,7 +731,7 @@ function duracionBloqueo(texto) {
 function seccionRegistro() {
   const lista = registroFiltrado();
   return [
-    cabecera('Registro de cambios', 'Quién cambió la configuración, cuándo y por qué. Lo ve todo el equipo y no se puede borrar.'),
+    cabecera('Registro de cambios', 'Quién cambió la configuración, cuándo y por qué. Lo ven todos y no se puede borrar.'),
     el('input', {
       type: 'search', class: 'buscar-tabla', placeholder: 'Buscar en el registro', value: busqueda.registro, 'aria-label': 'Buscar en el registro', dataset: { foco: 'buscar-registro' },
       oninput: (ev) => { busqueda.registro = ev.target.value; primeraPagina('registro'); pintarFilasRegistro(); },

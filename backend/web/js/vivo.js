@@ -140,12 +140,12 @@ function datoFirewall(firewall, ahora) {
   return `Última consulta hace ${cuanto(ahora - Date.parse(firewall.ultimaConsulta))}`;
 }
 
-/** «Última respuesta hace 7 s», «Respondió recién» o «No responde». */
+/** «Última respuesta hace 7 s», «Respondió hace un instante» o «No responde». */
 function datoServidor() {
   if (e.servidorCaido) return 'No responde';
   if (!e.ultimaRespuesta) return 'Sin datos';
   const hace = Date.now() - e.ultimaRespuesta;
-  return hace < 3000 ? 'Respondió recién' : `Última respuesta hace ${cuanto(hace)}`;
+  return hace < 3000 ? 'Respondió hace un instante' : `Última respuesta hace ${cuanto(hace)}`;
 }
 
 /** Cuánto pasó, en una sola unidad para que el dato sea corto: 12 s, 24 min, 3 h, 2 días (como la app). */
@@ -525,7 +525,7 @@ export function pintarTrafico() {
   $('trafico-ahora-detalle').textContent = `${bytes(bytesTotal)} ${frase}`;
   $('conexiones-ahora-detalle').textContent = `Promedio de los últimos 30 segundos. ${numero(total)} conexiones ${frase}.`;
 
-  const aviso = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor. El sensor lo manda cada 5 segundos.'
+  const aviso = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor. El sensor lo envía cada 5 segundos.'
     : `No hubo tráfico ${frase}. Lo último que vio el sensor fue ${cuandoFue(g.ultimoTramo * 1000)}.`;
   const corto = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor.' : `No hubo tráfico ${frase}.`;
   for (const [id, texto] of [['vacio-servicios', aviso], ['vacio-volumen', corto], ['vacio-fallidas', corto]]) {
@@ -596,7 +596,7 @@ function pintarLeyendaServicios(g, presentes) {
       el('th', { scope: 'row' }, el('button', {
         type: 'button',
         'aria-pressed': String(visible),
-        title: 'Elegilo para ver solo este. Con Ctrl, sumalo o sacalo.',
+        title: 'Elegilo para ver solo este. Con Ctrl, se agrega o se quita.',
         onclick: (ev) => tocarServicio(x.id, presentes, ev.ctrlKey || ev.metaKey),
       }, el('i', { style: `background:var(${x.color})` }), x.nombre)),
       el('td', { class: 'num' }, numero(Math.min(...valores))),

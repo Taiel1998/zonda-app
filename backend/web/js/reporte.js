@@ -259,7 +259,7 @@ export async function dibujarReporte(x, o) {
   // A la derecha, cuánto acierta cada método sobre las revisadas y cómo se revisó.
   const x1 = anchoColumna + HUECO;
   caja(x1, y, anchoColumna, altoColumnas, 6, null, C.borde);
-  titulo('Cuánto acierta cada método', x1, y);
+  titulo('Precisión de cada método', x1, y);
   yy = y + 28;
   for (const p of x.precision) {
     texto(p.m.resumen, x1 + 10, yy + 11, { tamano: 9.5 });

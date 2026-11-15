@@ -120,7 +120,7 @@ async function mostrarIngreso(mensaje) {
     const salud = await api('/salud');
     $('ingreso-red').textContent = `Red: ${salud.red.nombre}`;
   } catch (_) {
-    $('ingreso-red').textContent = 'El servidor no contesta';
+    $('ingreso-red').textContent = 'El servidor no responde';
   }
 }
 
@@ -146,7 +146,7 @@ async function entrar(evento) {
     error.hidden = false;
     error.textContent = falla.estado === 400 ? 'Ese código no existe. Revisá las letras o pedí uno nuevo.'
       : falla.estado === 410 ? 'Ese código venció o ya se usó. Pedí uno nuevo.'
-        : falla.estado === 0 ? 'El servidor no contesta. Revisá que la computadora del servidor esté encendida y que estés en la red de la empresa.'
+        : falla.estado === 0 ? 'El servidor no responde. Verificá que la computadora del servidor esté encendida y que estés en la red de la empresa.'
           : (falla.message || 'No se pudo entrar.');
   } finally {
     boton.disabled = false;
@@ -163,7 +163,7 @@ async function salir() {
     await api('/dispositivos/actual', { token: e.acceso.token, metodo: 'DELETE' });
   } catch (falla) {
     // Si el servidor no llegó a quitar el acceso, no se olvida acá: seguiría valiendo sin que nadie lo vea.
-    if (!(falla && falla.estado === 401)) { avisoError('No se pudo salir: el servidor no contesta. Probá de nuevo.'); return; }
+    if (!(falla && falla.estado === 401)) { avisoError('No se pudo salir: el servidor no responde. Intentá de nuevo.'); return; }
   }
   terminarSesion();
 }
@@ -248,14 +248,14 @@ function pintarEnVivo() {
   const texto = $('en-vivo-texto');
   if (!e.ultimaRespuesta) {
     indicador.dataset.estado = e.servidorCaido ? 'caido' : 'lento';
-    texto.textContent = e.servidorCaido ? 'El servidor no contesta' : 'Conectando…';
+    texto.textContent = e.servidorCaido ? 'El servidor no responde' : 'Conectando…';
     indicador.title = texto.textContent;
     return;
   }
   const segundos = Math.round((Date.now() - e.ultimaRespuesta) / 1000);
   indicador.dataset.estado = e.servidorCaido || segundos > 60 ? 'caido' : segundos > 15 ? 'lento' : 'ok';
   texto.textContent = e.servidorCaido ? `Sin respuesta desde las ${horaConSegundos(e.ultimaRespuesta)}`
-    : segundos <= 2 ? 'En vivo · recién' : `En vivo · hace ${segundos} s`;
+    : segundos <= 2 ? 'En vivo · ahora' : `En vivo · hace ${segundos} s`;
   // Con la actualización apagada los gráficos quedan quietos: la cabecera no dice «En vivo», como en Grafana.
   // Tampoco mientras En vivo muestra un horario que no termina ahora: sus gráficos son de ese rato.
   const horarioFijo = e.vista === 'vivo' && !esRelativo();
@@ -264,10 +264,10 @@ function pintarEnVivo() {
     indicador.dataset.estado = 'pausa';
     texto.textContent = horarioFijo ? 'Horario fijo' : 'Actualización apagada';
   }
-  indicador.title = quieto && horarioFijo ? 'Los gráficos muestran el horario elegido, no lo de ahora' : texto.textContent;
+  indicador.title = quieto && horarioFijo ? 'Los gráficos muestran el horario elegido, no el actual' : texto.textContent;
   const banda = $('banda-error');
   banda.hidden = !(e.servidorCaido || segundos > 60);
-  banda.textContent = 'El servidor de alertas no contesta. El tablero muestra lo último que recibió y sigue intentando.';
+  banda.textContent = 'El servidor de alertas no responde. El tablero muestra los últimos datos recibidos y vuelve a intentar.';
 }
 
 // ---- Vistas ----

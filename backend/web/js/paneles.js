@@ -150,7 +150,7 @@ export function cerrarInspector() {
 /** El CSV, con los valores sin unidades si el panel los da. */
 function bajarCsv(nombre) {
   const datos = e.tablas[nombre];
-  if (!datos) { avisoNeutro('Todavía no hay datos para bajar'); return; }
+  if (!datos) { avisoNeutro('Todavía no hay datos para descargar'); return; }
   const fuente = datos.csv || datos;
   bajarArchivo(`${nombreConFecha(nombre)}.csv`, csvDe(fuente.columnas, fuente.filas));
 }

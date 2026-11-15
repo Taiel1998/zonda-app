@@ -118,7 +118,7 @@ function pasa(a, horario, conChip, porBloqueo) {
 // tocándolo otra vez, se da vuelta. De fábrica, las más nuevas primero; a igual valor, también.
 const ORDENES = {
   severidad: { valor: (a) => ORDEN_SEVERIDAD.length - ORDEN_SEVERIDAD.indexOf(a.severidad), frases: ['las más graves primero', 'las menos graves primero'] },
-  empezo: { valor: (a) => Date.parse(a.inicio), frases: ['las más nuevas primero', 'las más viejas primero'] },
+  empezo: { valor: (a) => Date.parse(a.inicio), frases: ['las más nuevas primero', 'las más antiguas primero'] },
   conexiones: { valor: (a) => a.cantidadFlujos, frases: ['las de más conexiones primero', 'las de menos conexiones primero'] },
 };
 const orden = { columna: 'empezo', descendente: true };
@@ -235,7 +235,7 @@ function textoMetodos(a) {
 /** Toda la lista con los filtros y el horario de arriba, no solo lo que se ve; los métodos y la revisión, en palabras. */
 function bajarCsvAlertas() {
   const lista = alertasFiltradas();
-  if (!lista.length) { avisoNeutro('No hay alertas con estos filtros para bajar'); return; }
+  if (!lista.length) { avisoNeutro('No hay alertas con estos filtros para descargar'); return; }
   const columnas = ['Severidad', 'Tipo', 'Origen', 'IP de origen', 'Destino', 'IP de destino', 'Servicio', 'Puerto', 'Empezó', 'Terminó',
     'Conexiones', ...METODOS.map((m) => m.nombre), 'Responsable', 'Estado', 'Revisó', 'Motivo', 'Comentario'];
   const filas = lista.map((a) => {
@@ -376,7 +376,7 @@ function hojaMasFiltros() {
   const destinosOrdenados = [...cuentaDestinos.entries()].sort((x, y) => y[1].n - x[1].n).slice(0, 12);
   hojaDeOpciones({
     titulo: 'Más filtros',
-    subtitulo: 'Podés elegir varios en cada grupo. Para sacar uno, elegilo de nuevo.',
+    subtitulo: 'Podés elegir varios en cada grupo. Para quitar uno, elegilo de nuevo.',
     grupos: [
       { titulo: 'Servicio', opciones: [...opcionMultiple(conChip.map((s) => ({ id: s, nombre: servicioCorto(s) })), servicios), ...(e.alertas.size && new Set([...e.alertas.values()].map((a) => a.servicio)).size > conChip.length ? opcionMultiple([{ id: '__otros', nombre: 'Los demás' }], otros) : [])] },
       { titulo: 'Equipo destino', opciones: opcionMultiple(destinosOrdenados.map(([ip, d]) => ({ id: ip, nombre: d.nombre === ip ? ip : `${d.nombre}` })), destinos) },
@@ -418,10 +418,10 @@ function alternarAyudaDetalle(ev) {
   alternarAyuda(ev.currentTarget, 'Qué significa cada dato', [
     el('p', {}, el('b', {}, 'Conexiones en total:'), ' todas las de estos dos equipos, hasta que pasan 15 minutos sin ninguna.'),
     el('p', {}, el('b', {}, 'Conexiones en 60 s:'), ' cuántas veces el origen se conectó a este servicio en un minuto.'),
-    el('p', {}, el('b', {}, 'Modelo de IA:'), ' aprendió el tráfico normal de tu red y marca lo que se aleja de eso.'),
+    el('p', {}, el('b', {}, 'Modelo de IA:'), ' aprendió el tráfico habitual de la red y marca lo que se aparta de él.'),
     el('p', {}, el('b', {}, 'Umbrales estadísticos:'), ' marcan si hay más conexiones a un servicio por minuto que en un día normal.'),
     el('p', {}, el('b', {}, 'Reglas estáticas:'), ' marcan los servicios que no están en la lista de autorizados.'),
-    el('p', {}, 'Alcanza con que uno marque para que haya alerta.'),
+    el('p', {}, 'Basta con que uno la marque para que se genere una alerta.'),
   ]);
 }
 
@@ -524,7 +524,7 @@ export function abrirDetalle(id, enfocar = true, { sinHistoria = false } = {}) {
         el('div', {}, el('strong', {}, linea.titulo), linea.extra ? ` · ${linea.extra}` : ''),
         linea.comentario ? el('div', { class: 'comentario' }, linea.comentario) : null,
         el('div', { class: 'meta' }, `${linea.quien} · ${fechaHora(linea.cuando, ahora)}`))))
-        : el('p', { class: 'nota' }, 'Todavía nadie la revisó.')));
+        : el('p', { class: 'nota' }, 'Todavía no tiene revisiones.')));
   $('velo').hidden = false;
   panel.hidden = false;
   actualizarFondo();
@@ -714,10 +714,10 @@ function hojaAsignar(a) {
   const valores = Object.fromEntries(personas.map((p) => [p.id, `${nombrePersona(p)}${p.vos ? ' (vos)' : ''}`]));
   abrirHoja({
     titulo: 'Asignar a',
-    subtitulo: 'Le llega un aviso por Telegram y la ve en la app, en Estado.',
+    subtitulo: 'Recibe un aviso por Telegram y la ve en la app, en Estado.',
     cuerpo: [el('div', { class: 'opciones' }, opcionUnica(valores, () => elegido, (id) => { elegido = id; }))],
     acciones: [
-      responsableId(a) ? { texto: 'Sacar la asignación', tipo: 'texto', alHacer: (h) => { h.cerrar(); asignar(a, null); } } : null,
+      responsableId(a) ? { texto: 'Quitar la asignación', tipo: 'texto', alHacer: (h) => { h.cerrar(); asignar(a, null); } } : null,
       { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
       { texto: 'Asignar', tipo: 'principal', alHacer: (h) => { h.cerrar(); if (elegido && elegido !== responsableId(a)) asignar(a, elegido); } },
     ].filter(Boolean),

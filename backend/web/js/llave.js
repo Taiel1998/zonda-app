@@ -68,7 +68,7 @@ export function ofrecerLlave() {
   abrirHoja({
     titulo: 'Llave de esta computadora',
     cuerpo: [
-      el('p', { style: 'margin:0' }, 'Windows te pide la huella, la cara o el PIN para confirmar que sos vos antes de bloquear o de cambiar personas.'),
+      el('p', { style: 'margin:0' }, 'Windows solicita la huella, el rostro o el PIN para confirmar tu identidad antes de bloquear o de cambiar personas.'),
       el('p', { class: 'nota', style: 'margin:0' }, 'No da permisos: eso lo define tu perfil. Solo se puede crear ahora, al entrar.'),
     ],
     acciones: [
@@ -80,7 +80,7 @@ export function ofrecerLlave() {
           h.cerrar();
           try {
             await crear();
-            avisoInferior('Listo: esta computadora tiene su llave.', { duracion: 4000 });
+            avisoInferior('La llave de esta computadora quedó creada.', { duracion: 4000 });
           } catch (falla) {
             const cancelada = falla && falla.name === 'NotAllowedError';
             avisoError(cancelada ? 'No se creó la llave: se canceló.' : `No se creó la llave: ${falla.message || falla}`, { duracion: 7000 });

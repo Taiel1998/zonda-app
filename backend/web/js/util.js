@@ -62,7 +62,7 @@ export async function api(ruta, { token, metodo = 'GET', cuerpo, espera = 10000,
       credentials: 'omit',
     });
   } catch (error) {
-    throw new ErrorApi(0, 'El servidor no contesta');
+    throw new ErrorApi(0, 'El servidor no responde');
   } finally {
     clearTimeout(reloj);
   }

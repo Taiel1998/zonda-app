@@ -214,7 +214,7 @@ function acercar(t1, t2) {
   // Si ya se está en un minuto, arrastrar no acerca más, y se avisa: sin aviso, parecía que el gráfico no respondía.
   // Acá un clic que se movió es más corto: 10 segundos son la sexta parte de lo que se ve.
   if (actual.hasta - actual.desde <= ZOOM_MINIMO) {
-    if (hasta - desde >= 2000) avisoNeutro('Un minuto es lo más cerca que se puede ver.');
+    if (hasta - desde >= 2000) avisoNeutro('El acercamiento máximo es de un minuto.');
     return;
   }
   if (hasta - desde < 10000) return;
@@ -417,9 +417,9 @@ export function selectorDeHorario({ selector, boton, rapidos, limite = null, cla
         el('label', { class: 'campo' }, el('span', {}, 'Hasta'), campos.hasta),
         campos.error,
         el('button', { type: 'button', class: 'boton-principal chico', onclick: aplicarAMedida }, 'Aplicar'),
-        el('h3', {}, 'Usados hace poco'),
+        el('h3', {}, 'Usados recientemente'),
         recientes.length ? el('ul', { class: 'lista-rangos' }, recientes.map(botonRango))
-          : el('p', { class: 'nota' }, 'Acá aparecen los rangos a medida que uses.')),
+          : el('p', { class: 'nota' }, 'Aquí aparecen los rangos a medida que uses.')),
       el('div', { class: 'selector-columna' }, buscar, lista),
       el('div', { class: 'selector-pie' }, `Hora de este navegador (${zonaHoraria()}).${nota ? ` ${nota}` : ''}`));
     selector.hidden = false;

@@ -30,7 +30,7 @@ const EJEMPLOS = {
 };
 const AVISOS = {
   bloquear: (equipo) => `Bloqueando ${equipo}. El firewall lo aplica en unos segundos.`,
-  pedir: () => 'Pedido enviado. Lo aprueba alguien que puede bloquear.',
+  pedir: () => 'Pedido enviado. Queda pendiente de aprobación.',
   aprobar: (equipo) => `Bloqueo de ${equipo} aprobado. El firewall lo aplica en unos segundos.`,
   duracion: (equipo) => `Duración del bloqueo de ${equipo} cambiada.`,
   desbloquear: (equipo) => `${equipo} desbloqueado.`,
@@ -155,12 +155,12 @@ export function seccionBloqueo(a) {
     contenido.push(fila('espera', 'media', `Pedido de bloqueo · ${corto(actual.duracion)}`, `Lo pidió ${actual.pedidoPor} · ${fechaHora(Date.parse(actual.pedidoEn))}`));
     contenido.push(el('p', { class: 'nota bloqueo-nota' }, `“${actual.motivo}”`));
     if (!bloquea) {
-      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Espera a alguien que pueda bloquear'));
+      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Pendiente de aprobación'));
     } else {
       contenido.push(el('div', { class: 'fila-bloqueo-botones' },
         boton('Rechazar', () => hojaBloqueo(a, 'rechazar', actual)),
         conLlave ? boton('Aprobar', () => ejecutar(a, 'aprobar', { actual })) : null));
-      if (!conLlave) contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se aprueba desde el celular o con la llave de esta computadora.'));
+      if (!conLlave) contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se aprueba desde el teléfono o con la llave de esta computadora.'));
     }
   } else {
     // Como en la app: aprobado y todavía sin aplicar dice «Bloqueando…», con el reloj, o «Bloqueo sin aplicar» si el
@@ -176,7 +176,7 @@ export function seccionBloqueo(a) {
         boton('Cambiar duración', () => hojaBloqueo(a, 'duracion', actual)),
         boton('Desbloquear', () => hojaBloqueo(a, 'desbloquear', actual))));
     } else if (bloquea) {
-      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se cambia o se desbloquea desde el celular o con la llave de esta computadora.'));
+      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se cambia o se desbloquea desde el teléfono o con la llave de esta computadora.'));
     }
   }
   return el('section', { class: 'detalle-seccion' }, el('h3', {}, 'Bloqueo'), contenido);
@@ -191,11 +191,11 @@ function hojaBloqueo(a, accion, actual = null) {
   const hoja = abrirHoja({ titulo: '', cuerpo: [] });
 
   function queSeCorta() {
-    if (accion === 'desbloquear') return el('p', { class: 'bloqueo-corte' }, `${equipo} (${a.origenIp}) vuelve a llegar a otras áreas y a internet.`);
+    if (accion === 'desbloquear') return el('p', { class: 'bloqueo-corte' }, `${equipo} (${a.origenIp}) recupera el acceso a otras áreas y a internet.`);
     if (!conDuracion) return null;
     const elegida = DURACIONES.find((d) => d.segundos === duracion) || DURACIONES[0];
     // Hasta desbloquear se puede elegir siempre; la línea pasa a ámbar para que se vea que no vence sola.
-    return el('p', { class: `bloqueo-corte${duracion == null ? ' sin-vencimiento' : ''}` }, `${equipo} (${a.origenIp}) no va a llegar a otras áreas ni a internet ${elegida.durante}.`);
+    return el('p', { class: `bloqueo-corte${duracion == null ? ' sin-vencimiento' : ''}` }, `${equipo} (${a.origenIp}) no podrá acceder a otras áreas ni a internet ${elegida.durante}.`);
   }
 
   function pintar() {
@@ -260,7 +260,7 @@ async function ejecutar(a, accion, { duracion = null, motivo = '', actual = null
     }
     avisoInferior(AVISOS[accion](nombreEquipo(a, 'origen')), { duracion: 5000 });
   } catch (falla) {
-    avisoError(falla.cancelada ? 'No se confirmó con la llave: no se hizo nada.' : `No se pudo: ${falla.message}`, { duracion: 7000 });
+    avisoError(falla.cancelada ? 'No se confirmó con la llave: no se aplicó ningún cambio.' : `No se pudo: ${falla.message}`, { duracion: 7000 });
   }
   await actualizarBloqueos().catch(() => {});
   seguirAlFirewall();

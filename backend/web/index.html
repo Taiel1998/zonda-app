@@ -92,7 +92,7 @@
               <p><b>Servidor de alertas:</b> guarda las alertas y avisa por Telegram.</p>
               <p class="solo-firewall"><b>Firewall:</b> aplica los bloqueos que aprueba una persona; pregunta cada 10 s.</p>
               <p>Verde: funciona. Ámbar: el sensor pierde tráfico. Rojo: no funciona o no hay datos.</p>
-              <p>Los gráficos son de la última hora, por minuto: las conexiones que vio el sensor, las revisiones del análisis, los datos que le llegaron al servidor y las consultas del firewall. Un hueco es un rato en que esa pieza no anduvo.</p>
+              <p>Los gráficos son de la última hora, por minuto: las conexiones que vio el sensor, las revisiones del análisis, los datos que recibió el servidor y las consultas del firewall. Un hueco indica un período en que esa pieza no funcionó.</p>
               <p>En grande, cada gráfico sigue el horario elegido, hasta una semana.</p>
             </template>
             <div class="piezas">
@@ -136,7 +136,7 @@
                 </div>
                 <div class="pieza-dato" id="dato-servidor">–</div>
                 <div class="mini-envoltura">
-                  <div class="grafico mini" id="grafico-pieza-servidor" role="img" aria-label="Datos que le llegaron al servidor por minuto en la última hora. Los datos están en el menú del panel."></div>
+                  <div class="grafico mini" id="grafico-pieza-servidor" role="img" aria-label="Datos que recibió el servidor por minuto en la última hora. Los datos están en el menú del panel."></div>
                   <div class="vacio-mini" id="vacio-pieza-servidor" hidden></div>
                 </div>
                 <div class="pieza-pie" id="pie-servidor">Datos recibidos por minuto</div>
@@ -223,7 +223,7 @@
               <div>
                 <div class="titulo-con-ayuda"><h3 class="tarjeta-titulo">Volumen de tráfico</h3><button class="boton-ayuda" type="button" data-ayuda="volumen" data-ayuda-titulo="Volumen de tráfico" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Cómo se lee Volumen de tráfico" title="Cómo se lee">?</button></div>
                 <p class="tarjeta-sub">Cuántos datos pasaron por la red.</p>
-                <template id="ayuda-volumen"><p>Se mide en bits por segundo, como la velocidad de internet.</p><p>Sube con una copia grande de archivos.</p><p>Arrastrá sobre el gráfico para acercarte.</p></template>
+                <template id="ayuda-volumen"><p>Se mide en bits por segundo, la misma unidad que la velocidad de internet.</p><p>Aumenta, por ejemplo, con una copia de archivos de gran tamaño.</p><p>Arrastrá sobre el gráfico para acercarte.</p></template>
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="volumen" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Volumen de tráfico" title="Menú del panel"></button></div>
             </div>
@@ -236,7 +236,7 @@
               <div>
                 <div class="titulo-con-ayuda"><h3 class="tarjeta-titulo">Conexiones sin respuesta</h3><button class="boton-ayuda" type="button" data-ayuda="fallidas" data-ayuda-titulo="Conexiones sin respuesta" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Cómo se lee Conexiones sin respuesta" title="Cómo se lee">?</button></div>
                 <p class="tarjeta-sub">Intentos de conexión que no llegaron a abrirse.</p>
-                <template id="ayuda-fallidas"><p>Nadie contestó o el equipo los rechazó.</p><p>Sube con un escaneo de puertos o con un equipo bloqueado.</p><p>Arrastrá sobre el gráfico para acercarte.</p></template>
+                <template id="ayuda-fallidas"><p>El equipo de destino no respondió o los rechazó.</p><p>Aumenta, por ejemplo, con un escaneo de puertos o con un equipo bloqueado.</p><p>Arrastrá sobre el gráfico para acercarte.</p></template>
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="fallidas" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Conexiones sin respuesta" title="Menú del panel"></button></div>
             </div>
@@ -338,7 +338,7 @@
     <button type="button" data-vista="alertas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alertas</button>
     <button type="button" data-vista="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>Resumen</button>
     <button type="button" data-vista="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
-    <button type="button" data-vista="administracion" aria-label="Administración" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8 7.5 9.5 4.4-1.5 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg>Admin.</button>
+    <button type="button" data-vista="administracion" aria-label="Administración" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8 7.5 9.5 4.4-1.5 7.5-4.9 7.5-9.5V6z"/><circle cx="12" cy="10" r="2.5"/><path d="M8 17a4 4 0 0 1 8 0"/></svg>Admin.</button>
   </nav>
 </div>
 

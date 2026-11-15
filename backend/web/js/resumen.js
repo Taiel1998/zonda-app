@@ -30,10 +30,10 @@ const DESCRIPCION_TIPO = {
   fuerza_bruta: 'Muchos intentos de contraseña contra un servicio.',
   sin_tipificar: 'No se parece a ningún ataque conocido. Puede ser uno nuevo.',
   escaneo: 'Prueba puertos para ver qué servicios hay. Suele ser el paso previo a un ataque.',
-  ddos: 'Muchísimo tráfico para saturar un servicio.',
-  probable_falsa_alarma: 'Raro para la IA, pero parecido a tráfico normal, como un backup.',
-  servicio_no_autorizado: 'Las reglas vieron una conexión a un servicio que no está en la lista de permitidos.',
-  volumen_inusual: 'Los umbrales vieron demasiadas conexiones a un mismo servicio en un minuto.',
+  ddos: 'Gran volumen de tráfico para saturar un servicio.',
+  probable_falsa_alarma: 'Inusual para la IA, pero similar al tráfico habitual, como un backup.',
+  servicio_no_autorizado: 'Las reglas detectaron una conexión a un servicio que no está en la lista de permitidos.',
+  volumen_inusual: 'Los umbrales detectaron demasiadas conexiones a un mismo servicio en un minuto.',
 };
 // Lo que dice la frase del gráfico de las alertas de un tipo.
 const DE_TIPO = {
@@ -281,7 +281,7 @@ function fraseDelGrafico(x, enImagen = false) {
   if (nombrados === 1) {
     const [nombre] = gruposDeFiltros(x, 'uno');
     // La severidad no se elige tocando la pantalla (la línea del total solo informa): se saca desde Filtros, como en la app.
-    const comoSacarlo = r.severidades.size ? 'Se saca desde Filtros.' : 'Elegilo de nuevo para sacarlo.';
+    const comoSacarlo = r.severidades.size ? 'Se quita desde Filtros.' : 'Elegilo de nuevo para quitarlo.';
     return enImagen ? `Mostrando ${nombre}: ${alertas}.` : `Mostrando ${nombre}: ${alertas}. ${comoSacarlo}`;
   }
   if (nombrados > 1 && nombrados <= 4) return `Mostrando ${alertas}: ${gruposDeFiltros(x, 'varios').join(' · ')}.`;
@@ -474,9 +474,9 @@ function equipos(x) {
 
 function vacio() {
   const textos = {
-    '7d': ['Sin alertas en los últimos 7 días', 'El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que la red estuvo tranquila.'],
-    '30d': ['Sin alertas en los últimos 30 días', 'El sensor siguió activo todo el mes. Podés compartir el resumen igual: muestra que la red estuvo tranquila.'],
-    fechas: ['Sin alertas en estas fechas', 'El sensor siguió activo. Podés compartir el resumen igual: muestra que la red estuvo tranquila.'],
+    '7d': ['Sin alertas en los últimos 7 días', 'El sensor siguió activo toda la semana. Podés compartir el resumen igual: muestra que no hubo alertas.'],
+    '30d': ['Sin alertas en los últimos 30 días', 'El sensor siguió activo todo el mes. Podés compartir el resumen igual: muestra que no hubo alertas.'],
+    fechas: ['Sin alertas en estas fechas', 'El sensor siguió activo. Podés compartir el resumen igual: muestra que no hubo alertas.'],
   }[r.fechas ? 'fechas' : r.periodo];
   return el('div', { class: 'res-vacio' }, el('span', { class: 'res-vacio-circulo' }, icono('check')), el('h3', {}, textos[0]), el('p', {}, textos[1]));
 }
@@ -634,11 +634,11 @@ function ayudaTipos() {
     el('span', {}, el('b', {}, `${TIPOS[t]}.`), ` ${DESCRIPCION_TIPO[t]}`));
   return [
     el('p', { class: 'res-bloque-titulo' }, 'Lo que detectó la IA'),
-    el('p', { class: 'res-ayuda-texto' }, 'La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.'),
+    el('p', { class: 'res-ayuda-texto' }, 'La IA detectó algo inusual y otro modelo le asigna el tipo de ataque más probable.'),
     TIPOS_IA.map(fila),
     el('hr', { class: 'res-divisor' }),
     el('p', { class: 'res-bloque-titulo' }, 'Lo que la IA no detectó'),
-    el('p', { class: 'res-ayuda-texto' }, 'Lo marcaron los otros dos detectores de Zonda.'),
+    el('p', { class: 'res-ayuda-texto' }, 'Lo marcaron los otros dos métodos de Zonda.'),
     TIPOS_SIN_IA.map(fila),
     el('hr', { class: 'res-divisor' }),
     // Administración es solo del administrador: al analista no se le indica un lugar que no tiene.
@@ -686,8 +686,8 @@ function ayudaPrecision(x) {
   return [
     bloque('Precisión', `De las alertas que marcó un método y ya revisaste, cuántas eran ataques reales.${frase}`),
     bloque('Cobertura de revisión', 'Cuántas alertas del período ya revisaste.'),
-    bloque('Los tres métodos', 'La IA compara el tráfico con lo normal de tu red. Los umbrales cuentan conexiones a un mismo servicio en 60 segundos. Las reglas miran si ese servicio está autorizado.'),
-    bloque('¿Por qué 30 revisiones?', 'Con pocas, un par de casos mueven mucho el porcentaje. Las barras claras tienen menos de 30 revisiones: todavía no se pueden comparar.'),
+    bloque('Los tres métodos', 'La IA compara el tráfico con el comportamiento habitual de la red. Los umbrales cuentan conexiones a un mismo servicio en 60 segundos. Las reglas verifican si ese servicio está autorizado.'),
+    bloque('¿Por qué 30 revisiones?', 'Con pocas revisiones, unos pocos casos cambian mucho el porcentaje. Las barras claras tienen menos de 30 revisiones: todavía no se pueden comparar.'),
     el('p', { class: 'res-recuadro' }, recuadroPrecision(x)),
     el('p', { class: 'res-ayuda-texto' }, 'Se calcula con las alertas que tiene el servidor de esta red.'),
   ];
@@ -959,7 +959,7 @@ async function compartir(como) {
   if (como === 'copiar') {
     try {
       await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': png })]);
-      avisoInferior('Imagen copiada. Pegala donde quieras.', { duracion: 3000 });
+      avisoInferior('Imagen copiada al portapapeles.', { duracion: 3000 });
     } catch (_) {
       avisoError('No se pudo copiar la imagen. Probá con «Descargar imagen».', { duracion: 4000 });
     }
