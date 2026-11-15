@@ -64,10 +64,10 @@ export const e = {
   alertasPorBarra: null,
   ahora: null,
   pares: null,
-  // Los gráficos chicos del estado del sistema: el tráfico del sensor y los latidos de la última hora, y
-  // cuánto tardó el servidor en contestar cada consulta de /salud desde que se abrió el tablero.
+  // Los gráficos chicos del estado del sistema, con lo que guarda el servidor (decisión 60): el tráfico del
+  // sensor, los latidos del análisis y lo que le llegó al servidor, con las consultas del firewall. En el
+  // tablero, la última hora; con una pieza en grande, el horario elegido.
   piezas: null,
-  respuestas: [],
   personas: [],
   equipos: [],
   severidades: {},
@@ -104,7 +104,8 @@ export async function pedir(ruta, opciones = {}) {
     if (falla instanceof ErrorApi && falla.estado === 401) {
       alExpirar('El acceso de este navegador venció o lo quitaron. Pedí un código nuevo.');
     }
-    if (falla.estado === 0) e.servidorCaido = true;
+    // Sin respuesta, o con el 502, 503 o 504 de quien atiende el HTTPS cuando el servidor de alertas está caído.
+    if (falla.estado === 0 || (falla.estado >= 502 && falla.estado <= 504)) e.servidorCaido = true;
     throw falla;
   }
 }
@@ -150,20 +151,21 @@ export function chipEstado(estado) {
   return el('span', { class: `estado-rev ${estado}` }, ESTADOS[estado]);
 }
 
-/** El comentario que propone cada motivo, en forma impersonal (decisión 48), como en la app. */
+/** El comentario que propone cada motivo, en forma impersonal (decisión 48) y sin afirmar lo que nadie hizo, como
+    en la app. «Otro» no propone ninguno. */
 export function comentarioPropuesto(motivo, a) {
   const origen = nombreEquipo(a, 'origen');
   const destino = nombreEquipo(a, 'destino');
   return {
-    escalado_al_proveedor: 'Se avisó al proveedor de seguridad, que está revisando el servidor.',
-    bloqueado_manualmente: `Se bloqueó el acceso ${servicioCorto(a.servicio)} de ${origen} y se avisó al proveedor.`,
-    contrasena_cambiada: 'Se cambió la contraseña de la cuenta usada y se revisaron los accesos.',
-    investigando: 'Se están revisando los registros del servidor.',
-    tarea_programada: 'Es la copia nocturna que corre todos los domingos.',
-    backup: `Es el backup semanal de ${origen} hacia ${destino}.`,
-    equipo_nuevo: `${origen} es un equipo nuevo que se configuró hoy.`,
-    usuario_autorizado: 'Es un acceso autorizado del administrador.',
-    otro: 'Prueba de conectividad que hizo el proveedor.',
+    escalado_al_proveedor: 'Se avisó al proveedor de seguridad.',
+    bloqueado_manualmente: `Se bloqueó el acceso ${servicioCorto(a.servicio)} de ${origen}.`,
+    contrasena_cambiada: 'Se cambió la contraseña de la cuenta usada.',
+    investigando: 'Se está investigando.',
+    tarea_programada: `Es una tarea programada de ${origen} a ${destino}.`,
+    backup: `Es un backup de ${origen} a ${destino}.`,
+    equipo_nuevo: `${origen} es un equipo nuevo.`,
+    usuario_autorizado: 'Es un acceso autorizado.',
+    otro: '',
   }[motivo] || '';
 }
 

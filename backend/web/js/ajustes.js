@@ -1,6 +1,7 @@
-// La vista Ajustes, como las páginas de administración de Grafana: un menú de secciones a la izquierda (General,
-// Personas, Equipos, Severidades, Notificaciones y Registro de cambios) y, a la derecha, la sección elegida, con
-// tablas que se editan en el lugar. Lo que se cambia queda marcado hasta «Guardar cambios», que pide el motivo
+// Las vistas Ajustes y Administración, como las páginas de administración de Grafana: un menú de secciones a la
+// izquierda y, a la derecha, la sección elegida, con tablas que se editan en el lugar. Ajustes tiene lo propio y de
+// este navegador (General y Notificaciones); Administración, que es solo del administrador, lo de la red (Personas,
+// Navegadores, Equipos, Severidades y Registro de cambios). Lo que se cambia queda marcado hasta «Guardar cambios», que pide el motivo
 // cuando el cambio va al registro (la importancia y la severidad), como en la app. El analista ve todo sin los
 // controles de administrador; igual el servidor controla cada cambio (403). Sumar, quitar o cambiar a alguien
 // se confirma con la llave de esta computadora (decisión 51); sin ella, eso se hace desde la app.
@@ -10,29 +11,34 @@ import { el, fechaHora, haceCuanto, hora, numero, vaciar } from './util.js';
 import {
   $, IMPORTANCIAS, NIVEL, ORDEN_SEVERIDAD, PERFILES, TIPOS, ahoraServidor, e, esAdmin, mandar, nombrePersona, pedir,
 } from './comun.js';
-import { abrirHoja, avisoInferior, confirmar } from './hojas.js';
+import { abrirHoja, avisoError, avisoInferior, confirmar } from './hojas.js';
 import { apagarAvisos, avisoDePrueba, estadoAvisos, permitirAvisos } from './avisos.js';
 import { cabecerasConLlave, tieneLlave } from './llave.js';
 import { enPagina, piePaginas, primeraPagina } from './paginas.js';
 
 const ORDEN_TIPOS_SEVERIDAD = ['fuerza_bruta', 'escaneo', 'ddos', 'probable_falsa_alarma', 'sin_tipificar', 'servicio_no_autorizado', 'volumen_inusual'];
 const MODOS_AVISO = { sonido: 'Con sonido', vibracion: 'Sin sonido', sin_aviso: 'Sin aviso' };
+// Dónde va cada sección. Lo propio y de este navegador, en Ajustes. Lo de la red (`red`), en Administración, que es
+// una vista solo del administrador. El analista no la tiene: en su Ajustes sigue viendo, sin poder cambiarlas, las
+// tres que le sirven para entender las alertas (`consulta`): los equipos, las severidades y el registro.
 const SECCIONES = [
   { id: 'general', nombre: 'General' },
-  { id: 'personas', nombre: 'Personas' },
-  { id: 'navegadores', nombre: 'Navegadores' },
-  { id: 'equipos', nombre: 'Equipos' },
-  { id: 'severidades', nombre: 'Severidades' },
   { id: 'notificaciones', nombre: 'Notificaciones' },
-  { id: 'registro', nombre: 'Registro de cambios' },
+  { id: 'personas', nombre: 'Personas', red: true },
+  { id: 'navegadores', nombre: 'Navegadores', red: true },
+  { id: 'equipos', nombre: 'Equipos', red: true, consulta: true },
+  { id: 'severidades', nombre: 'Severidades', red: true, consulta: true },
+  { id: 'registro', nombre: 'Registro de cambios', red: true, consulta: true },
 ];
-const CLAVE_SECCION = 'zonda.tablero.ajustes';
+const CLAVE_SECCION = { ajustes: 'zonda.tablero.ajustes', administracion: 'zonda.tablero.administracion' };
+const NOMBRE_LUGAR = { ajustes: 'Ajustes', administracion: 'Administración' };
 
 let alSalir = () => {};
 let alElegirTema = () => {};
 let temaElegido = () => 'sistema';
 let esperaTelegram = null;
-let seccion = leerSeccion();
+// La sección elegida en cada una de las dos vistas.
+const elegidas = { ajustes: leerSeccion('ajustes'), administracion: leerSeccion('administracion') };
 // Lo que se cambió en las tablas y todavía no se guardó: perfiles, permisos de bloquear, importancias y severidades.
 const pendientes = { personas: new Map(), bloqueos: new Map(), equipos: new Map(), severidades: new Map() };
 // Lo pendiente de cada sección: la de Personas junta los perfiles y los permisos de bloquear.
@@ -45,12 +51,27 @@ const busqueda = { equipos: '', registro: '' };
 // Si llegan datos del servidor mientras alguien escribe o elige, la sección se vuelve a armar al soltar el campo.
 let repintarAlSoltar = false;
 
-function leerSeccion() {
-  try { return localStorage.getItem(CLAVE_SECCION) || 'general'; } catch (_) { return 'general'; }
+function leerSeccion(lugar) {
+  try { return localStorage.getItem(CLAVE_SECCION[lugar]); } catch (_) { return null; }
 }
 
-function guardarSeccion(id) {
-  try { localStorage.setItem(CLAVE_SECCION, id); } catch (_) { /* sin almacenamiento, vale mientras la pestaña siga abierta */ }
+function guardarSeccion(lugar, id) {
+  try { localStorage.setItem(CLAVE_SECCION[lugar], id); } catch (_) { /* sin almacenamiento, vale mientras la pestaña siga abierta */ }
+}
+
+/** En cuál de las dos vistas se está: Ajustes y Administración se dibujan en el mismo lugar de la página. */
+const lugarDeAhora = () => (e.vista === 'administracion' ? 'administracion' : 'ajustes');
+
+/** Las secciones de la vista de ahora, según el perfil. */
+function seccionesVisibles() {
+  if (lugarDeAhora() === 'administracion') return SECCIONES.filter((s) => s.red);
+  return SECCIONES.filter((s) => !s.red || (!esAdmin() && s.consulta));
+}
+
+/** La sección elegida, o la primera si la guardada no está en esta vista (o ya no la ve este perfil). */
+function seccionDeAhora() {
+  const visibles = seccionesVisibles();
+  return (visibles.find((s) => s.id === elegidas[lugarDeAhora()]) || visibles[0]).id;
 }
 
 const editando = () => {
@@ -86,7 +107,7 @@ export async function actualizarAjustes() {
   if (pedidos[2].status === 'fulfilled') e.severidades = pedidos[2].value;
   if (pedidos[3].status === 'fulfilled') e.registro = pedidos[3].value;
   if (pedidos[4].status === 'fulfilled') e.telegram = pedidos[4].value;
-  if (e.vista === 'ajustes') pintarAjustes({ desdeElServidor: true });
+  if (e.vista === 'ajustes' || e.vista === 'administracion') pintarAjustes({ desdeElServidor: true });
 }
 
 /** Cuántos cambios faltan guardar, en todas las secciones. */
@@ -100,10 +121,11 @@ function marcaPendientes(n) {
     el('span', { class: 'oculto-visual' }, `, ${numero(n)} ${n === 1 ? 'cambio' : 'cambios'} sin guardar`));
 }
 
-/** La pestaña «Ajustes», arriba y en la barra de abajo, también dice cuántos cambios faltan guardar. */
+/** La pestaña «Administración», arriba y en la barra de abajo, también dice cuántos cambios faltan guardar: todo
+    lo que se cambia y se guarda está ahí. */
 function marcarPestania() {
   const n = cambiosSinGuardar();
-  for (const boton of document.querySelectorAll('.pestania[data-vista="ajustes"], #barra-inferior [data-vista="ajustes"]')) {
+  for (const boton of document.querySelectorAll('.pestania[data-vista="administracion"], #barra-inferior [data-vista="administracion"]')) {
     const marca = boton.querySelector('.ajustes-pendientes');
     if (marca) marca.remove();
     if (n) boton.append(marcaPendientes(n));
@@ -146,11 +168,14 @@ export function pintarAjustes({ desdeElServidor = false } = {}) {
   if (desdeElServidor && editando()) { repintarAlSoltar = true; return; }
   limpiarPendientes();
   marcarPestania();
-  if (!CONTENIDO[seccion]) seccion = 'general';
+  const lugar = NOMBRE_LUGAR[lugarDeAhora()];
+  const seccion = seccionDeAhora();
+  // Las dos vistas comparten el lugar: el título, que oye el lector de pantalla, dice cuál es.
+  $('titulo-vista-ajustes').textContent = lugar;
   // El campo o la lista que tenía el foco lo recupera después de armar todo de nuevo.
   const foco = document.activeElement && $('ajustes').contains(document.activeElement) ? document.activeElement.dataset.foco : null;
-  const menu = el('nav', { class: 'ajustes-menu', role: 'tablist', 'aria-label': 'Secciones de Ajustes', 'aria-orientation': 'vertical', onkeydown: moverEnMenu },
-    SECCIONES.map((s) => {
+  const menu = el('nav', { class: 'ajustes-menu', role: 'tablist', 'aria-label': `Secciones de ${lugar}`, 'aria-orientation': 'vertical', onkeydown: moverEnMenu },
+    seccionesVisibles().map((s) => {
       const n = sinGuardar(s.id);
       return el('button', {
         type: 'button', role: 'tab', id: `ajustes-${s.id}`, 'aria-selected': String(s.id === seccion), 'aria-controls': 'ajustes-panel',
@@ -166,8 +191,8 @@ export function pintarAjustes({ desdeElServidor = false } = {}) {
 }
 
 function elegirSeccion(id, enfocar = false) {
-  seccion = id;
-  guardarSeccion(id);
+  elegidas[lugarDeAhora()] = id;
+  guardarSeccion(lugarDeAhora(), id);
   pintarAjustes();
   if (enfocar) $(`ajustes-${id}`).focus();
 }
@@ -177,8 +202,9 @@ function moverEnMenu(ev) {
   const adelante = ['ArrowDown', 'ArrowRight'].includes(ev.key);
   if (!adelante && !['ArrowUp', 'ArrowLeft'].includes(ev.key)) return;
   ev.preventDefault();
-  const i = SECCIONES.findIndex((s) => s.id === seccion);
-  elegirSeccion(SECCIONES[(i + (adelante ? 1 : SECCIONES.length - 1)) % SECCIONES.length].id, true);
+  const visibles = seccionesVisibles();
+  const i = visibles.findIndex((s) => s.id === seccionDeAhora());
+  elegirSeccion(visibles[(i + (adelante ? 1 : visibles.length - 1)) % visibles.length].id, true);
 }
 
 function cabecera(titulo, sub, accion = null) {
@@ -230,15 +256,14 @@ function hojaMotivo({ titulo, lineas, ejemplo, alGuardar }) {
     titulo,
     cuerpo: [
       el('ul', { class: 'lista-cambios' }, lineas.map((linea) => el('li', {}, linea))),
-      el('label', { class: 'campo' }, el('span', {}, uno ? '¿Por qué lo cambiás?' : '¿Por qué los cambiás?', el('span', { class: 'asterisco' }, ' *')), motivo,
-        el('small', {}, 'Queda en el registro de cambios con tu nombre y la hora.')),
+      el('label', { class: 'campo' }, el('span', {}, uno ? 'Motivo del cambio' : 'Motivo de los cambios', el('span', { class: 'asterisco', title: 'Obligatorio' }, ' *')), motivo),
       error,
     ],
     acciones: [
       { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
       {
         texto: 'Guardar', tipo: 'principal', alHacer: async (h) => {
-          if (!motivo.value.trim()) { error.hidden = false; error.textContent = uno ? 'Escribí por qué lo cambiás.' : 'Escribí por qué los cambiás.'; return; }
+          if (!motivo.value.trim()) { error.hidden = false; error.textContent = uno ? 'Escribí el motivo del cambio.' : 'Escribí el motivo de los cambios.'; return; }
           try {
             await alGuardar(motivo.value.trim());
             h.cerrar();
@@ -304,7 +329,7 @@ function seccionPersonas() {
     cabecera('Personas', 'Quiénes usan Zonda en esta red. Los administradores cambian la configuración y agregan personas.',
       cambia ? el('button', { type: 'button', class: 'boton-principal boton-chico', onclick: hojaAgregarPersona }, 'Agregar persona') : null),
     tabla(['Nombre', 'Dispositivo', 'Perfil', 'Bloqueos', 'Último uso', ''], filas),
-    el('p', { class: 'nota ajustes-leyenda' }, 'Bloquea: corta el tráfico de un equipo en el acto. Pide aprobación: lo aprueba alguien que puede bloquear.'),
+    el('p', { class: 'nota ajustes-leyenda' }, 'Bloquea: corta el tráfico de un equipo en el acto. Pide aprobación: lo aprueba alguien que puede bloquear. Un administrador siempre bloquea.'),
     admin && !cambia ? el('p', { class: 'solo-admin-nota' }, 'Sin la llave de esta computadora, las personas se agregan y se cambian desde la app.') : null,
     cambia ? barraCambios('personas') : (admin ? null : notaSoloAdmin()),
   ];
@@ -358,7 +383,7 @@ async function guardarPersonas() {
       avisoInferior('Cambios guardados.');
     }
   } catch (falla) {
-    avisoInferior(falla.cancelada ? 'No se confirmó con la llave: quedan cambios sin guardar.' : falla.message, { duracion: 7000 });
+    avisoError(falla.cancelada ? 'No se confirmó con la llave: quedan cambios sin guardar.' : falla.message, { duracion: 7000 });
   }
   actualizarAjustes().catch(() => {});
 }
@@ -375,9 +400,8 @@ function hojaAgregarPersona() {
     titulo: 'Agregar persona',
     subtitulo: 'Genera un código de un solo uso y su QR para que la persona conecte su teléfono.',
     cuerpo: [
-      el('label', { class: 'campo' }, el('span', {}, 'Nombre', el('span', { class: 'asterisco' }, ' *')), nombre),
+      el('label', { class: 'campo' }, el('span', {}, 'Nombre', el('span', { class: 'asterisco', title: 'Obligatorio' }, ' *')), nombre),
       el('div', { class: 'grupo-opciones' }, el('p', {}, 'Perfil'), el('div', { class: 'opciones' }, perfiles)),
-      el('p', { class: 'leyenda-obligatorio', style: 'margin:0' }, el('span', { class: 'asterisco' }, '*'), ' Obligatorio'),
       error,
     ],
     acciones: [
@@ -412,14 +436,14 @@ function mostrarCodigo(hoja, codigo) {
 }
 
 async function quitarPersona(p) {
-  if (!await confirmar({ titulo: `¿Quitar a ${nombrePersona(p)} del equipo?`, texto: 'Su dispositivo deja de recibir alertas y no puede volver a entrar sin un código nuevo.', aceptar: 'Quitar', peligro: true })) return;
+  if (!await confirmar({ titulo: `¿Quitar a ${nombrePersona(p)} de la red?`, texto: 'Su dispositivo deja de recibir alertas y no puede volver a entrar sin un código nuevo.', aceptar: 'Quitar', peligro: true })) return;
   try {
     const cabeceras = await cabecerasConLlave({ tipo: 'quitar', personaId: p.id });
     await pedir(`/personas/${encodeURIComponent(p.id)}`, { metodo: 'DELETE', cabeceras });
     pendientes.personas.delete(p.id);
     pendientes.bloqueos.delete(p.id);
-    avisoInferior(`Se quitó a ${nombrePersona(p)} del equipo.`);
-  } catch (falla) { avisoInferior(falla.cancelada ? 'No se confirmó con la llave: no se quitó a nadie.' : falla.message, { duracion: 7000 }); }
+    avisoInferior(`${nombrePersona(p)} ya no está en la red.`);
+  } catch (falla) { avisoError(falla.cancelada ? 'No se confirmó con la llave: no se quitó a nadie.' : falla.message, { duracion: 7000 }); }
   actualizarAjustes();
 }
 
@@ -429,8 +453,11 @@ async function quitarPersona(p) {
     solo «Tablero web». */
 function nombreNavegador(p) {
   const nombre = (p.telefono || '').replace(/^Tablero web\s*·\s*/, '').trim();
-  return nombre && nombre !== 'Tablero web' ? nombre : 'Navegador';
+  return nombre && nombre !== 'Tablero web' ? nombre : 'Navegador desconocido';
 }
+
+/** «Taiel en Chrome en Windows»: de quién es y desde dónde entra; sin persona, solo el navegador. */
+const quienEnNavegador = (p) => (p.nombre ? `${p.nombre} en ${nombreNavegador(p)}` : nombreNavegador(p));
 
 /** Un navegador no es una persona: entra con un código, como un teléfono, pero no recibe avisos ni se le
     asignan alertas. Acá se ve cuáles tienen acceso y se les quita, con la llave de esta computadora. */
@@ -441,21 +468,22 @@ function seccionNavegadores() {
   const navegadores = e.personas.filter((p) => p.tipo === 'navegador');
   const filas = navegadores.length
     ? navegadores.map((p) => el('tr', {},
-      el('td', {}, el('strong', {}, nombreNavegador(p)), p.vos ? [' ', el('span', { class: 'etiqueta vos' }, 'vos')] : null),
+      el('td', {}, p.nombre ? el('strong', {}, p.nombre) : el('span', { class: 'secundario' }, 'Sin nombre'), p.vos ? [' ', el('span', { class: 'etiqueta vos' }, 'vos')] : null),
+      el('td', { class: 'secundario', 'data-etiqueta': 'Navegador' }, nombreNavegador(p)),
       el('td', { 'data-etiqueta': 'Perfil' }, el('span', { class: `etiqueta${p.perfil === 'administrador' ? ' admin' : ''}` }, PERFILES[p.perfil])),
       el('td', { class: 'secundario', 'data-etiqueta': 'Último uso' }, p.ultimoUso ? haceCuanto(Date.parse(p.ultimoUso), ahora) : '–'),
       el('td', { class: 'accion' }, cambia && !p.vos ? el('button', { type: 'button', class: 'boton-texto peligro', onclick: () => quitarNavegador(p) }, 'Quitar acceso') : null)))
-    : el('tr', {}, el('td', { colspan: '4', class: 'secundario' }, 'Todavía ningún navegador abrió el tablero.'));
+    : el('tr', {}, el('td', { colspan: '5', class: 'secundario' }, 'Todavía ningún navegador abrió el tablero.'));
   return [
-    cabecera('Navegadores', 'Las computadoras que abren este tablero. Cada una entra con su propio código, como un teléfono.'),
-    tabla(['Navegador', 'Perfil', 'Último uso', ''], filas),
+    cabecera('Navegadores', 'Quiénes abren este tablero y desde qué navegador. Cada uno entra con su propio código, como un teléfono.'),
+    tabla(['Persona', 'Navegador', 'Perfil', 'Último uso', ''], filas),
     admin && !cambia ? el('p', { class: 'solo-admin-nota' }, 'Sin la llave de esta computadora, el acceso de un navegador se quita desde la app.') : null,
     admin ? null : notaSoloAdmin(),
   ];
 }
 
 async function quitarNavegador(p) {
-  const nombre = nombreNavegador(p);
+  const nombre = quienEnNavegador(p);
   if (!await confirmar({ titulo: `¿Quitarle el acceso a ${nombre}?`, texto: 'Ese navegador deja de ver el tablero y no puede volver a entrar sin un código nuevo.', aceptar: 'Quitar acceso', peligro: true })) return;
   try {
     const cabeceras = await cabecerasConLlave({ tipo: 'quitar', personaId: p.id });
@@ -478,7 +506,6 @@ function seccionEquipos() {
     }),
     tabla(['Equipo', 'IP', 'Importancia'], filasEquipos(equiposFiltrados()), 'tabla-equipos'),
     el('div', { id: 'equipos-paginas' }, piePaginas(equiposFiltrados(), 'equipos', pintarFilasEquipos)),
-    el('p', { class: 'nota ajustes-leyenda' }, `${IMPORTANCIAS.critico.nombre}: ${IMPORTANCIAS.critico.explicacion.toLowerCase()} ${IMPORTANCIAS.poco_importante.nombre}: ${IMPORTANCIAS.poco_importante.explicacion.toLowerCase()}`),
     esAdmin() ? barraCambios('equipos') : notaSoloAdmin(),
   ];
 }
@@ -591,15 +618,16 @@ function notificacionesNavegador() {
   }
   return bloque(titulo, 'Las notificaciones están permitidas: llegan las alertas altas cuando el tablero no está a la vista.',
     el('div', { class: 'acciones-detalle' },
-      el('button', { type: 'button', class: 'boton-secundario', onclick: () => { if (!avisoDePrueba()) avisoInferior('Este navegador no mostró la notificación.'); } }, 'Mandar una de prueba'),
-      el('button', { type: 'button', class: 'boton-texto', onclick: () => { apagarAvisos(); pintarAjustes(); } }, 'Desactivar')));
+      el('button', { type: 'button', class: 'boton-secundario', onclick: () => { if (!avisoDePrueba()) avisoError('Este navegador no mostró la notificación.'); } }, 'Enviar una notificación de prueba'),
+      el('button', { type: 'button', class: 'boton-texto', onclick: () => { apagarAvisos(); pintarAjustes(); } }, 'Desactivar')),
+    el('p', { class: 'nota' }, 'Si la notificación de prueba no aparece, revisá que Windows tenga activadas las notificaciones de este navegador.'));
 }
 
 function notificacionesTelegram() {
   const t = e.telegram;
   if (!t) return bloque('Telegram', 'Cargando…');
   if (!t.vinculado) {
-    return bloque('Telegram', 'Recibí los avisos de alertas en Telegram, en el chat con el bot de Zonda. Solo viajan la severidad, el servicio, la hora y la red.',
+    return bloque('Telegram', 'Recibí los avisos de alertas en Telegram, en el chat con el bot de Zonda. Solo se envían la severidad, el servicio, la hora y la red.',
       el('div', { class: 'acciones-detalle' }, el('button', { type: 'button', class: 'boton-principal', onclick: conectarTelegram }, 'Conectar Telegram')));
   }
   const filas = ORDEN_SEVERIDAD.map((s) => el('tr', {},
@@ -607,14 +635,14 @@ function notificacionesTelegram() {
     el('td', { 'data-etiqueta': 'Aviso' }, selector({
       etiqueta: `Aviso de las alertas ${NIVEL[s].toLowerCase()}s`, opciones: MODOS_AVISO, valor: t.avisos[s], foco: `telegram-${s}`,
       alCambiar: async (modo) => {
-        try { e.telegram.avisos = await mandar('/telegram/avisos', 'PUT', { ...t.avisos, [s]: modo }); } catch (falla) { avisoInferior(falla.message); }
+        try { e.telegram.avisos = await mandar('/telegram/avisos', 'PUT', { ...t.avisos, [s]: modo }); } catch (falla) { avisoError(falla.message); }
         pintarAjustes();
       },
     }))));
   return bloque('Telegram', `Vinculado con @${t.bot}${t.vinculadoEn ? ` desde el ${fechaHora(Date.parse(t.vinculadoEn), 0)}` : ''}.`,
     tabla(['Severidad', 'Aviso'], filas),
     el('div', { class: 'acciones-detalle' },
-      el('button', { type: 'button', class: 'boton-secundario', onclick: async () => { try { await mandar('/telegram/prueba', 'POST'); avisoInferior('Aviso de prueba enviado.'); } catch (falla) { avisoInferior(falla.message); } } }, 'Mandar un aviso de prueba'),
+      el('button', { type: 'button', class: 'boton-secundario', onclick: async () => { try { await mandar('/telegram/prueba', 'POST'); avisoInferior('Aviso de prueba enviado.'); } catch (falla) { avisoError(falla.message); } } }, 'Enviar un aviso de prueba'),
       el('button', { type: 'button', class: 'boton-texto', onclick: desvincularTelegram }, 'Desvincular')));
 }
 
@@ -623,7 +651,7 @@ async function conectarTelegram() {
   try {
     vinculo = await mandar('/telegram/vinculo', 'POST', {});
   } catch (falla) {
-    avisoInferior(falla.estado === 503 ? 'Este servidor no tiene el bot de Telegram configurado.' : falla.message, { duracion: 6000 });
+    avisoError(falla.estado === 503 ? 'Este servidor no tiene el bot de Telegram configurado.' : falla.message, { duracion: 6000 });
     return;
   }
   const hoja = abrirHoja({
@@ -631,9 +659,9 @@ async function conectarTelegram() {
     subtitulo: `El enlace vence a las ${hora(Date.parse(vinculo.vence))}.`,
     cuerpo: [
       el('ol', { style: 'margin:0;padding-left:20px;display:grid;gap:6px' },
-        el('li', {}, 'Apretá «Abrir Telegram»: se abre el chat con el bot de Zonda.'),
-        el('li', {}, 'Apretá «Iniciar». El bot reconoce este navegador.'),
-        el('li', {}, 'Volvé acá: se actualiza solo.')),
+        el('li', {}, 'Seleccioná «Abrir Telegram»: se abre el chat con el bot de Zonda.'),
+        el('li', {}, 'Seleccioná «Iniciar». El bot reconoce este navegador.'),
+        el('li', {}, 'Volvé a esta página: se actualiza automáticamente.')),
     ],
     acciones: [
       { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
@@ -651,8 +679,8 @@ async function conectarTelegram() {
 }
 
 async function desvincularTelegram() {
-  if (!await confirmar({ titulo: '¿Desvincular Telegram?', texto: 'Este navegador deja de mandar avisos a ese chat.', aceptar: 'Desvincular', peligro: true })) return;
-  try { await mandar('/telegram/vinculo', 'DELETE'); e.telegram = await pedir('/telegram'); pintarAjustes(); } catch (falla) { avisoInferior(falla.message); }
+  if (!await confirmar({ titulo: '¿Desvincular Telegram?', texto: 'Este navegador deja de enviar avisos a ese chat.', aceptar: 'Desvincular', peligro: true })) return;
+  try { await mandar('/telegram/vinculo', 'DELETE'); e.telegram = await pedir('/telegram'); pintarAjustes(); } catch (falla) { avisoError(falla.message); }
 }
 
 // ---- Registro de cambios ----
@@ -670,9 +698,9 @@ function fraseDe(c) {
   if (esNavegador(c.nombre) && ['persona_nueva', 'perfil', 'persona_quitada'].includes(c.tipo)) return fraseDeNavegador(c);
   if (c.tipo === 'severidad') return `${TIPOS[c.objeto] || c.objeto} pasó de ${(NIVEL[ant] || ant || '').toLowerCase()} a ${(NIVEL[des] || des || '').toLowerCase()}`;
   if (c.tipo === 'importancia') return `${c.nombre || c.objeto} pasó de ${(IMPORTANCIAS[ant] || { nombre: ant }).nombre.toLowerCase()} a ${(IMPORTANCIAS[des] || { nombre: des }).nombre.toLowerCase()}`;
-  if (c.tipo === 'persona_nueva') return `Sumó a ${c.nombre || 'una persona'} al equipo como ${(PERFILES[des] || des || '').toLowerCase()}`;
+  if (c.tipo === 'persona_nueva') return `Sumó a ${c.nombre || 'una persona'} como ${(PERFILES[des] || des || '').toLowerCase()}`;
   if (c.tipo === 'perfil') return `${c.nombre || 'Una persona'} pasó a ${(PERFILES[des] || des || '').toLowerCase()}`;
-  if (c.tipo === 'persona_quitada') return c.autorId && c.autorId === c.objeto ? 'Quitó su dispositivo del equipo' : `Quitó a ${c.nombre || 'una persona'} del equipo`;
+  if (c.tipo === 'persona_quitada') return c.autorId && c.autorId === c.objeto ? 'Quitó su dispositivo de la red' : `Quitó a ${c.nombre || 'una persona'} de la red`;
   // Decisión 51, como en la app: «Bloqueó pc-rrhh por 1 h», «Cambió el bloqueo de pc-rrhh a 24 h», «Desbloqueó
   // pc-rrhh». Un cambio de duración trae la de antes; «hasta desbloquear» viaja como texto, no como segundos.
   if (c.tipo === 'bloqueo') {
@@ -682,7 +710,7 @@ function fraseDe(c) {
     return hasta ? `Dejó ${equipo} bloqueado hasta desbloquear` : `Cambió el bloqueo de ${equipo} a ${duracionBloqueo(des)}`;
   }
   if (c.tipo === 'desbloqueo') return `Desbloqueó ${c.nombre || c.objeto}`;
-  if (c.tipo === 'permiso_bloqueo') return `${des === 'bloquea' ? 'Le dio' : 'Le sacó el'} permiso de bloquear a ${c.nombre || 'una persona'}`;
+  if (c.tipo === 'permiso_bloqueo') return `${des === 'bloquea' ? 'Le dio' : 'Le quitó el'} permiso de bloquear a ${c.nombre || 'una persona'}`;
   return c.tipo;
 }
 
@@ -691,7 +719,8 @@ function fraseDeNavegador(c) {
   const nav = elNavegador(c.nombre);
   if (c.tipo === 'persona_nueva') return `Sumó ${nav} como ${perfil}`;
   if (c.tipo === 'perfil') return `${nav[0].toUpperCase()}${nav.slice(1)} pasó a ${perfil}`;
-  return c.autorId && c.autorId === c.objeto ? 'Salió del tablero' : `Le quitó el acceso a ${nav}`;
+  // «al navegador Chrome en Windows» y «a un navegador».
+  return c.autorId && c.autorId === c.objeto ? 'Salió del tablero' : `Le quitó el acceso ${nav.startsWith('el ') ? `al ${nav.slice(3)}` : `a ${nav}`}`;
 }
 
 function duracionBloqueo(texto) {
@@ -702,7 +731,7 @@ function duracionBloqueo(texto) {
 function seccionRegistro() {
   const lista = registroFiltrado();
   return [
-    cabecera('Registro de cambios', 'Quién cambió la configuración, cuándo y por qué. Lo ve todo el equipo y no se puede borrar.'),
+    cabecera('Registro de cambios', 'Quién cambió la configuración, cuándo y por qué. Lo ven todos y no se puede borrar.'),
     el('input', {
       type: 'search', class: 'buscar-tabla', placeholder: 'Buscar en el registro', value: busqueda.registro, 'aria-label': 'Buscar en el registro', dataset: { foco: 'buscar-registro' },
       oninput: (ev) => { busqueda.registro = ev.target.value; primeraPagina('registro'); pintarFilasRegistro(); },

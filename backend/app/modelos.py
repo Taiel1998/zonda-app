@@ -816,7 +816,8 @@ class AccionLlave(BaseModel):
 
 
 class MinutoLatidos(BaseModel):
-    """Un minuto del historial de latidos del análisis en vivo (decisión 52)."""
+    """Un minuto del historial de latidos del análisis en vivo (decisión 52); con un paso más largo
+    (decisión 60), el tramo que empieza en `minuto`."""
 
     minuto: int
     # Con el ciclo de 20 segundos, tres por minuto si el análisis anduvo todo el minuto.
@@ -827,10 +828,36 @@ class MinutoLatidos(BaseModel):
 
 
 class SerieLatidos(BaseModel):
-    """GET /latidos: los latidos de la ventana [desde, hasta) por minuto. Solo vienen los minutos con
-    latidos: un minuto que falta es un rato en que el análisis no anduvo."""
+    """GET /latidos: los latidos de la ventana [desde, hasta) por minuto, o en tramos de `paso` segundos.
+    Solo vienen los minutos con latidos: un minuto que falta es un rato en que el análisis no anduvo."""
 
     desde: int
     hasta: int
+    paso: int = 60
     horaServidor: str
     minutos: list[MinutoLatidos]
+
+
+class TramoRecibidos(BaseModel):
+    """Un tramo de lo que le llegó al servidor desde la red (decisión 60): empieza en t y dura `paso`."""
+
+    t: int
+    # En cuántos minutos del tramo anduvo el servidor (con el paso de un minuto, siempre 1).
+    minutos: int
+    # Los envíos del sensor (el tráfico, cada 5 segundos), del análisis en vivo (latidos y alertas) y del
+    # firewall (sus consultas, cada 10 segundos).
+    sensor: int
+    analisis: int
+    firewall: int
+
+
+class SerieRecibidos(BaseModel):
+    """GET /recibidos: lo que le llegó al servidor en la ventana [desde, hasta), en tramos de `paso`
+    segundos. Solo vienen los tramos en que el servidor anduvo: uno en cero es un rato prendido sin recibir
+    nada, y uno que falta, un rato apagado."""
+
+    desde: int
+    hasta: int
+    paso: int
+    horaServidor: str
+    tramos: list[TramoRecibidos]

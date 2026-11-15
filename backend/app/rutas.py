@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from . import latido
 from . import llaves
 from . import personas as gente
+from . import recibidos
 from . import registro
 from . import trafico
 from .asignaciones import asignaciones_de, asignar, responsable_de
@@ -63,11 +64,13 @@ from .modelos import (
     RevisionEntrada,
     Salud,
     SerieLatidos,
+    SerieRecibidos,
     SerieTrafico,
     Severidad,
     SeveridadesEntrada,
     TraficoEntrada,
     TraficoResultado,
+    TramoRecibidos,
     Veredictos,
     VinculoEntrada,
     VinculoTelegram,
@@ -76,7 +79,7 @@ from .revisiones import aplicar_revision
 from .semilla import SQL_SEVERIDAD, guardar_equipo, severidad_de
 from .telegram import BotTelegram, ErrorTelegram
 
-VERSION = "0.9.0"
+VERSION = "0.9.1"
 
 router = APIRouter()
 
@@ -499,7 +502,7 @@ def qr_svg(contenido: str) -> str | None:
 def _persona_activa(con: sqlite3.Connection, persona_id: str) -> sqlite3.Row:
     fila = gente.activo(con, persona_id)
     if fila is None:
-        raise HTTPException(status_code=404, detail="Esa persona no está en el equipo")
+        raise HTTPException(status_code=404, detail="Esa persona no está en la red")
     return fila
 
 
@@ -666,6 +669,7 @@ def ingesta_alertas(entrada: IngestaEntrada, request: Request, _: None = Depends
     creadas = 0
     fin_mas_nuevo: str | None = None
     with base.transaccion() as con:
+        recibidos.anotar(con, "analisis", request.app.state.config.dias_trafico)
         if entrada.catalogo is not None:
             for ip, nombre in entrada.catalogo.equipos.items():
                 if nombre:
@@ -695,9 +699,27 @@ def ingesta_latido(entrada: LatidoEntrada, request: Request, _: None = Depends(v
     for campo in ("ultimoFlujo", "perdidaCapturaEn"):
         if datos[campo] is not None:
             datos[campo] = _a_utc(datos[campo])
+    dias = request.app.state.config.dias_trafico
     with _base(request).transaccion() as con:
-        recibido = latido.guardar(con, datos, request.app.state.config.dias_trafico)
+        recibido = latido.guardar(con, datos, dias)
+        recibidos.anotar(con, "analisis", dias)
     return LatidoResultado(recibidoEn=recibido)
+
+
+def _ventana_del_historial(desde: int | None, hasta: int | None, paso: int) -> tuple[int, int]:
+    """La ventana de GET /latidos y GET /recibidos: sin `desde`, la última hora; como mucho, una semana. Con
+    un paso de más de un minuto, empieza donde empieza un tramo. 422 si está al revés, si pasa de una semana
+    o si el paso no es uno de los que hay."""
+    if paso not in recibidos.PASOS:
+        raise HTTPException(status_code=422, detail=f"El paso tiene que ser uno de {', '.join(map(str, recibidos.PASOS))} segundos")
+    # Sin `hasta`, hasta el segundo de ahora inclusive: lo de recién también cuenta.
+    hasta = int(ahora().timestamp()) + 1 if hasta is None else hasta
+    desde = hasta - 3600 if desde is None else desde
+    if desde >= hasta:
+        raise HTTPException(status_code=422, detail="La ventana está al revés: desde tiene que ser anterior a hasta")
+    if hasta - desde > 7 * 86400:
+        raise HTTPException(status_code=422, detail="La ventana pasa de una semana")
+    return desde - desde % paso, hasta
 
 
 @router.get("/latidos", response_model=SerieLatidos)
@@ -706,19 +728,32 @@ def ver_latidos(
     dispositivo: sqlite3.Row = Depends(dispositivo_actual),
     desde: int | None = None,
     hasta: int | None = None,
+    paso: int = 60,
 ) -> SerieLatidos:
     """Los latidos del análisis en vivo por minuto, para el gráfico del estado del sistema del tablero
     (decisión 52). `desde` y `hasta` en segundos desde 1970; sin `desde`, la última hora; como mucho, una
-    semana. Un minuto que no viene es un rato en que el análisis no anduvo."""
-    # Sin `hasta`, hasta el segundo de ahora inclusive: el latido de recién también cuenta.
-    hasta = int(ahora().timestamp()) + 1 if hasta is None else hasta
-    desde = hasta - 3600 if desde is None else desde
-    if desde >= hasta:
-        raise HTTPException(status_code=422, detail="La ventana está al revés: desde tiene que ser anterior a hasta")
-    if hasta - desde > 7 * 86400:
-        raise HTTPException(status_code=422, detail="La ventana pasa de una semana")
-    minutos = latido.por_minuto(_base(request).conexion(), desde, hasta)
-    return SerieLatidos(desde=desde, hasta=hasta, horaServidor=iso(ahora()), minutos=[MinutoLatidos(**m) for m in minutos])
+    semana. Un minuto que no viene es un rato en que el análisis no anduvo. Con `paso` (decisión 60), en
+    tramos de 5 o 15 minutos o de una hora, para ver la semana."""
+    desde, hasta = _ventana_del_historial(desde, hasta, paso)
+    minutos = latido.por_minuto(_base(request).conexion(), desde, hasta, paso)
+    return SerieLatidos(desde=desde, hasta=hasta, paso=paso, horaServidor=iso(ahora()), minutos=[MinutoLatidos(**m) for m in minutos])
+
+
+@router.get("/recibidos", response_model=SerieRecibidos)
+def ver_recibidos(
+    request: Request,
+    dispositivo: sqlite3.Row = Depends(dispositivo_actual),
+    desde: int | None = None,
+    hasta: int | None = None,
+    paso: int = 60,
+) -> SerieRecibidos:
+    """Lo que le llegó al servidor desde la red, para los gráficos del servidor y del firewall en el estado
+    del sistema del tablero (decisión 60): los envíos del sensor, del análisis en vivo y del firewall, por
+    minuto o en tramos de `paso` segundos. La ventana, como la de GET /latidos. Solo vienen los tramos en
+    que el servidor anduvo: uno que falta es un rato en que estuvo apagado."""
+    desde, hasta = _ventana_del_historial(desde, hasta, paso)
+    tramos = recibidos.serie(_base(request).conexion(), desde, hasta, paso)
+    return SerieRecibidos(desde=desde, hasta=hasta, paso=paso, horaServidor=iso(ahora()), tramos=[TramoRecibidos(**t) for t in tramos])
 
 
 # ---- Tráfico del sensor para el tablero web (decisión 49) ----
@@ -734,6 +769,7 @@ def ingesta_trafico(entrada: TraficoEntrada, request: Request, _: None = Depends
     with _base(request).transaccion() as con:
         trafico.guardar(con, entrada.tramos, entrada.pares)
         trafico.podar(con, limite)
+        recibidos.anotar(con, "sensor", cfg.dias_trafico)
     return TraficoResultado(tramos=len(entrada.tramos), pares=len(entrada.pares))
 
 

@@ -6,17 +6,18 @@ import { el, icono, numero, vaciar } from './util.js';
 import { $, cuandoRefresquenTablas, e } from './comun.js';
 import { abrirMenu } from './menu.js';
 import { colores } from './graficos.js';
-import { avisoInferior } from './hojas.js';
+import { avisoError, avisoInferior, avisoNeutro } from './hojas.js';
 import { enlaceCon, escribirUrl, nombreRango } from './tiempo.js';
 import { abrirFilaDe } from './filas.js';
 import { bajarArchivo, csvDe, nombreConFecha } from './compartir.js';
 
-// Los gráficos de cada panel. Las tres piezas del estado del sistema son paneles por separado, dentro de su
-// tarjeta, y muestran siempre la última hora.
+// Los gráficos de cada panel. Las piezas del estado del sistema son paneles por separado, dentro de su
+// tarjeta: en el tablero muestran la última hora y, en grande, el horario elegido (decisión 60).
 const GRAFICOS = {
   sensor: ['pieza-sensor'],
   analisis: ['pieza-analisis'],
   servidor: ['pieza-servidor'],
+  firewall: ['pieza-firewall'],
   servicios: ['servicios'],
   'alertas-tiempo': ['alertas-tiempo'],
   volumen: ['volumen'],
@@ -29,7 +30,7 @@ let bajoMouse = null;
 let alAgrandar = () => {};
 let irAVista = () => {};
 
-const PIEZAS = ['sensor', 'analisis', 'servidor'];
+const PIEZAS = ['sensor', 'analisis', 'servidor', 'firewall'];
 
 /** El panel: su elemento (una tarjeta o una pieza del estado), su título y, para una pieza, la tarjeta que la
     tiene, que es donde va el botón para volver. */
@@ -46,7 +47,7 @@ function panelDe(nombre) {
 
 /** El horario de los datos del panel, para el inspector. */
 function horarioDe(panel) {
-  if (PIEZAS.includes(panel.nombre)) return 'Última hora';
+  if (PIEZAS.includes(panel.nombre)) return e.panelGrande === panel.nombre ? nombreRango() : 'Última hora';
   if (panel.vista === 'resumen') return $('sub-resumen').textContent;
   return nombreRango();
 }
@@ -149,7 +150,7 @@ export function cerrarInspector() {
 /** El CSV, con los valores sin unidades si el panel los da. */
 function bajarCsv(nombre) {
   const datos = e.tablas[nombre];
-  if (!datos) { avisoInferior('Todavía no hay datos para bajar'); return; }
+  if (!datos) { avisoNeutro('Todavía no hay datos para descargar'); return; }
   const fuente = datos.csv || datos;
   bajarArchivo(`${nombreConFecha(nombre)}.csv`, csvDe(fuente.columnas, fuente.filas));
 }
@@ -169,7 +170,7 @@ async function copiarEnlace(nombre) {
     await navigator.clipboard.writeText(enlaceCon({ ver: nombre }));
     avisoInferior('Enlace copiado: abre este panel en grande');
   } catch (_) {
-    avisoInferior('No se pudo copiar el enlace');
+    avisoError('No se pudo copiar el enlace');
   }
 }
 

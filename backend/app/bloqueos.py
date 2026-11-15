@@ -21,7 +21,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
-from . import llaves, registro
+from . import llaves, recibidos, registro
 from .auth import ahora, dispositivo_actual, iso, nombre_de
 from .config import Config
 from .db import Base
@@ -369,11 +369,13 @@ def _segundos(vence_en: str | None, momento: datetime) -> int | None:
 @router.get("/firewall/bloqueos", response_model=ListaFirewall)
 def para_el_firewall(request: Request, _: None = Depends(verificar_token_firewall)) -> ListaFirewall:
     """Lo que el firewall tiene que tener bloqueado ahora: cada IP aprobada y los segundos que le quedan (null:
-    hasta desbloquear). El agente agrega lo que falta y saca lo que ya no está. Anota cuándo preguntó."""
+    hasta desbloquear). El agente agrega lo que falta y saca lo que ya no está. Anota cuándo preguntó, y suma
+    la consulta al historial por minuto (decisión 60)."""
     with _base(request).transaccion() as con:
         poner_al_dia(con)
         momento = ahora()
         Base.escribir_meta(con, "firewall_consulta", iso(momento))
+        recibidos.anotar(con, "firewall", request.app.state.config.dias_trafico)
         filas = con.execute("SELECT * FROM bloqueos WHERE estado IN ('aprobado', 'aplicado') ORDER BY aprobado_en, rowid").fetchall()
     return ListaFirewall(
         bloqueos=[BloqueoFirewall(id=f["id"], ip=f["ip"], segundos=_segundos(f["vence_en"], momento)) for f in filas],

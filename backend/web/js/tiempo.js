@@ -8,7 +8,7 @@
 import { dia, el, hora, horaConSegundos, icono, vaciar } from './util.js';
 import { $, ahoraServidor, e } from './comun.js';
 import { abrirMenu, cerrarMenu } from './menu.js';
-import { avisoInferior } from './hojas.js';
+import { avisoError, avisoInferior, avisoNeutro } from './hojas.js';
 
 // Los pasos que acepta GET /trafico (trafico.PASOS del servidor) y cuántas barras tiene como mucho un gráfico.
 const PASOS = [5, 10, 15, 30, 60, 300, 900, 3600];
@@ -16,13 +16,15 @@ const BARRAS = 300;
 // El servidor guarda una semana de tráfico (ZONDA_DIAS_TRAFICO).
 const SEMANA = 7 * 86400e3;
 const UNIDAD = { s: 1e3, m: 60e3, h: 3600e3, d: 86400e3 };
+// Lo más cerca que deja llegar el zoom: con menos de un minuto quedan pocas barras de 5 segundos, casi siempre vacías.
+const ZOOM_MINIMO = 60e3;
 
 const rangos = (lista) => lista.map(([desde, hasta]) => ({ desde, hasta }));
 
 export const RANGOS_RAPIDOS = rangos([
   ['now-5m', 'now'], ['now-15m', 'now'], ['now-30m', 'now'], ['now-1h', 'now'], ['now-3h', 'now'],
   ['now-6h', 'now'], ['now-12h', 'now'], ['now-24h', 'now'], ['now-2d', 'now'], ['now-7d', 'now'],
-  ['now/d', 'now'], ['now-1d/d', 'now-1d/d'], ['now-2d/d', 'now-2d/d'],
+  ['now/d', 'now'],
 ]);
 
 /** Los de la lista de alertas, que se guardan más que el tráfico. */
@@ -84,6 +86,9 @@ export function rangoActual(rango = e.rango) {
 /** Si el rango termina ahora: se corre solo con el reloj. */
 export const esRelativo = (rango = e.rango) => rango.hasta === 'now';
 
+/** Si el servidor todavía guarda el tráfico de ese momento (una semana). */
+export const guardaTrafico = (ms) => ms >= ahoraServidor() - SEMANA;
+
 /** Para saber, después de un pedido, si mientras tanto cambió el horario. */
 export const claveRango = (rango = e.rango) => `${rango.desde}|${rango.hasta}`;
 
@@ -133,6 +138,20 @@ export const nombreRango = (rango = e.rango) => nombres(rango)[0];
 /** Cómo se dice en una oración: «en los últimos 15 minutos», «ayer» o «en ese rango». */
 export const fraseRango = (rango = e.rango) => nombres(rango)[1];
 
+/** El rango en una etiqueta chica, del largo del «Ahora» de las tarjetas de al lado: «15 min», «3 h», «7 días»
+    u «Hoy»; «Horario fijo» si no termina ahora, como dice la cabecera en ese caso. */
+export function etiquetaRango(rango = e.rango) {
+  if (claveRango(rango) === 'now/d|now') return 'Hoy';
+  if (!esRelativo(rango) || !/^now-\d+[smhd]$/.test(rango.desde)) return 'Horario fijo';
+  // Con la misma unidad que el nombre largo (nombresRelativos): «24 h» para «Últimas 24 horas».
+  const { desde, hasta } = rangoActual(rango);
+  const segundos = Math.round((hasta - desde) / 1000);
+  if (segundos >= 2 * 86400 && segundos % 86400 === 0) return `${segundos / 86400} días`;
+  if (segundos % 3600 === 0) return `${segundos / 3600} h`;
+  if (segundos % 60 === 0) return `${segundos / 60} min`;
+  return `${segundos} s`;
+}
+
 /** Las horas de un rango para el globito de su botón («31/10 06:00 a 07:30»); null para «Todo». */
 export function horasDe(rango) {
   if (rango.desde === 'todo') return null;
@@ -158,12 +177,21 @@ export function rangoCorrido(rango, sentido) {
 
 // ---- Cambiar el horario del tablero ----
 
+// El último horario que terminaba en ahora (el de entrada, si todavía no hubo otro): adonde lleva «Volver a ahora».
+let ultimoRelativo = { desde: 'now-15m', hasta: 'now' };
+
 export function ponerRango(rango) {
   if (!rango || claveRango(rango) === claveRango()) return;
+  if (esRelativo()) ultimoRelativo = e.rango;
   e.rango = rango;
   escribirUrl();
   pintarBarra();
   alCambiar();
+}
+
+/** De un horario fijo, al que se estaba mirando antes de ir al pasado: el tablero vuelve a correr con el reloj. */
+function volverAAhora() {
+  ponerRango(ultimoRelativo);
 }
 
 /** Alejar: el doble de tiempo alrededor del centro, hasta la semana que guarda el servidor. */
@@ -180,9 +208,24 @@ function alejar() {
 
 /** Acercar al tramo que se marcó arrastrando sobre un gráfico; menos de 10 segundos es un clic. */
 function acercar(t1, t2) {
-  const desde = Math.round(Math.min(t1, t2) / 1000) * 1000;
-  const hasta = Math.round(Math.max(t1, t2) / 1000) * 1000;
-  if (hasta - desde >= 10000) ponerRango({ desde: String(desde), hasta: String(hasta) });
+  let desde = Math.round(Math.min(t1, t2) / 1000) * 1000;
+  let hasta = Math.round(Math.max(t1, t2) / 1000) * 1000;
+  const actual = rangoActual();
+  // Si ya se está en un minuto, arrastrar no acerca más, y se avisa: sin aviso, parecía que el gráfico no respondía.
+  // Acá un clic que se movió es más corto: 10 segundos son la sexta parte de lo que se ve.
+  if (actual.hasta - actual.desde <= ZOOM_MINIMO) {
+    if (hasta - desde >= 2000) avisoNeutro('El acercamiento máximo es de un minuto.');
+    return;
+  }
+  if (hasta - desde < 10000) return;
+  // El tope: un tramo más corto que un minuto se abre a un minuto alrededor de lo marcado, sin salirse de lo que
+  // se estaba mirando.
+  if (hasta - desde < ZOOM_MINIMO) {
+    desde = Math.round(((desde + hasta) / 2 - ZOOM_MINIMO / 2) / 1000) * 1000;
+    desde = Math.max(actual.desde, Math.min(desde, actual.hasta - ZOOM_MINIMO));
+    hasta = desde + ZOOM_MINIMO;
+  }
+  ponerRango({ desde: String(desde), hasta: String(hasta) });
 }
 
 // ---- La dirección de la página ----
@@ -374,9 +417,9 @@ export function selectorDeHorario({ selector, boton, rapidos, limite = null, cla
         el('label', { class: 'campo' }, el('span', {}, 'Hasta'), campos.hasta),
         campos.error,
         el('button', { type: 'button', class: 'boton-principal chico', onclick: aplicarAMedida }, 'Aplicar'),
-        el('h3', {}, 'Usados hace poco'),
+        el('h3', {}, 'Usados recientemente'),
         recientes.length ? el('ul', { class: 'lista-rangos' }, recientes.map(botonRango))
-          : el('p', { class: 'nota' }, 'Acá aparecen los rangos a medida que uses.')),
+          : el('p', { class: 'nota' }, 'Aquí aparecen los rangos a medida que uses.')),
       el('div', { class: 'selector-columna' }, buscar, lista),
       el('div', { class: 'selector-pie' }, `Hora de este navegador (${zonaHoraria()}).${nota ? ` ${nota}` : ''}`));
     selector.hidden = false;
@@ -402,6 +445,8 @@ export function pintarBarra() {
   $('tiempo-texto').textContent = nombreRango();
   $('tiempo-rango').title = horasDe(e.rango) || '';
   $('tiempo-adelante').disabled = esRelativo();
+  // Con un horario que no termina ahora, la salida va a la vista: un botón para volver a lo que pasa ahora.
+  $('tiempo-ahora').hidden = esRelativo();
   const cada = ACTUALIZAR.find((a) => a.ms === e.actualizar) || ACTUALIZAR[1];
   $('actualizar-texto').textContent = cada.ms ? cada.texto : 'Apagada';
   $('actualizar-cada').classList.toggle('apagada', !cada.ms);
@@ -424,6 +469,7 @@ function elegirActualizacion() {
 /** El ⋮ del teléfono: lo que en la computadora son botones de la barra, en un menú, con la barra en una fila. */
 function masOpciones() {
   abrirMenu($('tiempo-mas'), [
+    ...(esRelativo() ? [] : [{ texto: 'Volver a ahora', icono: 'reloj', accion: volverAAhora }, { separador: true }]),
     { texto: 'Actualizar ahora', icono: 'actualizar', accion: () => alActualizar() },
     { texto: 'Alejar: el doble de tiempo', icono: 'alejar', accion: alejar },
     { texto: 'Copiar el enlace', icono: 'enlace', accion: copiarEnlace },
@@ -441,7 +487,7 @@ async function copiarEnlace() {
     await navigator.clipboard.writeText(enlaceCon());
     avisoInferior('Enlace copiado, con este horario');
   } catch (_) {
-    avisoInferior('No se pudo copiar el enlace');
+    avisoError('No se pudo copiar el enlace');
   }
 }
 
@@ -462,6 +508,7 @@ export function configurarTiempo({ alCambiarRango, actualizarAhora }) {
   });
   $('tiempo-atras').addEventListener('click', () => ponerRango(rangoCorrido(e.rango, -1)));
   $('tiempo-adelante').addEventListener('click', () => ponerRango(rangoCorrido(e.rango, 1)));
+  $('tiempo-ahora').addEventListener('click', volverAAhora);
   $('tiempo-alejar').addEventListener('click', alejar);
   $('boton-actualizar').addEventListener('click', () => alActualizar());
   $('actualizar-cada').addEventListener('click', elegirActualizacion);

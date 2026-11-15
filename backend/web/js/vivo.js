@@ -14,7 +14,7 @@ import {
   refrescarTablas, servicioDe, tipoCorto,
 } from './comun.js';
 import {
-  claveRango, esRelativo, esperarArrastre, fraseRango, nombrePaso, pasoPara, prepararGraficoDeTiempo, rangoActual,
+  claveRango, esRelativo, esperarArrastre, etiquetaRango, fraseRango, nombrePaso, nombreRango, pasoPara, prepararGraficoDeTiempo, rangoActual,
 } from './tiempo.js';
 import { abrirDetalle } from './alertas.js';
 
@@ -25,40 +25,56 @@ export function configurarVivo({ verAlertas }) { verAlertasEntre = verAlertas; }
 // ---- Estado del sistema y alertas sin revisar ----
 
 export async function actualizarSalud() {
-  const inicio = performance.now();
   let salud;
   try {
     salud = await pedir('/salud');
   } catch (falla) {
-    anotarRespuesta(null);
     pintarEstado();
     throw falla;
   }
-  anotarRespuesta(performance.now() - inicio);
   e.salud = salud;
   if (salud.hora) e.desfase = Date.parse(salud.hora) - Date.now();
   e.conteo = await pedir('/estado');
   pintarEstado();
-  pintarGraficoServidor();
   pintarSinRevisar();
 }
 
-/** Cuánto tardó el servidor en contestar /salud (null si no contestó), para el gráfico de su pieza. */
-function anotarRespuesta(ms) {
-  const ahora = Date.now();
-  e.respuestas.push({ t: ahora, ms: ms == null ? null : Math.round(ms) });
-  while (e.respuestas.length && e.respuestas[0].t < ahora - 3600e3) e.respuestas.shift();
+// Las piezas del estado del sistema; cada una es también un panel (paneles.js).
+export const PIEZAS = ['sensor', 'analisis', 'servidor', 'firewall'];
+// Los pasos de GET /latidos y GET /recibidos (recibidos.PASOS del servidor): del minuto a la hora.
+const PASOS_PIEZAS = [60, 300, 900, 3600];
+// El servidor guarda una semana (ZONDA_DIAS_TRAFICO).
+const SEMANA = 7 * 86400;
+
+/** La ventana de los gráficos de las piezas, en segundos: en el tablero, la última hora por minuto; con una
+    pieza en grande, el horario elegido en tramos de hasta una hora (decisión 60). */
+function ventanaDePiezas() {
+  if (!PIEZAS.includes(e.panelGrande)) {
+    const hasta = Math.floor(ahoraServidor() / 60000) * 60 + 60;
+    return { grande: false, clave: 'hora', paso: 60, desde: hasta - 3600, hasta };
+  }
+  const rango = rangoActual();
+  const paso = PASOS_PIEZAS.find((p) => (rango.hasta - rango.desde) / 1000 / p <= 300) || 3600;
+  const hasta = Math.ceil(Math.min(rango.hasta, ahoraServidor()) / 1000 / paso) * paso;
+  const desde = Math.max(Math.floor(rango.desde / 1000 / paso) * paso, hasta - SEMANA);
+  return { grande: true, clave: claveRango(), paso, desde, hasta };
 }
 
-/** El tráfico del sensor y los latidos del análisis de la última hora, por minuto, para los gráficos chicos. */
+/** Lo que guarda el servidor de cada pieza, para sus gráficos: el tráfico del sensor, los latidos del
+    análisis y lo que le llegó al servidor, con las consultas del firewall. */
 export async function actualizarPiezas() {
-  const hasta = Math.floor(ahoraServidor() / 60000) * 60 + 60;
-  const desde = hasta - 3600;
-  const [trafico, latidos] = await Promise.all([
-    pedir(`/trafico?desde=${desde}&hasta=${hasta}&paso=60`),
-    pedir(`/latidos?desde=${desde}&hasta=${hasta}`),
+  const v = ventanaDePiezas();
+  const ventana = `desde=${v.desde}&hasta=${v.hasta}&paso=${v.paso}`;
+  const [trafico, latidos, recibidos] = await Promise.all([
+    pedir(`/trafico?${ventana}`),
+    pedir(`/latidos?${ventana}`),
+    // Un servidor anterior a la API 0.9.1 no lo tiene: las otras piezas se dibujan igual.
+    pedir(`/recibidos?${ventana}`).catch((falla) => { if (falla.estado === 404) return null; throw falla; }),
   ]);
-  e.piezas = { desde, hasta, trafico, latidos };
+  // Si mientras tanto se agrandó o se achicó una pieza, o cambió el horario, esto ya no es lo que se ve.
+  const actual = ventanaDePiezas();
+  if (actual.grande !== v.grande || actual.clave !== v.clave) return;
+  e.piezas = { ...v, trafico, latidos, recibidos };
   pintarGraficosPiezas();
 }
 
@@ -82,7 +98,11 @@ export function pintarEstado() {
   const firewall = e.salud && e.salud.firewall;
   const conFirewall = Boolean(firewall && firewall.habilitado);
   const piezaFirewall = $('pieza-firewall');
-  if (piezaFirewall && piezaFirewall.hidden === conFirewall) piezaFirewall.hidden = !conFirewall;
+  if (piezaFirewall && piezaFirewall.hidden === conFirewall) {
+    piezaFirewall.hidden = !conFirewall;
+    // Recién ahora tiene dónde dibujarse su gráfico.
+    if (conFirewall) requestAnimationFrame(pintarGraficosPiezas);
+  }
   if (conFirewall) piezas.firewall = { estado: firewall.conectado ? 'funciona' : 'no_responde', dato: datoFirewall(firewall, ahora) };
   for (const [id, pieza] of Object.entries(piezas)) {
     const luz = LUZ[pieza.estado] || 'detenido';
@@ -108,10 +128,10 @@ function datoSensor(sistema, ahora) {
   return `Último tráfico hace ${cuanto(ahora - Date.parse(sistema.ultimoFlujo))}`;
 }
 
-/** «Última revisión hace 12 s». */
+/** «Último análisis hace 12 s». */
 function datoAnalisis(sistema, ahora) {
   if (!sistema || !sistema.ultimaCorrida) return 'Sin datos';
-  return `Última revisión hace ${cuanto(ahora - Date.parse(sistema.ultimaCorrida))}`;
+  return `Último análisis hace ${cuanto(ahora - Date.parse(sistema.ultimaCorrida))}`;
 }
 
 /** «Última consulta hace 5 s», como la pieza de la app: el firewall pregunta cada 10 s qué bloquear. */
@@ -120,12 +140,12 @@ function datoFirewall(firewall, ahora) {
   return `Última consulta hace ${cuanto(ahora - Date.parse(firewall.ultimaConsulta))}`;
 }
 
-/** «Última respuesta hace 7 s», «Respondió recién» o «No responde». */
+/** «Última respuesta hace 7 s», «Respondió hace un instante» o «No responde». */
 function datoServidor() {
   if (e.servidorCaido) return 'No responde';
   if (!e.ultimaRespuesta) return 'Sin datos';
   const hace = Date.now() - e.ultimaRespuesta;
-  return hace < 3000 ? 'Respondió recién' : `Última respuesta hace ${cuanto(hace)}`;
+  return hace < 3000 ? 'Respondió hace un instante' : `Última respuesta hace ${cuanto(hace)}`;
 }
 
 /** Cuánto pasó, en una sola unidad para que el dato sea corto: 12 s, 24 min, 3 h, 2 días (como la app). */
@@ -138,40 +158,104 @@ function cuanto(ms) {
   return `${Math.floor(segundos / 86400)} días`;
 }
 
-/** Los datos de una pieza por minuto, para su tabla (de lo más nuevo a lo más viejo) y su CSV (en orden). */
-function tablaPorMinuto(minutos, valores, columna) {
+/** Los datos de una pieza por tramo, para su tabla (de lo más nuevo a lo más viejo) y su CSV (en orden). */
+function tablaPorTramo(tramos, paso, valores, columna) {
+  const columnas = [paso === 60 ? 'Minuto' : 'Tramo', columna];
   return {
-    columnas: ['Minuto', columna],
+    columnas,
     numericas: 1,
-    filas: minutos.map((t, i) => [fechaHora(t * 1000), numero(valores[i])]).reverse(),
-    csv: { columnas: ['Minuto', columna], filas: minutos.map((t, i) => [fechaCsv(t * 1000), valores[i]]) },
+    filas: tramos.map((t, i) => [fechaHora(t * 1000), numero(valores[i])]).reverse(),
+    csv: { columnas, filas: tramos.map((t, i) => [fechaCsv(t * 1000), valores[i]]) },
   };
 }
 
-/** Los gráficos chicos del sensor y del análisis: conexiones y latidos de cada minuto de la última hora
-    (un minuto sin latidos es un rato en que el análisis no anduvo). Cada pieza es un panel: en grande, con
-    sus ejes. */
+/** La tabla del servidor: lo que le llegó de cada uno; un tramo sin fila es un rato en que no anduvo. */
+function tablaDelServidor(tramos, paso, filas) {
+  const columnas = [paso === 60 ? 'Minuto' : 'Tramo', 'Del sensor', 'Del análisis', 'Del firewall', 'Total'];
+  const total = (x) => x.sensor + x.analisis + x.firewall;
+  return {
+    columnas,
+    numericas: 4,
+    filas: tramos.map((t) => {
+      const x = filas.get(t);
+      return x ? [fechaHora(t * 1000), numero(x.sensor), numero(x.analisis), numero(x.firewall), numero(total(x))]
+        : [fechaHora(t * 1000), '–', '–', '–', 'Sin datos'];
+    }).reverse(),
+    csv: {
+      columnas,
+      filas: tramos.map((t) => {
+        const x = filas.get(t);
+        return x ? [fechaCsv(t * 1000), x.sensor, x.analisis, x.firewall, total(x)] : [fechaCsv(t * 1000), '', '', '', ''];
+      }),
+    },
+  };
+}
+
+/** Los gráficos chicos de las piezas, con lo que guarda el servidor de cada una (decisión 60): las
+    conexiones que vio el sensor, cuántas veces se ejecutó el análisis, los datos que recibió el servidor (con
+    las alertas marcadas abajo) y las consultas del firewall. Un hueco es un rato en que esa pieza no anduvo.
+    En el tablero, la última hora por minuto; cada pieza es un panel y, en grande, sigue el horario elegido,
+    con sus ejes. */
 export function pintarGraficosPiezas() {
   const p = e.piezas;
-  if (p) {
-    const c = colores();
-    const minutos = Array.from({ length: (p.hasta - p.desde) / 60 }, (_, i) => p.desde + i * 60);
-    const conexiones = new Map(p.trafico.total.map((x) => [x.t, x.conexiones]));
-    const latidos = new Map(p.latidos.minutos.map((x) => [x.minuto, x.latidos]));
-    const ventana = { desde: p.desde * 1000, hasta: p.hasta * 1000 };
-    const porMinuto = minutos.map((t) => conexiones.get(t) || 0);
-    dibujar('pieza-sensor', opcionesMini(c, { ...ventana, puntos: minutos.map((t, i) => [t * 1000, porMinuto[i]]) },
-      { tipo: 'barras', color: c['--serie-2'], nombre: 'conexiones', paso: 60, ejes: e.panelGrande === 'sensor' }));
-    const valores = minutos.map((t) => latidos.get(t) || 0);
-    dibujar('pieza-analisis', opcionesMini(c, { ...ventana, puntos: minutos.map((t, i) => [t * 1000, valores[i]]) },
-      { tipo: 'barras', color: c['--verde'], nombre: 'revisiones', paso: 60, maximo: Math.max(3, ...valores), ejes: e.panelGrande === 'analisis' }));
-    avisoMini('sensor', porMinuto.some((v) => v > 0) ? '' : 'Sin conexiones en la última hora');
-    avisoMini('analisis', valores.some((v) => v > 0) ? '' : 'Sin revisiones en la última hora');
-    e.tablas.sensor = tablaPorMinuto(minutos, porMinuto, 'Conexiones');
-    e.tablas.analisis = tablaPorMinuto(minutos, valores, 'Revisiones');
-    refrescarTablas('sensor', 'analisis');
+  if (!p) return;
+  const c = colores();
+  const tramos = Array.from({ length: Math.round((p.hasta - p.desde) / p.paso) }, (_, i) => p.desde + i * p.paso);
+  const ventana = { desde: p.desde * 1000, hasta: p.hasta * 1000 };
+  const puntos = (valores) => tramos.map((t, i) => [t * 1000, valores[i]]);
+  const cada = p.paso === 60 ? 'por minuto' : `cada ${nombrePaso(p.paso)}`;
+  const donde = p.grande ? 'en este horario' : 'en la última hora';
+  // Lo que cabe en un tramo si la pieza anduvo todo el tiempo: tres análisis y seis consultas por minuto.
+  const lleno = (porMinuto, valores) => Math.max((porMinuto * p.paso) / 60, ...valores);
+  $('rango-estado').textContent = p.grande ? nombreRango() : 'Última hora';
+  // Las cuatro piezas van en el mismo verde: cada una tiene su gráfico y su título, y un color distinto en una
+  // sola se leía como si quisiera decir algo.
+  const verde = c['--serie-2'];
+
+  const conexiones = new Map(p.trafico.total.map((x) => [x.t, x.conexiones]));
+  const vistas = tramos.map((t) => conexiones.get(t) || 0);
+  dibujar('pieza-sensor', opcionesMini(c, { ...ventana, puntos: puntos(vistas) },
+    { tipo: 'barras', color: verde, nombre: 'conexiones', paso: p.paso, ejes: e.panelGrande === 'sensor' }));
+  avisoMini('sensor', vistas.some((v) => v > 0) ? '' : `Sin conexiones ${donde}`);
+  $('pie-sensor').textContent = `Conexiones ${cada}`;
+  e.tablas.sensor = tablaPorTramo(tramos, p.paso, vistas, 'Conexiones');
+
+  const latidos = new Map(p.latidos.minutos.map((x) => [x.minuto, x.latidos]));
+  const revisiones = tramos.map((t) => latidos.get(t) || 0);
+  dibujar('pieza-analisis', opcionesMini(c, { ...ventana, puntos: puntos(revisiones) },
+    { tipo: 'barras', color: verde, nombre: 'análisis', paso: p.paso, maximo: lleno(3, revisiones), ejes: e.panelGrande === 'analisis' }));
+  avisoMini('analisis', revisiones.some((v) => v > 0) ? '' : `Sin análisis ${donde}`);
+  $('pie-analisis').textContent = `Análisis ${cada}`;
+  e.tablas.analisis = tablaPorTramo(tramos, p.paso, revisiones, 'Análisis');
+
+  // El servidor: una línea que se corta donde no hay fila (estuvo apagado) y queda en cero donde estuvo
+  // prendido sin recibir nada. El tramo en curso no se dibuja hasta que termina: a medio llenar, parecería
+  // una caída.
+  const filas = new Map((p.recibidos ? p.recibidos.tramos : []).map((x) => [x.t, x]));
+  const completos = tramos.filter((t) => (t + p.paso) * 1000 <= ahoraServidor());
+  const recibidos = completos.map((t) => { const x = filas.get(t); return [t * 1000, x ? x.sensor + x.analisis + x.firewall : null]; });
+  // En un tramo de más de un minuto, el servidor pudo andar solo una parte: el globito lo dice.
+  const anduvo = (t) => {
+    const x = filas.get(t / 1000);
+    return x && x.minutos < p.paso / 60 ? `Anduvo ${numero(x.minutos)} de ${numero(p.paso / 60)} min` : '';
+  };
+  dibujar('pieza-servidor', opcionesMini(c, { ...ventana, puntos: recibidos }, {
+    tipo: 'linea', color: verde, nombre: 'datos recibidos', paso: p.paso, marcas: marcasDe(ventana), nota: anduvo, ejes: e.panelGrande === 'servidor',
+  }));
+  avisoMini('servidor', filas.size ? '' : `Sin datos ${donde}`);
+  $('pie-servidor').textContent = `Datos recibidos ${cada}`;
+  e.tablas.servidor = tablaDelServidor(completos, p.paso, filas);
+
+  // El firewall, solo si la red tiene uno (pintarEstado muestra u oculta su pieza).
+  if (!$('pieza-firewall').hidden) {
+    const consultas = tramos.map((t) => (filas.has(t) ? filas.get(t).firewall : 0));
+    dibujar('pieza-firewall', opcionesMini(c, { ...ventana, puntos: puntos(consultas) },
+      { tipo: 'barras', color: verde, nombre: 'consultas', paso: p.paso, maximo: lleno(6, consultas), ejes: e.panelGrande === 'firewall' }));
+    avisoMini('firewall', consultas.some((v) => v > 0) ? '' : `Sin consultas ${donde}`);
+    $('pie-firewall').textContent = `Consultas ${cada}`;
+    e.tablas.firewall = tablaPorTramo(tramos, p.paso, consultas, 'Consultas');
   }
-  pintarGraficoServidor();
+  refrescarTablas(...PIEZAS);
 }
 
 /** El aviso en el medio de un gráfico chico sin datos (sin texto, se esconde). */
@@ -179,27 +263,6 @@ function avisoMini(id, texto) {
   const aviso = $(`vacio-pieza-${id}`);
   aviso.hidden = !texto;
   aviso.textContent = texto;
-}
-
-/** El gráfico chico del servidor: cuánto tardó en contestarle a este navegador, desde que se abrió. Sus
-    datos son cada consulta, con la hora y lo que tardó. */
-function pintarGraficoServidor() {
-  const c = colores();
-  const ahora = Date.now();
-  avisoMini('servidor', e.respuestas.some((r) => r.ms != null) ? '' : 'Sin respuestas');
-  // Los datos son de este navegador: hasta que pasa una hora, la línea no llena el gráfico y el pie dice
-  // desde cuándo hay.
-  const primera = e.respuestas.length ? e.respuestas[0].t : ahora;
-  $('pie-servidor').textContent = ahora - primera < 3540e3 ? `Respuesta en milisegundos, desde las ${hora(primera)}` : 'Respuesta en milisegundos';
-  dibujar('pieza-servidor', opcionesMini(c, { desde: ahora - 3600e3, hasta: ahora, puntos: e.respuestas.map((r) => [r.t, r.ms]) },
-    { tipo: 'linea', color: c['--serie-1'], nombre: 'de respuesta', formato: (v) => `${numero(v)} ms`, ejes: e.panelGrande === 'servidor' }));
-  e.tablas.servidor = {
-    columnas: ['Hora', 'Respuesta'],
-    numericas: 1,
-    filas: e.respuestas.map((r) => [horaConSegundos(r.t), r.ms == null ? 'No respondió' : `${numero(r.ms)} ms`]).reverse(),
-    csv: { columnas: ['Hora', 'Respuesta (ms)'], filas: e.respuestas.map((r) => [fechaCsv(r.t), r.ms ?? '']) },
-  };
-  refrescarTablas('servidor');
 }
 
 /** Cada contador abre la lista de Alertas con las sin revisar de su severidad (tablero.js), como la
@@ -418,11 +481,15 @@ export function pintarTrafico() {
   const total = g.conexiones.reduce((a, b) => a + b, 0);
   const bytesTotal = g.bytes.reduce((a, b) => a + b, 0);
   const sinTrafico = !total && !bytesTotal;
+  // Sin tráfico en el horario, los gráficos se dibujan igual, en cero y con su eje, y el aviso va al pie: el cartel
+  // que los tapaba parecía un gráfico roto al acercarse a un tramo quieto. Quedan en blanco, con el cartel al
+  // medio, solo si el sensor todavía no mandó nada.
+  const nunca = g.ultimoTramo == null;
   const blanco = (opciones, vacio) => (vacio ? sinEjes(opciones) : opciones);
   const graficos = [
-    dibujar('servicios', blanco(opcionesServicios(c, { ...comunes, porGrupo: g.porGrupo, conexiones: g.conexiones, grupos: visibles }), sinTrafico)),
-    dibujar('volumen', blanco(opcionesSerieSimple(c, { ...comunes, valores: bits }, { tipo: 'linea', formato: formatoBits, nombre: 'de tráfico' }), sinTrafico)),
-    dibujar('fallidas', blanco(opcionesSerieSimple(c, { ...comunes, valores: g.fallidas }, { tipo: 'barras', formato: (v) => numero(v), nombre: 'sin respuesta' }), sinTrafico)),
+    dibujar('servicios', blanco(opcionesServicios(c, { ...comunes, porGrupo: g.porGrupo, conexiones: g.conexiones, grupos: visibles }), sinTrafico && nunca)),
+    dibujar('volumen', blanco(opcionesSerieSimple(c, { ...comunes, valores: bits }, { tipo: 'linea', formato: formatoBits, nombre: 'de tráfico' }), sinTrafico && nunca)),
+    dibujar('fallidas', blanco(opcionesSerieSimple(c, { ...comunes, valores: g.fallidas }, { tipo: 'barras', formato: (v) => numero(v), nombre: 'sin respuesta' }), sinTrafico && nunca)),
   ];
   for (const grafico of graficos) {
     if (!grafico) continue;
@@ -433,13 +500,14 @@ export function pintarTrafico() {
   const barras = alertasPorBarra(g);
   e.alertasPorBarra = barras;
   const totalAlertas = barras.totales.reduce((a, b) => a + b, 0);
-  const graficoAlertas = dibujar('alertas-tiempo', blanco(opcionesAlertasTiempo(c, { tiempos: barras.tiempos, paso: barras.paso, desde: g.desde, hasta: g.hasta, porSeveridad: barras.porSeveridad, porTipo: barras.porTipo }), !totalAlertas));
+  const graficoAlertas = dibujar('alertas-tiempo', opcionesAlertasTiempo(c, { tiempos: barras.tiempos, paso: barras.paso, desde: g.desde, hasta: g.hasta, porSeveridad: barras.porSeveridad, porTipo: barras.porTipo }));
   if (graficoAlertas) {
     prepararGraficoDeTiempo(graficoAlertas);
     prepararAlertasTiempo(graficoAlertas);
   }
-  $('sub-alertas-tiempo').textContent = `Las alertas que empezaron en cada barra de ${nombrePaso(barras.paso)}, por severidad. Elegí una barra para verlas en la lista.`;
+  $('sub-alertas-tiempo').textContent = `Las alertas que empezaron en cada barra de ${nombrePaso(barras.paso)}, por severidad.`;
   $('vacio-alertas-tiempo').hidden = totalAlertas > 0;
+  $('vacio-alertas-tiempo').classList.add('al-pie');
   $('leyenda-alertas-tiempo').hidden = !totalAlertas;
   $('leyenda-marcas').hidden = sinTrafico;
   $('vacio-alertas-tiempo').textContent = `Ninguna alerta ${frase}.`;
@@ -449,16 +517,20 @@ export function pintarTrafico() {
   $('sin-respuesta').textContent = numero(fallidas);
   // Una sola sin respuesta entre cientos no es «0 %»: debajo del 1 %, con un decimal.
   const parte = total ? (100 * fallidas) / total : 0;
-  const proporcion = fallidas && parte < 0.05 ? 'menos del 0,1 %' : porcentaje(fallidas, total, fallidas && parte < 1 ? 1 : 0);
-  $('sin-respuesta-detalle').textContent = total ? `${proporcion} de ${numero(total)} conexiones ${frase}` : `Ninguna conexión ${frase}`;
+  const proporcion = fallidas && parte < 0.05 ? 'menos del 0,1\u00a0%' : porcentaje(fallidas, total, fallidas && parte < 1 ? 1 : 0);
+  // El número grande es del horario elegido, no de ahora: la etiqueta lo dice, como «Ahora» en los otros dos, y
+  // en corto («15 min»), para que entre al lado del título igual que en ellos.
+  $('rango-sin-respuesta').textContent = etiquetaRango();
+  $('sin-respuesta-detalle').textContent = total ? `${proporcion} de ${numero(total)} conexiones` : 'Ninguna conexión';
   $('trafico-ahora-detalle').textContent = `${bytes(bytesTotal)} ${frase}`;
   $('conexiones-ahora-detalle').textContent = `Promedio de los últimos 30 segundos. ${numero(total)} conexiones ${frase}.`;
 
-  const aviso = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor. El sensor lo manda cada 5 segundos.'
+  const aviso = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor. El sensor lo envía cada 5 segundos.'
     : `No hubo tráfico ${frase}. Lo último que vio el sensor fue ${cuandoFue(g.ultimoTramo * 1000)}.`;
   const corto = g.ultimoTramo == null ? 'Todavía no llegó tráfico del sensor.' : `No hubo tráfico ${frase}.`;
   for (const [id, texto] of [['vacio-servicios', aviso], ['vacio-volumen', corto], ['vacio-fallidas', corto]]) {
     $(id).hidden = !sinTrafico;
+    $(id).classList.toggle('al-pie', !nunca);
     $(id).textContent = texto;
   }
 
@@ -524,7 +596,7 @@ function pintarLeyendaServicios(g, presentes) {
       el('th', { scope: 'row' }, el('button', {
         type: 'button',
         'aria-pressed': String(visible),
-        title: 'Elegilo para ver solo este. Con Ctrl, sumalo o sacalo.',
+        title: 'Elegilo para ver solo este. Con Ctrl, se agrega o se quita.',
         onclick: (ev) => tocarServicio(x.id, presentes, ev.ctrlKey || ev.metaKey),
       }, el('i', { style: `background:var(${x.color})` }), x.nombre)),
       el('td', { class: 'num' }, numero(Math.min(...valores))),

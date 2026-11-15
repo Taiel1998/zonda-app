@@ -3,24 +3,24 @@
 // navegador queda como un dispositivo más, con su perfil y su vencimiento.
 
 import { api, borrarAcceso, cambiarUrl, guardarAcceso, horaConSegundos, icono, leerAcceso, vaciar, el } from './util.js';
-import { $, alCambiarAlertas, cuandoExpire, e } from './comun.js';
+import { $, ahoraServidor, alCambiarAlertas, cuandoExpire, e, esAdmin } from './comun.js';
 import {
-  actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
+  PIEZAS, actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
   configurarVivo, pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
 } from './vivo.js';
 import { actualizarPares, configurarMapa, pintarMapa, soltarElegido } from './mapa.js';
 import {
-  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verSinRevisar,
+  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verBloqueados, verSinRevisar,
 } from './alertas.js';
 import { avisarEnLaCompu, avisosActivados, configurarAvisos } from './avisos.js';
 import { pintarResumen } from './resumen.js';
 import { actualizarAjustes, actualizarPersonas, cambiosSinGuardar, configurarAjustes, pintarAjustes } from './ajustes.js';
-import { confirmar } from './hojas.js';
-import { cadaCuanto, cerrarSelector, configurarTiempo, leerUrl, pintarBarra } from './tiempo.js';
+import { avisoError, confirmar } from './hojas.js';
+import { cadaCuanto, cerrarSelector, configurarTiempo, esRelativo, leerUrl, pintarBarra, ponerRango } from './tiempo.js';
 import { cerrarInspector, configurarPaneles, salirDeGrande, teclaDePanel, verEnGrande } from './paneles.js';
 import { cerrarMenu, configurarMenu } from './menu.js';
 import { alternarAyuda, cerrarAyuda, configurarAyuda } from './ayuda.js';
-import { configurarFilas, filaAbierta } from './filas.js';
+import { abrirFilaDe, configurarFilas, filaAbierta } from './filas.js';
 import { actualizarBloqueos, configurarBloqueos } from './bloqueo.js';
 import { actualizarLlave, ofrecerLlave } from './llave.js';
 
@@ -118,9 +118,9 @@ async function mostrarIngreso(mensaje) {
   $('codigo').focus();
   try {
     const salud = await api('/salud');
-    $('ingreso-red').textContent = `Red: ${salud.red.nombre} · servidor ${salud.version}`;
+    $('ingreso-red').textContent = `Red: ${salud.red.nombre}`;
   } catch (_) {
-    $('ingreso-red').textContent = 'El servidor no contesta';
+    $('ingreso-red').textContent = 'El servidor no responde';
   }
 }
 
@@ -146,7 +146,7 @@ async function entrar(evento) {
     error.hidden = false;
     error.textContent = falla.estado === 400 ? 'Ese código no existe. Revisá las letras o pedí uno nuevo.'
       : falla.estado === 410 ? 'Ese código venció o ya se usó. Pedí uno nuevo.'
-        : falla.estado === 0 ? 'El servidor no contesta. Revisá que la computadora del servidor esté encendida y que estés en la red de la empresa.'
+        : falla.estado === 0 ? 'El servidor no responde. Verificá que la computadora del servidor esté encendida y que estés en la red de la empresa.'
           : (falla.message || 'No se pudo entrar.');
   } finally {
     boton.disabled = false;
@@ -156,8 +156,15 @@ async function entrar(evento) {
 
 async function salir() {
   const n = cambiosSinGuardar();
-  if (n && !await confirmar({ titulo: '¿Salir sin guardar?', texto: `${n === 1 ? 'Hay 1 cambio' : `Hay ${n} cambios`} sin guardar en Ajustes.`, aceptar: 'Salir igual', peligro: true })) return;
-  try { await api('/dispositivos/actual', { token: e.acceso.token, metodo: 'DELETE' }); } catch (_) { /* igual se olvida el acceso */ }
+  const sinGuardar = n ? `${n === 1 ? 'Hay 1 cambio' : `Hay ${n} cambios`} sin guardar en Administración. ` : '';
+  const texto = `${sinGuardar}Este navegador pierde el acceso: para volver a entrar hace falta un código nuevo.`;
+  if (!await confirmar({ titulo: '¿Salir del tablero?', texto, aceptar: 'Salir', peligro: true })) return;
+  try {
+    await api('/dispositivos/actual', { token: e.acceso.token, metodo: 'DELETE' });
+  } catch (falla) {
+    // Si el servidor no llegó a quitar el acceso, no se olvida acá: seguiría valiendo sin que nadie lo vea.
+    if (!(falla && falla.estado === 401)) { avisoError('No se pudo salir: el servidor no responde. Intentá de nuevo.'); return; }
+  }
   terminarSesion();
 }
 
@@ -177,6 +184,16 @@ function terminarSesion(mensaje) {
 
 // ---- Consultas periódicas ----
 
+/** Ajustes y Administración son dos vistas que dibuja ajustes.js en el mismo lugar de la página. */
+const enAjustes = () => e.vista === 'ajustes' || e.vista === 'administracion';
+
+/** La pestaña «Administración» es solo del administrador; si deja de serlo mientras la mira, pasa a su Ajustes. */
+function mostrarAdministracion() {
+  const admin = esAdmin();
+  for (const boton of document.querySelectorAll('[data-vista="administracion"]')) boton.hidden = !admin;
+  if (!admin && e.vista === 'administracion') cambiarVista('ajustes');
+}
+
 const TAREAS = {
   salud: { cada: () => 5000, correr: actualizarSalud },
   alertas: { cada: () => 5000, correr: sincronizarAlertas },
@@ -186,7 +203,7 @@ const TAREAS = {
   // Grafana, el mapa no se pide mientras su fila está plegada; al desplegarla, se pide en el momento.
   trafico: { cada: () => cadaCuanto(), correr: actualizarTrafico },
   pares: { cada: () => (filaAbierta('comunicaciones') ? Math.max(10000, cadaCuanto()) : Infinity), correr: actualizarPares },
-  personas: { cada: () => (e.vista === 'ajustes' ? 15000 : 60000), correr: () => (e.vista === 'ajustes' ? actualizarAjustes() : actualizarPersonas()) },
+  personas: { cada: () => (enAjustes() ? 15000 : 60000), correr: () => (enAjustes() ? actualizarAjustes() : actualizarPersonas()) },
   // Los bloqueos del firewall (decisión 51): la tarjeta del detalle y la pieza «Firewall».
   bloqueos: { cada: () => 15000, correr: actualizarBloqueos },
 };
@@ -220,8 +237,10 @@ function tic() {
     correr(nombre);
   }
   pintarEnVivo();
-  // El dato de cada pieza del estado cuenta los segundos («Última revisión hace 12 s»).
+  // El dato de cada pieza del estado cuenta los segundos («Último análisis hace 12 s»).
   pintarEstado();
+  // El perfil puede cambiar mientras el tablero está abierto (lo trae la lista de personas).
+  mostrarAdministracion();
 }
 
 function pintarEnVivo() {
@@ -229,28 +248,33 @@ function pintarEnVivo() {
   const texto = $('en-vivo-texto');
   if (!e.ultimaRespuesta) {
     indicador.dataset.estado = e.servidorCaido ? 'caido' : 'lento';
-    texto.textContent = e.servidorCaido ? 'El servidor no contesta' : 'Conectando…';
+    texto.textContent = e.servidorCaido ? 'El servidor no responde' : 'Conectando…';
     indicador.title = texto.textContent;
     return;
   }
   const segundos = Math.round((Date.now() - e.ultimaRespuesta) / 1000);
   indicador.dataset.estado = e.servidorCaido || segundos > 60 ? 'caido' : segundos > 15 ? 'lento' : 'ok';
   texto.textContent = e.servidorCaido ? `Sin respuesta desde las ${horaConSegundos(e.ultimaRespuesta)}`
-    : segundos <= 2 ? 'En vivo · recién' : `En vivo · hace ${segundos} s`;
+    : segundos <= 2 ? 'En vivo · ahora' : `En vivo · hace ${segundos} s`;
   // Con la actualización apagada los gráficos quedan quietos: la cabecera no dice «En vivo», como en Grafana.
-  if (!e.servidorCaido && segundos <= 60 && cadaCuanto() === Infinity) {
+  // Tampoco mientras En vivo muestra un horario que no termina ahora: sus gráficos son de ese rato.
+  const horarioFijo = e.vista === 'vivo' && !esRelativo();
+  const quieto = !e.servidorCaido && segundos <= 60 && (horarioFijo || cadaCuanto() === Infinity);
+  if (quieto) {
     indicador.dataset.estado = 'pausa';
-    texto.textContent = 'Actualización apagada';
+    texto.textContent = horarioFijo ? 'Horario fijo' : 'Actualización apagada';
   }
-  indicador.title = texto.textContent;
+  indicador.title = quieto && horarioFijo ? 'Los gráficos muestran el horario elegido, no el actual' : texto.textContent;
   const banda = $('banda-error');
   banda.hidden = !(e.servidorCaido || segundos > 60);
-  banda.textContent = 'El servidor de alertas no contesta. El tablero muestra lo último que recibió y sigue intentando.';
+  banda.textContent = 'El servidor de alertas no responde. El tablero muestra los últimos datos recibidos y vuelve a intentar.';
 }
 
 // ---- Vistas ----
 
-function cambiarVista(vista, { mantenerPanel = false } = {}) {
+function cambiarVista(pedida, { mantenerPanel = false } = {}) {
+  // Administración es solo del administrador: a un analista (por un enlace, por ejemplo) lo lleva a su Ajustes.
+  const vista = pedida === 'administracion' && !esAdmin() ? 'ajustes' : pedida;
   if (!mantenerPanel) salirDeGrande();
   cerrarInspector();
   e.vista = vista;
@@ -258,13 +282,15 @@ function cambiarVista(vista, { mantenerPanel = false } = {}) {
     if (boton.dataset.vista === vista) boton.setAttribute('aria-current', 'page');
     else boton.removeAttribute('aria-current');
   }
-  document.title = `${{ vivo: 'En vivo', alertas: 'Alertas', resumen: 'Resumen', ajustes: 'Ajustes' }[vista]} · Zonda`;
+  document.title = `${{ vivo: 'En vivo', alertas: 'Alertas', resumen: 'Resumen', ajustes: 'Ajustes', administracion: 'Administración' }[vista]} · Zonda`;
   // La vista queda en la dirección: al recargar o al compartir el enlace se abre la misma.
   cambiarUrl({ vista: vista === 'vivo' ? null : vista });
-  for (const nombre of ['vivo', 'alertas', 'resumen', 'ajustes']) $(`vista-${nombre}`).hidden = nombre !== vista;
+  // Administración se dibuja en el lugar de Ajustes (ajustes.js arma una u otra según la vista).
+  const lugar = vista === 'administracion' ? 'ajustes' : vista;
+  for (const nombre of ['vivo', 'alertas', 'resumen', 'ajustes']) $(`vista-${nombre}`).hidden = nombre !== lugar;
   if (vista === 'alertas') pintarAlertas();
   if (vista === 'resumen') pintarResumen();
-  if (vista === 'ajustes') { pintarAjustes(); actualizarAjustes().catch(() => {}); }
+  if (enAjustes()) { pintarAjustes(); actualizarAjustes().catch(() => {}); }
   window.scrollTo(0, 0);
   requestAnimationFrame(() => {
     for (const grafico of Object.values(e.graficos)) grafico.resize();
@@ -300,6 +326,8 @@ function actualizarHorario() {
   });
   tareas.trafico = { ultima: Date.now(), corriendo: false };
   tareas.pares = { ultima: Date.now(), corriendo: false };
+  // Una pieza del estado en grande sigue el horario (decisión 60).
+  if (PIEZAS.includes(e.panelGrande)) actualizarPiezas().catch(() => {});
 }
 
 function actualizarTodo() {
@@ -365,7 +393,7 @@ let alertaDelEnlace = null;
 function abrirLoDelEnlace() {
   const enlace = new URLSearchParams(location.search);
   if (enlace.get('ver')) verEnGrande(enlace.get('ver'));
-  else if (['alertas', 'resumen', 'ajustes'].includes(enlace.get('vista'))) cambiarVista(enlace.get('vista'));
+  else if (['alertas', 'resumen', 'ajustes', 'administracion'].includes(enlace.get('vista'))) cambiarVista(enlace.get('vista'));
   alertaDelEnlace = enlace.get('alerta');
 }
 
@@ -376,6 +404,24 @@ function alNavegar() {
   if (alerta && e.alertas.has(alerta)) abrirDetalle(alerta, true, { sinHistoria: true });
   else if (!alerta && e.detalleAbierto) cerrarDetalle({ sinHistoria: true });
   cambiarUrl({ vista: e.vista === 'vivo' ? null : e.vista });
+}
+
+/** Del detalle de una alerta, a los gráficos de En vivo en el rato de la alerta: desde cinco minutos antes de que
+    empezara hasta cinco después de que terminara, sin pasarse de ahora. Se vuelve con «Volver a ahora». El detalle
+    se cierra sin ir para atrás en el historial: Atrás lleva de los gráficos a la lista de la que se vino. */
+function verTraficoDeAlerta(a) {
+  const margen = 5 * 60e3;
+  const desde = Math.floor((Date.parse(a.inicio) - margen) / 1000) * 1000;
+  const hasta = Math.ceil(Math.min(Date.parse(a.fin) + margen, ahoraServidor()) / 1000) * 1000;
+  cerrarDetalle({ sinHistoria: true });
+  cambiarUrl({ alerta: null });
+  ponerRango({ desde: String(desde), hasta: String(hasta) });
+  cambiarVista('vivo');
+  // Los gráficos del tráfico están en su fila: se despliega si estaba plegada y la pantalla baja hasta ella
+  // (cambiarVista la deja arriba de todo).
+  const servicios = $('tarjeta-servicios');
+  abrirFilaDe(servicios);
+  servicios.closest('.fila').scrollIntoView({ block: 'start' });
 }
 
 /** Las sin revisar de una severidad en la lista de Alertas: los contadores de En vivo y el aviso de varias altas. */
@@ -412,6 +458,7 @@ async function arrancarTablero() {
   e.perfil = e.acceso.perfil;
   e.miId = e.acceso.dispositivoId || null;
   vaciar($('red-actual'), e.acceso.red ? e.acceso.red.nombre : 'Red', el('small', {}, `${e.acceso.persona || 'Tablero web'} · ${e.perfil === 'administrador' ? 'administrador' : 'analista'}`));
+  mostrarAdministracion();
   pintarLeyendas();
   pintarSinRevisar();
   pintarEstado();
@@ -426,7 +473,7 @@ function iniciar() {
   aplicarTema(temaQueToca());
   oscuroDelSistema.addEventListener('change', () => {
     if (temaElegido() === 'sistema') ponerTema(temaQueToca());
-    if (e.vista === 'ajustes') pintarAjustes();
+    if (enAjustes()) pintarAjustes();
   });
   cuandoExpire(terminarSesion);
   alCambiarAlertas(alCambiar);
@@ -437,13 +484,14 @@ function iniciar() {
   configurarFilas({ alCambiar: alCambiarFila });
   configurarMapa();
   configurarTiempo({ alCambiarRango: actualizarHorario, actualizarAhora: actualizarTodo });
-  configurarAlertas();
+  configurarAlertas({ verTrafico: verTraficoDeAlerta });
   configurarPaneles({
     // El mapa y las piezas del estado del sistema (que en grande llevan ejes) se arman según el tamaño del
     // panel; los otros gráficos se ajustan solos.
     alAgrandar: (nombre) => {
       if (nombre === 'mapa') pintarMapa();
-      if (['sensor', 'analisis', 'servidor'].includes(nombre)) pintarGraficosPiezas();
+      // Una pieza en grande sigue el horario elegido; al volver, la última hora: se piden de nuevo.
+      if (PIEZAS.includes(nombre)) { pintarGraficosPiezas(); actualizarPiezas().catch(() => {}); }
     },
     irAVista: (vista) => { if (e.vista !== vista) cambiarVista(vista, { mantenerPanel: true }); },
   });
@@ -455,7 +503,13 @@ function iniciar() {
   $('boton-tema').addEventListener('click', cambiarTema);
   $('ir-al-inicio').addEventListener('click', irAlInicio);
   $('boton-ayuda-estado').addEventListener('click', alternarAyudaEstado);
+  // El «?» de cada gráfico y del mapa: cómo se lee y cómo se usa, con el texto de su plantilla en index.html.
+  for (const boton of document.querySelectorAll('[data-ayuda]')) {
+    boton.addEventListener('click', () => alternarAyuda(boton, boton.dataset.ayudaTitulo, [...$(`ayuda-${boton.dataset.ayuda}`).content.cloneNode(true).children]));
+  }
   $('boton-salir').addEventListener('click', salir);
+  // En pantalla angosta «Salir» es un ícono en la barra de arriba: salir tiene que estar a la vista.
+  $('boton-salir-icono').addEventListener('click', salir);
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.addEventListener('click', () => cambiarVista(boton.dataset.vista));
   $('ver-todas-alertas').addEventListener('click', () => cambiarVista('alertas'));
   $('velo').addEventListener('click', cerrarDetalle);
@@ -469,9 +523,14 @@ function iniciar() {
   });
   configurarAvisos({ abrirDetalle: (id) => abrirDetalle(id), abrirLista: abrirSinRevisar });
   configurarBloqueos({
-    abrirAlerta: (id) => abrirDetalle(id),
     // Un bloqueo que cambió se ve en el detalle abierto, como una revisión.
-    alCambiar: () => { if (e.detalleAbierto && e.alertas.has(e.detalleAbierto) && !$('detalle').hidden) abrirDetalle(e.detalleAbierto, false); },
+    alCambiar: () => {
+      if (e.detalleAbierto && e.alertas.has(e.detalleAbierto) && !$('detalle').hidden) abrirDetalle(e.detalleAbierto, false);
+      // La lista marca los orígenes bloqueados y puede estar filtrada por ellos.
+      if (e.vista === 'alertas') pintarAlertas();
+    },
+    // «12 bloqueados» en la pieza del firewall: la lista de Alertas con esos equipos, como los contadores de sin revisar.
+    verBloqueados: () => { verBloqueados(); cambiarVista('alertas'); },
   });
   configurarVivo({ verAlertas: (desde, hasta) => { verAlertasEntre(desde, hasta); cambiarVista('alertas'); } });
   setInterval(() => { if (e.acceso && e.alertas.size) pintarUltimas(); }, 30000);

@@ -18,13 +18,13 @@
       <div><strong>Zonda</strong></div>
     </div>
     <h1>Tablero de la red</h1>
-    <p>Ingresá un código de pareo de un solo uso. Este navegador queda como un dispositivo más de la red, con su perfil y su vencimiento, igual que un teléfono.</p>
+    <p>Ingresá el código que te dio un administrador.</p>
     <label class="ingreso-etiqueta" for="codigo">Código de pareo</label>
     <input id="codigo" class="campo-codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="9" placeholder="ABCD-2345" required>
     <button class="boton-principal" id="boton-entrar" type="submit">Entrar</button>
     <div class="ingreso-error" id="ingreso-error" role="alert" hidden></div>
     <div class="ingreso-red" id="ingreso-red"></div>
-    <div class="ingreso-ayuda">El código lo genera un administrador: desde la app, en Ajustes → Personas → Agregar persona, o en la computadora del servidor con <code>zonda pair</code>. Vence a los 10 minutos.</div>
+    <div class="ingreso-ayuda">Se genera en la app: Ajustes → Personas → Agregar persona. Vence a los 10 minutos.</div>
   </form>
 </main>
 
@@ -39,6 +39,7 @@
       <button class="pestania" type="button" id="pestania-alertas" data-vista="alertas">Alertas</button>
       <button class="pestania" type="button" id="pestania-resumen" data-vista="resumen">Resumen</button>
       <button class="pestania" type="button" id="pestania-ajustes" data-vista="ajustes">Ajustes</button>
+      <button class="pestania" type="button" id="pestania-administracion" data-vista="administracion" hidden>Administración</button>
     </nav>
     <div class="cabecera-derecha">
       <span class="en-vivo" id="en-vivo" data-estado="ok"><span class="punto" aria-hidden="true"></span><span id="en-vivo-texto">Conectando…</span></span>
@@ -47,6 +48,9 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       </button>
       <button class="boton-secundario" id="boton-salir" type="button">Salir</button>
+      <button class="boton-icono" id="boton-salir-icono" type="button" aria-label="Salir del tablero" title="Salir del tablero">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
     </div>
   </header>
 
@@ -62,6 +66,7 @@
             <button class="boton-barra boton-rango" id="tiempo-rango" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="selector-tiempo"><span data-icono="reloj"></span><span id="tiempo-texto">Últimos 15 minutos</span><span data-icono="abajo"></span></button>
             <button class="boton-barra" id="tiempo-adelante" type="button" data-icono="derecha" aria-label="Correr el horario para adelante" title="Correr el horario para adelante"></button>
           </div>
+          <button class="boton-barra" id="tiempo-ahora" type="button" title="Volver al horario que termina ahora" hidden>Volver a ahora</button>
           <button class="boton-barra" id="tiempo-alejar" type="button" data-icono="alejar" aria-label="Alejar: el doble de tiempo" title="Alejar: el doble de tiempo"></button>
           <div class="grupo-botones" id="grupo-actualizar">
             <button class="boton-barra" id="boton-actualizar" type="button" title="Actualizar ahora"><span data-icono="actualizar"></span><span class="texto-boton">Actualizar</span></button>
@@ -81,16 +86,17 @@
               <h3 class="tarjeta-titulo" id="titulo-estado">Estado del sistema</h3>
               <button class="boton-ayuda" type="button" id="boton-ayuda-estado" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Qué muestra cada pieza" title="Qué muestra cada pieza">?</button>
               <div class="tarjeta-acciones">
-                <span class="etiqueta-rango" title="Este panel muestra siempre la última hora">Última hora</span>
+                <span class="etiqueta-rango" id="rango-estado" title="En el tablero, la última hora; en grande, el horario elegido">Última hora</span>
               </div>
             </div>
             <template id="ayuda-estado">
               <p><b>Sensor de red:</b> recibe una copia del tráfico de la red.</p>
-              <p><b>Análisis en vivo:</b> revisa ese tráfico cada 20 s.</p>
+              <p><b>Análisis en vivo:</b> analiza ese tráfico cada 20 s.</p>
               <p><b>Servidor de alertas:</b> guarda las alertas y avisa por Telegram.</p>
               <p class="solo-firewall"><b>Firewall:</b> aplica los bloqueos que aprueba una persona; pregunta cada 10 s.</p>
               <p>Verde: funciona. Ámbar: el sensor pierde tráfico. Rojo: no funciona o no hay datos.</p>
-              <p>Los gráficos son de la última hora: las conexiones y las revisiones de cada minuto, y cuánto tarda el servidor en contestarle a este navegador.</p>
+              <p>Los gráficos son de la última hora, por minuto: las conexiones que vio el sensor, cuántas veces se ejecutó el análisis, los datos que recibió el servidor y las consultas del firewall. Un hueco indica un período en que esa pieza no funcionó.</p>
+              <p>En grande, cada gráfico sigue el horario elegido, hasta una semana.</p>
             </template>
             <div class="piezas">
               <div class="pieza" id="pieza-sensor" data-panel="sensor">
@@ -106,7 +112,7 @@
                   <div class="grafico mini" id="grafico-pieza-sensor" role="img" aria-label="Conexiones por minuto en la última hora. Los datos están en el menú del panel."></div>
                   <div class="vacio-mini" id="vacio-pieza-sensor" hidden></div>
                 </div>
-                <div class="pieza-pie">Conexiones por minuto</div>
+                <div class="pieza-pie" id="pie-sensor">Conexiones por minuto</div>
               </div>
               <div class="pieza" id="pieza-analisis" data-panel="analisis">
                 <div class="pieza-cabecera">
@@ -118,10 +124,10 @@
                 </div>
                 <div class="pieza-dato" id="dato-analisis">–</div>
                 <div class="mini-envoltura">
-                  <div class="grafico mini" id="grafico-pieza-analisis" role="img" aria-label="Revisiones por minuto en la última hora. Los datos están en el menú del panel."></div>
+                  <div class="grafico mini" id="grafico-pieza-analisis" role="img" aria-label="Análisis por minuto en la última hora. Los datos están en el menú del panel."></div>
                   <div class="vacio-mini" id="vacio-pieza-analisis" hidden></div>
                 </div>
-                <div class="pieza-pie">Revisiones por minuto</div>
+                <div class="pieza-pie" id="pie-analisis">Análisis por minuto</div>
               </div>
               <div class="pieza" id="pieza-servidor" data-panel="servidor">
                 <div class="pieza-cabecera">
@@ -133,21 +139,27 @@
                 </div>
                 <div class="pieza-dato" id="dato-servidor">–</div>
                 <div class="mini-envoltura">
-                  <div class="grafico mini" id="grafico-pieza-servidor" role="img" aria-label="Tiempo de respuesta del servidor. Los datos están en el menú del panel."></div>
+                  <div class="grafico mini" id="grafico-pieza-servidor" role="img" aria-label="Datos que recibió el servidor por minuto en la última hora. Los datos están en el menú del panel."></div>
                   <div class="vacio-mini" id="vacio-pieza-servidor" hidden></div>
                 </div>
-                <div class="pieza-pie" id="pie-servidor">Respuesta en milisegundos</div>
+                <div class="pieza-pie" id="pie-servidor">Datos recibidos por minuto</div>
               </div>
-              <!-- Solo si la red tiene firewall (decisión 51): los equipos bloqueados o pedidos, cada uno abre su alerta. -->
-              <div class="pieza" id="pieza-firewall" hidden>
+              <!-- Solo si la red tiene firewall (decisión 51): sus consultas por minuto (decisión 60) y los equipos
+                   bloqueados o pedidos, cada uno abre su alerta. -->
+              <div class="pieza" id="pieza-firewall" data-panel="firewall" hidden>
                 <div class="pieza-cabecera">
                   <span class="pieza-nombre"><i class="punto" id="punto-firewall"></i><span class="pieza-titulo">Firewall</span></span>
                   <span class="pieza-acciones">
                     <span class="semaforo" id="semaforo-firewall" role="img" aria-label=""><i class="luz roja"></i><i class="luz verde"></i></span>
+                    <button class="boton-panel" type="button" data-menu-panel="firewall" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Firewall" title="Menú del panel"></button>
                   </span>
                 </div>
                 <div class="pieza-dato" id="dato-firewall">–</div>
-                <ul class="lista-bloqueos" id="lista-bloqueos" aria-label="Bloqueos"></ul>
+                <div class="mini-envoltura">
+                  <div class="grafico mini" id="grafico-pieza-firewall" role="img" aria-label="Consultas del firewall por minuto en la última hora. Los datos están en el menú del panel."></div>
+                  <div class="vacio-mini" id="vacio-pieza-firewall" hidden></div>
+                </div>
+                <div class="pieza-pie pie-con-enlace"><span id="pie-firewall">Consultas por minuto</span><button class="boton-texto bloqueados-enlace" type="button" id="bloqueados-enlace" hidden></button></div>
               </div>
             </div>
           </article>
@@ -155,7 +167,6 @@
           <article class="tarjeta c-6" aria-labelledby="titulo-sin-revisar">
             <div class="kpi-cabecera"><p class="kpi-etiqueta" id="titulo-sin-revisar">Alertas sin revisar</p><span class="etiqueta-rango" title="Cuentan todas las alertas sin revisar, sin importar el horario">Todas</span></div>
             <div class="contadores" id="sin-revisar"></div>
-            <p class="kpi-detalle">Elegí un contador para ver esas alertas.</p>
           </article>
 
           <article class="tarjeta c-2" aria-labelledby="titulo-ahora">
@@ -171,7 +182,7 @@
           </article>
 
           <article class="tarjeta c-2" aria-labelledby="titulo-sin-respuesta">
-            <p class="kpi-etiqueta" id="titulo-sin-respuesta">Sin respuesta</p>
+            <div class="kpi-cabecera"><p class="kpi-etiqueta" id="titulo-sin-respuesta">Conexiones sin respuesta</p><span class="etiqueta-rango" id="rango-sin-respuesta" title="El horario elegido arriba"></span></div>
             <div class="kpi-valor" id="sin-respuesta">–</div>
             <div class="kpi-detalle" id="sin-respuesta-detalle"></div>
           </article>
@@ -184,8 +195,9 @@
           <article class="tarjeta c-12" id="tarjeta-servicios" data-panel="servicios">
             <div class="tarjeta-cabecera">
               <div>
-                <h3 class="tarjeta-titulo">Conexiones por servicio</h3>
-                <p class="tarjeta-sub">Las conexiones de cada barra; las marcas de abajo son las alertas. Arrastrá sobre el gráfico para acercarte.</p>
+                <div class="titulo-con-ayuda"><h3 class="tarjeta-titulo">Conexiones por servicio</h3><button class="boton-ayuda" type="button" data-ayuda="servicios" data-ayuda-titulo="Conexiones por servicio" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Cómo se lee Conexiones por servicio" title="Cómo se lee">?</button></div>
+                <p class="tarjeta-sub">Cuántas conexiones hubo, por servicio.</p>
+                <template id="ayuda-servicios"><p>Cada punto suma las conexiones de ese tramo, con un color por servicio.</p><p>Las marcas de abajo son las alertas.</p><p>Arrastrá sobre el gráfico para acercarte.</p></template>
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="servicios" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Conexiones por servicio" title="Menú del panel"></button></div>
             </div>
@@ -198,8 +210,9 @@
           <article class="tarjeta c-12" id="tarjeta-alertas-tiempo" data-panel="alertas-tiempo">
             <div class="tarjeta-cabecera">
               <div>
-                <h3 class="tarjeta-titulo">Alertas en el tiempo</h3>
-                <p class="tarjeta-sub" id="sub-alertas-tiempo">Las alertas que empezaron en cada barra, por severidad. Elegí una barra para verlas en la lista.</p>
+                <div class="titulo-con-ayuda"><h3 class="tarjeta-titulo">Alertas en el tiempo</h3><button class="boton-ayuda" type="button" data-ayuda="alertas-tiempo" data-ayuda-titulo="Alertas en el tiempo" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Cómo se lee Alertas en el tiempo" title="Cómo se lee">?</button></div>
+                <p class="tarjeta-sub" id="sub-alertas-tiempo">Las alertas que empezaron en cada barra, por severidad.</p>
+                <template id="ayuda-alertas-tiempo"><p>Elegí una barra para ver esas alertas en la lista.</p><p>Arrastrá sobre el gráfico para acercarte.</p></template>
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="alertas-tiempo" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Alertas en el tiempo" title="Menú del panel"></button></div>
             </div>
@@ -211,8 +224,9 @@
           <article class="tarjeta c-6" id="tarjeta-volumen" data-panel="volumen">
             <div class="tarjeta-cabecera">
               <div>
-                <h3 class="tarjeta-titulo">Volumen de tráfico</h3>
-                <p class="tarjeta-sub">Lo que pasó por la red en cada barra, en bits por segundo.</p>
+                <div class="titulo-con-ayuda"><h3 class="tarjeta-titulo">Volumen de tráfico</h3><button class="boton-ayuda" type="button" data-ayuda="volumen" data-ayuda-titulo="Volumen de tráfico" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Cómo se lee Volumen de tráfico" title="Cómo se lee">?</button></div>
+                <p class="tarjeta-sub">Cuántos datos pasaron por la red.</p>
+                <template id="ayuda-volumen"><p>Se mide en bits por segundo, la misma unidad que la velocidad de internet.</p><p>Aumenta, por ejemplo, con una copia de archivos de gran tamaño.</p><p>Arrastrá sobre el gráfico para acercarte.</p></template>
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="volumen" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Volumen de tráfico" title="Menú del panel"></button></div>
             </div>
@@ -223,8 +237,9 @@
           <article class="tarjeta c-6" id="tarjeta-fallidas" data-panel="fallidas">
             <div class="tarjeta-cabecera">
               <div>
-                <h3 class="tarjeta-titulo">Conexiones sin respuesta</h3>
-                <p class="tarjeta-sub">Nadie contestó, se rechazaron o se cortaron en el saludo, como las que descarta el firewall.</p>
+                <div class="titulo-con-ayuda"><h3 class="tarjeta-titulo">Conexiones sin respuesta</h3><button class="boton-ayuda" type="button" data-ayuda="fallidas" data-ayuda-titulo="Conexiones sin respuesta" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Cómo se lee Conexiones sin respuesta" title="Cómo se lee">?</button></div>
+                <p class="tarjeta-sub">Intentos de conexión que no llegaron a abrirse.</p>
+                <template id="ayuda-fallidas"><p>El equipo de destino no respondió o los rechazó.</p><p>Aumenta, por ejemplo, con un escaneo de puertos o con un equipo bloqueado.</p><p>Arrastrá sobre el gráfico para acercarte.</p></template>
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="fallidas" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Conexiones sin respuesta" title="Menú del panel"></button></div>
             </div>
@@ -240,8 +255,9 @@
           <article class="tarjeta c-12" id="tarjeta-mapa" data-panel="mapa">
             <div class="tarjeta-cabecera">
               <div>
-                <h3 class="tarjeta-titulo">Comunicaciones entre áreas</h3>
-                <p class="tarjeta-sub">Cada círculo es un equipo, del color de su área; las flechas van del origen al destino. Arrastrá un equipo para moverlo.</p>
+                <div class="titulo-con-ayuda"><h3 class="tarjeta-titulo">Comunicaciones entre áreas</h3><button class="boton-ayuda" type="button" data-ayuda="mapa" data-ayuda-titulo="Comunicaciones entre áreas" aria-haspopup="dialog" aria-expanded="false" aria-controls="ayuda-flotante" aria-label="Cómo se lee Comunicaciones entre áreas" title="Cómo se lee">?</button></div>
+                <p class="tarjeta-sub">Qué equipos se comunicaron entre sí.</p>
+                <template id="ayuda-mapa"><p>Cada círculo es un equipo, del color de su área.</p><p>Las flechas van del origen al destino.</p><p>Arrastrá un equipo para moverlo.</p></template>
               </div>
               <div class="tarjeta-acciones"><button class="boton-panel" type="button" data-menu-panel="mapa" aria-haspopup="menu" aria-expanded="false" aria-label="Menú del panel Comunicaciones entre áreas" title="Menú del panel"></button></div>
             </div>
@@ -268,9 +284,8 @@
             <div class="tarjeta-cabecera">
               <div>
                 <h3 class="tarjeta-titulo">Últimas alertas</h3>
-                <p class="tarjeta-sub">Elegí una para ver el detalle.</p>
               </div>
-              <div class="tarjeta-acciones"><span class="etiqueta-rango" title="Sin importar el horario">Las 8 más nuevas</span><button class="boton-texto" type="button" id="ver-todas-alertas">Ver todas</button></div>
+              <div class="tarjeta-acciones"><span class="etiqueta-rango" title="Sin importar el horario">Las 8 más nuevas</span><button class="boton-texto" type="button" id="ver-todas-alertas">Ir a Alertas</button></div>
             </div>
             <ul class="feed" id="ultimas-alertas"></ul>
           </article>
@@ -326,6 +341,7 @@
     <button type="button" data-vista="alertas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alertas</button>
     <button type="button" data-vista="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>Resumen</button>
     <button type="button" data-vista="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
+    <button type="button" data-vista="administracion" aria-label="Administración" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8 7.5 9.5 4.4-1.5 7.5-4.9 7.5-9.5V6z"/><circle cx="12" cy="10" r="2.5"/><path d="M8 17a4 4 0 0 1 8 0"/></svg>Admin.</button>
   </nav>
 </div>
 

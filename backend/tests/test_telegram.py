@@ -63,7 +63,7 @@ def test_iniciar_con_el_codigo_vincula_el_chat_con_el_telefono(cliente, auth, te
     # El código es de un solo uso.
     telegram.mensaje(f"/start {vinculo['codigo']}", chat_id=777)
     asyncio.run(bot.recibir())
-    assert telegram.enviados[-1]["text"].startswith("Ese código no sirve")
+    assert telegram.enviados[-1]["text"].startswith("Ese código no es válido")
 
 
 def test_el_bot_no_vincula_con_un_codigo_vencido_ni_en_un_grupo(cliente, auth, telegram, bot):
@@ -74,14 +74,14 @@ def test_el_bot_no_vincula_con_un_codigo_vencido_ni_en_un_grupo(cliente, auth, t
     asyncio.run(bot.recibir())
     textos = [mensaje["text"] for mensaje in telegram.enviados]
     assert textos[0].startswith("Los avisos de Zonda llegan a un chat privado")
-    assert textos[1].startswith("Ese código no sirve")
-    assert textos[2].startswith("Este bot manda los avisos de Zonda")
+    assert textos[1].startswith("Ese código no es válido")
+    assert textos[2].startswith("Este bot envía los avisos de Zonda")
 
     with cliente.app.state.base.transaccion() as con:
         con.execute("UPDATE codigos_telegram SET vence_en = '2000-01-01T00:00:00+00:00'")
     telegram.mensaje(f"/start {codigo}")
     asyncio.run(bot.recibir())
-    assert telegram.enviados[-1]["text"].startswith("Ese código no sirve")
+    assert telegram.enviados[-1]["text"].startswith("Ese código no es válido")
     assert not cliente.get("/telegram", headers=auth).json()["vinculado"]
 
 

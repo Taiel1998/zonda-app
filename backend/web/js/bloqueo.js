@@ -5,7 +5,7 @@
 
 import { el, fechaHora, icono, nuevoId, vaciar } from './util.js';
 import { $, TIPOS, e, esAdmin, nombreEquipo, pedir } from './comun.js';
-import { abrirHoja, avisoInferior } from './hojas.js';
+import { abrirHoja, avisoError, avisoInferior } from './hojas.js';
 import { cabecerasConLlave, tieneLlave } from './llave.js';
 
 // Lo que está abierto: un pedido que espera, uno aprobado que el firewall todavía no confirmó y uno aplicado.
@@ -29,21 +29,21 @@ const EJEMPLOS = {
   rechazar: 'Por ejemplo: es el backup nocturno.',
 };
 const AVISOS = {
-  bloquear: 'Bloqueado. El firewall lo aplica en unos segundos.',
-  pedir: 'Pedido enviado. Lo aprueba alguien que puede bloquear.',
-  aprobar: 'Aprobado. El firewall lo aplica en unos segundos.',
-  duracion: 'Duración cambiada.',
-  desbloquear: 'Desbloqueado.',
-  rechazar: 'Pedido rechazado.',
+  bloquear: (equipo) => `Bloqueando ${equipo}. El firewall lo aplica en unos segundos.`,
+  pedir: () => 'Pedido enviado. Queda pendiente de aprobación.',
+  aprobar: (equipo) => `Bloqueo de ${equipo} aprobado. El firewall lo aplica en unos segundos.`,
+  duracion: (equipo) => `Duración del bloqueo de ${equipo} cambiada.`,
+  desbloquear: (equipo) => `${equipo} desbloqueado.`,
+  rechazar: () => 'Pedido rechazado.',
 };
 
-let abrirAlerta = () => {};
 let alCambiar = () => {};
+let verBloqueados = () => {};
 let siguiendo = [];
 
-/** Qué abre cada bloqueo de la lista (su alerta) y qué se vuelve a pintar cuando cambian (el detalle abierto). */
+/** Qué se vuelve a pintar cuando cambian los bloqueos (el detalle abierto y la lista) y qué abre «12 bloqueados». */
 export function configurarBloqueos(opciones) {
-  ({ abrirAlerta, alCambiar } = opciones);
+  ({ alCambiar, verBloqueados } = opciones);
 }
 
 /** Lo que se ve de los bloqueos: si cambia, se vuelve a pintar (la hora de la última consulta va en la pieza). */
@@ -73,15 +73,26 @@ function yoBloqueo() {
   return yo && typeof yo.puedeBloquear === 'boolean' ? yo.puedeBloquear : esAdmin();
 }
 
+// Cómo se dice cada estado: «bloqueado» es solo el que el firewall ya aplicó. Uno aprobado está «bloqueando»: el
+// firewall lo aplica en unos segundos, y si no responde, el equipo sigue sin bloquear.
+const NOMBRE_ESTADO = { pedido: 'pedido', aprobado: 'bloqueando', aplicado: 'bloqueado' };
+
+/** De cada alerta con un bloqueo o un pedido, cómo está: «bloqueado», «bloqueando» o «pedido». Una por equipo. */
+export function bloqueoPorAlerta() {
+  const activos = (e.bloqueos ? e.bloqueos.bloqueos : []).filter((b) => ACTIVOS.includes(b.estado));
+  return new Map(activos.map((b) => [b.alertaId, NOMBRE_ESTADO[b.estado]]));
+}
+
 /** El bloqueo o el pedido abierto de una IP, o null. */
 export function activoDe(ip) {
   return (e.bloqueos && e.bloqueos.bloqueos.find((b) => b.ip === ip && ACTIVOS.includes(b.estado))) || null;
 }
 
-/** Si el origen de la alerta ya está bloqueado (no solo pedido): «Revisar» propone «Bloqueado manualmente». */
+/** Si el firewall ya bloqueó el origen de la alerta (no un pedido ni uno aprobado que falta aplicar): «Revisar»
+    propone «Bloqueado manualmente», como en la app. */
 export function origenBloqueado(a) {
   const bloqueo = activoDe(a.origenIp);
-  return Boolean(bloqueo && bloqueo.estado !== 'pedido');
+  return Boolean(bloqueo && bloqueo.estado === 'aplicado');
 }
 
 function numeroIp(ip) {
@@ -144,24 +155,28 @@ export function seccionBloqueo(a) {
     contenido.push(fila('espera', 'media', `Pedido de bloqueo · ${corto(actual.duracion)}`, `Lo pidió ${actual.pedidoPor} · ${fechaHora(Date.parse(actual.pedidoEn))}`));
     contenido.push(el('p', { class: 'nota bloqueo-nota' }, `“${actual.motivo}”`));
     if (!bloquea) {
-      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Espera a alguien que pueda bloquear'));
+      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Pendiente de aprobación'));
     } else {
       contenido.push(el('div', { class: 'fila-bloqueo-botones' },
         boton('Rechazar', () => hojaBloqueo(a, 'rechazar', actual)),
         conLlave ? boton('Aprobar', () => ejecutar(a, 'aprobar', { actual })) : null));
-      if (!conLlave) contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se aprueba desde el celular o con la llave de esta computadora.'));
+      if (!conLlave) contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se aprueba desde el teléfono o con la llave de esta computadora.'));
     }
   } else {
+    // Como en la app: aprobado y todavía sin aplicar dice «Bloqueando…», con el reloj, o «Bloqueo sin aplicar» si el
+    // firewall no responde; «Bloqueado» sale recién cuando el firewall lo confirma.
+    const aplicado = actual.estado === 'aplicado';
     const detalle = !firewall.conectado ? 'El firewall no responde'
-      : actual.estado === 'aprobado' ? 'Esperando al firewall'
+      : !aplicado ? 'El firewall lo aplica en unos segundos'
         : actual.aprobadoEn ? `Lo bloqueó ${actual.aprobadoPor} · ${fechaHora(Date.parse(actual.aprobadoEn))}` : null;
-    contenido.push(fila('candado', 'alta', tituloBloqueado(actual), detalle));
+    const enEspera = firewall.conectado ? 'Bloqueando…' : 'Bloqueo sin aplicar';
+    contenido.push(aplicado ? fila('candado', 'alta', tituloBloqueado(actual), detalle) : fila('espera', 'media', enEspera, detalle));
     if (conLlave) {
       contenido.push(el('div', { class: 'fila-bloqueo-botones' },
         boton('Cambiar duración', () => hojaBloqueo(a, 'duracion', actual)),
         boton('Desbloquear', () => hojaBloqueo(a, 'desbloquear', actual))));
     } else if (bloquea) {
-      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se cambia o se desbloquea desde el celular o con la llave de esta computadora.'));
+      contenido.push(el('p', { class: 'nota bloqueo-nota' }, 'Se cambia o se desbloquea desde el teléfono o con la llave de esta computadora.'));
     }
   }
   return el('section', { class: 'detalle-seccion' }, el('h3', {}, 'Bloqueo'), contenido);
@@ -176,11 +191,11 @@ function hojaBloqueo(a, accion, actual = null) {
   const hoja = abrirHoja({ titulo: '', cuerpo: [] });
 
   function queSeCorta() {
-    if (accion === 'desbloquear') return el('p', { class: 'bloqueo-corte' }, `${equipo} (${a.origenIp}) vuelve a llegar a otras áreas y a internet.`);
+    if (accion === 'desbloquear') return el('p', { class: 'bloqueo-corte' }, `${equipo} (${a.origenIp}) recupera el acceso a otras áreas y a internet.`);
     if (!conDuracion) return null;
     const elegida = DURACIONES.find((d) => d.segundos === duracion) || DURACIONES[0];
     // Hasta desbloquear se puede elegir siempre; la línea pasa a ámbar para que se vea que no vence sola.
-    return el('p', { class: `bloqueo-corte${duracion == null ? ' sin-vencimiento' : ''}` }, `${equipo} (${a.origenIp}) no va a llegar a otras áreas ni a internet ${elegida.durante}.`);
+    return el('p', { class: `bloqueo-corte${duracion == null ? ' sin-vencimiento' : ''}` }, `${equipo} (${a.origenIp}) no podrá acceder a otras áreas ni a internet ${elegida.durante}.`);
   }
 
   function pintar() {
@@ -201,9 +216,7 @@ function hojaBloqueo(a, accion, actual = null) {
             type: 'button', class: `chip-filtro${duracion === d.segundos ? ' activo' : ''}`, role: 'radio', 'aria-checked': String(duracion === d.segundos),
             onclick: () => { duracion = d.segundos; pintar(); },
           }, d.nombre)))) : null,
-        el('label', { class: 'campo' }, el('span', {}, 'Motivo', el('span', { class: 'asterisco' }, ' *')), texto, falta,
-          el('small', {}, 'Queda en el registro de cambios con tu nombre y la hora.')),
-        el('p', { class: 'leyenda-obligatorio', style: 'margin:0' }, el('span', { class: 'asterisco' }, '*'), ' Obligatorio'),
+        el('label', { class: 'campo' }, el('span', {}, 'Motivo', el('span', { class: 'asterisco', title: 'Obligatorio' }, ' *')), texto, falta),
       ],
       acciones: [
         { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
@@ -245,9 +258,9 @@ async function ejecutar(a, accion, { duracion = null, motivo = '', actual = null
     } else {
       await pedir(`${ruta}/rechazo`, { metodo: 'POST', cuerpo: { motivo } });
     }
-    avisoInferior(AVISOS[accion], { duracion: 5000 });
+    avisoInferior(AVISOS[accion](nombreEquipo(a, 'origen')), { duracion: 5000 });
   } catch (falla) {
-    avisoInferior(falla.cancelada ? 'No se confirmó con la llave: no se hizo nada.' : `No se pudo: ${falla.message}`, { duracion: 7000 });
+    avisoError(falla.cancelada ? 'No se confirmó con la llave: no se aplicó ningún cambio.' : `No se pudo: ${falla.message}`, { duracion: 7000 });
   }
   await actualizarBloqueos().catch(() => {});
   seguirAlFirewall();
@@ -259,19 +272,36 @@ function seguirAlFirewall() {
   siguiendo = [4000, 8000, 12000].map((ms) => setTimeout(() => actualizarBloqueos().catch(() => {}), ms));
 }
 
-/** La lista de la pieza «Firewall» de Estado del sistema: los equipos bloqueados o pedidos; cada uno abre su alerta. */
-export function pintarBloqueos() {
-  const lista = $('lista-bloqueos');
-  if (!lista) return;
-  const activos = e.bloqueos ? e.bloqueos.bloqueos.filter((b) => ACTIVOS.includes(b.estado)) : [];
-  if (!activos.length) {
-    vaciar(lista, el('li', { class: 'nota' }, 'Sin bloqueos'));
-    return;
+/** «pc-rrhh bloqueado», «12 bloqueados» o «11 bloqueados · 1 pedido»: lo que dice la pieza en una sola línea. */
+function resumenBloqueos(activos) {
+  if (activos.length === 1) {
+    const b = activos[0];
+    const equipo = b.nombre || b.ip;
+    return b.estado === 'pedido' ? `Pedido de bloqueo: ${equipo}` : b.estado === 'aprobado' ? `Bloqueando ${equipo}` : `${equipo} bloqueado`;
   }
-  vaciar(lista, activos.map((b) => el('li', {},
-    el('button', { type: 'button', class: 'bloqueo-item', onclick: () => abrirAlerta(b.alertaId) },
-      el('span', { class: `fila-bloqueo-icono ${b.estado === 'pedido' ? 'media' : 'alta'}` }, icono(b.estado === 'pedido' ? 'espera' : 'candado')),
-      el('span', { class: 'bloqueo-item-texto' },
-        el('strong', {}, b.nombre || b.ip),
-        el('span', { class: 'nota' }, b.estado === 'pedido' ? `Pedido de ${b.pedidoPor} · espera aprobación` : tituloBloqueado(b)))))));
+  const cuantos = (estado) => activos.filter((b) => b.estado === estado).length;
+  const bloqueados = cuantos('aplicado');
+  const bloqueando = cuantos('aprobado');
+  const pedidos = cuantos('pedido');
+  const partes = [];
+  if (bloqueados) partes.push(`${bloqueados} ${bloqueados === 1 ? 'bloqueado' : 'bloqueados'}`);
+  if (bloqueando) partes.push(`${bloqueando} bloqueando`);
+  if (pedidos) partes.push(`${pedidos} ${pedidos === 1 ? 'pedido' : 'pedidos'}`);
+  return partes.join(' · ');
+}
+
+/** Los bloqueos en la pieza «Firewall» de Estado del sistema: una sola línea al pie con cuántos hay, que abre la
+    lista de Alertas con esos equipos (ahí se ve cada uno y se desbloquea desde su detalle). Con la lista adentro
+    de la pieza, doce bloqueos la estiraban y arrastraban a las otras tres. */
+export function pintarBloqueos() {
+  const enlace = $('bloqueados-enlace');
+  if (!enlace) return;
+  const activos = e.bloqueos ? e.bloqueos.bloqueos.filter((b) => ACTIVOS.includes(b.estado)) : [];
+  enlace.hidden = !activos.length;
+  if (!activos.length) return;
+  // El reloj, si alguno todavía no está bloqueado (un pedido o uno que el firewall no aplicó); si no, el candado.
+  const enCurso = activos.some((b) => b.estado !== 'aplicado');
+  vaciar(enlace, el('span', { class: `fila-bloqueo-icono ${enCurso ? 'media' : 'alta'}` }, icono(enCurso ? 'espera' : 'candado')), el('span', {}, resumenBloqueos(activos)));
+  enlace.title = 'Ver los equipos bloqueados';
+  enlace.onclick = () => verBloqueados();
 }

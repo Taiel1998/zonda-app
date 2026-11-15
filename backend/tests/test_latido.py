@@ -261,8 +261,8 @@ def test_el_vigia_avisa_una_sola_vez_la_caida_y_despues_la_vuelta(cli, cfg_latid
     assert revisar(cli, cfg_latido, bot_latido) == "detenido"
     assert sorted(m["chat_id"] for m in telegram.enviados) == ["555", "777"]
     caida = telegram.enviados[0]
-    assert caida["text"].startswith("<b>Análisis en vivo detenido</b>\nZonda no recibe noticias del análisis en vivo desde las ")
-    assert caida["text"].endswith(": las alertas nuevas no llegan hasta que vuelva.\nRed: Red de prueba")
+    assert caida["text"].startswith("<b>Análisis en vivo detenido</b>\nZonda no recibe datos del análisis en vivo desde las ")
+    assert caida["text"].endswith(": las alertas nuevas no llegan hasta que se restablezca.\nRed: Red de prueba")
     # Con sonido y sin botón: no hay una alerta que abrir.
     assert caida["disable_notification"] is False and "reply_markup" not in caida
 
@@ -397,8 +397,8 @@ def test_el_vigia_sigue_andando_aunque_telegram_falle(cli, cfg_latido, telegram,
 def test_el_texto_lleva_la_hora_local_y_la_fecha_si_no_es_de_hoy():
     ultimo = datetime(2026, 10, 24, 21, 41, 5, tzinfo=timezone.utc)  # 18:41 en Argentina
     assert latido.texto_detenido(ultimo, "Oficina central", ARGENTINA, hoy=date(2026, 10, 24)) == (
-        "<b>Análisis en vivo detenido</b>\nZonda no recibe noticias del análisis en vivo desde las 18:41: "
-        "las alertas nuevas no llegan hasta que vuelva.\nRed: Oficina central"
+        "<b>Análisis en vivo detenido</b>\nZonda no recibe datos del análisis en vivo desde las 18:41: "
+        "las alertas nuevas no llegan hasta que se restablezca.\nRed: Oficina central"
     )
     assert "desde las 24/10 18:41:" in latido.texto_detenido(ultimo, "Oficina central", ARGENTINA, hoy=date(2026, 10, 25))
     assert latido.texto_volvio(ultimo, "Oficina <central>", ARGENTINA, hoy=date(2026, 10, 24)) == (
@@ -510,8 +510,8 @@ def test_el_vigia_avisa_una_vez_que_el_sensor_ve_parcialmente_y_otra_cuando_se_n
     hora = datetime(2026, 10, 24, 21, 45, tzinfo=timezone.utc).astimezone(ARGENTINA)
     hora_texto = hora.strftime("%H:%M") if hora.date() == datetime.now(ARGENTINA).date() else hora.strftime("%d/%m %H:%M")
     assert aviso["text"] == (
-        f"<b>Sensor viendo parcialmente</b>\nZeek perdió el 3,2 % de lo que pasó por el puerto espejo en la medición "
-        f"de las {hora_texto}: puede haber tráfico, y ataques, que Zonda no ve.\nRed: Red de prueba"
+        f"<b>Sensor viendo parcialmente</b>\nZeek perdió el 3,2 % del tráfico del puerto espejo en la medición "
+        f"de las {hora_texto}: puede haber tráfico, y ataques, que Zonda no analiza.\nRed: Red de prueba"
     )
     assert aviso["disable_notification"] is False and "reply_markup" not in aviso
 
@@ -525,7 +525,7 @@ def test_el_vigia_avisa_una_vez_que_el_sensor_ve_parcialmente_y_otra_cuando_se_n
     latir(cli, **con_perdida(0.0))
     assert revisar_perdida(cli, cfg_latido, bot_latido) == "normal"
     assert sorted(m["chat_id"] for m in telegram.enviados) == ["555", "777"]
-    assert telegram.enviados[0]["text"].startswith("<b>Sensor viendo todo de nuevo</b>\nLa pérdida de captura bajó al 0,0 % en la medición de las ")
+    assert telegram.enviados[0]["text"].startswith("<b>Sensor funcionando con normalidad</b>\nLa pérdida de captura bajó al 0,0 % en la medición de las ")
     assert revisar_perdida(cli, cfg_latido, bot_latido) is None
     assert len(telegram.enviados) == 2
 
@@ -617,12 +617,12 @@ def test_si_telegram_falla_la_perdida_no_cambia_de_estado_y_la_caida_se_revisa_i
 def test_el_texto_de_la_perdida_lleva_coma_decimal_hora_local_y_fecha_si_no_es_de_hoy():
     medido = datetime(2026, 10, 24, 21, 45, 0, tzinfo=timezone.utc)  # 18:45 en Argentina
     assert latido.texto_parcial(3.25, medido, "Oficina central", ARGENTINA, hoy=date(2026, 10, 24)) == (
-        "<b>Sensor viendo parcialmente</b>\nZeek perdió el 3,2 % de lo que pasó por el puerto espejo en la medición "
-        "de las 18:45: puede haber tráfico, y ataques, que Zonda no ve.\nRed: Oficina central"
+        "<b>Sensor viendo parcialmente</b>\nZeek perdió el 3,2 % del tráfico del puerto espejo en la medición "
+        "de las 18:45: puede haber tráfico, y ataques, que Zonda no analiza.\nRed: Oficina central"
     )
     assert "de las 24/10 18:45:" in latido.texto_parcial(12.0, medido, "Oficina central", ARGENTINA, hoy=date(2026, 10, 25))
     assert latido.texto_normal(0.04, medido, "Oficina <central>", ARGENTINA, hoy=date(2026, 10, 24)) == (
-        "<b>Sensor viendo todo de nuevo</b>\nLa pérdida de captura bajó al 0,0 % en la medición de las 18:45.\n"
+        "<b>Sensor funcionando con normalidad</b>\nLa pérdida de captura bajó al 0,0 % en la medición de las 18:45.\n"
         "Red: Oficina &lt;central&gt;"
     )
 

@@ -9,13 +9,13 @@ import {
   chipEstado, chipSeveridad, comentarioPropuesto, e, esAdmin, guardarAlerta, mandar, metodosDe, nombreEquipo, nombrePersona,
   pedir, responsableId, servicioCorto, servicioDe, tipoCorto,
 } from './comun.js';
-import { abrirEnLugar, abrirHoja, actualizarFondo, avisoInferior } from './hojas.js';
+import { abrirEnLugar, abrirHoja, actualizarFondo, avisoError, avisoInferior, avisoNeutro } from './hojas.js';
 import { bajarArchivo, csvDe, nombreConFecha } from './compartir.js';
 import { alternarAyuda, cerrarAyuda } from './ayuda.js';
 import { enPagina, piePaginas, primeraPagina } from './paginas.js';
-import { origenBloqueado, seccionBloqueo } from './bloqueo.js';
+import { bloqueoPorAlerta, origenBloqueado, seccionBloqueo } from './bloqueo.js';
 import {
-  RANGOS_ALERTAS, claveRango, esRelativo, fraseRango, horasDe, nombreRango, rangoActual, rangoCorrido, selectorDeHorario,
+  RANGOS_ALERTAS, claveRango, esRelativo, fraseRango, guardaTrafico, horasDe, nombreRango, rangoActual, rangoCorrido, selectorDeHorario,
 } from './tiempo.js';
 
 // ---- Sincronización por cursor, como la app ----
@@ -59,7 +59,7 @@ const FILTRO_ESTADO = { todas: 'Todas', sin_revisar: 'Sin revisar', revisadas: '
 
 function filtrosNuevos() {
   // El horario va aparte de los filtros, arriba a la derecha, como en Grafana (rango: expresiones de tiempo.js).
-  return { estado: 'todas', severidades: new Set(), rango: { desde: 'now-30d', hasta: 'now' }, servicios: new Set(), otrosServicios: false, destinos: new Set(), metodos: new Set(), responsable: 'todas' };
+  return { estado: 'todas', severidades: new Set(), rango: { desde: 'now-30d', hasta: 'now' }, servicios: new Set(), otrosServicios: false, destinos: new Set(), metodos: new Set(), responsable: 'todas', bloqueos: new Set() };
 }
 
 export const f = filtrosNuevos();
@@ -77,6 +77,13 @@ export function verSinRevisar(severidad) {
   primeraPagina('alertas');
 }
 
+/** La lista con las alertas de los equipos bloqueados o con un pedido de bloqueo, de cualquier fecha: lo que abre
+    «12 bloqueados» en la pieza del firewall. Una fila por equipo, y desde su detalle se desbloquea. */
+export function verBloqueados() {
+  Object.assign(f, filtrosNuevos(), { bloqueos: new Set(['bloqueado', 'pedido']), rango: { desde: 'todo', hasta: 'now' } });
+  primeraPagina('alertas');
+}
+
 /** Los servicios con chip propio: los diez con más alertas; el resto entra en "Los demás" (decisión 46). */
 function serviciosConChip() {
   const cuenta = new Map();
@@ -84,7 +91,9 @@ function serviciosConChip() {
   return [...cuenta.entries()].sort((x, y) => y[1] - x[1]).slice(0, 10).map(([s]) => s);
 }
 
-function pasa(a, horario, conChip) {
+function pasa(a, horario, conChip, porBloqueo) {
+  // Uno que el firewall todavía está aplicando entra con los bloqueados: no es un pedido.
+  if (porBloqueo && !f.bloqueos.has(porBloqueo.get(a.id) === 'bloqueando' ? 'bloqueado' : porBloqueo.get(a.id))) return false;
   if (f.estado === 'sin_revisar' && a.estadoRevision !== 'sin_revisar') return false;
   if (f.estado === 'revisadas' && a.estadoRevision === 'sin_revisar') return false;
   if (f.estado === 'falsos' && a.estadoRevision !== 'falso_positivo') return false;
@@ -109,7 +118,7 @@ function pasa(a, horario, conChip) {
 // tocándolo otra vez, se da vuelta. De fábrica, las más nuevas primero; a igual valor, también.
 const ORDENES = {
   severidad: { valor: (a) => ORDEN_SEVERIDAD.length - ORDEN_SEVERIDAD.indexOf(a.severidad), frases: ['las más graves primero', 'las menos graves primero'] },
-  empezo: { valor: (a) => Date.parse(a.inicio), frases: ['las más nuevas primero', 'las más viejas primero'] },
+  empezo: { valor: (a) => Date.parse(a.inicio), frases: ['las más nuevas primero', 'las más antiguas primero'] },
   conexiones: { valor: (a) => a.cantidadFlujos, frases: ['las de más conexiones primero', 'las de menos conexiones primero'] },
 };
 const orden = { columna: 'empezo', descendente: true };
@@ -130,11 +139,12 @@ function ordenarPor(columna) {
 export function alertasFiltradas() {
   const horario = rangoActual(f.rango);
   const conChip = serviciosConChip();
-  return [...e.alertas.values()].filter((a) => pasa(a, horario, conChip)).sort(comparar);
+  const porBloqueo = f.bloqueos.size ? bloqueoPorAlerta() : null;
+  return [...e.alertas.values()].filter((a) => pasa(a, horario, conChip, porBloqueo)).sort(comparar);
 }
 
 const cantidadMasFiltros = () => f.servicios.size + (f.otrosServicios ? 1 : 0) + f.destinos.size + f.metodos.size;
-const hayFiltros = () => f.estado !== 'todas' || f.severidades.size || claveRango(f.rango) !== 'now-30d|now' || cantidadMasFiltros() || f.responsable !== 'todas';
+const hayFiltros = () => f.estado !== 'todas' || f.severidades.size || claveRango(f.rango) !== 'now-30d|now' || cantidadMasFiltros() || f.responsable !== 'todas' || f.bloqueos.size;
 
 function textoResponsable() {
   if (f.responsable === 'mias') return 'Asignadas a mí';
@@ -155,10 +165,13 @@ export function pintarAlertas() {
     chip(severidades, f.severidades.size, hojaSeveridad),
     chip(cantidadMasFiltros() ? `Más filtros (${cantidadMasFiltros()})` : 'Más filtros', cantidadMasFiltros(), hojaMasFiltros),
     chip(textoResponsable(), f.responsable !== 'todas', hojaResponsableFiltro),
+    // Solo en una red con firewall: los equipos bloqueados y los que tienen un pedido que espera aprobación.
+    f.bloqueos.size || (e.bloqueos && e.bloqueos.firewall && e.bloqueos.firewall.habilitado) ? chip(textoBloqueo(), f.bloqueos.size, hojaBloqueoFiltro) : null,
     hayFiltros() ? el('button', { type: 'button', class: 'boton-texto', onclick: () => { Object.assign(f, filtrosNuevos()); primeraPagina('alertas'); pintarAlertas(); } }, 'Limpiar filtros') : null);
 
   pintarBarraAlertas();
   const lista = alertasFiltradas();
+  const porBloqueo = bloqueoPorAlerta();
   const sinRevisar = lista.filter((a) => a.estadoRevision === 'sin_revisar').length;
   // Hasta la primera sincronización la lista no está vacía: está cargando.
   if (!e.sincronizada) vaciar($('resumen-filtros-alertas'), 'Cargando las alertas…');
@@ -181,7 +194,7 @@ export function pintarAlertas() {
       el('td', {}, chipSeveridad(a.severidad)),
       el('td', {}, chipEstado(a.estadoRevision)),
       el('td', {}, el('strong', {}, tipoCorto(a))),
-      el('td', { class: 'par' }, `${nombreEquipo(a, 'origen')} → ${nombreEquipo(a, 'destino')}`),
+      el('td', { class: 'par' }, marcaDeBloqueo(porBloqueo.get(a.id)), `${nombreEquipo(a, 'origen')} → ${nombreEquipo(a, 'destino')}`),
       el('td', { class: 'secundario', 'data-etiqueta': 'Servicio' }, servicioCorto(a.servicio)),
       el('td', { class: 'secundario', 'data-etiqueta': 'Empezó' }, fechaHora(Date.parse(a.inicio), ahoraServidor())),
       el('td', { class: 'num', 'data-etiqueta': 'Conexiones' }, numero(a.cantidadFlujos)),
@@ -195,6 +208,16 @@ export function pintarAlertas() {
   $('vacio-alertas').hidden = lista.length > 0 || !e.sincronizada;
   $('vacio-alertas').textContent = 'Ninguna alerta con estos filtros. Cambiá o limpiá los filtros.';
   vaciar($('alertas-paginas'), piePaginas(lista, 'alertas', pintarAlertas));
+}
+
+/** El candado (o el reloj de un pedido) delante del origen, en la alerta desde la que se bloqueó ese equipo: una
+    marca por equipo, las mismas filas que deja el filtro. */
+function marcaDeBloqueo(tipo) {
+  if (!tipo) return null;
+  // El candado, solo si el firewall ya lo bloqueó; un pedido o uno que se está aplicando llevan el reloj.
+  const bloqueado = tipo === 'bloqueado';
+  const texto = bloqueado ? 'Origen bloqueado' : tipo === 'pedido' ? 'Con un pedido de bloqueo' : 'Bloqueando el origen';
+  return el('span', { class: `fila-bloqueo-icono par-bloqueo ${bloqueado ? 'alta' : 'media'}`, role: 'img', 'aria-label': texto, title: texto }, icono(bloqueado ? 'candado' : 'espera'));
 }
 
 function conClase(elemento, clase) {
@@ -212,7 +235,7 @@ function textoMetodos(a) {
 /** Toda la lista con los filtros y el horario de arriba, no solo lo que se ve; los métodos y la revisión, en palabras. */
 function bajarCsvAlertas() {
   const lista = alertasFiltradas();
-  if (!lista.length) { avisoInferior('No hay alertas con estos filtros para bajar'); return; }
+  if (!lista.length) { avisoNeutro('No hay alertas con estos filtros para descargar'); return; }
   const columnas = ['Severidad', 'Tipo', 'Origen', 'IP de origen', 'Destino', 'IP de destino', 'Servicio', 'Puerto', 'Empezó', 'Terminó',
     'Conexiones', ...METODOS.map((m) => m.nombre), 'Responsable', 'Estado', 'Revisó', 'Motivo', 'Comentario'];
   const filas = lista.map((a) => {
@@ -245,8 +268,12 @@ function ponerRangoAlertas(rango) {
   pintarAlertas();
 }
 
+// Del detalle de una alerta a los gráficos de En vivo en ese rato: lo arma tablero.js, que es quien cambia de vista.
+let verTraficoDe = null;
+
 /** El selector del horario de la lista: los rangos de las alertas, que se guardan más que el tráfico. */
-export function configurarAlertas() {
+export function configurarAlertas({ verTrafico = null } = {}) {
+  verTraficoDe = verTrafico;
   for (const lugar of document.querySelectorAll('#barra-tiempo-alertas [data-icono], #alertas-csv [data-icono]')) lugar.prepend(icono(lugar.dataset.icono));
   $('alertas-csv').addEventListener('click', bajarCsvAlertas);
   for (const boton of $('tabla-alertas').tHead.querySelectorAll('button[data-orden]')) {
@@ -306,6 +333,24 @@ function hojaEstado() {
   hojaDeOpciones({ titulo: 'Estado de revisión', grupos: [{ opciones: opcionUnica(FILTRO_ESTADO, () => elegido, (id) => { elegido = id; }) }], alAplicar: () => { f.estado = elegido; } });
 }
 
+const FILTRO_BLOQUEO = [{ id: 'bloqueado', nombre: 'Bloqueados', punto: 'var(--alta)' }, { id: 'pedido', nombre: 'Con pedido de bloqueo', punto: 'var(--media)' }];
+
+function textoBloqueo() {
+  if (f.bloqueos.size === 2) return 'Bloqueados y pedidos';
+  if (f.bloqueos.has('bloqueado')) return 'Bloqueados';
+  return f.bloqueos.has('pedido') ? 'Con pedido de bloqueo' : 'Bloqueo';
+}
+
+function hojaBloqueoFiltro() {
+  const elegidos = new Set(f.bloqueos);
+  hojaDeOpciones({
+    titulo: 'Bloqueo',
+    subtitulo: 'Podés elegir los dos. Sin ninguno, se ven todas.',
+    grupos: [{ opciones: opcionMultiple(FILTRO_BLOQUEO, elegidos) }],
+    alAplicar: () => { f.bloqueos = elegidos; },
+  });
+}
+
 function hojaSeveridad() {
   const elegidas = new Set(f.severidades);
   hojaDeOpciones({
@@ -331,7 +376,7 @@ function hojaMasFiltros() {
   const destinosOrdenados = [...cuentaDestinos.entries()].sort((x, y) => y[1].n - x[1].n).slice(0, 12);
   hojaDeOpciones({
     titulo: 'Más filtros',
-    subtitulo: 'Podés elegir varios en cada grupo. Para sacar uno, elegilo de nuevo.',
+    subtitulo: 'Podés elegir varios en cada grupo. Para quitar uno, elegilo de nuevo.',
     grupos: [
       { titulo: 'Servicio', opciones: [...opcionMultiple(conChip.map((s) => ({ id: s, nombre: servicioCorto(s) })), servicios), ...(e.alertas.size && new Set([...e.alertas.values()].map((a) => a.servicio)).size > conChip.length ? opcionMultiple([{ id: '__otros', nombre: 'Los demás' }], otros) : [])] },
       { titulo: 'Equipo destino', opciones: opcionMultiple(destinosOrdenados.map(([ip, d]) => ({ id: ip, nombre: d.nombre === ip ? ip : `${d.nombre}` })), destinos) },
@@ -373,10 +418,10 @@ function alternarAyudaDetalle(ev) {
   alternarAyuda(ev.currentTarget, 'Qué significa cada dato', [
     el('p', {}, el('b', {}, 'Conexiones en total:'), ' todas las de estos dos equipos, hasta que pasan 15 minutos sin ninguna.'),
     el('p', {}, el('b', {}, 'Conexiones en 60 s:'), ' cuántas veces el origen se conectó a este servicio en un minuto.'),
-    el('p', {}, el('b', {}, 'Modelo de IA:'), ' aprendió el tráfico normal de tu red y marca lo que se aleja de eso.'),
+    el('p', {}, el('b', {}, 'Modelo de IA:'), ' aprendió el tráfico habitual de la red y marca lo que se aparta de él.'),
     el('p', {}, el('b', {}, 'Umbrales estadísticos:'), ' marcan si hay más conexiones a un servicio por minuto que en un día normal.'),
     el('p', {}, el('b', {}, 'Reglas estáticas:'), ' marcan los servicios que no están en la lista de autorizados.'),
-    el('p', {}, 'Alcanza con que uno marque para que haya alerta.'),
+    el('p', {}, 'Basta con que uno la marque para que se genere una alerta.'),
   ]);
 }
 
@@ -462,7 +507,10 @@ export function abrirDetalle(id, enfocar = true, { sinHistoria = false } = {}) {
         el('div', {}, el('dt', {}, 'Conexiones en 60 s'), el('dd', {}, numero(v.contexto60s))),
         el('div', {}, el('dt', {}, 'Aviso de Telegram'), el('dd', {}, a.avisoTelegram ? `Salió a las ${horaConSegundos(Date.parse(a.avisoTelegram))}` : 'No salió')),
         // Como en la app: un solo puerto no dice nada; varios, que el origen probó puertos.
-        a.puertosDistintos > 1 ? el('div', {}, el('dt', {}, 'Puertos distintos'), el('dd', {}, numero(a.puertosDistintos))) : null)),
+        a.puertosDistintos > 1 ? el('div', {}, el('dt', {}, 'Puertos distintos'), el('dd', {}, numero(a.puertosDistintos))) : null),
+      // Los gráficos de En vivo en el rato de la alerta, mientras el servidor guarda ese tráfico (una semana).
+      verTraficoDe && guardaTrafico(Date.parse(a.inicio))
+        ? el('button', { type: 'button', class: 'boton-texto ver-trafico', onclick: () => verTraficoDe(a) }, 'Ver el tráfico de ese momento') : null),
     el('section', { class: 'detalle-seccion' },
       el('h3', {}, 'Predicción por método'),
       METODOS.map((m) => el('div', { class: `veredicto ${v[m.id] ? 'anomalo' : 'normal'}` },
@@ -476,7 +524,7 @@ export function abrirDetalle(id, enfocar = true, { sinHistoria = false } = {}) {
         el('div', {}, el('strong', {}, linea.titulo), linea.extra ? ` · ${linea.extra}` : ''),
         linea.comentario ? el('div', { class: 'comentario' }, linea.comentario) : null,
         el('div', { class: 'meta' }, `${linea.quien} · ${fechaHora(linea.cuando, ahora)}`))))
-        : el('p', { class: 'nota' }, 'Todavía nadie la revisó.')));
+        : el('p', { class: 'nota' }, 'Todavía no tiene revisiones.')));
   $('velo').hidden = false;
   panel.hidden = false;
   actualizarFondo();
@@ -600,9 +648,8 @@ function revisar(a, bloqueado = false) {
         paso: 'Paso 2 de 2',
         titulo: RESULTADOS[resultado].pregunta,
         cuerpo: [
-          el('div', { class: 'grupo-opciones' }, el('p', {}, 'Motivo', el('span', { class: 'asterisco' }, ' *')), el('div', { class: 'opciones' }, motivos)),
-          el('label', { class: 'campo' }, el('span', {}, 'Comentario', el('span', { class: 'asterisco' }, ' *')), texto, el('small', {}, 'Queda en el historial de la alerta.')),
-          el('p', { class: 'leyenda-obligatorio', style: 'margin:0' }, el('span', { class: 'asterisco' }, '*'), ' Obligatorio'),
+          el('div', { class: 'grupo-opciones' }, el('p', {}, 'Motivo', el('span', { class: 'asterisco', title: 'Obligatorio' }, ' *')), el('div', { class: 'opciones' }, motivos)),
+          el('label', { class: 'campo' }, el('span', {}, 'Comentario', el('span', { class: 'asterisco', title: 'Obligatorio' }, ' *')), texto, el('small', {}, 'Queda en el historial de la alerta.')),
         ],
         acciones: [
           { texto: 'Volver', tipo: 'secundario', alHacer: () => paso1() },
@@ -637,7 +684,7 @@ async function mandarRevision(a, entrada) {
       conflicto(a, entrada, falla.datos);
       return;
     }
-    avisoInferior(`No se pudo guardar la revisión: ${falla.message}`, { accion: 'Reintentar', alAccion: () => mandarRevision(a, entrada), duracion: 10000 });
+    avisoError(`No se pudo guardar la revisión: ${falla.message}`, { accion: 'Reintentar', alAccion: () => mandarRevision(a, entrada), duracion: 10000 });
   }
 }
 
@@ -667,10 +714,10 @@ function hojaAsignar(a) {
   const valores = Object.fromEntries(personas.map((p) => [p.id, `${nombrePersona(p)}${p.vos ? ' (vos)' : ''}`]));
   abrirHoja({
     titulo: 'Asignar a',
-    subtitulo: 'Le llega un aviso por Telegram y la ve en la app, en Estado.',
+    subtitulo: 'Recibe un aviso por Telegram y la ve en la app, en Estado.',
     cuerpo: [el('div', { class: 'opciones' }, opcionUnica(valores, () => elegido, (id) => { elegido = id; }))],
     acciones: [
-      responsableId(a) ? { texto: 'Sacar la asignación', tipo: 'texto', alHacer: (h) => { h.cerrar(); asignar(a, null); } } : null,
+      responsableId(a) ? { texto: 'Quitar la asignación', tipo: 'texto', alHacer: (h) => { h.cerrar(); asignar(a, null); } } : null,
       { texto: 'Cancelar', tipo: 'secundario', alHacer: (h) => h.cerrar() },
       { texto: 'Asignar', tipo: 'principal', alHacer: (h) => { h.cerrar(); if (elegido && elegido !== responsableId(a)) asignar(a, elegido); } },
     ].filter(Boolean),
@@ -682,7 +729,7 @@ async function asignar(a, responsable) {
     guardarAlerta(await mandar(`/alertas/${encodeURIComponent(a.id)}/asignacion`, 'PUT', { accionId: nuevoId(), responsableId: responsable }));
     avisoInferior(responsable ? 'Alerta asignada.' : 'Alerta sin asignar.', { duracion: 3000 });
   } catch (falla) {
-    avisoInferior(falla.message || 'No se pudo cambiar el responsable.', { duracion: 6000 });
+    avisoError(falla.message || 'No se pudo cambiar el responsable.', { duracion: 6000 });
   }
 }
 
