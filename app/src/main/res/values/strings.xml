@@ -206,8 +206,9 @@
     <string name="error_telegram_no_disponible">El servidor de esta red todavía no tiene el bot de Telegram. Avisale al administrador.</string>
     <string name="error_telegram_sin_vincular">Telegram ya no está vinculado. Conectalo de nuevo.</string>
     <!-- Severidades de la analista (corrección 2; Figma 468-3353) -->
-    <string name="severidades_las_cambia">Las cambia un administrador: %1$s. Valen para todo el equipo.</string>
-    <string name="severidades_las_cambia_sin_nombres">Las cambia un administrador. Valen para todo el equipo.</string>
+    <!-- La gente es "la red", no "el equipo": en la app un equipo es una computadora (Ajustes → Equipos). -->
+    <string name="severidades_las_cambia">Las cambia un administrador: %1$s. Valen para toda la red.</string>
+    <string name="severidades_las_cambia_sin_nombres">Las cambia un administrador. Valen para toda la red.</string>
     <!-- "¿Por qué la cambiás?" al cambiar severidades o la importancia de un equipo (corrección 3; Figma 468-3463) -->
     <string name="motivo_titulo">¿Por qué la cambiás?</string>
     <string name="motivo_campo">Motivo</string>
@@ -218,7 +219,7 @@
     <string name="motivo_pasa_a">pasa a</string>
     <!-- Perfiles y asignaciones (decisiones 39 y 42) -->
     <string name="error_sin_permiso">Eso lo cambia un administrador.</string>
-    <string name="error_ultimo_administrador">Tiene que quedar al menos un administrador en el equipo.</string>
+    <string name="error_ultimo_administrador">Tiene que quedar al menos un administrador.</string>
     <string name="error_ya_asignada">Otra persona ya se la asignó.</string>
 
     <!-- Detalle -->
@@ -303,19 +304,19 @@
     <string name="campo_obligatorio">Obligatorio</string>
     <string name="campo_obligatorio_descripcion">%1$s, obligatorio</string>
 
-    <!-- Comentario que propone cada motivo, el de su pantalla del Figma (se puede editar), en forma
-         impersonal: queda en el historial y lo lee otra persona (decisión 48). Los que nombran equipos
-         usan los de la alerta: el servicio y el origen al bloquear, origen y destino en el backup y el
-         origen en el equipo nuevo. -->
-    <string name="comentario_escalado_al_proveedor">Se avisó al proveedor de seguridad, que está revisando el servidor.</string>
-    <string name="comentario_bloqueado_manualmente">Se bloqueó el acceso %1$s de %2$s y se avisó al proveedor.</string>
-    <string name="comentario_contrasena_cambiada">Se cambió la contraseña de la cuenta usada y se revisaron los accesos.</string>
-    <string name="comentario_investigando">Se están revisando los registros del servidor.</string>
-    <string name="comentario_tarea_programada">Es la copia nocturna que corre todos los domingos.</string>
-    <string name="comentario_backup">Es el backup semanal de %1$s hacia %2$s.</string>
-    <string name="comentario_equipo_nuevo">%1$s es un equipo nuevo que se configuró hoy.</string>
-    <string name="comentario_usuario_autorizado">Es un acceso autorizado del administrador.</string>
-    <string name="comentario_otro">Prueba de conectividad que hizo el proveedor.</string>
+    <!-- Comentario que propone cada motivo (se puede editar), en forma impersonal: queda en el historial
+         y lo lee otra persona (decisión 48). Dice solo lo que el motivo afirma, sin sumar cosas que nadie
+         hizo ("y se avisó al proveedor", "que corre todos los domingos"): se confirma tal cual. Los que
+         nombran equipos usan los de la alerta: el servicio y el origen al bloquear, origen y destino en
+         la tarea programada y en el backup, y el origen en el equipo nuevo. "Otro" no propone ninguno. -->
+    <string name="comentario_escalado_al_proveedor">Se avisó al proveedor de seguridad.</string>
+    <string name="comentario_bloqueado_manualmente">Se bloqueó el acceso %1$s de %2$s.</string>
+    <string name="comentario_contrasena_cambiada">Se cambió la contraseña de la cuenta usada.</string>
+    <string name="comentario_investigando">Se está investigando.</string>
+    <string name="comentario_tarea_programada">Es una tarea programada de %1$s a %2$s.</string>
+    <string name="comentario_backup">Es un backup de %1$s a %2$s.</string>
+    <string name="comentario_equipo_nuevo">%1$s es un equipo nuevo.</string>
+    <string name="comentario_usuario_autorizado">Es un acceso autorizado.</string>
 
     <!-- Aviso con Deshacer en la lista a la que vuelve el detalle (corrección 7; Figma 468-1320), conflicto y envío fallido -->
     <string name="aviso_revisaste">Revisaste %1$s.</string>
@@ -362,7 +363,7 @@
     <string name="tipos_bloque_ia">Lo que detectó la IA</string>
     <string name="tipos_bloque_ia_frase">La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.</string>
     <string name="tipos_bloque_sin_ia">Lo que la IA no detectó</string>
-    <string name="tipos_bloque_sin_ia_frase">Lo marcaron los otros dos detectores de Zonda.</string>
+    <string name="tipos_bloque_sin_ia_frase">Lo marcaron los otros dos métodos de Zonda.</string>
     <string name="tipos_pie">El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque.</string>
     <string name="tipos_punto">Severidad %1$s</string>
     <string name="modo_sonido">Con sonido</string>
@@ -376,7 +377,7 @@
     <string name="bienvenida_avisos_titulo">Avisos en el momento</string>
     <string name="bienvenida_avisos_texto">Por Telegram y como notificación, según la severidad que elijas</string>
     <string name="bienvenida_detalle_titulo">Detalle de cada alerta</string>
-    <string name="bienvenida_detalle_texto">Qué pasó, qué tan grave es y qué indicó cada detector</string>
+    <string name="bienvenida_detalle_texto">Qué pasó, qué tan grave es y qué indicó cada método</string>
     <string name="bienvenida_sin_red_titulo">Sin red, seguís viendo las últimas alertas</string>
     <string name="bienvenida_sin_red_texto">Lo que marques se guarda y se envía solo cuando vuelvas a tener conexión</string>
     <string name="bienvenida_acepto">Leí y acepto las</string>
@@ -386,7 +387,7 @@
     <string name="condiciones_titulo">Condiciones de uso y privacidad</string>
     <string name="condiciones_guarda">Las alertas de los últimos 30 días de cada red pareada, con las direcciones IP de los equipos involucrados, y el registro de quién revisó cada una. Todo se guarda cifrado en el teléfono.</string>
     <string name="condiciones_sale_titulo">Qué sale del teléfono</string>
-    <string name="condiciones_sale">Solo las revisiones que marcás, hacia el servidor de tu empresa por un canal cifrado. Por Telegram viaja únicamente la severidad, el servicio y la hora de cada alerta, nunca direcciones IP ni nombres de equipos.</string>
+    <string name="condiciones_sale">Lo que hacés en la app (revisiones, asignaciones, cambios y bloqueos), hacia el servidor de tu empresa por un canal cifrado. Por Telegram nunca viajan direcciones IP ni nombres de equipos.</string>
     <string name="condiciones_tiempo_titulo">Cuánto tiempo</string>
     <string name="condiciones_tiempo">Las alertas de más de 30 días se borran solas. Podés borrar todo desde Ajustes en cualquier momento.</string>
     <string name="condiciones_datos">Las direcciones IP son datos personales según la Ley 25.326. Zonda las muestra solo a quien está pareado con la red de la empresa y nunca las comparte con terceros.</string>
@@ -425,8 +426,9 @@
     <string name="avisos_hoja_media">¿Cómo te avisamos las medias?</string>
     <string name="avisos_hoja_baja">¿Cómo te avisamos las bajas?</string>
     <string name="avisos_continuar">Continuar</string>
-    <string name="notificaciones_titulo">Notificaciones en el teléfono</string>
-    <string name="notificaciones_texto">Zonda muestra una notificación cuando la sincronización trae una alerta alta. Android te va a pedir confirmar el permiso.</string>
+    <!-- Lo mismo que dice Ajustes → Avisos por severidad desde la 1.0.4: Zonda avisa lo que no avisó Telegram. -->
+    <string name="notificaciones_titulo">Notificaciones de Zonda</string>
+    <string name="notificaciones_texto">Te avisan de las alertas que no te llegaron por Telegram. Android te va a pedir confirmar el permiso.</string>
     <string name="notificaciones_permitir">Permitir notificaciones</string>
     <string name="notificaciones_permitidas">Las notificaciones están permitidas.</string>
     <string name="notificaciones_rechazadas">Sin permiso, Zonda no puede mostrar notificaciones. La app sigue funcionando; podés activarlas desde los ajustes del sistema.</string>
@@ -454,15 +456,17 @@
     <string name="conexion_codigo_error">El código tiene 8 caracteres, por ejemplo K7M2-QX9P</string>
     <string name="conexion_conectar">Conectar</string>
     <string name="conexion_donde_codigo">¿Dónde encuentro el código?</string>
-    <string name="conexion_donde_codigo_pie">¿Dónde encuentro el código? Lo genera el administrador en la computadora del servidor Zonda.</string>
+    <string name="conexion_donde_codigo_pie">¿Dónde encuentro el código? Te lo da un administrador desde su Zonda.</string>
     <!-- Ayudas (Figma 66-4286 y 66-4353) -->
     <string name="ayuda_red_titulo">Estar en la red de la empresa</string>
     <string name="ayuda_red_intro">Zonda se conecta al servidor que está dentro de tu empresa. Por eso, para parear, el teléfono tiene que estar en esa red.</string>
     <string name="ayuda_red_paso_1">Conectate al wifi de la oficina, no a los datos del celular.</string>
     <string name="ayuda_red_paso_2">Si estás afuera y la empresa tiene VPN, activala primero.</string>
     <string name="ayuda_red_paso_3">Si no sabés cuál es el wifi, preguntale al administrador.</string>
-    <string name="ayuda_codigo_intro">El código se genera en la computadora donde está instalado Zonda.</string>
-    <string name="ayuda_codigo_paso_1">El administrador abre la terminal en esa computadora y escribe zonda pair.</string>
+    <!-- Desde la 1.0.5 el código lo genera un administrador en la app (Ajustes → Personas); solo el del
+         primer teléfono de la red sale de la terminal del servidor (zonda pair). -->
+    <string name="ayuda_codigo_intro">Te lo da un administrador desde su Zonda. Para el primer teléfono de la red, lo genera quien instaló Zonda, en el servidor.</string>
+    <string name="ayuda_codigo_paso_1">El administrador entra a Ajustes → Personas → Agregar persona.</string>
     <string name="ayuda_codigo_paso_2">Aparece un código QR y, debajo, el mismo código en texto (por ejemplo K7M2-QX9P).</string>
     <string name="ayuda_codigo_paso_3">Escaneá el QR o escribí el código acá. Sirve una sola vez y vence a los 10 minutos.</string>
     <string name="ayuda_codigo_escanear">Escanear QR</string>
@@ -529,21 +533,21 @@
     <string name="recorrido_3_titulo">Sincronizar</string>
     <string name="recorrido_3_texto">Trae las alertas nuevas del servidor. Al terminar, un aviso te muestra la fecha y la hora de la sincronización.</string>
     <string name="recorrido_4_titulo">El Resumen</string>
-    <string name="recorrido_4_texto">Abre el tablero de la semana o del mes: totales, tiempos de respuesta y precisión de cada método.</string>
+    <string name="recorrido_4_texto">Totales, tiempo hasta la primera revisión y precisión, de 7 o 30 días.</string>
     <string name="recorrido_5_titulo">Alertas</string>
-    <string name="recorrido_5_texto">La lista completa: cada tarjeta dice si está revisada, y se filtra por estado, severidad, período, servicio, equipo y método.</string>
+    <string name="recorrido_5_texto">La lista completa. Cada tarjeta dice si está revisada.</string>
     <string name="recorrido_6_titulo">Filtros</string>
-    <string name="recorrido_6_texto">Tocá un chip para abrir sus opciones. Más filtros agrupa servicio, equipo destino y método que lo detectó.</string>
+    <string name="recorrido_6_texto">Tocá un chip para abrir sus opciones.</string>
     <string name="recorrido_7_titulo">Cada tarjeta</string>
     <string name="recorrido_7_texto">Severidad, estado de revisión, hora y día, origen y destino, y qué método la detectó. Tocá para ver el detalle.</string>
     <string name="recorrido_8_titulo">Revisar</string>
     <string name="recorrido_8_texto">Un solo botón: elegís si fue ataque real o falso positivo, y después el motivo y un comentario. Los dos son obligatorios.</string>
     <string name="recorrido_9_titulo">Tocá para filtrar</string>
-    <string name="recorrido_9_texto">Tocá un día, un tipo de ataque o un modelo y se suma al filtro. Tocalo de nuevo para sacarlo.</string>
+    <string name="recorrido_9_texto">Tocá un día, un tipo de ataque o un método y se suma al filtro. Tocalo de nuevo para sacarlo.</string>
     <string name="recorrido_10_titulo">Fechas, filtros y compartir</string>
     <string name="recorrido_10_texto">Elegí 7 días, 30 días o las fechas que quieras, y en Filtros mirá todo lo que elegiste. Compartir resumen lo manda como imagen o PDF.</string>
     <string name="recorrido_11_titulo">Ajustes</string>
-    <string name="recorrido_11_texto">Redes, Telegram, avisos por severidad, severidad por tipo de ataque, sincronizar, borrar datos y, al final, la ayuda.</string>
+    <string name="recorrido_11_texto">Avisos, la red y su gente, los datos guardados y, al final, la ayuda.</string>
 
     <!-- Acciones comunes de las hojas inferiores -->
     <string name="accion_cancelar">Cancelar</string>
@@ -639,7 +643,7 @@
     <string name="estado_nota_sin_medias">No hay alertas medias sin revisar. Si llega una y no hay altas, el semáforo se pone en amarillo.</string>
     <string name="estado_nota_sin_bajas">No hay alertas bajas sin revisar. Las bajas no cambian el semáforo: esperan en la lista hasta que las revises.</string>
     <string name="estado_conecta_titulo">Conectá con la red de tu empresa</string>
-    <string name="estado_conecta_detalle">Necesitás el código de pareo que el administrador genera en la computadora del servidor Zonda.</string>
+    <string name="estado_conecta_detalle">Necesitás el código de pareo que te da un administrador desde su Zonda.</string>
     <string name="estado_conecta_accion">Configurar conexión</string>
     <string name="estado_sin_datos_detalle">Todavía no llegaron las alertas de esta red. Con el teléfono en la red de tu empresa o en su VPN, tocá Sincronizar ahora.</string>
 
@@ -665,6 +669,10 @@
     <string name="canal_revisiones_descripcion">Avisa si una revisión tuya no se aplicó porque otra persona revisó esa alerta antes.</string>
     <string name="telegram_bot">@zonda_alertas_bot</string>
     <string name="accion_guardar">Guardar</string>
+    <!-- La flecha de una pantalla con "Guardar", si hay cambios sin guardar: lo mismo que pregunta el tablero (decisión 57). -->
+    <string name="salir_sin_guardar_titulo">¿Salir sin guardar?</string>
+    <string name="salir_sin_guardar_texto">Hay cambios sin guardar.</string>
+    <string name="salir_sin_guardar_confirmar">Salir igual</string>
     <string name="aviso_ok">OK</string>
 
     <!-- Ajustes (Figma 4-66, 51-1137, 4-130, 51-1314, 66-3710, 66-3808, 66-3906, 66-4011 y 51-1451) -->
@@ -769,7 +777,12 @@
     <string name="detalles_estado">Estado</string>
     <string name="detalles_activo">Activo</string>
     <string name="detalles_vencido">Vencido</string>
-    <string name="detalles_vence_con_dias">%1$s (%2$d días)</string>
+    <!-- Lo que falta para que venza el acceso, no lo que dura: "(90 días)" se leía como lo que quedaba. -->
+    <plurals name="detalles_vence_faltan">
+        <item quantity="one">%1$s · falta %2$d día</item>
+        <item quantity="other">%1$s · faltan %2$d días</item>
+    </plurals>
+    <string name="detalles_vence_menos_de_un_dia">%1$s · falta menos de un día</string>
     <string name="detalles_se_renueva">%1$s · se renueva solo</string>
     <string name="detalles_http">HTTP · sin cifrar (solo pruebas)</string>
     <string name="detalles_https">HTTPS · %1$s</string>
@@ -785,7 +798,7 @@
     <string name="condiciones_guarda_titulo">Qué guarda Zonda</string>
     <string name="condiciones_ajustes_guarda">Las alertas de los últimos 30 días, cifradas en el teléfono, y las revisiones que hagas.</string>
     <string name="condiciones_no_se_envia_titulo">Qué no se envía</string>
-    <string name="condiciones_no_se_envia">Por Telegram solo viajan la severidad, el servicio y la hora. Nunca direcciones IP ni nombres de equipos.</string>
+    <string name="condiciones_no_se_envia">Por Telegram nunca viajan direcciones IP ni nombres de equipos.</string>
     <string name="condiciones_datos_titulo">Datos personales</string>
     <string name="condiciones_ajustes_datos">Las direcciones IP son datos personales (Ley 25.326). Solo viajan por la conexión cifrada con el servidor de tu empresa.</string>
     <string name="condiciones_derechos_titulo">Tus derechos</string>
@@ -904,7 +917,7 @@
     <string name="resumen_filtrar_cuando">Cuándo · podés elegir varios</string>
     <string name="resumen_filtrar_tipos">Tipo de ataque · podés elegir varios</string>
     <string name="resumen_filtrar_revision">Revisión</string>
-    <string name="resumen_filtrar_modelo">Modelo</string>
+    <string name="resumen_filtrar_modelo">Método</string>
     <string name="resumen_filtrar_todas">Todas</string>
     <string name="resumen_filtrar_todos">Todos</string>
     <plurals name="resumen_ver_en_la_lista">
@@ -932,7 +945,9 @@
     <string name="resumen_reales">Reales</string>
     <string name="resumen_falsos_positivos">Falsos positivos</string>
     <string name="resumen_nota_falsos">Un falso positivo con motivo sirve para ajustar la detección.</string>
-    <string name="resumen_precision">Precisión de cada modelo (de las revisadas)</string>
+    <!-- "Método" en toda la app para la IA, los umbrales y las reglas (antes el Resumen decía "modelo" y la
+         bienvenida "detector"). "Modelo de IA" queda: es el nombre de uno de los tres. -->
+    <string name="resumen_precision">Precisión de cada método (de las revisadas)</string>
     <string name="resumen_cobertura">Cobertura de revisión</string>
     <string name="resumen_cobertura_valor">%1$s · %2$d de %3$d</string>
     <string name="resumen_metodo_umbrales">Umbrales estadísticos</string>
@@ -940,7 +955,7 @@
     <!-- Cambios 4, 10 y 15 (1.0.3): sin la fórmula ni la frase del ganador; lo explica la hoja del ⓘ (Figma 443-2314). -->
     <string name="precision_ayuda">Cómo se lee la precisión</string>
     <string name="precision_titulo_precision">Precisión</string>
-    <string name="precision_texto_precision">De las alertas que marcó un modelo y ya revisaste, cuántas eran ataques reales.</string>
+    <string name="precision_texto_precision">De las alertas que marcó un método y ya revisaste, cuántas eran ataques reales.</string>
     <plurals name="precision_ejemplo_ia">
         <item quantity="one">Por ejemplo, la IA tiene %1$d de %2$d: marcó %2$d alertas que ya revisaste y %1$d era un ataque.</item>
         <item quantity="other">Por ejemplo, la IA tiene %1$d de %2$d: marcó %2$d alertas que ya revisaste y %1$d eran ataques.</item>
@@ -955,15 +970,15 @@
     </plurals>
     <string name="precision_titulo_cobertura">Cobertura de revisión</string>
     <string name="precision_texto_cobertura">Cuántas alertas del período ya revisaste.</string>
-    <string name="precision_titulo_modelos">Los tres modelos</string>
+    <string name="precision_titulo_modelos">Los tres métodos</string>
     <string name="precision_texto_modelos">La IA compara el tráfico con lo normal de tu red. Los umbrales cuentan conexiones a un mismo servicio en 60 segundos. Las reglas miran si ese servicio está autorizado.</string>
     <string name="precision_titulo_30">¿Por qué 30 revisiones?</string>
     <string name="precision_texto_30">Con pocas, un par de casos mueven mucho el porcentaje. Las barras claras tienen menos de 30 revisiones: todavía no se pueden comparar.</string>
     <string name="precision_sin_filtro_7">Sin filtro: la precisión cuenta todas las alertas revisadas de estos 7 días.</string>
     <string name="precision_sin_filtro_30">Sin filtro: la precisión cuenta todas las alertas revisadas de estos 30 días.</string>
-    <string name="precision_filtro_ia">Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese modelo.</string>
-    <string name="precision_filtro_umbrales">Estás viendo los umbrales estadísticos: cada fila cuenta las alertas que marcaron los umbrales junto con ese modelo.</string>
-    <string name="precision_filtro_reglas">Estás viendo las reglas estáticas: cada fila cuenta las alertas que marcaron las reglas junto con ese modelo.</string>
+    <string name="precision_filtro_ia">Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese método.</string>
+    <string name="precision_filtro_umbrales">Estás viendo los umbrales estadísticos: cada fila cuenta las alertas que marcaron los umbrales junto con ese método.</string>
+    <string name="precision_filtro_reglas">Estás viendo las reglas estáticas: cada fila cuenta las alertas que marcaron las reglas junto con ese método.</string>
     <string name="precision_filtro_dia">Estás viendo el %1$s: la precisión cuenta solo las alertas revisadas de ese día.</string>
     <string name="precision_sin_filtro_fechas">Sin filtro: la precisión cuenta todas las alertas revisadas de las fechas elegidas.</string>
     <string name="precision_filtro_hora">Estás viendo %1$s: la precisión cuenta solo las alertas revisadas de esa hora.</string>
@@ -971,9 +986,9 @@
     <string name="precision_filtro_tipo">Estás viendo %1$s: la precisión cuenta solo las alertas revisadas de ese tipo.</string>
     <string name="precision_filtro_revisadas">Estás viendo las revisadas: la precisión cuenta las mismas alertas que sin filtro.</string>
     <string name="precision_filtro_sin_revisar">Estás viendo las sin revisar: todavía no tienen revisión, así que no hay precisión para calcular.</string>
-    <string name="precision_filtro_reales">Estás viendo los ataques reales: todas son reales, así que cada modelo da 100 %.</string>
+    <string name="precision_filtro_reales">Estás viendo los ataques reales: todas son reales, así que cada método da 100 %.</string>
     <string name="precision_filtro_varios">Estás viendo varios filtros juntos: la precisión cuenta solo las alertas revisadas que pasan todos.</string>
-    <string name="precision_filtro_falsos">Estás viendo los falsos positivos: ninguna es real, así que cada modelo da 0 %.</string>
+    <string name="precision_filtro_falsos">Estás viendo los falsos positivos: ninguna es real, así que cada método da 0 %.</string>
     <string name="precision_pie">Se calcula con las alertas guardadas en el teléfono, de los últimos 30 días.</string>
     <string name="resumen_vacio_titulo_7">Sin alertas en los últimos 7 días</string>
     <string name="resumen_vacio_titulo_30">Sin alertas en los últimos 30 días</string>
@@ -1033,6 +1048,10 @@
     <string name="telegram_sin_aviso">Sin aviso</string>
     <string name="telegram_enviar_prueba">Enviar un aviso de prueba</string>
     <string name="telegram_desvincular">Desvincular Telegram</string>
+    <!-- Desvincular pregunta antes, como borrar datos o quitar a una persona: para volver hay que repetir los pasos en Telegram. -->
+    <string name="telegram_desvincular_titulo">¿Desvincular Telegram?</string>
+    <string name="telegram_desvincular_texto">Los avisos de %1$s dejan de llegar a este chat.</string>
+    <string name="telegram_desvincular_confirmar">Desvincular</string>
     <string name="telegram_prueba_enviada">Aviso de prueba enviado. Fijate en el chat de %1$s.</string>
     <string name="telegram_desvinculado">Telegram desvinculado. Los avisos de esta red ya no llegan a ese chat.</string>
     <string name="telegram_no_se_abrio">No se pudo abrir Telegram. Instalalo desde la tienda de aplicaciones y probá de nuevo.</string>
@@ -1080,8 +1099,8 @@
     <string name="personas_pasar_a_analista">Pasar a analista</string>
     <string name="personas_dar_permiso_bloquear">Darle permiso de bloquear</string>
     <string name="personas_sacar_permiso_bloquear">Sacarle el permiso de bloquear</string>
-    <string name="personas_quitar">Quitar del equipo</string>
-    <string name="personas_quitar_titulo">¿Quitar a %1$s del equipo?</string>
+    <string name="personas_quitar">Quitar de la red</string>
+    <string name="personas_quitar_titulo">¿Quitar a %1$s de la red?</string>
     <string name="personas_quitar_texto">Su teléfono deja de tener acceso a %1$s. Queda en el registro de cambios.</string>
     <string name="personas_quitar_confirmar">Quitar</string>
     <string name="personas_hoy">hoy %1$s</string>
@@ -1094,7 +1113,7 @@
     <string name="personas_ahora_analista">%1$s ahora es analista.</string>
     <string name="personas_ahora_bloquea">%1$s ya puede bloquear.</string>
     <string name="personas_ahora_pide_aprobacion">%1$s ahora pide aprobación para bloquear.</string>
-    <string name="personas_quitada">%1$s ya no está en el equipo.</string>
+    <string name="personas_quitada">%1$s ya no está en la red.</string>
     <string name="perfil_administrador">Administrador</string>
     <string name="perfil_analista">Analista</string>
     <string name="perfil_administrador_detalle">Además bloquea, cambia las severidades y suma o quita gente.</string>
@@ -1132,15 +1151,15 @@
 
     <!-- Registro de cambios (decisión 40; Figma 468-3283) -->
     <string name="registro_titulo">Registro de cambios</string>
-    <string name="registro_intro">Quién cambió la configuración de %1$s, cuándo y por qué. Lo ve todo el equipo y no se puede borrar.</string>
+    <string name="registro_intro">Quién cambió la configuración de %1$s, cuándo y por qué. Lo ven todos y no se puede borrar.</string>
     <string name="registro_vacio">Todavía no hay cambios.</string>
     <string name="registro_hoy">Hoy %1$s</string>
     <string name="registro_ayer">Ayer %1$s</string>
     <string name="registro_paso_de">%1$s pasó de %2$s a %3$s</string>
     <string name="registro_paso_a">%1$s pasó a %2$s</string>
-    <string name="registro_persona_nueva">Sumó a %1$s al equipo como %2$s</string>
-    <string name="registro_persona_quitada">Quitó a %1$s del equipo</string>
-    <string name="registro_se_quito">Quitó su teléfono del equipo</string>
+    <string name="registro_persona_nueva">Sumó a %1$s como %2$s</string>
+    <string name="registro_persona_quitada">Quitó a %1$s</string>
+    <string name="registro_se_quito">Quitó su teléfono de la red</string>
     <!-- Un navegador del tablero web no es una persona: "Sumó el navegador Chrome en Windows como administrador". -->
     <string name="registro_el_navegador">el navegador %1$s</string>
     <string name="registro_un_navegador">un navegador</string>
@@ -1297,7 +1316,7 @@
     <string name="huella_pasar_a_analista">Pasar a analista a %1$s</string>
     <string name="huella_dar_permiso">Darle permiso de bloquear a %1$s</string>
     <string name="huella_sacar_permiso">Sacarle el permiso de bloquear a %1$s</string>
-    <string name="huella_quitar">Quitar a %1$s del equipo</string>
+    <string name="huella_quitar">Quitar a %1$s de la red</string>
     <string name="huella_quitar_navegador">Quitarle el acceso a %1$s</string>
     <string name="personas_sin_bloqueo_de_pantalla">Para esto, el teléfono tiene que tener huella o PIN.</string>
     <string name="personas_navegador">Navegador</string>

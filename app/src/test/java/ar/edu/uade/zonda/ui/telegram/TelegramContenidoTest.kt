@@ -103,7 +103,14 @@ class TelegramContenidoTest {
         compose.onNodeWithText("En silencio").assertIsDisplayed()
         compose.onNodeWithText("Sin aviso").assertIsDisplayed()
         compose.onNodeWithText("Enviar un aviso de prueba").performClick()
+        // Desvincular pregunta antes: con "Cancelar" no pasa nada.
         compose.onNodeWithText("Desvincular Telegram").performClick()
+        compose.onNodeWithText("¿Desvincular Telegram?").assertIsDisplayed()
+        compose.onNodeWithText("Los avisos de Oficina central dejan de llegar a este chat.").assertIsDisplayed()
+        compose.onNodeWithText("Cancelar").performClick()
+        assertEquals(listOf("prueba"), tocados)
+        compose.onNodeWithText("Desvincular Telegram").performClick()
+        compose.onNodeWithText("Desvincular").performClick()
         assertEquals(listOf("prueba", "desvincular"), tocados)
     }
 

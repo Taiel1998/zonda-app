@@ -80,7 +80,7 @@ class DetalleViewModelTest {
     private fun revisarYConfirmar(viewModel: DetalleViewModel) {
         viewModel.abrirRevision()
         viewModel.elegirResultado(ResultadoRevision.FALSO_POSITIVO)
-        viewModel.elegirMotivo(Motivo.TAREA_PROGRAMADA, "Es la copia nocturna que corre todos los domingos.")
+        viewModel.elegirMotivo(Motivo.TAREA_PROGRAMADA, "Es una tarea programada de pc-09 a srv-web.")
         viewModel.cambiarComentario("Era el respaldo de las 2.")
         viewModel.confirmarRevision()
     }
@@ -221,10 +221,10 @@ class DetalleViewModelTest {
         viewModel.confirmarRevision() // sin motivo ni comentario no hace nada (criterio 2)
         assertTrue(acciones.todas.isEmpty())
 
-        viewModel.elegirMotivo(Motivo.ESCALADO_AL_PROVEEDOR, "Se avisó al proveedor de seguridad, que está revisando el servidor.")
-        assertEquals("Se avisó al proveedor de seguridad, que está revisando el servidor.", viewModel.formulario.value?.comentario)
+        viewModel.elegirMotivo(Motivo.ESCALADO_AL_PROVEEDOR, "Se avisó al proveedor de seguridad.")
+        assertEquals("Se avisó al proveedor de seguridad.", viewModel.formulario.value?.comentario)
         viewModel.cambiarComentario("Se avisó al proveedor y se bloqueó el acceso")
-        viewModel.elegirMotivo(Motivo.BLOQUEADO_MANUALMENTE, "Se bloqueó el acceso SSH de pc-09 y se avisó al proveedor.")
+        viewModel.elegirMotivo(Motivo.BLOQUEADO_MANUALMENTE, "Se bloqueó el acceso SSH de pc-09.")
         assertEquals("Se avisó al proveedor y se bloqueó el acceso", viewModel.formulario.value?.comentario)
         assertTrue(viewModel.formulario.value!!.puedeConfirmar)
 

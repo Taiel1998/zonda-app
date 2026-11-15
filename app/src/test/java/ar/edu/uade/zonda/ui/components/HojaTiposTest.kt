@@ -61,7 +61,7 @@ class HojaTiposTest {
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithText("LO QUE LA IA NO DETECTÓ").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Lo marcaron los otros dos detectores de Zonda.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Lo marcaron los otros dos métodos de Zonda.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Servicio no autorizado. Las reglas vieron una conexión a un servicio que no está en la lista de permitidos.")
             .performScrollTo()
             .assertIsDisplayed()

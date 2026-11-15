@@ -52,7 +52,7 @@ object Formato {
     /** `07/12/2026`, para fechas de vencimiento. */
     fun fecha(instante: Instant, zona: ZoneId = ZoneId.systemDefault()): String = FECHA.format(instante.atZone(zona))
 
-    /** Cuántos días hay entre una fecha y otra (Detalles técnicos: "Vence 27/12/2026 (90 días)"). */
+    /** Cuántos días enteros hay entre una fecha y otra (Detalles técnicos: "Vence 27/12/2026 · faltan 12 días"). */
     fun diasEntre(desde: Instant, hasta: Instant): Long = Duration.between(desde, hasta).toDays()
 
     /** Si dos instantes caen el mismo día del calendario (para "Hoy 02:14"). */

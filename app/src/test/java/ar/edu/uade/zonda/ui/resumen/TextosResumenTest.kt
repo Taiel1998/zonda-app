@@ -209,7 +209,7 @@ class TextosResumenTest {
         assertEquals("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 7 días.", recuadro(FiltroResumen()))
         assertEquals("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 30 días.", recuadro(FiltroResumen(), PeriodoResumen.TREINTA_DIAS))
         assertEquals(
-            "Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese modelo.",
+            "Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese método.",
             recuadro(FiltroResumen(metodo = MetodoDeteccion.IA)),
         )
         assertEquals(
@@ -221,12 +221,12 @@ class TextosResumenTest {
             recuadro(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA))),
         )
         assertEquals(
-            "Estás viendo los falsos positivos: ninguna es real, así que cada modelo da 0 %.",
+            "Estás viendo los falsos positivos: ninguna es real, así que cada método da 0 %.",
             recuadro(FiltroResumen(revision = RevisionResumen.FALSOS_POSITIVOS)),
         )
         // Con un modelo elegido manda lo del modelo; con varios filtros de otra clase, que cuenta los que pasan todos.
         assertEquals(
-            "Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese modelo.",
+            "Estás viendo el modelo de IA: cada fila cuenta las alertas que marcó la IA junto con ese método.",
             recuadro(FiltroResumen(barras = setOf(viernes), metodo = MetodoDeteccion.IA)),
         )
         assertEquals(

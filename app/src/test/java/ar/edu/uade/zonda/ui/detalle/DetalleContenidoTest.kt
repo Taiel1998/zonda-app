@@ -64,9 +64,10 @@ class DetalleContenidoTest {
         estado: DetalleUiState,
         acciones: AccionesDetalle = AccionesDetalle(),
         aviso: AvisoDetalle? = null,
+        ahora: java.time.Instant = Fixtures.AHORA,
     ) {
         compose.setContent {
-            ZondaTheme { DetalleContenido(estado = estado, acciones = acciones, aviso = aviso, zona = utc, ahora = Fixtures.AHORA) }
+            ZondaTheme { DetalleContenido(estado = estado, acciones = acciones, aviso = aviso, zona = utc, ahora = ahora) }
         }
     }
 
@@ -84,6 +85,19 @@ class DetalleContenidoTest {
     )
 
     @Test
+    fun `lo que se comparte de una alerta de otro dia lleva la fecha, como el aviso de Telegram`() {
+        var compartido = ""
+        dibujar(
+            contenido(Fixtures.alerta("a-1")),
+            AccionesDetalle(alCompartir = { compartido = it }),
+            ahora = Fixtures.AHORA.plus(Duration.ofDays(2)),
+        )
+
+        compose.onNodeWithContentDescription("Compartir").performClick()
+        assertTrue(compartido, compartido.startsWith("Alerta ALTA · SSH · 12/10 10:50\nTocá para ver el detalle en Zonda.\nRed: Oficina central\n"))
+    }
+
+    @Test
     fun `sin revisar muestra el encabezado, los datos y Revisar, y comparte sin IP ni nombres`() {
         var abierta = false
         var compartido = ""
@@ -97,6 +111,8 @@ class DetalleContenidoTest {
         compose.onNodeWithText("pc-09 → srv-web").assert(hasContentDescription("De pc-09 a srv-web")).assert(isHeading())
         compose.onNodeWithText("SSH · TCP/22 · 10:50:00 · detectada por IA").assertIsDisplayed()
         compose.onNodeWithText("Datos del flujo").assertIsDisplayed()
+        // El inicio dice también el día: el teléfono guarda 30 días.
+        compose.onNodeWithText("lun 12/10 · 10:50:00").assertExists()
         compose.onNodeWithText("Predicción por método").performScrollTo().assertIsDisplayed()
         // Menos texto (decisión 48): el botón se entiende solo, sin la frase de arriba.
         compose.onAllNodesWithText("Al revisar vas a indicar", substring = true).assertCountEquals(0)
@@ -336,8 +352,13 @@ class DetalleContenidoTest {
         compose.onNodeWithText("* Obligatorio").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HideFromAccessibility))
         compose.onNodeWithText("Confirmar revisión").assertIsNotEnabled()
         compose.onNodeWithText("Backup").performClick()
-        // El comentario del Figma, con los equipos de esta alerta.
-        assertEquals(Motivo.BACKUP to "Es el backup semanal de pc-09 hacia srv-web.", motivoElegido)
+        // El comentario propuesto dice solo lo que el motivo afirma, con los equipos de esta alerta.
+        assertEquals(Motivo.BACKUP to "Es un backup de pc-09 a srv-web.", motivoElegido)
+        compose.onNodeWithText("Tarea programada").performClick()
+        assertEquals(Motivo.TAREA_PROGRAMADA to "Es una tarea programada de pc-09 a srv-web.", motivoElegido)
+        // "Otro" no propone ninguno: el comentario lo escribe la persona.
+        compose.onNodeWithText("Otro").performClick()
+        assertEquals(Motivo.OTRO to "", motivoElegido)
 
         formulario = formulario.copy(motivo = Motivo.BACKUP, comentario = "Backup semanal")
         compose.onNodeWithText("Confirmar revisión").assertIsEnabled().performClick()

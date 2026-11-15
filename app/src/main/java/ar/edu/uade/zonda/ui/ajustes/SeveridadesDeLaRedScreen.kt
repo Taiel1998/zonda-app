@@ -1,5 +1,6 @@
 package ar.edu.uade.zonda.ui.ajustes
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
@@ -14,12 +15,19 @@ import ar.edu.uade.zonda.ui.primerinicio.SeveridadesScreen
 /**
  * Ajustes → Severidad por tipo de ataque (RF06). El administrador las cambia y, al guardar, la hoja "¿Por
  * qué la cambiás?" pide el motivo de todos los cambios (decisión 40); el analista las ve sin poder
- * cambiarlas (decisión 39). Usa el ViewModel de Ajustes, que guarda el borrador.
+ * cambiarlas (decisión 39). Usa el ViewModel de Ajustes, que guarda el borrador. Con cambios sin guardar,
+ * la flecha y el botón Atrás preguntan antes de descartarlos ([salidaConCambios]).
  */
 @Composable
 fun SeveridadesDeLaRedScreen(viewModel: AjustesViewModel, alVolver: () -> Unit) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val borrador = estado.borradorSeveridades ?: estado.severidades
+    // Con algo cambiado, la flecha y el botón Atrás preguntan antes de descartarlo.
+    val volver = salidaConCambios(hayCambios = borrador != estado.severidades) {
+        viewModel.descartarBorrador()
+        alVolver()
+    }
+    BackHandler(onBack = volver)
     SeveridadesScreen(
         severidades = borrador,
         alCambiar = viewModel::cambiarSeveridadDelBorrador,
@@ -32,10 +40,7 @@ fun SeveridadesDeLaRedScreen(viewModel: AjustesViewModel, alVolver: () -> Unit) 
                 alVolver()
             }
         },
-        alVolver = {
-            viewModel.descartarBorrador()
-            alVolver()
-        },
+        alVolver = volver,
         quienesLasCambian = if (estado.perfil.esAdministrador) null else enumerarConO(estado.administradores),
     )
 

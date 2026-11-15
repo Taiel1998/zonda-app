@@ -153,7 +153,7 @@ class ResumenContenidoTest {
         compose.onNodeWithText("Alertas por día").assertIsDisplayed()
         compose.onNodeWithText("El lunes concentra 2 alertas: 2 de fuerza bruta sobre el mismo servidor.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Por tipo de ataque").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Precisión de cada modelo (de las revisadas)").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Precisión de cada método (de las revisadas)").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("50 % · 2 de 4").performScrollTo().assertIsDisplayed()
         // Sin la fórmula, la frase del ganador ni la nota del recall (cambios 4, 10 y 15).
         compose.onAllNodesWithText("Precisión =", substring = true).assertCountEquals(0)
@@ -292,7 +292,7 @@ class ResumenContenidoTest {
         compose.onNode(hasText("Sin tipo identificado") and SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)).assertExists()
         assertTrue(compose.onAllNodesWithText("Tráfico anómalo sin tipo identificado").fetchSemanticsNodes().isEmpty())
         compose.onNodeWithText("Revisión").assertExists()
-        compose.onNodeWithText("Modelo").assertExists()
+        compose.onNodeWithText("Método").assertExists()
         compose.onNodeWithText("Ver estas 4 alertas en la lista →").assertExists()
         compose.onNodeWithText("Mostrar 4 alertas").assertExists()
     }
@@ -376,7 +376,7 @@ class ResumenContenidoTest {
         // Cambio 18: suma "Por tipo de ataque" y "Reales y falsos positivos", sin la precisión ni los ⓘ.
         assertTrue(textos.contains("Por tipo de ataque"))
         assertTrue(textos.contains("Reales y falsos positivos (de las revisadas)"))
-        assertFalse(textos.contains("Precisión de cada modelo (de las revisadas)"))
+        assertFalse(textos.contains("Precisión de cada método (de las revisadas)"))
         assertFalse(textos.contains("Un falso positivo con motivo sirve para ajustar la detección."))
         assertTrue(compose.onAllNodes(hasContentDescription("Qué es cada tipo")).fetchSemanticsNodes().isEmpty())
         // Las alertas de prueba van de pc-09 (192.168.10.9) a srv-web (192.168.10.50) (RNF02).
@@ -573,7 +573,7 @@ class ResumenContenidoTest {
         compose.onNodeWithText("Qué es cada tipo").assertIsDisplayed()
         compose.onNodeWithText("La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.").assertExists()
         compose.onNodeWithText("Fuerza bruta. Muchos intentos de contraseña contra un servicio.").assertExists()
-        compose.onNodeWithText("Lo marcaron los otros dos detectores de Zonda.").assertExists()
+        compose.onNodeWithText("Lo marcaron los otros dos métodos de Zonda.").assertExists()
         compose.onNodeWithText("Entendido").performScrollTo().performClick()
         compose.onAllNodesWithText("Qué es cada tipo").assertCountEquals(0)
     }
@@ -586,7 +586,7 @@ class ResumenContenidoTest {
 
         compose.onNodeWithText("Cómo se lee la precisión").assertIsDisplayed()
         compose.onNodeWithText(
-            "De las alertas que marcó un modelo y ya revisaste, cuántas eran ataques reales. " +
+            "De las alertas que marcó un método y ya revisaste, cuántas eran ataques reales. " +
                 "Por ejemplo, la IA tiene 1 de 2: marcó 2 alertas que ya revisaste y 1 era un ataque.",
         ).assertExists()
         compose.onNodeWithText("Sin filtro: la precisión cuenta todas las alertas revisadas de estos 7 días.").assertExists()

@@ -6,11 +6,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -176,7 +178,10 @@ class PrimerInicioYConexionTest {
         mostrar(ConexionUiState.Formulario(), AccionesConexion(alEscanear = { escanear = true }))
 
         compose.onNodeWithText("¿Dónde encuentro el código?").performScrollTo().performClick()
-        compose.onNodeWithText("El código se genera en la computadora donde está instalado Zonda.").assertIsDisplayed()
+        // Lo da un administrador desde su app; la terminal del servidor es solo para el primer teléfono.
+        compose.onNodeWithText("Te lo da un administrador desde su Zonda. Para el primer teléfono de la red, lo genera quien instaló Zonda, en el servidor.").assertIsDisplayed()
+        compose.onNodeWithText("El administrador entra a Ajustes → Personas → Agregar persona.").assertIsDisplayed()
+        compose.onAllNodesWithText("zonda pair", substring = true).assertCountEquals(0)
         compose.onNodeWithText("Escanear QR").performClick()
 
         assertTrue(escanear)
@@ -226,7 +231,7 @@ class PrimerInicioYConexionTest {
         compose.onNodeWithText("El código sigue siendo válido hasta las 02:19.").assertIsDisplayed()
         compose.onNodeWithText("Reintentar").performClick()
         compose.onNodeWithText("Corregir la dirección").performClick()
-        compose.onNodeWithText("¿Dónde encuentro el código? Lo genera el administrador en la computadora del servidor Zonda.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("¿Dónde encuentro el código? Te lo da un administrador desde su Zonda.").performScrollTo().assertIsDisplayed()
 
         assertTrue(corregir && reintentar)
     }

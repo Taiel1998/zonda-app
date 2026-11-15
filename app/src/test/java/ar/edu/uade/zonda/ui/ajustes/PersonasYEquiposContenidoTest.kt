@@ -203,7 +203,7 @@ class PersonasYEquiposContenidoTest {
 
         compose.onNodeWithText("Analista · Teléfono de Laura · hace 3 días").assertIsDisplayed()
         compose.onNodeWithText("Hacer administrador").performClick()
-        compose.onNodeWithText("Quitar del equipo").performClick()
+        compose.onNodeWithText("Quitar de la red").performClick()
         assertEquals(Perfil.ADMINISTRADOR, perfil)
         assertTrue(quitar)
     }
@@ -304,7 +304,7 @@ class PersonasYEquiposContenidoTest {
         compose.onNodeWithText("Ayer 06:00 · Taiel").assertIsDisplayed()
         compose.onNodeWithText("Meli pasó de analista a administrador").assertIsDisplayed()
         compose.onNodeWithText("10/10 10:00 · Taiel").assertIsDisplayed()
-        compose.onNodeWithText("Sumó a Laura al equipo como analista").assertIsDisplayed()
+        compose.onNodeWithText("Sumó a Laura como analista").assertIsDisplayed()
     }
 
     @Test
@@ -316,8 +316,8 @@ class PersonasYEquiposContenidoTest {
         )
         compose.setContent { ZondaTheme { RegistroContenido(red = "Oficina central", registro = registro, alVolver = {}, zona = utc, ahora = ahora) } }
 
-        compose.onNodeWithText("Quitó su teléfono del equipo").assertIsDisplayed()
-        compose.onNodeWithText("Quitó a Ramiro del equipo").assertIsDisplayed()
+        compose.onNodeWithText("Quitó su teléfono de la red").assertIsDisplayed()
+        compose.onNodeWithText("Quitó a Ramiro").assertIsDisplayed()
     }
 
     @Test

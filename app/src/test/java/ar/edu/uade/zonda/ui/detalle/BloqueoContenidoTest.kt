@@ -214,7 +214,7 @@ class BloqueoContenidoTest {
 
         compose.onNodeWithText("Revisar").performScrollTo().performClick()
 
-        assertEquals("Se bloqueó el acceso SSH de pc-09 y se avisó al proveedor.", propuesto)
+        assertEquals("Se bloqueó el acceso SSH de pc-09.", propuesto)
         assertEquals(0, sinPropuesta)
     }
 

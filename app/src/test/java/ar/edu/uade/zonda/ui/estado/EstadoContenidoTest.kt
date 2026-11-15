@@ -265,7 +265,7 @@ class EstadoContenidoTest {
         var conectar = 0
         dibujar(EstadoUiState(contenido = ContenidoEstado.SinRed), AccionesEstado(alConectar = { conectar++ }))
 
-        compose.onNodeWithText("Necesitás el código de pareo que el administrador genera en la computadora del servidor Zonda.").assertIsDisplayed()
+        compose.onNodeWithText("Necesitás el código de pareo que te da un administrador desde su Zonda.").assertIsDisplayed()
         compose.onNodeWithText("Configurar conexión").performClick()
         assertEquals(1, conectar)
     }

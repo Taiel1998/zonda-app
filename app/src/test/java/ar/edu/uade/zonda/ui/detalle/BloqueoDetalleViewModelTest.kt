@@ -231,13 +231,13 @@ class BloqueoDetalleViewModelTest {
         alertas.agregar(Fixtures.alerta("a-1"))
         val vm = viewModel(backgroundScope)
 
-        vm.abrirRevisionBloqueada("Se bloqueó el acceso SSH de pc-09 y se avisó al proveedor.")
+        vm.abrirRevisionBloqueada("Se bloqueó el acceso SSH de pc-09.")
 
         val formulario = vm.formulario.value!!
         assertEquals(PasoRevision.RESULTADO, formulario.paso)
         assertEquals(ResultadoRevision.ATAQUE_REAL, formulario.resultado)
         assertEquals(Motivo.BLOQUEADO_MANUALMENTE, formulario.motivo)
-        assertEquals("Se bloqueó el acceso SSH de pc-09 y se avisó al proveedor.", formulario.comentario)
+        assertEquals("Se bloqueó el acceso SSH de pc-09.", formulario.comentario)
         // La persona igual pasa por los dos pasos: tocar "Ataque real" lleva al motivo con lo propuesto.
         vm.elegirResultado(ResultadoRevision.ATAQUE_REAL)
         assertEquals(Motivo.BLOQUEADO_MANUALMENTE, vm.formulario.value?.motivo)

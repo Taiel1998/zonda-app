@@ -37,7 +37,8 @@ import ar.edu.uade.zonda.ui.rememberPermisoNotificaciones
  * Avisos por severidad (Figma 51-1688): cómo avisa Telegram cada severidad con el consejo del sonido
  * propio (cambio 6), cómo avisa Zonda lo que no llegó por Telegram con el recordatorio de altas (1.0.4)
  * y el atajo a la severidad de cada tipo de ataque. Las dos tarjetas se editan en un borrador y se
- * guardan juntas con "Guardar"; volver sin guardar lo descarta. Al prender una notificación de Zonda
+ * guardan juntas con "Guardar"; volver sin guardar lo descarta, y si hay cambios pregunta antes
+ * ("¿Salir sin guardar?", [salidaConCambios]). Al prender una notificación de Zonda
  * sin el permiso del sistema, se pide, como hacía el interruptor de Ajustes hasta la 1.0.3.
  */
 @Composable
@@ -48,6 +49,13 @@ fun AvisosPorSeveridadScreen(
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val permiso = rememberPermisoNotificaciones()
+    // Con algo cambiado, la flecha y el botón Atrás preguntan antes de descartarlo.
+    val hayCambios = (estado.borradorAvisos != null && estado.borradorAvisos != estado.avisos) ||
+        (estado.borradorNotificaciones != null && estado.borradorNotificaciones != estado.notificaciones)
+    val volver = salidaConCambios(hayCambios) {
+        viewModel.descartarBorradorAvisos()
+        alVolver()
+    }
     AvisosPorSeveridadContenido(
         avisos = estado.borradorAvisos ?: estado.avisos,
         notificaciones = estado.borradorNotificaciones ?: estado.notificaciones,
@@ -64,10 +72,7 @@ fun AvisosPorSeveridadScreen(
             viewModel.guardarAvisos()
             alVolver()
         },
-        alVolver = {
-            viewModel.descartarBorradorAvisos()
-            alVolver()
-        },
+        alVolver = volver,
     )
 }
 
