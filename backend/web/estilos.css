@@ -1608,7 +1608,9 @@ html { overflow-y: scroll; }
   #vista-alertas > .tarjeta, .ajustes-panel { border: 0; background: transparent; box-shadow: none; padding: 0; }
   .barra-inferior {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    /* Cuatro lugares, o cinco para un administrador (Administración): se reparten el ancho. */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     position: fixed;
     left: 0; right: 0; bottom: 0;
     z-index: 25;

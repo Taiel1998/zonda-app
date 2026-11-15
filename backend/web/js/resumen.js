@@ -6,7 +6,7 @@
 // app con una sola imagen, siempre en claro; el PDF es un reporte armado para la hoja A4 (reporte.js).
 
 import { el, icono, numero, vaciar } from './util.js';
-import { $, METODOS, TIPOS, ahoraServidor, e, pedir, tiposDe } from './comun.js';
+import { $, METODOS, TIPOS, ahoraServidor, e, esAdmin, pedir, tiposDe } from './comun.js';
 import { abrirHoja, avisoError, avisoInferior } from './hojas.js';
 import { alternarAyuda } from './ayuda.js';
 import { abrirMenu } from './menu.js';
@@ -157,7 +157,7 @@ function nombreBarra(escala, b, forma) {
   return { uno: `${mayuscula(diaLargo(b.inicio))} ${ddMM(b.inicio)}`, varios: diaLargo(b.inicio), chip: `${diaCorto(b.inicio)} ${ddMM(b.inicio)}`, fecha: `${diaLargo(b.inicio)} ${ddMM(b.inicio)}` }[forma];
 }
 
-/** La severidad de cada tipo en esta red (Ajustes → Severidades). */
+/** La severidad de cada tipo en esta red (Administración → Severidades). */
 const severidadDe = (tipo) => (e.severidades && e.severidades[tipo]) || SEVERIDAD_DE_FABRICA[tipo];
 const cantidadFiltros = () => r.barras.size + r.severidades.size + r.tipos.size + (r.revision ? 1 : 0) + (r.metodo ? 1 : 0);
 // Las tres severidades, de la más grave a la más leve, con su nombre para una cuenta («1 alta», «3 altas»).
@@ -280,7 +280,9 @@ function fraseDelGrafico(x, enImagen = false) {
   const alertas = `${x.total} ${plural(x.total, 'alerta', 'alertas')}`;
   if (nombrados === 1) {
     const [nombre] = gruposDeFiltros(x, 'uno');
-    return enImagen ? `Mostrando ${nombre}: ${alertas}.` : `Mostrando ${nombre}: ${alertas}. Elegilo de nuevo para sacarlo.`;
+    // La severidad no se elige tocando la pantalla (la línea del total solo informa): se saca desde Filtros, como en la app.
+    const comoSacarlo = r.severidades.size ? 'Se saca desde Filtros.' : 'Elegilo de nuevo para sacarlo.';
+    return enImagen ? `Mostrando ${nombre}: ${alertas}.` : `Mostrando ${nombre}: ${alertas}. ${comoSacarlo}`;
   }
   if (nombrados > 1 && nombrados <= 4) return `Mostrando ${alertas}: ${gruposDeFiltros(x, 'varios').join(' · ')}.`;
   if (nombrados > 4) return `Mostrando ${alertas} con ${cantidadFiltros()} filtros.`;
@@ -639,7 +641,10 @@ function ayudaTipos() {
     el('p', { class: 'res-ayuda-texto' }, 'Lo marcaron los otros dos detectores de Zonda.'),
     TIPOS_SIN_IA.map(fila),
     el('hr', { class: 'res-divisor' }),
-    el('p', { class: 'res-ayuda-texto' }, 'El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidades. Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.'),
+    // Administración es solo del administrador: al analista no se le indica un lugar que no tiene.
+    el('p', { class: 'res-ayuda-texto' }, `${esAdmin()
+      ? 'El punto de color es la severidad que elegiste para cada tipo. Se cambia en Administración → Severidades.'
+      : 'El punto de color es la severidad de cada tipo en esta red. La cambia un administrador.'} Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.`),
   ];
 }
 

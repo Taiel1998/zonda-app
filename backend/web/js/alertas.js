@@ -92,7 +92,8 @@ function serviciosConChip() {
 }
 
 function pasa(a, horario, conChip, porBloqueo) {
-  if (porBloqueo && !f.bloqueos.has(porBloqueo.get(a.id))) return false;
+  // Uno que el firewall todavía está aplicando entra con los bloqueados: no es un pedido.
+  if (porBloqueo && !f.bloqueos.has(porBloqueo.get(a.id) === 'bloqueando' ? 'bloqueado' : porBloqueo.get(a.id))) return false;
   if (f.estado === 'sin_revisar' && a.estadoRevision !== 'sin_revisar') return false;
   if (f.estado === 'revisadas' && a.estadoRevision === 'sin_revisar') return false;
   if (f.estado === 'falsos' && a.estadoRevision !== 'falso_positivo') return false;
@@ -213,9 +214,10 @@ export function pintarAlertas() {
     marca por equipo, las mismas filas que deja el filtro. */
 function marcaDeBloqueo(tipo) {
   if (!tipo) return null;
-  const pedido = tipo === 'pedido';
-  const texto = pedido ? 'Con un pedido de bloqueo' : 'Origen bloqueado';
-  return el('span', { class: `fila-bloqueo-icono par-bloqueo ${pedido ? 'media' : 'alta'}`, role: 'img', 'aria-label': texto, title: texto }, icono(pedido ? 'espera' : 'candado'));
+  // El candado, solo si el firewall ya lo bloqueó; un pedido o uno que se está aplicando llevan el reloj.
+  const bloqueado = tipo === 'bloqueado';
+  const texto = bloqueado ? 'Origen bloqueado' : tipo === 'pedido' ? 'Con un pedido de bloqueo' : 'Bloqueando el origen';
+  return el('span', { class: `fila-bloqueo-icono par-bloqueo ${bloqueado ? 'alta' : 'media'}`, role: 'img', 'aria-label': texto, title: texto }, icono(bloqueado ? 'candado' : 'espera'));
 }
 
 function conClase(elemento, clase) {

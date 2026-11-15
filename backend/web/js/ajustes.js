@@ -1,6 +1,7 @@
-// La vista Ajustes, como las páginas de administración de Grafana: un menú de secciones a la izquierda (General,
-// Personas, Equipos, Severidades, Notificaciones y Registro de cambios) y, a la derecha, la sección elegida, con
-// tablas que se editan en el lugar. Lo que se cambia queda marcado hasta «Guardar cambios», que pide el motivo
+// Las vistas Ajustes y Administración, como las páginas de administración de Grafana: un menú de secciones a la
+// izquierda y, a la derecha, la sección elegida, con tablas que se editan en el lugar. Ajustes tiene lo propio y de
+// este navegador (General y Notificaciones); Administración, que es solo del administrador, lo de la red (Personas,
+// Navegadores, Equipos, Severidades y Registro de cambios). Lo que se cambia queda marcado hasta «Guardar cambios», que pide el motivo
 // cuando el cambio va al registro (la importancia y la severidad), como en la app. El analista ve todo sin los
 // controles de administrador; igual el servidor controla cada cambio (403). Sumar, quitar o cambiar a alguien
 // se confirma con la llave de esta computadora (decisión 51); sin ella, eso se hace desde la app.
@@ -17,22 +18,27 @@ import { enPagina, piePaginas, primeraPagina } from './paginas.js';
 
 const ORDEN_TIPOS_SEVERIDAD = ['fuerza_bruta', 'escaneo', 'ddos', 'probable_falsa_alarma', 'sin_tipificar', 'servicio_no_autorizado', 'volumen_inusual'];
 const MODOS_AVISO = { sonido: 'Con sonido', vibracion: 'Sin sonido', sin_aviso: 'Sin aviso' };
+// Dónde va cada sección. Lo propio y de este navegador, en Ajustes. Lo de la red (`red`), en Administración, que es
+// una vista solo del administrador. El analista no la tiene: en su Ajustes sigue viendo, sin poder cambiarlas, las
+// tres que le sirven para entender las alertas (`consulta`): los equipos, las severidades y el registro.
 const SECCIONES = [
   { id: 'general', nombre: 'General' },
-  { id: 'personas', nombre: 'Personas' },
-  { id: 'navegadores', nombre: 'Navegadores' },
-  { id: 'equipos', nombre: 'Equipos' },
-  { id: 'severidades', nombre: 'Severidades' },
   { id: 'notificaciones', nombre: 'Notificaciones' },
-  { id: 'registro', nombre: 'Registro de cambios' },
+  { id: 'personas', nombre: 'Personas', red: true },
+  { id: 'navegadores', nombre: 'Navegadores', red: true },
+  { id: 'equipos', nombre: 'Equipos', red: true, consulta: true },
+  { id: 'severidades', nombre: 'Severidades', red: true, consulta: true },
+  { id: 'registro', nombre: 'Registro de cambios', red: true, consulta: true },
 ];
-const CLAVE_SECCION = 'zonda.tablero.ajustes';
+const CLAVE_SECCION = { ajustes: 'zonda.tablero.ajustes', administracion: 'zonda.tablero.administracion' };
+const NOMBRE_LUGAR = { ajustes: 'Ajustes', administracion: 'Administración' };
 
 let alSalir = () => {};
 let alElegirTema = () => {};
 let temaElegido = () => 'sistema';
 let esperaTelegram = null;
-let seccion = leerSeccion();
+// La sección elegida en cada una de las dos vistas.
+const elegidas = { ajustes: leerSeccion('ajustes'), administracion: leerSeccion('administracion') };
 // Lo que se cambió en las tablas y todavía no se guardó: perfiles, permisos de bloquear, importancias y severidades.
 const pendientes = { personas: new Map(), bloqueos: new Map(), equipos: new Map(), severidades: new Map() };
 // Lo pendiente de cada sección: la de Personas junta los perfiles y los permisos de bloquear.
@@ -45,12 +51,27 @@ const busqueda = { equipos: '', registro: '' };
 // Si llegan datos del servidor mientras alguien escribe o elige, la sección se vuelve a armar al soltar el campo.
 let repintarAlSoltar = false;
 
-function leerSeccion() {
-  try { return localStorage.getItem(CLAVE_SECCION) || 'general'; } catch (_) { return 'general'; }
+function leerSeccion(lugar) {
+  try { return localStorage.getItem(CLAVE_SECCION[lugar]); } catch (_) { return null; }
 }
 
-function guardarSeccion(id) {
-  try { localStorage.setItem(CLAVE_SECCION, id); } catch (_) { /* sin almacenamiento, vale mientras la pestaña siga abierta */ }
+function guardarSeccion(lugar, id) {
+  try { localStorage.setItem(CLAVE_SECCION[lugar], id); } catch (_) { /* sin almacenamiento, vale mientras la pestaña siga abierta */ }
+}
+
+/** En cuál de las dos vistas se está: Ajustes y Administración se dibujan en el mismo lugar de la página. */
+const lugarDeAhora = () => (e.vista === 'administracion' ? 'administracion' : 'ajustes');
+
+/** Las secciones de la vista de ahora, según el perfil. */
+function seccionesVisibles() {
+  if (lugarDeAhora() === 'administracion') return SECCIONES.filter((s) => s.red);
+  return SECCIONES.filter((s) => !s.red || (!esAdmin() && s.consulta));
+}
+
+/** La sección elegida, o la primera si la guardada no está en esta vista (o ya no la ve este perfil). */
+function seccionDeAhora() {
+  const visibles = seccionesVisibles();
+  return (visibles.find((s) => s.id === elegidas[lugarDeAhora()]) || visibles[0]).id;
 }
 
 const editando = () => {
@@ -86,7 +107,7 @@ export async function actualizarAjustes() {
   if (pedidos[2].status === 'fulfilled') e.severidades = pedidos[2].value;
   if (pedidos[3].status === 'fulfilled') e.registro = pedidos[3].value;
   if (pedidos[4].status === 'fulfilled') e.telegram = pedidos[4].value;
-  if (e.vista === 'ajustes') pintarAjustes({ desdeElServidor: true });
+  if (e.vista === 'ajustes' || e.vista === 'administracion') pintarAjustes({ desdeElServidor: true });
 }
 
 /** Cuántos cambios faltan guardar, en todas las secciones. */
@@ -100,10 +121,11 @@ function marcaPendientes(n) {
     el('span', { class: 'oculto-visual' }, `, ${numero(n)} ${n === 1 ? 'cambio' : 'cambios'} sin guardar`));
 }
 
-/** La pestaña «Ajustes», arriba y en la barra de abajo, también dice cuántos cambios faltan guardar. */
+/** La pestaña «Administración», arriba y en la barra de abajo, también dice cuántos cambios faltan guardar: todo
+    lo que se cambia y se guarda está ahí. */
 function marcarPestania() {
   const n = cambiosSinGuardar();
-  for (const boton of document.querySelectorAll('.pestania[data-vista="ajustes"], #barra-inferior [data-vista="ajustes"]')) {
+  for (const boton of document.querySelectorAll('.pestania[data-vista="administracion"], #barra-inferior [data-vista="administracion"]')) {
     const marca = boton.querySelector('.ajustes-pendientes');
     if (marca) marca.remove();
     if (n) boton.append(marcaPendientes(n));
@@ -146,11 +168,14 @@ export function pintarAjustes({ desdeElServidor = false } = {}) {
   if (desdeElServidor && editando()) { repintarAlSoltar = true; return; }
   limpiarPendientes();
   marcarPestania();
-  if (!CONTENIDO[seccion]) seccion = 'general';
+  const lugar = NOMBRE_LUGAR[lugarDeAhora()];
+  const seccion = seccionDeAhora();
+  // Las dos vistas comparten el lugar: el título, que oye el lector de pantalla, dice cuál es.
+  $('titulo-vista-ajustes').textContent = lugar;
   // El campo o la lista que tenía el foco lo recupera después de armar todo de nuevo.
   const foco = document.activeElement && $('ajustes').contains(document.activeElement) ? document.activeElement.dataset.foco : null;
-  const menu = el('nav', { class: 'ajustes-menu', role: 'tablist', 'aria-label': 'Secciones de Ajustes', 'aria-orientation': 'vertical', onkeydown: moverEnMenu },
-    SECCIONES.map((s) => {
+  const menu = el('nav', { class: 'ajustes-menu', role: 'tablist', 'aria-label': `Secciones de ${lugar}`, 'aria-orientation': 'vertical', onkeydown: moverEnMenu },
+    seccionesVisibles().map((s) => {
       const n = sinGuardar(s.id);
       return el('button', {
         type: 'button', role: 'tab', id: `ajustes-${s.id}`, 'aria-selected': String(s.id === seccion), 'aria-controls': 'ajustes-panel',
@@ -166,8 +191,8 @@ export function pintarAjustes({ desdeElServidor = false } = {}) {
 }
 
 function elegirSeccion(id, enfocar = false) {
-  seccion = id;
-  guardarSeccion(id);
+  elegidas[lugarDeAhora()] = id;
+  guardarSeccion(lugarDeAhora(), id);
   pintarAjustes();
   if (enfocar) $(`ajustes-${id}`).focus();
 }
@@ -177,8 +202,9 @@ function moverEnMenu(ev) {
   const adelante = ['ArrowDown', 'ArrowRight'].includes(ev.key);
   if (!adelante && !['ArrowUp', 'ArrowLeft'].includes(ev.key)) return;
   ev.preventDefault();
-  const i = SECCIONES.findIndex((s) => s.id === seccion);
-  elegirSeccion(SECCIONES[(i + (adelante ? 1 : SECCIONES.length - 1)) % SECCIONES.length].id, true);
+  const visibles = seccionesVisibles();
+  const i = visibles.findIndex((s) => s.id === seccionDeAhora());
+  elegirSeccion(visibles[(i + (adelante ? 1 : visibles.length - 1)) % visibles.length].id, true);
 }
 
 function cabecera(titulo, sub, accion = null) {

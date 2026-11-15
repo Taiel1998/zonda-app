@@ -3,7 +3,7 @@
 // navegador queda como un dispositivo más, con su perfil y su vencimiento.
 
 import { api, borrarAcceso, cambiarUrl, guardarAcceso, horaConSegundos, icono, leerAcceso, vaciar, el } from './util.js';
-import { $, ahoraServidor, alCambiarAlertas, cuandoExpire, e } from './comun.js';
+import { $, ahoraServidor, alCambiarAlertas, cuandoExpire, e, esAdmin } from './comun.js';
 import {
   PIEZAS, actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
   configurarVivo, pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
@@ -156,7 +156,7 @@ async function entrar(evento) {
 
 async function salir() {
   const n = cambiosSinGuardar();
-  const sinGuardar = n ? `${n === 1 ? 'Hay 1 cambio' : `Hay ${n} cambios`} sin guardar en Ajustes. ` : '';
+  const sinGuardar = n ? `${n === 1 ? 'Hay 1 cambio' : `Hay ${n} cambios`} sin guardar en Administración. ` : '';
   const texto = `${sinGuardar}Este navegador pierde el acceso: para volver a entrar hace falta un código nuevo.`;
   if (!await confirmar({ titulo: '¿Salir del tablero?', texto, aceptar: 'Salir', peligro: true })) return;
   try {
@@ -184,6 +184,16 @@ function terminarSesion(mensaje) {
 
 // ---- Consultas periódicas ----
 
+/** Ajustes y Administración son dos vistas que dibuja ajustes.js en el mismo lugar de la página. */
+const enAjustes = () => e.vista === 'ajustes' || e.vista === 'administracion';
+
+/** La pestaña «Administración» es solo del administrador; si deja de serlo mientras la mira, pasa a su Ajustes. */
+function mostrarAdministracion() {
+  const admin = esAdmin();
+  for (const boton of document.querySelectorAll('[data-vista="administracion"]')) boton.hidden = !admin;
+  if (!admin && e.vista === 'administracion') cambiarVista('ajustes');
+}
+
 const TAREAS = {
   salud: { cada: () => 5000, correr: actualizarSalud },
   alertas: { cada: () => 5000, correr: sincronizarAlertas },
@@ -193,7 +203,7 @@ const TAREAS = {
   // Grafana, el mapa no se pide mientras su fila está plegada; al desplegarla, se pide en el momento.
   trafico: { cada: () => cadaCuanto(), correr: actualizarTrafico },
   pares: { cada: () => (filaAbierta('comunicaciones') ? Math.max(10000, cadaCuanto()) : Infinity), correr: actualizarPares },
-  personas: { cada: () => (e.vista === 'ajustes' ? 15000 : 60000), correr: () => (e.vista === 'ajustes' ? actualizarAjustes() : actualizarPersonas()) },
+  personas: { cada: () => (enAjustes() ? 15000 : 60000), correr: () => (enAjustes() ? actualizarAjustes() : actualizarPersonas()) },
   // Los bloqueos del firewall (decisión 51): la tarjeta del detalle y la pieza «Firewall».
   bloqueos: { cada: () => 15000, correr: actualizarBloqueos },
 };
@@ -229,6 +239,8 @@ function tic() {
   pintarEnVivo();
   // El dato de cada pieza del estado cuenta los segundos («Última revisión hace 12 s»).
   pintarEstado();
+  // El perfil puede cambiar mientras el tablero está abierto (lo trae la lista de personas).
+  mostrarAdministracion();
 }
 
 function pintarEnVivo() {
@@ -260,7 +272,9 @@ function pintarEnVivo() {
 
 // ---- Vistas ----
 
-function cambiarVista(vista, { mantenerPanel = false } = {}) {
+function cambiarVista(pedida, { mantenerPanel = false } = {}) {
+  // Administración es solo del administrador: a un analista (por un enlace, por ejemplo) lo lleva a su Ajustes.
+  const vista = pedida === 'administracion' && !esAdmin() ? 'ajustes' : pedida;
   if (!mantenerPanel) salirDeGrande();
   cerrarInspector();
   e.vista = vista;
@@ -268,13 +282,15 @@ function cambiarVista(vista, { mantenerPanel = false } = {}) {
     if (boton.dataset.vista === vista) boton.setAttribute('aria-current', 'page');
     else boton.removeAttribute('aria-current');
   }
-  document.title = `${{ vivo: 'En vivo', alertas: 'Alertas', resumen: 'Resumen', ajustes: 'Ajustes' }[vista]} · Zonda`;
+  document.title = `${{ vivo: 'En vivo', alertas: 'Alertas', resumen: 'Resumen', ajustes: 'Ajustes', administracion: 'Administración' }[vista]} · Zonda`;
   // La vista queda en la dirección: al recargar o al compartir el enlace se abre la misma.
   cambiarUrl({ vista: vista === 'vivo' ? null : vista });
-  for (const nombre of ['vivo', 'alertas', 'resumen', 'ajustes']) $(`vista-${nombre}`).hidden = nombre !== vista;
+  // Administración se dibuja en el lugar de Ajustes (ajustes.js arma una u otra según la vista).
+  const lugar = vista === 'administracion' ? 'ajustes' : vista;
+  for (const nombre of ['vivo', 'alertas', 'resumen', 'ajustes']) $(`vista-${nombre}`).hidden = nombre !== lugar;
   if (vista === 'alertas') pintarAlertas();
   if (vista === 'resumen') pintarResumen();
-  if (vista === 'ajustes') { pintarAjustes(); actualizarAjustes().catch(() => {}); }
+  if (enAjustes()) { pintarAjustes(); actualizarAjustes().catch(() => {}); }
   window.scrollTo(0, 0);
   requestAnimationFrame(() => {
     for (const grafico of Object.values(e.graficos)) grafico.resize();
@@ -377,7 +393,7 @@ let alertaDelEnlace = null;
 function abrirLoDelEnlace() {
   const enlace = new URLSearchParams(location.search);
   if (enlace.get('ver')) verEnGrande(enlace.get('ver'));
-  else if (['alertas', 'resumen', 'ajustes'].includes(enlace.get('vista'))) cambiarVista(enlace.get('vista'));
+  else if (['alertas', 'resumen', 'ajustes', 'administracion'].includes(enlace.get('vista'))) cambiarVista(enlace.get('vista'));
   alertaDelEnlace = enlace.get('alerta');
 }
 
@@ -442,6 +458,7 @@ async function arrancarTablero() {
   e.perfil = e.acceso.perfil;
   e.miId = e.acceso.dispositivoId || null;
   vaciar($('red-actual'), e.acceso.red ? e.acceso.red.nombre : 'Red', el('small', {}, `${e.acceso.persona || 'Tablero web'} · ${e.perfil === 'administrador' ? 'administrador' : 'analista'}`));
+  mostrarAdministracion();
   pintarLeyendas();
   pintarSinRevisar();
   pintarEstado();
@@ -456,7 +473,7 @@ function iniciar() {
   aplicarTema(temaQueToca());
   oscuroDelSistema.addEventListener('change', () => {
     if (temaElegido() === 'sistema') ponerTema(temaQueToca());
-    if (e.vista === 'ajustes') pintarAjustes();
+    if (enAjustes()) pintarAjustes();
   });
   cuandoExpire(terminarSesion);
   alCambiarAlertas(alCambiar);
