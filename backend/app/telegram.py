@@ -42,12 +42,12 @@ BOTON_DETALLE = "Ver el detalle en Zonda"
 
 # Lo que responde el bot. Los textos de los avisos están en texto_del_aviso.
 TEXTO_VINCULADO = (
-    "Listo: este chat recibe los avisos de {red}. Cada aviso trae solo la severidad, el servicio y la hora, "
+    "Este chat quedó vinculado: recibe los avisos de {red}. Cada aviso incluye solo la severidad, el servicio y la hora, "
     "nunca direcciones IP ni nombres de equipos."
 )
 TEXTO_YA_VINCULADO = "Este chat recibe los avisos de {red}. Cómo avisa cada severidad se cambia desde Zonda → Ajustes → Avisos por severidad."
-TEXTO_CODIGO_INVALIDO = "Ese código no sirve: venció o ya se usó. Volvé a Zonda y tocá Abrir Telegram de nuevo."
-TEXTO_SIN_CODIGO = "Este bot manda los avisos de Zonda. Para recibirlos, conectá Telegram desde la app: Ajustes → Telegram → Conectar Telegram."
+TEXTO_CODIGO_INVALIDO = "Ese código no es válido: venció o ya se usó. Volvé a Zonda y tocá Abrir Telegram de nuevo."
+TEXTO_SIN_CODIGO = "Este bot envía los avisos de Zonda. Para recibirlos, conectá Telegram desde la app: Ajustes → Telegram → Conectar Telegram."
 TEXTO_SOLO_PRIVADO = "Los avisos de Zonda llegan a un chat privado con el bot, no a un grupo."
 TEXTO_PRUEBA = "<b>Aviso de prueba</b>\nLos avisos de {red} llegan a este chat."
 TEXTO_DESVINCULADO = "Este chat ya no recibe los avisos de {red}. Para volver a recibirlos, conectá Telegram desde Zonda."
@@ -170,7 +170,7 @@ def texto_de_bloqueo(
         hora = local.strftime("%d/%m %H:%M")
     titulo = TITULO_BLOQUEO[evento].format(persona=persona, alerta=f"{ETIQUETA_SEVERIDAD[severidad]} · {servicio.upper()} · {hora}")
     if evento == "pedido":
-        cuerpo = "Lo aprueba desde Zonda, en su teléfono, alguien que puede bloquear."
+        cuerpo = "Queda pendiente de aprobación. Tocá para ver el detalle en Zonda."
     elif evento == "aprobado":
         cuanto = "Hasta que alguien lo desbloquee." if duracion is None else f"Por {DURACION_BLOQUEO.get(duracion, f'{duracion // 60} min')}."
         cuerpo = f"{cuanto} Tocá para ver el detalle en Zonda."

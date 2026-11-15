@@ -232,7 +232,7 @@ Red: Oficina central
 
 ```
 Análisis en vivo detenido
-Zonda no recibe noticias del análisis en vivo desde las 18:41: las alertas nuevas no llegan hasta que vuelva.
+Zonda no recibe datos del análisis en vivo desde las 18:41: las alertas nuevas no llegan hasta que se restablezca.
 Red: Oficina central
 
 Análisis en vivo funcionando de nuevo
@@ -244,10 +244,10 @@ Red: Oficina central
 
 ```
 Sensor viendo parcialmente
-Zeek perdió el 3,2 % de lo que pasó por el puerto espejo en la medición de las 18:45: puede haber tráfico, y ataques, que Zonda no ve.
+Zeek perdió el 3,2 % del tráfico del puerto espejo en la medición de las 18:45: puede haber tráfico, y ataques, que Zonda no analiza.
 Red: Oficina central
 
-Sensor viendo todo de nuevo
+Sensor funcionando con normalidad
 La pérdida de captura bajó al 0,0 % en la medición de las 19:00.
 Red: Oficina central
 ```
