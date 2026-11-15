@@ -60,13 +60,14 @@ def guardar(con: sqlite3.Connection, datos: dict, dias: int = 7) -> str:
     return recibido
 
 
-def por_minuto(con: sqlite3.Connection, desde: int, hasta: int) -> list[dict]:
-    """Los latidos de [desde, hasta) por minuto: cuántos llegaron, cuántos flujos revisaron, la mayor
-    pérdida de captura que informaron y si Zeek anduvo en todos. Solo los minutos con latidos."""
+def por_minuto(con: sqlite3.Connection, desde: int, hasta: int, paso: int = 60) -> list[dict]:
+    """Los latidos de [desde, hasta) por minuto (o en tramos de `paso` segundos): cuántos llegaron, cuántos
+    flujos revisaron, la mayor pérdida de captura que informaron y si Zeek anduvo en todos. Solo los
+    minutos con latidos."""
     filas = con.execute(
-        "SELECT t - t % 60 AS minuto, COUNT(*) AS latidos, SUM(flujos) AS flujos, MAX(perdida) AS perdida, "
+        "SELECT (t / ?) * ? AS minuto, COUNT(*) AS latidos, SUM(flujos) AS flujos, MAX(perdida) AS perdida, "
         "MIN(zeek_activo) AS zeek FROM latidos WHERE t >= ? AND t < ? GROUP BY minuto ORDER BY minuto",
-        (desde, hasta),
+        (paso, paso, desde, hasta),
     )
     return [
         {"minuto": f["minuto"], "latidos": f["latidos"], "flujos": f["flujos"], "perdidaCaptura": f["perdida"], "zeekActivo": bool(f["zeek"])}

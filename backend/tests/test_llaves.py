@@ -130,6 +130,19 @@ def test_pasados_los_diez_minutos_del_pareo_ya_no_se_crea(cliente, auth):
     assert cliente.post("/llaves/opciones", headers=navegador).status_code == 403
 
 
+def test_la_llave_se_guarda_con_el_nombre_de_la_persona(cliente, auth):
+    from app import llaves
+
+    navegador = parear_navegador(cliente, auth, nombre="Taiel")
+    usuario = cliente.post("/llaves/opciones", headers=navegador).json()["opciones"]["user"]
+    # Es el nombre que muestra Windows al crearla: dice de quién es, no solo desde qué navegador.
+    assert usuario["name"] == "Taiel · Chrome en Windows"
+    assert usuario["displayName"] == "Taiel"
+    # Un navegador que entró con un código sin persona queda con su nombre.
+    assert llaves._etiqueta({"persona": None, "nombre": "Tablero web · Chrome en Windows"}) == "Tablero web · Chrome en Windows"
+    assert llaves._etiqueta({"persona": "Meli", "nombre": "Tablero web"}) == "Meli"
+
+
 def test_la_llave_se_ata_al_nombre_del_tablero(cliente, auth):
     navegador = parear_navegador(cliente, auth)
     sin_origen = {clave: valor for clave, valor in navegador.items() if clave != "Origin"}

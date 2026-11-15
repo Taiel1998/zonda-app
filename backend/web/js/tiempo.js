@@ -8,7 +8,7 @@
 import { dia, el, hora, horaConSegundos, icono, vaciar } from './util.js';
 import { $, ahoraServidor, e } from './comun.js';
 import { abrirMenu, cerrarMenu } from './menu.js';
-import { avisoInferior } from './hojas.js';
+import { avisoError, avisoInferior } from './hojas.js';
 
 // Los pasos que acepta GET /trafico (trafico.PASOS del servidor) y cuántas barras tiene como mucho un gráfico.
 const PASOS = [5, 10, 15, 30, 60, 300, 900, 3600];
@@ -16,13 +16,15 @@ const BARRAS = 300;
 // El servidor guarda una semana de tráfico (ZONDA_DIAS_TRAFICO).
 const SEMANA = 7 * 86400e3;
 const UNIDAD = { s: 1e3, m: 60e3, h: 3600e3, d: 86400e3 };
+// Lo más cerca que deja llegar el zoom: con menos de un minuto quedan pocas barras de 5 segundos, casi siempre vacías.
+const ZOOM_MINIMO = 60e3;
 
 const rangos = (lista) => lista.map(([desde, hasta]) => ({ desde, hasta }));
 
 export const RANGOS_RAPIDOS = rangos([
   ['now-5m', 'now'], ['now-15m', 'now'], ['now-30m', 'now'], ['now-1h', 'now'], ['now-3h', 'now'],
   ['now-6h', 'now'], ['now-12h', 'now'], ['now-24h', 'now'], ['now-2d', 'now'], ['now-7d', 'now'],
-  ['now/d', 'now'], ['now-1d/d', 'now-1d/d'], ['now-2d/d', 'now-2d/d'],
+  ['now/d', 'now'],
 ]);
 
 /** Los de la lista de alertas, que se guardan más que el tráfico. */
@@ -180,9 +182,19 @@ function alejar() {
 
 /** Acercar al tramo que se marcó arrastrando sobre un gráfico; menos de 10 segundos es un clic. */
 function acercar(t1, t2) {
-  const desde = Math.round(Math.min(t1, t2) / 1000) * 1000;
-  const hasta = Math.round(Math.max(t1, t2) / 1000) * 1000;
-  if (hasta - desde >= 10000) ponerRango({ desde: String(desde), hasta: String(hasta) });
+  let desde = Math.round(Math.min(t1, t2) / 1000) * 1000;
+  let hasta = Math.round(Math.max(t1, t2) / 1000) * 1000;
+  if (hasta - desde < 10000) return;
+  // El tope: un tramo más corto que un minuto se abre a un minuto alrededor de lo marcado, sin salirse de lo que
+  // se estaba mirando; y si ya se está en un minuto, arrastrar no acerca más.
+  if (hasta - desde < ZOOM_MINIMO) {
+    const actual = rangoActual();
+    if (actual.hasta - actual.desde <= ZOOM_MINIMO) return;
+    desde = Math.round(((desde + hasta) / 2 - ZOOM_MINIMO / 2) / 1000) * 1000;
+    desde = Math.max(actual.desde, Math.min(desde, actual.hasta - ZOOM_MINIMO));
+    hasta = desde + ZOOM_MINIMO;
+  }
+  ponerRango({ desde: String(desde), hasta: String(hasta) });
 }
 
 // ---- La dirección de la página ----
@@ -441,7 +453,7 @@ async function copiarEnlace() {
     await navigator.clipboard.writeText(enlaceCon());
     avisoInferior('Enlace copiado, con este horario');
   } catch (_) {
-    avisoInferior('No se pudo copiar el enlace');
+    avisoError('No se pudo copiar el enlace');
   }
 }
 

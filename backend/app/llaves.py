@@ -21,7 +21,7 @@ from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from .auth import ahora, dispositivo_actual, iso, nombre_de
+from .auth import PREFIJO_TABLERO, ahora, dispositivo_actual, iso, nombre_de
 from .config import Config
 from .db import Base
 from .modelos import AccionLlave, EstadoLlave, LlaveNueva, OpcionesLlave
@@ -97,6 +97,16 @@ def _puede_crearla(dispositivo: sqlite3.Row, tiene: bool) -> bool:
     return dispositivo["tipo"] == "navegador" and not tiene and ahora() - pareado <= VENTANA_PARA_CREARLA
 
 
+def _etiqueta(dispositivo: sqlite3.Row) -> str:
+    """Con qué nombre guarda Windows la llave: «Taiel · Chrome en Windows», para que se vea de quién es; un
+    navegador que entró con un código sin persona queda con su nombre («Tablero web · Chrome en Windows»)."""
+    persona = dispositivo["persona"]
+    if not persona:
+        return dispositivo["nombre"]
+    navegador = dispositivo["nombre"].removeprefix(PREFIJO_TABLERO).lstrip(" ·").strip()
+    return f"{persona} · {navegador}" if navegador else persona
+
+
 def _nuevo_desafio(con: sqlite3.Connection, dispositivo: sqlite3.Row, proposito: str, origen: str, accion: str | None = None) -> tuple[str, bytes]:
     momento = ahora()
     con.execute("DELETE FROM desafios_llave WHERE vence_en < ?", (iso(momento - timedelta(days=1)),))
@@ -162,7 +172,7 @@ def opciones_para_crearla(request: Request, dispositivo: sqlite3.Row = Depends(d
         rp_id=rp_id,
         rp_name=NOMBRE_DEL_SERVIDOR,
         user_id=dispositivo["id"].encode(),
-        user_name=dispositivo["nombre"],
+        user_name=_etiqueta(dispositivo),
         user_display_name=nombre_de(dispositivo),
         challenge=desafio,
         timeout=int(VIGENCIA_DESAFIO.total_seconds() * 1000),

@@ -27,7 +27,9 @@ export function nombreConFecha(nombre) {
 /** CSV con punto y coma, como lo abre Excel en castellano. */
 export function csvDe(columnas, filas) {
   const celda = (valor) => {
-    const texto = String(valor ?? '');
+    // Un texto que empieza con =, +, - o @ se abriría como fórmula en la planilla: va con un apóstrofo adelante.
+    const crudo = String(valor ?? '');
+    const texto = typeof valor === 'string' && /^[=+\-@\t\r]/.test(crudo) ? `'${crudo}` : crudo;
     return /[";\r\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
   };
   const lineas = [columnas, ...filas].map((fila) => fila.map(celda).join(';'));

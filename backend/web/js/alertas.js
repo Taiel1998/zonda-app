@@ -9,11 +9,11 @@ import {
   chipEstado, chipSeveridad, comentarioPropuesto, e, esAdmin, guardarAlerta, mandar, metodosDe, nombreEquipo, nombrePersona,
   pedir, responsableId, servicioCorto, servicioDe, tipoCorto,
 } from './comun.js';
-import { abrirEnLugar, abrirHoja, actualizarFondo, avisoInferior } from './hojas.js';
+import { abrirEnLugar, abrirHoja, actualizarFondo, avisoError, avisoInferior, avisoNeutro } from './hojas.js';
 import { bajarArchivo, csvDe, nombreConFecha } from './compartir.js';
 import { alternarAyuda, cerrarAyuda } from './ayuda.js';
 import { enPagina, piePaginas, primeraPagina } from './paginas.js';
-import { origenBloqueado, seccionBloqueo } from './bloqueo.js';
+import { bloqueoPorAlerta, origenBloqueado, seccionBloqueo } from './bloqueo.js';
 import {
   RANGOS_ALERTAS, claveRango, esRelativo, fraseRango, horasDe, nombreRango, rangoActual, rangoCorrido, selectorDeHorario,
 } from './tiempo.js';
@@ -59,7 +59,7 @@ const FILTRO_ESTADO = { todas: 'Todas', sin_revisar: 'Sin revisar', revisadas: '
 
 function filtrosNuevos() {
   // El horario va aparte de los filtros, arriba a la derecha, como en Grafana (rango: expresiones de tiempo.js).
-  return { estado: 'todas', severidades: new Set(), rango: { desde: 'now-30d', hasta: 'now' }, servicios: new Set(), otrosServicios: false, destinos: new Set(), metodos: new Set(), responsable: 'todas' };
+  return { estado: 'todas', severidades: new Set(), rango: { desde: 'now-30d', hasta: 'now' }, servicios: new Set(), otrosServicios: false, destinos: new Set(), metodos: new Set(), responsable: 'todas', bloqueos: new Set() };
 }
 
 export const f = filtrosNuevos();
@@ -77,6 +77,13 @@ export function verSinRevisar(severidad) {
   primeraPagina('alertas');
 }
 
+/** La lista con las alertas de los equipos bloqueados o con un pedido de bloqueo, de cualquier fecha: lo que abre
+    «12 bloqueados» en la pieza del firewall. Una fila por equipo, y desde su detalle se desbloquea. */
+export function verBloqueados() {
+  Object.assign(f, filtrosNuevos(), { bloqueos: new Set(['bloqueado', 'pedido']), rango: { desde: 'todo', hasta: 'now' } });
+  primeraPagina('alertas');
+}
+
 /** Los servicios con chip propio: los diez con más alertas; el resto entra en "Los demás" (decisión 46). */
 function serviciosConChip() {
   const cuenta = new Map();
@@ -84,7 +91,8 @@ function serviciosConChip() {
   return [...cuenta.entries()].sort((x, y) => y[1] - x[1]).slice(0, 10).map(([s]) => s);
 }
 
-function pasa(a, horario, conChip) {
+function pasa(a, horario, conChip, porBloqueo) {
+  if (porBloqueo && !f.bloqueos.has(porBloqueo.get(a.id))) return false;
   if (f.estado === 'sin_revisar' && a.estadoRevision !== 'sin_revisar') return false;
   if (f.estado === 'revisadas' && a.estadoRevision === 'sin_revisar') return false;
   if (f.estado === 'falsos' && a.estadoRevision !== 'falso_positivo') return false;
@@ -130,11 +138,12 @@ function ordenarPor(columna) {
 export function alertasFiltradas() {
   const horario = rangoActual(f.rango);
   const conChip = serviciosConChip();
-  return [...e.alertas.values()].filter((a) => pasa(a, horario, conChip)).sort(comparar);
+  const porBloqueo = f.bloqueos.size ? bloqueoPorAlerta() : null;
+  return [...e.alertas.values()].filter((a) => pasa(a, horario, conChip, porBloqueo)).sort(comparar);
 }
 
 const cantidadMasFiltros = () => f.servicios.size + (f.otrosServicios ? 1 : 0) + f.destinos.size + f.metodos.size;
-const hayFiltros = () => f.estado !== 'todas' || f.severidades.size || claveRango(f.rango) !== 'now-30d|now' || cantidadMasFiltros() || f.responsable !== 'todas';
+const hayFiltros = () => f.estado !== 'todas' || f.severidades.size || claveRango(f.rango) !== 'now-30d|now' || cantidadMasFiltros() || f.responsable !== 'todas' || f.bloqueos.size;
 
 function textoResponsable() {
   if (f.responsable === 'mias') return 'Asignadas a mí';
@@ -155,10 +164,13 @@ export function pintarAlertas() {
     chip(severidades, f.severidades.size, hojaSeveridad),
     chip(cantidadMasFiltros() ? `Más filtros (${cantidadMasFiltros()})` : 'Más filtros', cantidadMasFiltros(), hojaMasFiltros),
     chip(textoResponsable(), f.responsable !== 'todas', hojaResponsableFiltro),
+    // Solo en una red con firewall: los equipos bloqueados y los que tienen un pedido que espera aprobación.
+    f.bloqueos.size || (e.bloqueos && e.bloqueos.firewall && e.bloqueos.firewall.habilitado) ? chip(textoBloqueo(), f.bloqueos.size, hojaBloqueoFiltro) : null,
     hayFiltros() ? el('button', { type: 'button', class: 'boton-texto', onclick: () => { Object.assign(f, filtrosNuevos()); primeraPagina('alertas'); pintarAlertas(); } }, 'Limpiar filtros') : null);
 
   pintarBarraAlertas();
   const lista = alertasFiltradas();
+  const porBloqueo = bloqueoPorAlerta();
   const sinRevisar = lista.filter((a) => a.estadoRevision === 'sin_revisar').length;
   // Hasta la primera sincronización la lista no está vacía: está cargando.
   if (!e.sincronizada) vaciar($('resumen-filtros-alertas'), 'Cargando las alertas…');
@@ -181,7 +193,7 @@ export function pintarAlertas() {
       el('td', {}, chipSeveridad(a.severidad)),
       el('td', {}, chipEstado(a.estadoRevision)),
       el('td', {}, el('strong', {}, tipoCorto(a))),
-      el('td', { class: 'par' }, `${nombreEquipo(a, 'origen')} → ${nombreEquipo(a, 'destino')}`),
+      el('td', { class: 'par' }, marcaDeBloqueo(porBloqueo.get(a.id)), `${nombreEquipo(a, 'origen')} → ${nombreEquipo(a, 'destino')}`),
       el('td', { class: 'secundario', 'data-etiqueta': 'Servicio' }, servicioCorto(a.servicio)),
       el('td', { class: 'secundario', 'data-etiqueta': 'Empezó' }, fechaHora(Date.parse(a.inicio), ahoraServidor())),
       el('td', { class: 'num', 'data-etiqueta': 'Conexiones' }, numero(a.cantidadFlujos)),
@@ -195,6 +207,15 @@ export function pintarAlertas() {
   $('vacio-alertas').hidden = lista.length > 0 || !e.sincronizada;
   $('vacio-alertas').textContent = 'Ninguna alerta con estos filtros. Cambiá o limpiá los filtros.';
   vaciar($('alertas-paginas'), piePaginas(lista, 'alertas', pintarAlertas));
+}
+
+/** El candado (o el reloj de un pedido) delante del origen, en la alerta desde la que se bloqueó ese equipo: una
+    marca por equipo, las mismas filas que deja el filtro. */
+function marcaDeBloqueo(tipo) {
+  if (!tipo) return null;
+  const pedido = tipo === 'pedido';
+  const texto = pedido ? 'Con un pedido de bloqueo' : 'Origen bloqueado';
+  return el('span', { class: `fila-bloqueo-icono par-bloqueo ${pedido ? 'media' : 'alta'}`, role: 'img', 'aria-label': texto, title: texto }, icono(pedido ? 'espera' : 'candado'));
 }
 
 function conClase(elemento, clase) {
@@ -212,7 +233,7 @@ function textoMetodos(a) {
 /** Toda la lista con los filtros y el horario de arriba, no solo lo que se ve; los métodos y la revisión, en palabras. */
 function bajarCsvAlertas() {
   const lista = alertasFiltradas();
-  if (!lista.length) { avisoInferior('No hay alertas con estos filtros para bajar'); return; }
+  if (!lista.length) { avisoNeutro('No hay alertas con estos filtros para bajar'); return; }
   const columnas = ['Severidad', 'Tipo', 'Origen', 'IP de origen', 'Destino', 'IP de destino', 'Servicio', 'Puerto', 'Empezó', 'Terminó',
     'Conexiones', ...METODOS.map((m) => m.nombre), 'Responsable', 'Estado', 'Revisó', 'Motivo', 'Comentario'];
   const filas = lista.map((a) => {
@@ -304,6 +325,24 @@ function opcionMultiple(valores, conjunto) {
 function hojaEstado() {
   let elegido = f.estado;
   hojaDeOpciones({ titulo: 'Estado de revisión', grupos: [{ opciones: opcionUnica(FILTRO_ESTADO, () => elegido, (id) => { elegido = id; }) }], alAplicar: () => { f.estado = elegido; } });
+}
+
+const FILTRO_BLOQUEO = [{ id: 'bloqueado', nombre: 'Bloqueados', punto: 'var(--alta)' }, { id: 'pedido', nombre: 'Con pedido de bloqueo', punto: 'var(--media)' }];
+
+function textoBloqueo() {
+  if (f.bloqueos.size === 2) return 'Bloqueados y pedidos';
+  if (f.bloqueos.has('bloqueado')) return 'Bloqueados';
+  return f.bloqueos.has('pedido') ? 'Con pedido de bloqueo' : 'Bloqueo';
+}
+
+function hojaBloqueoFiltro() {
+  const elegidos = new Set(f.bloqueos);
+  hojaDeOpciones({
+    titulo: 'Bloqueo',
+    subtitulo: 'Podés elegir los dos. Sin ninguno, se ven todas.',
+    grupos: [{ opciones: opcionMultiple(FILTRO_BLOQUEO, elegidos) }],
+    alAplicar: () => { f.bloqueos = elegidos; },
+  });
 }
 
 function hojaSeveridad() {
@@ -600,9 +639,8 @@ function revisar(a, bloqueado = false) {
         paso: 'Paso 2 de 2',
         titulo: RESULTADOS[resultado].pregunta,
         cuerpo: [
-          el('div', { class: 'grupo-opciones' }, el('p', {}, 'Motivo', el('span', { class: 'asterisco' }, ' *')), el('div', { class: 'opciones' }, motivos)),
-          el('label', { class: 'campo' }, el('span', {}, 'Comentario', el('span', { class: 'asterisco' }, ' *')), texto, el('small', {}, 'Queda en el historial de la alerta.')),
-          el('p', { class: 'leyenda-obligatorio', style: 'margin:0' }, el('span', { class: 'asterisco' }, '*'), ' Obligatorio'),
+          el('div', { class: 'grupo-opciones' }, el('p', {}, 'Motivo', el('span', { class: 'asterisco', title: 'Obligatorio' }, ' *')), el('div', { class: 'opciones' }, motivos)),
+          el('label', { class: 'campo' }, el('span', {}, 'Comentario', el('span', { class: 'asterisco', title: 'Obligatorio' }, ' *')), texto, el('small', {}, 'Queda en el historial de la alerta.')),
         ],
         acciones: [
           { texto: 'Volver', tipo: 'secundario', alHacer: () => paso1() },
@@ -637,7 +675,7 @@ async function mandarRevision(a, entrada) {
       conflicto(a, entrada, falla.datos);
       return;
     }
-    avisoInferior(`No se pudo guardar la revisión: ${falla.message}`, { accion: 'Reintentar', alAccion: () => mandarRevision(a, entrada), duracion: 10000 });
+    avisoError(`No se pudo guardar la revisión: ${falla.message}`, { accion: 'Reintentar', alAccion: () => mandarRevision(a, entrada), duracion: 10000 });
   }
 }
 
@@ -682,7 +720,7 @@ async function asignar(a, responsable) {
     guardarAlerta(await mandar(`/alertas/${encodeURIComponent(a.id)}/asignacion`, 'PUT', { accionId: nuevoId(), responsableId: responsable }));
     avisoInferior(responsable ? 'Alerta asignada.' : 'Alerta sin asignar.', { duracion: 3000 });
   } catch (falla) {
-    avisoInferior(falla.message || 'No se pudo cambiar el responsable.', { duracion: 6000 });
+    avisoError(falla.message || 'No se pudo cambiar el responsable.', { duracion: 6000 });
   }
 }
 

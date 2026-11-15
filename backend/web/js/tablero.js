@@ -5,17 +5,17 @@
 import { api, borrarAcceso, cambiarUrl, guardarAcceso, horaConSegundos, icono, leerAcceso, vaciar, el } from './util.js';
 import { $, alCambiarAlertas, cuandoExpire, e } from './comun.js';
 import {
-  actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
+  PIEZAS, actualizarAhora, actualizarPiezas, actualizarSalud, actualizarTrafico, avisarNuevas, pintarEstado, pintarGraficosPiezas,
   configurarVivo, pintarLeyendas, pintarSinRevisar, pintarTrafico, pintarUltimas,
 } from './vivo.js';
 import { actualizarPares, configurarMapa, pintarMapa, soltarElegido } from './mapa.js';
 import {
-  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verSinRevisar,
+  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verBloqueados, verSinRevisar,
 } from './alertas.js';
 import { avisarEnLaCompu, avisosActivados, configurarAvisos } from './avisos.js';
 import { pintarResumen } from './resumen.js';
 import { actualizarAjustes, actualizarPersonas, cambiosSinGuardar, configurarAjustes, pintarAjustes } from './ajustes.js';
-import { confirmar } from './hojas.js';
+import { avisoError, confirmar } from './hojas.js';
 import { cadaCuanto, cerrarSelector, configurarTiempo, leerUrl, pintarBarra } from './tiempo.js';
 import { cerrarInspector, configurarPaneles, salirDeGrande, teclaDePanel, verEnGrande } from './paneles.js';
 import { cerrarMenu, configurarMenu } from './menu.js';
@@ -118,7 +118,7 @@ async function mostrarIngreso(mensaje) {
   $('codigo').focus();
   try {
     const salud = await api('/salud');
-    $('ingreso-red').textContent = `Red: ${salud.red.nombre} · servidor ${salud.version}`;
+    $('ingreso-red').textContent = `Red: ${salud.red.nombre}`;
   } catch (_) {
     $('ingreso-red').textContent = 'El servidor no contesta';
   }
@@ -156,8 +156,15 @@ async function entrar(evento) {
 
 async function salir() {
   const n = cambiosSinGuardar();
-  if (n && !await confirmar({ titulo: '¿Salir sin guardar?', texto: `${n === 1 ? 'Hay 1 cambio' : `Hay ${n} cambios`} sin guardar en Ajustes.`, aceptar: 'Salir igual', peligro: true })) return;
-  try { await api('/dispositivos/actual', { token: e.acceso.token, metodo: 'DELETE' }); } catch (_) { /* igual se olvida el acceso */ }
+  const sinGuardar = n ? `${n === 1 ? 'Hay 1 cambio' : `Hay ${n} cambios`} sin guardar en Ajustes. ` : '';
+  const texto = `${sinGuardar}Este navegador pierde el acceso: para volver a entrar hace falta un código nuevo.`;
+  if (!await confirmar({ titulo: '¿Salir del tablero?', texto, aceptar: 'Salir', peligro: true })) return;
+  try {
+    await api('/dispositivos/actual', { token: e.acceso.token, metodo: 'DELETE' });
+  } catch (falla) {
+    // Si el servidor no llegó a quitar el acceso, no se olvida acá: seguiría valiendo sin que nadie lo vea.
+    if (!(falla && falla.estado === 401)) { avisoError('No se pudo salir: el servidor no contesta. Probá de nuevo.'); return; }
+  }
   terminarSesion();
 }
 
@@ -300,6 +307,8 @@ function actualizarHorario() {
   });
   tareas.trafico = { ultima: Date.now(), corriendo: false };
   tareas.pares = { ultima: Date.now(), corriendo: false };
+  // Una pieza del estado en grande sigue el horario (decisión 60).
+  if (PIEZAS.includes(e.panelGrande)) actualizarPiezas().catch(() => {});
 }
 
 function actualizarTodo() {
@@ -443,7 +452,8 @@ function iniciar() {
     // panel; los otros gráficos se ajustan solos.
     alAgrandar: (nombre) => {
       if (nombre === 'mapa') pintarMapa();
-      if (['sensor', 'analisis', 'servidor'].includes(nombre)) pintarGraficosPiezas();
+      // Una pieza en grande sigue el horario elegido; al volver, la última hora: se piden de nuevo.
+      if (PIEZAS.includes(nombre)) { pintarGraficosPiezas(); actualizarPiezas().catch(() => {}); }
     },
     irAVista: (vista) => { if (e.vista !== vista) cambiarVista(vista, { mantenerPanel: true }); },
   });
@@ -455,6 +465,10 @@ function iniciar() {
   $('boton-tema').addEventListener('click', cambiarTema);
   $('ir-al-inicio').addEventListener('click', irAlInicio);
   $('boton-ayuda-estado').addEventListener('click', alternarAyudaEstado);
+  // El «?» de cada gráfico y del mapa: cómo se lee y cómo se usa, con el texto de su plantilla en index.html.
+  for (const boton of document.querySelectorAll('[data-ayuda]')) {
+    boton.addEventListener('click', () => alternarAyuda(boton, boton.dataset.ayudaTitulo, [...$(`ayuda-${boton.dataset.ayuda}`).content.cloneNode(true).children]));
+  }
   $('boton-salir').addEventListener('click', salir);
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.addEventListener('click', () => cambiarVista(boton.dataset.vista));
   $('ver-todas-alertas').addEventListener('click', () => cambiarVista('alertas'));
@@ -469,9 +483,14 @@ function iniciar() {
   });
   configurarAvisos({ abrirDetalle: (id) => abrirDetalle(id), abrirLista: abrirSinRevisar });
   configurarBloqueos({
-    abrirAlerta: (id) => abrirDetalle(id),
     // Un bloqueo que cambió se ve en el detalle abierto, como una revisión.
-    alCambiar: () => { if (e.detalleAbierto && e.alertas.has(e.detalleAbierto) && !$('detalle').hidden) abrirDetalle(e.detalleAbierto, false); },
+    alCambiar: () => {
+      if (e.detalleAbierto && e.alertas.has(e.detalleAbierto) && !$('detalle').hidden) abrirDetalle(e.detalleAbierto, false);
+      // La lista marca los orígenes bloqueados y puede estar filtrada por ellos.
+      if (e.vista === 'alertas') pintarAlertas();
+    },
+    // «12 bloqueados» en la pieza del firewall: la lista de Alertas con esos equipos, como los contadores de sin revisar.
+    verBloqueados: () => { verBloqueados(); cambiarVista('alertas'); },
   });
   configurarVivo({ verAlertas: (desde, hasta) => { verAlertasEntre(desde, hasta); cambiarVista('alertas'); } });
   setInterval(() => { if (e.acceso && e.alertas.size) pintarUltimas(); }, 30000);
