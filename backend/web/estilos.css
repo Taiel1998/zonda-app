@@ -1734,21 +1734,35 @@ html { overflow-y: scroll; }
 .bloqueo-corte.sin-vencimiento { color: var(--media-texto); }
 .campo .error-campo { color: var(--alta-texto); }
 
-/* Los bloqueos son una línea al pie de la pieza («12 bloqueados»), a la derecha de «Consultas por minuto»: así las
-   cuatro piezas miden lo mismo. Al tocarla se abre la lista de Alertas con esos equipos. */
-.pie-con-enlace { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.bloqueados-enlace { display: inline-flex; align-items: center; gap: 5px; min-width: 0; padding: 0; font-size: 12.5px; font-weight: 600; }
-.bloqueados-enlace .fila-bloqueo-icono { display: inline-grid; flex: none; }
-.bloqueados-enlace .fila-bloqueo-icono svg { width: 14px; height: 14px; }
-.bloqueados-enlace > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* En el teléfono, 44 px de zona de toque sin agrandar el dibujo, como los botones chicos. */
-@media (max-width: 720px) {
-  .bloqueados-enlace { position: relative; }
-  .bloqueados-enlace::after { content: ""; position: absolute; inset: -14px -8px; }
-}
+/* La tarjeta «Bloqueos» de En vivo (decisión 63): con firewall, va al lado de «Alertas sin revisar», del mismo
+   ancho y con sus tres números, y los tres cuadritos del tráfico quedan juntos en la fila de abajo. Sin firewall,
+   la fila queda como siempre. En pantallas de hasta 1100 px, una debajo de la otra. */
+#grilla-estado.con-bloqueos .c-6 { grid-column: span 6; }
+#grilla-estado.con-bloqueos .c-2 { grid-column: span 4; }
+@media (max-width: 1100px) { #grilla-estado.con-bloqueos .c-6 { grid-column: span 12; } }
+@media (max-width: 720px) { #grilla-estado.con-bloqueos .c-2 { grid-column: span 12; } }
+.contador-titulo .fila-bloqueo-icono svg { width: 15px; height: 15px; }
 /* En la lista de Alertas, el candado delante del origen, en la alerta desde la que se bloqueó ese equipo. */
 .par-bloqueo { display: inline-grid; vertical-align: -3px; margin-right: 6px; }
 .par-bloqueo svg { width: 14px; height: 14px; }
+/* La página «Bloqueos» (decisión 63), como la pantalla de la app: «‹ En vivo» para volver, el título y los grupos
+   (esperan aprobación, bloqueando y bloqueados), cada uno en su tarjeta con su título chico y una fila por equipo. */
+#vista-bloqueos { max-width: 760px; }
+.pagina-cabecera { display: grid; justify-items: start; gap: 2px; margin: 4px 0 14px; }
+.pagina-volver { display: inline-flex; align-items: center; gap: 2px; padding-left: 0; }
+.pagina-volver svg { width: 18px; height: 18px; }
+.pagina-titulo { font-size: 22px; font-weight: 600; margin: 0; }
+.grupos-bloqueos { display: grid; gap: 14px; }
+.grupo-bloqueos { padding: 12px 6px 6px; }
+.grupo-titulo { font-size: 13px; font-weight: 600; color: var(--texto-2); margin: 0 10px 4px; }
+/* El buscador, de 9 equipos en adelante: el mismo campo que Ajustes → Equipos. */
+.buscar-bloqueos { display: block; margin: 0 0 14px; }
+.lista-bloqueos { list-style: none; margin: 0; padding: 0; }
+.lista-bloqueos li + li { border-top: 1px solid var(--borde); }
+.lista-bloqueos .fila-bloqueo { width: 100%; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; padding: 12px 10px; border-radius: 10px; cursor: pointer; }
+.lista-bloqueos .fila-bloqueo:hover { background: var(--superficie-2); }
+.fila-bloqueo-ir { display: inline-flex; flex: none; color: var(--texto-2); }
+.fila-bloqueo-ir svg { width: 18px; height: 18px; }
 
 /* Con firewall, cuatro piezas: de a dos, o las cuatro en fila en una pantalla ancha. En el teléfono, una debajo de la otra. */
 @media (min-width: 721px) {

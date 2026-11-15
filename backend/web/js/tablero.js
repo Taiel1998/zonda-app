@@ -10,7 +10,7 @@ import {
 } from './vivo.js';
 import { actualizarPares, configurarMapa, pintarMapa, soltarElegido } from './mapa.js';
 import {
-  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verBloqueados, verSinRevisar,
+  abrirDetalle, cerrarDetalle, configurarAlertas, pintarAlertas, sincronizarAlertas, verAlertasEntre, verSinRevisar,
 } from './alertas.js';
 import { avisarEnLaCompu, avisosActivados, configurarAvisos } from './avisos.js';
 import { pintarResumen } from './resumen.js';
@@ -21,7 +21,7 @@ import { cerrarInspector, configurarPaneles, salirDeGrande, teclaDePanel, verEnG
 import { cerrarMenu, configurarMenu } from './menu.js';
 import { alternarAyuda, cerrarAyuda, configurarAyuda } from './ayuda.js';
 import { abrirFilaDe, configurarFilas, filaAbierta } from './filas.js';
-import { actualizarBloqueos, configurarBloqueos } from './bloqueo.js';
+import { actualizarBloqueos, configurarBloqueos, pintarPaginaBloqueos } from './bloqueo.js';
 import { actualizarLlave, ofrecerLlave } from './llave.js';
 
 const CLAVE_TEMA = 'zonda.tablero.tema';
@@ -272,24 +272,31 @@ function pintarEnVivo() {
 
 // ---- Vistas ----
 
-function cambiarVista(pedida, { mantenerPanel = false } = {}) {
+// Si «Bloqueos» dejó una entrada en el historial al abrirse desde su tarjeta de En vivo: volver es ir para atrás.
+let entradaBloqueos = false;
+
+function cambiarVista(pedida, { mantenerPanel = false, conHistoria = false } = {}) {
   // Administración es solo del administrador: a un analista (por un enlace, por ejemplo) lo lleva a su Ajustes.
   const vista = pedida === 'administracion' && !esAdmin() ? 'ajustes' : pedida;
   if (!mantenerPanel) salirDeGrande();
   cerrarInspector();
   e.vista = vista;
+  entradaBloqueos = vista === 'bloqueos' && conHistoria;
+  // «Bloqueos» se abre desde En vivo (su tarjeta), así que En vivo sigue marcada.
+  const pestania = vista === 'bloqueos' ? 'vivo' : vista;
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) {
-    if (boton.dataset.vista === vista) boton.setAttribute('aria-current', 'page');
+    if (boton.dataset.vista === pestania) boton.setAttribute('aria-current', 'page');
     else boton.removeAttribute('aria-current');
   }
-  document.title = `${{ vivo: 'En vivo', alertas: 'Alertas', resumen: 'Resumen', ajustes: 'Ajustes', administracion: 'Administración' }[vista]} · Zonda`;
+  document.title = `${{ vivo: 'En vivo', alertas: 'Alertas', resumen: 'Resumen', ajustes: 'Ajustes', administracion: 'Administración', bloqueos: 'Bloqueos' }[vista]} · Zonda`;
   // La vista queda en la dirección: al recargar o al compartir el enlace se abre la misma.
-  cambiarUrl({ vista: vista === 'vivo' ? null : vista });
+  cambiarUrl({ vista: vista === 'vivo' ? null : vista }, { nueva: conHistoria });
   // Administración se dibuja en el lugar de Ajustes (ajustes.js arma una u otra según la vista).
   const lugar = vista === 'administracion' ? 'ajustes' : vista;
-  for (const nombre of ['vivo', 'alertas', 'resumen', 'ajustes']) $(`vista-${nombre}`).hidden = nombre !== lugar;
+  for (const nombre of ['vivo', 'alertas', 'resumen', 'ajustes', 'bloqueos']) $(`vista-${nombre}`).hidden = nombre !== lugar;
   if (vista === 'alertas') pintarAlertas();
   if (vista === 'resumen') pintarResumen();
+  if (vista === 'bloqueos') pintarPaginaBloqueos();
   if (enAjustes()) { pintarAjustes(); actualizarAjustes().catch(() => {}); }
   window.scrollTo(0, 0);
   requestAnimationFrame(() => {
@@ -297,6 +304,18 @@ function cambiarVista(pedida, { mantenerPanel = false } = {}) {
     // Los gráficos de En vivo que no se pudieron armar mientras no se veían.
     if (vista === 'vivo') pintarVivo();
   });
+}
+
+/** La página «Bloqueos», desde su tarjeta de En vivo: deja una entrada en el historial, así Atrás vuelve a En
+    vivo, como en la app. */
+function verPaginaBloqueos() {
+  cambiarVista('bloqueos', { conHistoria: true });
+}
+
+/** «‹ En vivo» de la página: como Atrás si se llegó desde la tarjeta; si se entró por un enlace, a En vivo. */
+function volverDeBloqueos() {
+  if (entradaBloqueos) history.back();
+  else cambiarVista('vivo');
 }
 
 /** Los gráficos de En vivo, con el tamaño que tienen ahora (al volver a la vista o al desplegar una fila). */
@@ -393,16 +412,23 @@ let alertaDelEnlace = null;
 function abrirLoDelEnlace() {
   const enlace = new URLSearchParams(location.search);
   if (enlace.get('ver')) verEnGrande(enlace.get('ver'));
-  else if (['alertas', 'resumen', 'ajustes', 'administracion'].includes(enlace.get('vista'))) cambiarVista(enlace.get('vista'));
+  else if (['alertas', 'resumen', 'ajustes', 'administracion', 'bloqueos'].includes(enlace.get('vista'))) cambiarVista(enlace.get('vista'));
   alertaDelEnlace = enlace.get('alerta');
 }
 
-/** Atrás y Adelante del navegador abren o cierran el detalle; la vista no cambia. */
+/** Atrás y Adelante del navegador abren o cierran el detalle, y van y vuelven entre En vivo y «Bloqueos», la única
+    vista que deja una entrada en el historial; las demás vistas no cambian. */
 function alNavegar() {
   if (!e.acceso) return;
-  const alerta = new URLSearchParams(location.search).get('alerta');
+  const enlace = new URLSearchParams(location.search);
+  const alerta = enlace.get('alerta');
   if (alerta && e.alertas.has(alerta)) abrirDetalle(alerta, true, { sinHistoria: true });
   else if (!alerta && e.detalleAbierto) cerrarDetalle({ sinHistoria: true });
+  if (e.vista === 'bloqueos' && enlace.get('vista') !== 'bloqueos') cambiarVista('vivo');
+  else if (e.vista === 'vivo' && enlace.get('vista') === 'bloqueos') {
+    cambiarVista('bloqueos');
+    entradaBloqueos = true;
+  }
   cambiarUrl({ vista: e.vista === 'vivo' ? null : e.vista });
 }
 
@@ -512,6 +538,8 @@ function iniciar() {
   $('boton-salir-icono').addEventListener('click', salir);
   for (const boton of document.querySelectorAll('.pestania, #barra-inferior button')) boton.addEventListener('click', () => cambiarVista(boton.dataset.vista));
   $('ver-todas-alertas').addEventListener('click', () => cambiarVista('alertas'));
+  $('volver-de-bloqueos').prepend(icono('izquierda'));
+  $('volver-de-bloqueos').addEventListener('click', volverDeBloqueos);
   $('velo').addEventListener('click', cerrarDetalle);
   document.addEventListener('keydown', alApretarTecla);
   document.addEventListener('visibilitychange', alCambiarVisibilidad);
@@ -526,11 +554,15 @@ function iniciar() {
     // Un bloqueo que cambió se ve en el detalle abierto, como una revisión.
     alCambiar: () => {
       if (e.detalleAbierto && e.alertas.has(e.detalleAbierto) && !$('detalle').hidden) abrirDetalle(e.detalleAbierto, false);
-      // La lista marca los orígenes bloqueados y puede estar filtrada por ellos.
+      // La lista marca los orígenes bloqueados y puede estar filtrada por ellos; la página «Bloqueos» dice el estado
+      // de cada uno.
       if (e.vista === 'alertas') pintarAlertas();
+      if (e.vista === 'bloqueos') pintarPaginaBloqueos();
     },
-    // «12 bloqueados» en la pieza del firewall: la lista de Alertas con esos equipos, como los contadores de sin revisar.
-    verBloqueados: () => { verBloqueados(); cambiarVista('alertas'); },
+    // La tarjeta «Bloqueos» de En vivo (decisión 63): con un solo bloqueo, el detalle de su alerta; si no, la
+    // página.
+    abrirAlerta: (id) => abrirDetalle(id),
+    verPagina: verPaginaBloqueos,
   });
   configurarVivo({ verAlertas: (desde, hasta) => { verAlertasEntre(desde, hasta); cambiarVista('alertas'); } });
   setInterval(() => { if (e.acceso && e.alertas.size) pintarUltimas(); }, 30000);
