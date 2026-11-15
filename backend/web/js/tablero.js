@@ -483,7 +483,11 @@ async function arrancarTablero() {
   document.title = 'En vivo · Zonda';
   e.perfil = e.acceso.perfil;
   e.miId = e.acceso.dispositivoId || null;
-  vaciar($('red-actual'), e.acceso.red ? e.acceso.red.nombre : 'Red', el('small', {}, `${e.acceso.persona || 'Tablero web'} · ${e.perfil === 'administrador' ? 'administrador' : 'analista'}`));
+  const red = e.acceso.red ? e.acceso.red.nombre : 'Red';
+  const quien = `${e.acceso.persona || 'Tablero web'} · ${e.perfil === 'administrador' ? 'administrador' : 'analista'}`;
+  vaciar($('red-actual'), red, el('small', {}, quien));
+  // Si no entra, se corta con «…» (estilos.css); entero, en el globito.
+  $('red-actual').title = `${red}\n${quien}`;
   mostrarAdministracion();
   pintarLeyendas();
   pintarSinRevisar();

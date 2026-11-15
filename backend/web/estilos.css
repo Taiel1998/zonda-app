@@ -216,12 +216,6 @@ html { overflow-y: scroll; }
 }
 
 .marca { flex: none; display: flex; align-items: center; gap: 12px; min-width: 0; color: inherit; text-decoration: none; border-radius: 10px; }
-/* En media pantalla (de 721 a 1000 px) no entra todo: la red y el perfil ya están en Ajustes → General, y el texto de
-   «En vivo» queda para el lector de pantalla y en el globito del punto. */
-@media (max-width: 1000px) {
-  .red-actual { display: none; }
-  #en-vivo-texto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-}
 .marca:focus-visible { outline: 2px solid var(--verde); outline-offset: 4px; }
 .marca img { width: 36px; height: 36px; border-radius: 9px; }
 .marca-nombre { font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
@@ -274,8 +268,9 @@ html { overflow-y: scroll; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
-.red-actual { font-size: 14px; color: var(--texto); font-weight: 500; white-space: nowrap; }
-.red-actual small { display: block; font-size: 12px; color: var(--texto-2); font-weight: 400; }
+/* Un nombre largo de red o de navegador se corta con «…»; entero, en el globito (tablero.js). */
+.red-actual { max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-size: 14px; color: var(--texto); font-weight: 500; white-space: nowrap; }
+.red-actual small { display: block; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: var(--texto-2); font-weight: 400; }
 
 .boton-icono {
   width: 38px;
@@ -288,9 +283,31 @@ html { overflow-y: scroll; }
   color: var(--texto-2);
 }
 .boton-icono:hover { color: var(--texto); border-color: var(--borde-fuerte); }
-/* «Salir» como ícono, solo en pantalla angosta (abajo), donde no entra el botón con texto. */
+/* «Salir» como ícono, solo donde no entra el botón con texto (abajo). */
 #boton-salir-icono { display: none; }
 .boton-icono svg { width: 18px; height: 18px; }
+
+/* La barra de arriba tiene que entrar en cualquier ancho de computadora o tablet (antes, de 721 a unos 1130 px, «Salir»
+   y el tema quedaban fuera de la pantalla). Hasta 1220 px, «Salir» pasa al ícono de la puerta, como en el teléfono, y
+   de «En vivo · hace 3 s» queda el punto: el texto, para el lector de pantalla y en el globito. Hasta 1060 px se va la
+   red y el perfil, que están en Ajustes → General. Hasta 900 px, «Administración» se acorta a «Admin.», como en la
+   barra del teléfono, y la barra se ajusta. Van después de las reglas de la cabecera para poder cambiarlas. */
+.pestania-corta { display: none; }
+@media (max-width: 1220px) {
+  #en-vivo-texto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #boton-salir { display: none; }
+  #boton-salir-icono { display: inline-grid; flex: none; }
+  .red-actual { max-width: 170px; }
+}
+@media (max-width: 1060px) {
+  .red-actual { display: none; }
+}
+@media (max-width: 900px) {
+  .cabecera { padding: 0 16px; gap: 14px; }
+  .pestania { padding: 8px 10px; }
+  .pestania-larga { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .pestania-corta { display: inline; }
+}
 
 .boton-secundario {
   border: 1px solid var(--borde);
