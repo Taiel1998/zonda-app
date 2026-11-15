@@ -51,6 +51,7 @@ import ar.edu.uade.zonda.domain.model.AvisoRecibido
 import ar.edu.uade.zonda.domain.model.CambioDeSeveridad
 import ar.edu.uade.zonda.domain.model.DuracionBloqueo
 import ar.edu.uade.zonda.domain.model.ErrorZonda
+import ar.edu.uade.zonda.domain.model.EstadoBloqueo
 import ar.edu.uade.zonda.domain.model.EstadoEnvio
 import ar.edu.uade.zonda.domain.model.EstadoRevision
 import ar.edu.uade.zonda.domain.model.Motivo
@@ -431,7 +432,8 @@ private fun CuerpoDetalle(
                 DatosDelFlujo(alerta, zona)
                 Veredictos(alerta)
                 // Con el origen bloqueado, la revisión viene propuesta como "Bloqueado manualmente" (decisión 51).
-                val bloqueada = estado.bloqueo?.actual?.estado?.enElFirewall == true
+                // Bloqueado es aplicado por el firewall: con el bloqueo solo aprobado no se propone.
+                val bloqueada = estado.bloqueo?.actual?.estado == EstadoBloqueo.APLICADO
                 val recursos = LocalResources.current
                 BotonPrincipal(
                     texto = stringResource(R.string.detalle_revisar),

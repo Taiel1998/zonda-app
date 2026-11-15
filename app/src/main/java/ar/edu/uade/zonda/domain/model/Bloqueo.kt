@@ -5,7 +5,8 @@ import java.time.Instant
 /**
  * En qué quedó el bloqueo del origen de una alerta (decisión 51). Un analista lo pide y lo aprueba un
  * administrador; aprobado ya cuenta y entra al firewall en su consulta siguiente, y aplicado es cuando el
- * firewall dijo que lo puso. Rechazado, desbloqueado y vencido ya terminaron.
+ * firewall dijo que lo puso: las pantallas dicen "Bloqueado" recién ahí. Rechazado, desbloqueado y vencido
+ * ya terminaron.
  */
 enum class EstadoBloqueo {
     PEDIDO,
@@ -19,10 +20,6 @@ enum class EstadoBloqueo {
     /** El equipo tiene un bloqueo o un pedido abierto: no se le puede pedir otro. */
     val activo: Boolean
         get() = this == PEDIDO || this == APROBADO || this == APLICADO
-
-    /** Corta el tráfico del equipo, o lo va a cortar en la consulta siguiente del firewall. */
-    val enElFirewall: Boolean
-        get() = this == APROBADO || this == APLICADO
 }
 
 /**

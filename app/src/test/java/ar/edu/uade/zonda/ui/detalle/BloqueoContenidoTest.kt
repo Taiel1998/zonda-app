@@ -133,12 +133,31 @@ class BloqueoContenidoTest {
     }
 
     @Test
-    fun `aprobado espera al firewall y un analista no tiene botones`() {
+    fun `aprobado no dice bloqueado - espera al firewall y un analista no tiene botones`() {
+        // Aprobado no es bloqueado: "Bloqueado" sale recién cuando el firewall dijo que lo aplicó.
         detalle(actual = bloqueo(estado = EstadoBloqueo.APROBADO, segundos = null), perfil = Perfil.ANALISTA)
 
-        compose.onNodeWithText("Bloqueado hasta desbloquear").performScrollTo().assertExists()
-        compose.onNodeWithText("Esperando al firewall").assertExists()
+        compose.onNodeWithText("Aprobado · esperando al firewall").performScrollTo().assertExists()
+        compose.onNodeWithText("Lo aprobó Este teléfono · hoy 11:58").assertExists()
+        compose.onAllNodesWithText("Bloqueado", substring = true).assertCountEquals(0)
         compose.onNodeWithText("Desbloquear").assertDoesNotExist()
+    }
+
+    @Test
+    fun `aprobado con el firewall caido lo dice en el titulo y el administrador puede soltarlo`() {
+        // Con el firewall caído no cortó nada: no puede quedar como "Bloqueado · vence 12:58".
+        var desbloquear = 0
+        detalle(
+            actual = bloqueo(estado = EstadoBloqueo.APROBADO),
+            firewall = conectado.copy(conectado = false),
+            acciones = AccionesDetalle(alDesbloquear = { desbloquear++ }),
+        )
+
+        compose.onNodeWithText("Aprobado · el firewall no responde").performScrollTo().assertExists()
+        compose.onAllNodesWithText("Bloqueado", substring = true).assertCountEquals(0)
+        compose.onNodeWithText("Cambiar duración").assertExists()
+        compose.onNodeWithText("Desbloquear").performScrollTo().performClick()
+        assertEquals(1, desbloquear)
     }
 
     @Test
@@ -219,6 +238,19 @@ class BloqueoContenidoTest {
     }
 
     @Test
+    fun `con el bloqueo solo aprobado Revisar no propone Bloqueado manualmente`() {
+        // Todavía no está bloqueado: proponer "Se bloqueó el acceso…" sería afirmar algo que no pasó.
+        var propuesto: String? = null
+        var sinPropuesta = 0
+        detalle(actual = bloqueo(estado = EstadoBloqueo.APROBADO), acciones = AccionesDetalle(alRevisarBloqueada = { propuesto = it }, alRevisar = { sinPropuesta++ }))
+
+        compose.onNodeWithText("Revisar").performScrollTo().performClick()
+
+        assertEquals(null, propuesto)
+        assertEquals(1, sinPropuesta)
+    }
+
+    @Test
     fun `sin bloqueo Revisar abre la revision de siempre`() {
         var sinPropuesta = 0
         detalle(acciones = AccionesDetalle(alRevisar = { sinPropuesta++ }))
@@ -283,10 +315,13 @@ class BloqueoContenidoTest {
         val bloqueos = listOf(
             bloqueo(id = "b-1", alertaId = "a-1", estado = EstadoBloqueo.APLICADO),
             bloqueo(id = "b-2", alertaId = "a-2", estado = EstadoBloqueo.PEDIDO, pedidoPor = "Laura").copy(ip = "192.168.30.50", nombre = "pc-rrhh"),
+            bloqueo(id = "b-3", alertaId = "a-3", estado = EstadoBloqueo.APROBADO).copy(ip = "192.168.30.51", nombre = "pc-ventas"),
         )
         compose.setContent { ZondaTheme { TarjetaBloqueos(bloqueos, utc, Fixtures.AHORA, { abierta = it }) } }
 
+        // Solo el aplicado dice "Bloqueado"; el aprobado espera al firewall.
         compose.onNodeWithText("Bloqueado · vence 12:58").assertExists()
+        compose.onNodeWithText("Aprobado · esperando al firewall").assertExists()
         compose.onNodeWithText("Pedido de Laura · espera aprobación").assertExists()
         compose.onNodeWithText("pc-rrhh").performClick()
         assertEquals("a-2", abierta)

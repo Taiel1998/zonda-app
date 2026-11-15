@@ -1261,7 +1261,11 @@
     <string name="bloqueo_espera_administrador">Espera a alguien que pueda bloquear</string>
     <string name="bloqueo_rechazar">Rechazar</string>
     <string name="bloqueo_aprobar">Aprobar</string>
-    <string name="bloqueo_esperando_firewall">Esperando al firewall</string>
+    <!-- Aprobado no es bloqueado: hasta que el firewall dice que lo aplicó (cada 10 s pregunta), la tarjeta
+         no lo da por hecho. "Bloqueado" sale recién con el bloqueo aplicado. -->
+    <string name="bloqueo_aprobado_esperando">Aprobado · esperando al firewall</string>
+    <string name="bloqueo_aprobado_sin_firewall">Aprobado · el firewall no responde</string>
+    <string name="bloqueo_lo_aprobo">Lo aprobó %1$s · %2$s</string>
     <string name="bloqueo_lo_bloqueo">Lo bloqueó %1$s · %2$s</string>
     <string name="bloqueo_cambiar_duracion">Cambiar duración</string>
     <string name="bloqueo_desbloquear">Desbloquear</string>

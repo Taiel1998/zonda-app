@@ -70,6 +70,10 @@ class FakeBloqueosRepository(
     }
 
     companion object {
+        /** Alguien ya lo aprobó: espera al firewall o ya está aplicado. */
+        private val EstadoBloqueo.aprobado: Boolean
+            get() = this == EstadoBloqueo.APROBADO || this == EstadoBloqueo.APLICADO
+
         /** Un bloqueo del origen de las alertas de prueba; aprobado por una hora, salvo que se diga otra cosa. */
         fun bloqueo(
             id: String = "b-1",
@@ -87,9 +91,9 @@ class FakeBloqueosRepository(
             motivo = "Fuerza bruta de pc-09 a srv-web.",
             pedidoPor = pedidoPor,
             pedidoEn = Fixtures.AHORA.minusSeconds(120),
-            aprobadoPor = "Este teléfono".takeIf { estado.enElFirewall },
-            aprobadoEn = Fixtures.AHORA.minusSeconds(120).takeIf { estado.enElFirewall },
-            venceEn = segundos?.takeIf { estado.enElFirewall }?.let { Fixtures.AHORA.minusSeconds(120).plusSeconds(it.toLong()) },
+            aprobadoPor = "Este teléfono".takeIf { estado.aprobado },
+            aprobadoEn = Fixtures.AHORA.minusSeconds(120).takeIf { estado.aprobado },
+            venceEn = segundos?.takeIf { estado.aprobado }?.let { Fixtures.AHORA.minusSeconds(120).plusSeconds(it.toLong()) },
             aplicadoEn = Fixtures.AHORA.minusSeconds(110).takeIf { estado == EstadoBloqueo.APLICADO },
             terminadoPor = null,
             terminadoEn = null,

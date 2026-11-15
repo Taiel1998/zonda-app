@@ -34,10 +34,14 @@ fun TarjetaBloqueos(
     }
 }
 
-/** "Bloqueado · vence 13:34", "Bloqueado hasta desbloquear" o "Pedido de Laura · espera aprobación". */
+/**
+ * "Bloqueado · vence 13:34", "Bloqueado hasta desbloquear", "Aprobado · esperando al firewall" o "Pedido
+ * de Laura · espera aprobación". "Bloqueado" sale recién cuando el firewall dijo que lo aplicó.
+ */
 @Composable
 private fun detalleDe(bloqueo: Bloqueo, zona: ZoneId, ahora: Instant): String {
     if (bloqueo.estado == EstadoBloqueo.PEDIDO) return stringResource(R.string.bloqueos_pedido_por, bloqueo.pedidoPor)
+    if (bloqueo.estado == EstadoBloqueo.APROBADO) return stringResource(R.string.bloqueo_aprobado_esperando)
     val vence = bloqueo.venceEn ?: return stringResource(R.string.bloqueo_hasta_desbloquear_titulo)
     val cuando = if (Formato.mismoDia(vence, ahora, zona)) Formato.hora(vence, zona) else Formato.fechaYHora(vence, zona)
     return stringResource(R.string.bloqueo_vence, cuando)
