@@ -117,7 +117,10 @@ private fun TextosDeFila(titulo: String, detalle: String?, colorTitulo: Color, m
     }
 }
 
-/** Fila tocable con título, detalle opcional y la flecha que indica que abre otra pantalla. */
+/**
+ * Fila tocable con título, detalle opcional y la flecha que indica que abre otra pantalla. [icono] va antes
+ * del texto, como el candado o el reloj de los bloqueos.
+ */
 @Composable
 fun FilaNavegable(
     titulo: String,
@@ -125,6 +128,7 @@ fun FilaNavegable(
     modifier: Modifier = Modifier,
     detalle: String? = null,
     colorTitulo: Color = Color.Unspecified,
+    icono: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -134,6 +138,7 @@ fun FilaNavegable(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        icono?.invoke()
         TextosDeFila(titulo, detalle, colorTitulo, Modifier.weight(1f))
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,

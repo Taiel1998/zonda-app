@@ -52,7 +52,9 @@ import ar.edu.uade.zonda.ui.detalle.AvisoRevisasteEnLasListas
 import ar.edu.uade.zonda.ui.detalle.RutaDetalle
 import ar.edu.uade.zonda.ui.detalle.VentanaDeshacer
 import ar.edu.uade.zonda.ui.detalle.detalleAlerta
+import ar.edu.uade.zonda.ui.estado.BloqueosScreen
 import ar.edu.uade.zonda.ui.estado.EstadoScreen
+import ar.edu.uade.zonda.ui.estado.estadoViewModel
 import ar.edu.uade.zonda.ui.inicio.ArranqueViewModel
 import ar.edu.uade.zonda.ui.inicio.DestinoInicial
 import ar.edu.uade.zonda.ui.primerinicio.TutorialScreen
@@ -210,7 +212,17 @@ fun ZondaNavHost(
                                     navController.irAPestania(Rutas.ALERTAS)
                                     navController.currentBackStackEntry?.savedStateHandle?.set(VER_ASIGNADAS, true)
                                 },
+                                alVerBloqueos = { navController.navigate(Rutas.BLOQUEOS) },
                                 alConectar = { navController.navigate(Rutas.CONEXION) },
+                            )
+                        }
+                        // Usa el ViewModel de Estado, que queda abajo y ya pregunta al servidor por los bloqueos (decisión 63).
+                        composable(Rutas.BLOQUEOS) { entrada ->
+                            val dueño = remember(entrada) { navController.getBackStackEntry(Rutas.ESTADO) }
+                            BloqueosScreen(
+                                viewModel = estadoViewModel(dueño),
+                                alAbrirDetalle = { alertaId -> navController.navigate(RutaDetalle.crear(alertaId)) },
+                                alVolver = { navController.popBackStack() },
                             )
                         }
                         composable(Rutas.RESUMEN) {

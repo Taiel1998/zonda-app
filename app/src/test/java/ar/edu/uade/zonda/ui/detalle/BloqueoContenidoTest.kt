@@ -25,7 +25,6 @@ import ar.edu.uade.zonda.domain.model.TipoCambio
 import ar.edu.uade.zonda.ui.ajustes.tituloDelCambio
 import ar.edu.uade.zonda.ui.components.FilaNavegador
 import ar.edu.uade.zonda.ui.components.FilaPersona
-import ar.edu.uade.zonda.ui.estado.TarjetaBloqueos
 import ar.edu.uade.zonda.ui.estado.TarjetaEstadoSistema
 import ar.edu.uade.zonda.ui.theme.ZondaTheme
 import java.time.ZoneId
@@ -37,7 +36,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** El bloqueo del origen dibujado con Compose (decisión 51): la tarjeta, la hoja, Estado y el registro. */
+/**
+ * El bloqueo del origen dibujado con Compose (decisión 51): la tarjeta, la hoja, Estado del sistema y el
+ * registro. La línea de Bloqueos de Estado y la pantalla Bloqueos se prueban en BloqueosTest (decisión 63).
+ */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -310,33 +312,6 @@ class BloqueoContenidoTest {
         // Como las otras piezas, TalkBack lee la fila entera; la segunda tarjeta, sin firewall, no tiene la fila.
         compose.onNodeWithContentDescription("Firewall: Funciona").assertExists()
         compose.onNodeWithText("Última consulta hace 6 s").assertExists()
-    }
-
-    @Test
-    fun `la tarjeta de bloqueos de Estado abre la alerta de cada uno`() {
-        var abierta: String? = null
-        val bloqueos = listOf(
-            bloqueo(id = "b-1", alertaId = "a-1", estado = EstadoBloqueo.APLICADO),
-            bloqueo(id = "b-2", alertaId = "a-2", estado = EstadoBloqueo.PEDIDO, pedidoPor = "Laura").copy(ip = "192.168.30.50", nombre = "pc-rrhh"),
-            bloqueo(id = "b-3", alertaId = "a-3", estado = EstadoBloqueo.APROBADO).copy(ip = "192.168.30.51", nombre = "pc-ventas"),
-        )
-        compose.setContent { ZondaTheme { TarjetaBloqueos(bloqueos, firewallConectado = true, utc, Fixtures.AHORA, { abierta = it }) } }
-
-        // Solo el aplicado dice "Bloqueado"; el aprobado todavía se está bloqueando.
-        compose.onNodeWithText("Bloqueado · vence 12:58").assertExists()
-        compose.onNodeWithText("Bloqueando…").assertExists()
-        compose.onNodeWithText("Pedido de Laura · espera aprobación").assertExists()
-        compose.onNodeWithText("pc-rrhh").performClick()
-        assertEquals("a-2", abierta)
-    }
-
-    @Test
-    fun `en la tarjeta de bloqueos de Estado, un aprobado con el firewall caido queda sin aplicar`() {
-        val aprobado = bloqueo(id = "b-3", alertaId = "a-3", estado = EstadoBloqueo.APROBADO)
-        compose.setContent { ZondaTheme { TarjetaBloqueos(listOf(aprobado), firewallConectado = false, utc, Fixtures.AHORA, {}) } }
-
-        compose.onNodeWithText("Bloqueo sin aplicar").assertExists()
-        compose.onAllNodesWithText("Bloqueando", substring = true).assertCountEquals(0)
     }
 
     @Test

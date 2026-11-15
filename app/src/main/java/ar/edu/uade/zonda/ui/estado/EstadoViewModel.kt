@@ -233,9 +233,17 @@ class EstadoViewModel(
                 semaforo = red.semaforo,
                 sinRevisar = red.sinRevisar,
                 ultimaDeteccion = ultimaDeteccion(red.semaforo, sinRevisar),
-                alertas = if (elegida == null) sinRevisar else sinRevisar.filter { it.severidad == elegida },
+                alertas = enOrdenDePrioridad(if (elegida == null) sinRevisar else sinRevisar.filter { it.severidad == elegida }),
             )
         }
+
+        /**
+         * Cómo ordena Estado las sin revisar: primero las altas, después las medias y al final las bajas, y dentro
+         * de cada severidad de la más reciente a la más vieja (decisión 63). Lo urgente queda arriba aunque una
+         * baja sea más nueva.
+         */
+        fun enOrdenDePrioridad(alertas: List<Alerta>): List<Alerta> =
+            alertas.sortedWith(compareBy<Alerta> { it.severidad }.thenByDescending { it.inicio })
 
         /**
          * "Última alta sin revisar: hace 5 min" (cambio 11): la hora de la sin revisar más reciente de la
