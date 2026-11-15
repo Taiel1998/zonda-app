@@ -257,6 +257,30 @@ class ResumenActividadTest {
     }
 
     @Test
+    fun `cuenta las alertas de cada equipo de destino, de mas a menos y hasta ocho, con los filtros puestos`() {
+        fun hacia(id: String, ip: String, nombre: String?, tipo: TipoAtaque = TipoAtaque.FUERZA_BRUTA) =
+            alertaDel(12, id, tipo = tipo).copy(destino = Equipo(ip, nombre))
+        val lista = buildList {
+            repeat(3) { add(hacia("facturacion-$it", "192.168.20.21", "srv-facturacion")) }
+            repeat(2) { add(hacia("difusion-$it", "192.168.10.255", null, TipoAtaque.ESCANEO)) }
+            // Nueve equipos más con una alerta cada uno: empatan y van por nombre.
+            (1..9).forEach { add(hacia("pc-$it", "192.168.30.$it", "pc-0$it")) }
+        }
+
+        val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc)
+
+        assertEquals(ResumenActividad.EQUIPOS_CON_MAS_ALERTAS, resumen.equiposConMasAlertas.size)
+        assertEquals(CuentaDeEquipo("192.168.20.21", "srv-facturacion", 3), resumen.equiposConMasAlertas[0])
+        // Sin nombre en el catálogo va la dirección, como la de difusión de la red.
+        assertEquals(CuentaDeEquipo("192.168.10.255", "192.168.10.255", 2), resumen.equiposConMasAlertas[1])
+        assertEquals(listOf("pc-01", "pc-02", "pc-03", "pc-04", "pc-05", "pc-06"), resumen.equiposConMasAlertas.drop(2).map { it.etiqueta })
+
+        // Con un filtro, cuenta solo esas alertas.
+        val escaneos = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, ahora, utc, FiltroResumen(tipos = setOf(TipoAtaque.ESCANEO)))
+        assertEquals(listOf(CuentaDeEquipo("192.168.10.255", "192.168.10.255", 2)), escaneos.equiposConMasAlertas)
+    }
+
+    @Test
     fun `tienen fila los tipos con alertas en el periodo, aunque el filtro los deje en cero, y los elegidos`() {
         val sinFiltro = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc)
         // Sin tipo identificado no tuvo alertas, pero está elegido: se saca tocando su fila.

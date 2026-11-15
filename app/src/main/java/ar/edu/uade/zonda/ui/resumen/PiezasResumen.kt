@@ -404,6 +404,34 @@ fun FilaTipo(
     }
 }
 
+/**
+ * Una fila de "Equipos con más alertas" (como el tablero, 15/11): el nombre del equipo o su dirección
+ * Regular 13 en 150, la pista gris de 10 con la barra verde proporcional al primero y el valor Medium 13 a
+ * la derecha. Solo informa: no se toca, y TalkBack la lee de una vez ("srv-facturacion, 285").
+ */
+@Composable
+fun FilaDeEquipo(rotulo: String, valor: Int, maximo: Int, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {},
+    ) {
+        Text(
+            text = rotulo,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(150.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        PistaConBarra(fraccion = fraccionDe(valor, maximo), color = MaterialTheme.colorScheme.primary, alto = 10.dp, modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.width(8.dp))
+        ValorDeFila(valor = valor, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
 private fun fraccionDe(valor: Int, maximo: Int): Float = if (maximo == 0) 0f else valor.toFloat() / maximo * FRACCION_MAXIMA
 
 /**

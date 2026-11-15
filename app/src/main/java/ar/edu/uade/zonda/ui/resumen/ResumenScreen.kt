@@ -392,6 +392,30 @@ private fun CuerpoDelResumen(
         TarjetaTipos(resumen, estado.severidades, alTocar, alPedirAyuda = { alPedirAyuda(AyudaResumen.TIPOS) })
         TarjetaRealesYFalsos(resumen, alTocar)
         TarjetaPrecision(resumen, alTocar, alPedirAyuda = { alPedirAyuda(AyudaResumen.PRECISION) })
+        // Última, como en el tablero. No va en la imagen ni en el PDF: lleva nombres y direcciones.
+        TarjetaEquipos(resumen)
+    }
+}
+
+/**
+ * "Equipos con más alertas" (como el tablero, 15/11): hasta 8 equipos de destino, de más a menos alertas,
+ * con los filtros puestos. Solo informa. Como el período tiene alertas (si no, el Resumen es el vacío),
+ * queda sin filas solo por un filtro: lo dice como la lista del Resumen.
+ */
+@Composable
+private fun TarjetaEquipos(resumen: ResumenActividad) {
+    val equipos = resumen.equiposConMasAlertas
+    TarjetaResumen(titulo = stringResource(R.string.resumen_equipos_titulo), espacioTitulo = 4.dp) {
+        Text(text = stringResource(R.string.resumen_equipos_nota), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(12.dp))
+        if (equipos.isEmpty()) {
+            Text(text = stringResource(R.string.resumen_lista_vacia), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            val maximo = equipos.first().alertas
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                equipos.forEach { FilaDeEquipo(rotulo = it.etiqueta, valor = it.alertas, maximo = maximo) }
+            }
+        }
     }
 }
 

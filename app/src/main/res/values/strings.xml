@@ -963,6 +963,9 @@
         <item quantity="one">%1$d alerta</item>
         <item quantity="other">%1$d alertas</item>
     </plurals>
+    <!-- "Equipos con más alertas" (como el tablero, 15/11): solo en la pantalla, nunca en la imagen ni en el PDF. -->
+    <string name="resumen_equipos_titulo">Equipos con más alertas</string>
+    <string name="resumen_equipos_nota">Como destino. No se incluye al compartir.</string>
     <string name="resumen_lista_del_resumen">Del Resumen: %1$s</string>
     <string name="resumen_lista_vacia">Ninguna alerta con estos filtros</string>
     <string name="resumen_lista_vacia_detalle">Volvé al Resumen y cambiá los filtros.</string>

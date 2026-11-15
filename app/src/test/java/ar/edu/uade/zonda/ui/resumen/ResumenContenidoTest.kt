@@ -257,6 +257,30 @@ class ResumenContenidoTest {
     }
 
     @Test
+    fun `al final, los equipos con mas alertas solo informan`() {
+        val tocadas = mutableListOf<ToqueResumen>()
+        dibujar(estado(resumen()), alTocar = { tocadas += it })
+
+        compose.onNodeWithText("Equipos con más alertas").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Como destino. No se incluye al compartir.").assertExists()
+        // Las cuatro alertas de prueba van a srv-web. TalkBack lee la fila de una vez, y no es un botón.
+        compose.onNode(hasText("srv-web") and hasText("4")).performScrollTo()
+            .assertHasNoClickAction()
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Role))
+            .performClick()
+        assertEquals(emptyList<ToqueResumen>(), tocadas)
+    }
+
+    @Test
+    fun `si los filtros no dejan alertas, los equipos lo dicen como la lista del Resumen`() {
+        dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.DDOS)))))
+
+        compose.onNodeWithText("Equipos con más alertas").performScrollTo()
+        compose.onNodeWithText("Ninguna alerta con estos filtros").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("srv-web").assertCountEquals(0)
+    }
+
+    @Test
     fun `con la letra grande las cifras de las filas no se cortan`() {
         // Con la letra del teléfono al 150 %, "213" se veía "21" y "100 %" se veía "100": el lugar de la
         // cifra era fijo. Ahora crece lo que haga falta y la barra cede.
@@ -450,6 +474,8 @@ class ResumenContenidoTest {
             .flatMap { nodo -> nodo.config[SemanticsProperties.Text].map { it.text } }
         assertTrue(textos.contains("Resumen semanal"))
         assertTrue(textos.contains("Generado con Zonda · no incluye IPs ni nombres de equipos"))
+        // "Equipos con más alertas" lleva nombres y direcciones: se ve en la pantalla, no en lo que se comparte.
+        assertFalse(textos.contains("Equipos con más alertas"))
         // Debajo de los totales, cuántas son de cada severidad, como en la pantalla.
         assertTrue(textos.containsAll(listOf("2 altas", "1 media", "1 baja")))
         // Cambio 18: suma "Por tipo de ataque" y "Reales y falsos positivos", sin la precisión ni los ⓘ.

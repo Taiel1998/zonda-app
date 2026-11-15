@@ -248,6 +248,12 @@ data class FiltroResumen(
 data class BarraActividad(val franja: Franja, val cantidad: Int)
 
 /**
+ * Un equipo de destino de "Equipos con más alertas" (como el tablero, 15/11): su nombre del catálogo o, si
+ * no tiene, su dirección, y cuántas alertas fueron a él.
+ */
+data class CuentaDeEquipo(val ip: String, val etiqueta: String, val alertas: Int)
+
+/**
  * Lo que dice la frase debajo del gráfico (Figma 52-2629 y 100-7024): la barra con más alertas, el tipo
  * que más se repite en ella y si todas las de ese tipo fueron al mismo equipo. Nunca lleva el nombre ni
  * la dirección del equipo (RNF02).
@@ -291,6 +297,12 @@ data class ResumenActividad(
      * que la red tiene en alta.
      */
     val porSeveridad: Map<Severidad, Int>,
+    /**
+     * Los equipos de destino con más alertas, de más a menos y hasta [EQUIPOS_CON_MAS_ALERTAS], con los
+     * filtros puestos. Llevan nombres y direcciones: se ven en la pantalla, pero no van en la imagen ni en el
+     * PDF que se comparten (RNF02).
+     */
+    val equiposConMasAlertas: List<CuentaDeEquipo> = emptyList(),
     /** Métrica de éxito 1: tiempo mediano entre la creación de una alerta y su primera revisión. */
     val tiempoMedianoHastaRevision: Duration?,
     /**
@@ -345,6 +357,9 @@ data class ResumenActividad(
          * los otros: su barra va clara (cambio 4). Se cuenta por modelo.
          */
         const val REVISIONES_PARA_COMPARAR = 30
+
+        /** Cuántos equipos muestra "Equipos con más alertas", como el tablero. */
+        const val EQUIPOS_CON_MAS_ALERTAS = 8
 
         /** Calcula el resumen del [periodo] que termina hoy. */
         fun calcular(
@@ -418,6 +433,7 @@ data class ResumenActividad(
                 barras = barras,
                 porTipo = TipoAtaque.EN_PANTALLA.associateWith { tipo -> lista.count { tipo in it.tiposDeAtaque } },
                 porSeveridad = Severidad.entries.associateWith { severidad -> lista.count { it.severidad == severidad } },
+                equiposConMasAlertas = equiposConMasAlertas(lista),
                 tiempoMedianoHastaRevision = mediana,
                 altasRevisadasEnUnaHora = Proporcion(altasEnUnaHora, altasConsideradas),
                 cobertura = Proporcion(revisadas.size, lista.size),
@@ -430,6 +446,17 @@ data class ResumenActividad(
                 todas = alertas,
             )
         }
+
+        /**
+         * Los equipos de destino de [lista], de más a menos alertas (si empatan, por nombre), con el nombre
+         * más reciente que tuvo cada uno o, si nunca tuvo, su dirección. La lista viene de la más nueva a la
+         * más vieja.
+         */
+        private fun equiposConMasAlertas(lista: List<Alerta>): List<CuentaDeEquipo> =
+            lista.groupBy { it.destino.ip }
+                .map { (ip, alertas) -> CuentaDeEquipo(ip, alertas.firstNotNullOfOrNull { it.destino.nombre } ?: ip, alertas.size) }
+                .sortedWith(compareByDescending<CuentaDeEquipo> { it.alertas }.thenBy { it.etiqueta })
+                .take(EQUIPOS_CON_MAS_ALERTAS)
 
         /**
          * La barra con más alertas (si empatan, la más reciente), el tipo que más se repite en ella (si
