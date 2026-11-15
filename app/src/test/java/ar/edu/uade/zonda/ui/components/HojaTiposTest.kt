@@ -35,11 +35,11 @@ class HojaTiposTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun dibujar(severidades: SeveridadPorTipo, alCerrar: () -> Unit = {}) {
+    private fun dibujar(severidades: SeveridadPorTipo, alCerrar: () -> Unit = {}, esAdministrador: Boolean = true) {
         compose.setContent {
             ZondaTheme {
                 // Como en la hoja: se desplaza si no entra en la pantalla.
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) { ContenidoHojaTipos(severidades, alCerrar) }
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) { ContenidoHojaTipos(severidades, alCerrar, esAdministrador) }
             }
         }
     }
@@ -69,11 +69,22 @@ class HojaTiposTest {
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithText(
-            "El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque. " +
+            "El punto de color es la severidad que elegiste para cada tipo. Se cambia en Administración → Severidad por tipo de ataque. " +
                 "Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.",
         ).performScrollTo().assertIsDisplayed()
         // Un renglón por tipo, sin "Otros".
         compose.onAllNodesWithText("Otros", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `al analista no le nombra Administracion, que no tiene - le dice que las cambia un administrador`() {
+        dibujar(SeveridadPorTipo.RECOMENDADA, esAdministrador = false)
+
+        compose.onNodeWithText(
+            "El punto de color es la severidad de cada tipo en esta red. La cambia un administrador. " +
+                "Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.",
+        ).performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Administración", substring = true).assertCountEquals(0)
     }
 
     @Test

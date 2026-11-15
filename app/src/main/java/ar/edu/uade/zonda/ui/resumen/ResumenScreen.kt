@@ -321,7 +321,7 @@ fun ResumenContenido(
     if (resumenActual != null) {
         when (ayuda) {
             AyudaResumen.PRECISION -> HojaPrecision(resumen = resumenActual, alCerrar = { ayuda = null })
-            AyudaResumen.TIPOS -> HojaTipos(severidades = estado.severidades, alCerrar = { ayuda = null })
+            AyudaResumen.TIPOS -> HojaTipos(severidades = estado.severidades, alCerrar = { ayuda = null }, esAdministrador = estado.esAdministrador)
             null -> Unit
         }
         // La hoja de filtros (cambio 16) cuenta cuántas quedarían con las alertas del período.

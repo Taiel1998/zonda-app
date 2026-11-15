@@ -20,8 +20,8 @@ data class RedConEstado(
 )
 
 /**
- * Estado de Ajustes y de sus pantallas (Redes, Avisos por severidad y Severidad por tipo de ataque), que
- * comparten el mismo ViewModel (RF05 y RF06; Figma 4-66 y siguientes).
+ * Estado de Ajustes, de Administración y de sus pantallas (Redes, Avisos por severidad, Severidad por tipo de
+ * ataque y Registro de cambios), que comparten el mismo ViewModel (RF05 y RF06; Figma 4-66 y siguientes).
  */
 data class AjustesUiState(
     val redes: List<RedConEstado> = emptyList(),

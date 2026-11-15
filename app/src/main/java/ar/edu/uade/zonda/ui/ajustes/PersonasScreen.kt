@@ -100,7 +100,7 @@ class AccionesPersonas(
 )
 
 /**
- * Ajustes → Personas (decisión 39; Figma 468-2568): la gente de la red con su perfil, su teléfono y
+ * Administración → Personas (decisión 39; Figma 468-2568): la gente de la red con su perfil, su teléfono y
  * cuándo lo usó. Todos la ven; solo el administrador toca a alguien y tiene "Agregar persona". Sumar a
  * alguien, quitarlo y cambiarle el perfil o el permiso de bloquear se confirman con la huella o el PIN
  * (decisión 51): eso da poder en la red, y lo tiene que hacer el dueño del teléfono.

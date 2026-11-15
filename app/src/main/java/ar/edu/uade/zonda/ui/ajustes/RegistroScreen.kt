@@ -47,7 +47,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * Ajustes → Registro de cambios (corrección 3, decisión 40; Figma 468-3283): quién cambió la
+ * Administración → Registro de cambios, y Ajustes para el analista (corrección 3, decisión 40; Figma 468-3283): quién cambió la
  * configuración de la red, cuándo, de qué a qué y por qué, de lo más nuevo a lo más viejo. Lo guarda el
  * servidor y desde la app no se puede borrar ni editar. Usa el ViewModel de Ajustes.
  */

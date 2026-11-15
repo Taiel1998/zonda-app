@@ -6,6 +6,9 @@
     <string name="destino_estado">Estado</string>
     <string name="destino_alertas">Alertas</string>
     <string name="destino_ajustes">Ajustes</string>
+    <!-- La pestaña del administrador (como el tablero, 15/11): «Administración» entero no entra en la barra. -->
+    <string name="destino_administracion">Admin.</string>
+    <string name="destino_administracion_descripcion">Administración</string>
 
     <!-- Acciones comunes -->
     <string name="accion_volver">Volver</string>
@@ -206,7 +209,7 @@
     <string name="error_telegram_no_disponible">El servidor de esta red todavía no tiene el bot de Telegram. Avisale a quien instaló Zonda.</string>
     <string name="error_telegram_sin_vincular">Telegram ya no está vinculado. Conectalo de nuevo.</string>
     <!-- Severidades de la analista (corrección 2; Figma 468-3353) -->
-    <!-- La gente es "la red", no "el equipo": en la app un equipo es una computadora (Ajustes → Equipos). -->
+    <!-- La gente es "la red", no "el equipo": en la app un equipo es una computadora (Administración → Equipos). -->
     <string name="severidades_las_cambia">Las cambia un administrador: %1$s. Valen para toda la red.</string>
     <string name="severidades_las_cambia_sin_nombres">Las cambia un administrador. Valen para toda la red.</string>
     <!-- "¿Por qué la cambiás?" al cambiar severidades o la importancia de un equipo (corrección 3; Figma 468-3463) -->
@@ -368,7 +371,9 @@
     <string name="tipos_bloque_ia_frase">La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.</string>
     <string name="tipos_bloque_sin_ia">Lo que la IA no detectó</string>
     <string name="tipos_bloque_sin_ia_frase">Lo marcaron los otros dos métodos de Zonda.</string>
-    <string name="tipos_pie">El punto de color es la severidad que elegiste para cada tipo. Se cambia en Ajustes → Severidad por tipo de ataque. Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.</string>
+    <string name="tipos_pie">El punto de color es la severidad que elegiste para cada tipo. Se cambia en Administración → Severidad por tipo de ataque. Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.</string>
+    <!-- Al analista no se le indica un lugar que no tiene: Administración es solo del administrador. -->
+    <string name="tipos_pie_analista">El punto de color es la severidad de cada tipo en esta red. La cambia un administrador. Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.</string>
     <string name="tipos_punto">Severidad %1$s</string>
     <string name="modo_sonido">Con sonido</string>
     <string name="modo_silencio">En silencio</string>
@@ -436,7 +441,7 @@
     <string name="notificaciones_permitir">Permitir notificaciones</string>
     <string name="notificaciones_permitidas">Las notificaciones están permitidas.</string>
     <string name="notificaciones_rechazadas">Sin permiso, Zonda no puede mostrar notificaciones. La app sigue funcionando; podés activarlas desde los ajustes del sistema.</string>
-    <string name="severidades_intro">Último paso: elegí qué tan grave es cada tipo de ataque. Eso define el color del semáforo y cómo te avisa cada alerta. Ya vienen los valores recomendados; los podés cambiar después en Ajustes.</string>
+    <string name="severidades_intro">Último paso: elegí qué tan grave es cada tipo de ataque. Eso define el color del semáforo y cómo te avisa cada alerta. Ya vienen los valores recomendados; después los puede cambiar un administrador.</string>
     <string name="severidades_nota">Los cambios valen para todos los teléfonos pareados a esta red.</string>
 
     <!-- Conexión (pareo) -->
@@ -466,10 +471,10 @@
     <string name="ayuda_red_paso_1">Conectate al wifi de la oficina, no a los datos del celular.</string>
     <string name="ayuda_red_paso_2">Si estás afuera y la empresa tiene VPN, activala primero.</string>
     <string name="ayuda_red_paso_3">Si no sabés cuál es el wifi, preguntale a quien te dio el código.</string>
-    <!-- Desde la 1.0.5 el código lo genera un administrador en la app (Ajustes → Personas); solo el del
+    <!-- Desde la 1.0.5 el código lo genera un administrador en la app (Administración → Personas); solo el del
          primer teléfono de la red sale de la terminal del servidor (zonda pair). -->
     <string name="ayuda_codigo_intro">Te lo da un administrador desde su Zonda. Para el primer teléfono de la red, lo genera quien instaló Zonda, en el servidor.</string>
-    <string name="ayuda_codigo_paso_1">El administrador entra a Ajustes → Personas → Agregar persona.</string>
+    <string name="ayuda_codigo_paso_1">El administrador entra a Administración → Personas → Agregar persona.</string>
     <string name="ayuda_codigo_paso_2">Aparece un código QR y, debajo, el mismo código en texto (por ejemplo K7M2-QX9P).</string>
     <string name="ayuda_codigo_paso_3">Escaneá el QR o escribí el código acá. Sirve una sola vez y vence a los 10 minutos.</string>
     <string name="ayuda_codigo_escanear">Escanear QR</string>
@@ -550,7 +555,8 @@
     <string name="recorrido_10_titulo">Fechas, filtros y compartir</string>
     <string name="recorrido_10_texto">Elegí 7 días, 30 días o las fechas que quieras, y en Filtros mirá todo lo que elegiste. Compartir resumen lo manda como imagen o PDF.</string>
     <string name="recorrido_11_titulo">Ajustes</string>
-    <string name="recorrido_11_texto">Avisos, la red y su gente, los datos guardados y, al final, la ayuda.</string>
+    <string name="recorrido_11_texto">Tus avisos, la red, los datos guardados y, al final, la ayuda.</string>
+    <string name="recorrido_11_texto_administrador">Tus avisos, la red, los datos guardados y, al final, la ayuda. La gente, los equipos y las severidades están en Administración.</string>
 
     <!-- Acciones comunes de las hojas inferiores -->
     <string name="accion_cancelar">Cancelar</string>
@@ -794,7 +800,7 @@
     <string name="detalles_sin_respuesta">Sin respuesta del servidor</string>
     <string name="detalles_sin_certificado">Sin certificado</string>
     <string name="detalles_sin_registro">Sin registro</string>
-    <string name="detalles_nota">Para renovar el acceso, se parea de nuevo. Si perdés el teléfono, un administrador lo quita desde Ajustes → Personas.</string>
+    <string name="detalles_nota">Para renovar el acceso, se parea de nuevo. Si perdés el teléfono, un administrador lo quita desde Administración → Personas.</string>
 
     <!-- Condiciones de uso desde Ajustes (Figma 66-3558) -->
     <string name="condiciones_ajustes_titulo">Condiciones de uso</string>
@@ -1080,14 +1086,13 @@
     <string name="telegram_prueba_enviada">Aviso de prueba enviado. Fijate en el chat de %1$s.</string>
     <string name="telegram_desvinculado">Telegram desvinculado. Los avisos de esta red ya no llegan a ese chat.</string>
     <string name="telegram_no_se_abrio">No se pudo abrir Telegram. Instalalo desde la tienda de aplicaciones y probá de nuevo.</string>
-    <!-- Ajustes → Red: Personas, Equipos y Registro de cambios (decisiones 39 a 41; Figma 4-66 y 468-2454) -->
+    <!-- Personas, Equipos y Registro de cambios (decisiones 39 a 41; Figma 4-66 y 468-2454): en Administración,
+         y Equipos y el Registro también en el Ajustes del analista, que los ve sin poder cambiarlos. -->
     <string name="ajustes_personas">Personas</string>
-    <plurals name="ajustes_personas_detalle">
-        <item quantity="one">%1$d persona · %2$s</item>
-        <item quantity="other">%1$d personas · %2$s</item>
+    <plurals name="administracion_personas_detalle">
+        <item quantity="one">%d persona</item>
+        <item quantity="other">%d personas</item>
     </plurals>
-    <string name="ajustes_sos_administrador">sos administrador</string>
-    <string name="ajustes_sos_analista">sos analista</string>
     <string name="ajustes_equipos">Equipos</string>
     <string name="ajustes_equipos_todos_normales">Todos normales</string>
     <plurals name="ajustes_equipos_criticos">
@@ -1098,6 +1103,7 @@
         <item quantity="one">%d poco importante</item>
         <item quantity="other">%d poco importantes</item>
     </plurals>
+    <string name="administracion_titulo">Administración</string>
     <string name="ajustes_registro">Registro de cambios</string>
     <string name="ajustes_registro_detalle">Quién cambió la configuración y por qué</string>
     <!-- Las computadoras con el tablero web van aparte de las personas, como en el tablero. -->
@@ -1167,6 +1173,8 @@
 
     <!-- Equipos y su importancia (decisión 41; Figma 468-3089 y 468-3178) -->
     <string name="equipos_titulo">Equipos</string>
+    <!-- El analista ve la importancia sin poder cambiarla, como las severidades. -->
+    <string name="equipos_la_cambia">La importancia la cambia un administrador.</string>
     <string name="equipos_intro">Qué tan importante es cada equipo de la red. Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.</string>
     <string name="equipos_vacio">Todavía no hay equipos con nombre. Los informa el servidor de tu empresa.</string>
     <string name="equipos_nota_motivo">Al cambiarla te pide el motivo y queda en el registro de cambios.</string>

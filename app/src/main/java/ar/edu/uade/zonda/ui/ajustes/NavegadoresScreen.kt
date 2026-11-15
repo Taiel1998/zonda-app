@@ -40,7 +40,7 @@ import java.time.ZoneId
 import kotlinx.coroutines.launch
 
 /**
- * Ajustes → Navegadores: las computadoras que abren el tablero web, aparte de las personas, como en el
+ * Administración → Navegadores: las computadoras que abren el tablero web, aparte de las personas, como en el
  * tablero. Cada una entra con su propio código, como un teléfono, pero no recibe avisos ni se le asignan
  * alertas. Todos la ven; el administrador le quita el acceso a una con la huella o el PIN, como cuando
  * quita a una persona (decisión 51). Usa el ViewModel de Personas.

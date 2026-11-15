@@ -55,4 +55,6 @@ data class ResumenUiState(
     val aviso: AvisoResumen? = null,
     /** La severidad que eligió la red para cada tipo: el punto de color de "Por tipo de ataque" (cambio 14). */
     val severidades: SeveridadPorTipo = SeveridadPorTipo.RECOMENDADA,
+    /** Si este teléfono es administrador en la red activa: "Qué es cada tipo" le dice dónde se cambian las severidades. */
+    val esAdministrador: Boolean = true,
 )

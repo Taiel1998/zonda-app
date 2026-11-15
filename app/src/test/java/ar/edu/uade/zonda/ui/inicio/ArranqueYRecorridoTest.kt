@@ -4,6 +4,7 @@ import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.fakes.FakeAlertasRepository
 import ar.edu.uade.zonda.domain.fakes.FakePreferenciasRepository
 import ar.edu.uade.zonda.domain.fakes.FakeRedesRepository
+import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.ui.ReglaDispatcherPrincipal
 import ar.edu.uade.zonda.ui.recorrido.PantallaRecorrido
 import ar.edu.uade.zonda.ui.recorrido.PasoRecorrido
@@ -101,5 +102,20 @@ class ArranqueYRecorridoTest {
 
         assertTrue(preferencias.recorrido.value)
         assertNull(viewModel.paso.value)
+    }
+
+    @Test
+    fun `la pestania Administracion sigue el perfil de este telefono en la red activa`() = runTest {
+        val redes = FakeRedesRepository()
+        val viewModel = ArranqueViewModel(redes, FakePreferenciasRepository())
+
+        // Sin red no hay nada que administrar.
+        assertEquals(false, viewModel.esAdministrador.value)
+        val red = Fixtures.red("red-1")
+        redes.agregar(red)
+        assertEquals(true, viewModel.esAdministrador.value)
+        // Le cambiaron el perfil: la pestaña se va.
+        redes.actualizar(red.copy(perfil = Perfil.ANALISTA))
+        assertEquals(false, viewModel.esAdministrador.value)
     }
 }

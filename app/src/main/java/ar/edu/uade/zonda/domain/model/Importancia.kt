@@ -30,7 +30,7 @@ fun Severidad.ajustada(importancia: Importancia): Severidad = when (importancia)
     }
 }
 
-/** Un equipo de la red con nombre en el catálogo y su importancia (Ajustes → Equipos, Figma 468-3089). */
+/** Un equipo de la red con nombre en el catálogo y su importancia (Administración → Equipos, Figma 468-3089). */
 data class EquipoDeLaRed(
     val ip: String,
     val nombre: String,

@@ -86,6 +86,7 @@ class ResumenViewModel(
             sinConexion = !conectado,
             aviso = aviso,
             severidades = severidades,
+            esAdministrador = red?.perfil?.esAdministrador ?: true,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ResumenUiState())
 

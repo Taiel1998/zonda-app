@@ -1,6 +1,9 @@
 package ar.edu.uade.zonda.ui.ajustes
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -35,7 +38,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** Ajustes → Personas, el código, Equipos y el Registro de cambios dibujados con Compose (Figma 468-2454 a 468-3283). */
+/**
+ * Administración y Ajustes → Personas, el código, Equipos y el Registro de cambios dibujados con Compose
+ * (Figma 468-2454 a 468-3283). Lo que vale para toda la red está en Administración, la pestaña del
+ * administrador (como el tablero, 15/11).
+ */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -65,7 +72,7 @@ class PersonasYEquiposContenidoTest {
     )
 
     @Test
-    fun `ajustes muestra personas, equipos y registro con su resumen`() {
+    fun `administracion muestra bajo el nombre de la red personas, equipos, severidades y registro con su resumen`() {
         val estado = AjustesUiState(
             redes = listOf(RedConEstado(red, ContadoresSinRevisar(0, 0, 0), alertasGuardadas = 0)),
             redActiva = red,
@@ -75,28 +82,33 @@ class PersonasYEquiposContenidoTest {
         var abiertas = ""
         compose.setContent {
             ZondaTheme {
-                AjustesContenido(
+                AdministracionContenido(
                     estado = estado,
-                    acciones = AccionesAjustes(
+                    acciones = AccionesAdministracion(
                         alAbrirPersonas = { abiertas += "personas," },
                         alAbrirEquipos = { abiertas += "equipos," },
+                        alAbrirSeveridades = { abiertas += "severidades," },
                         alAbrirRegistro = { abiertas += "registro" },
                     ),
-                    zona = utc,
-                    ahora = Fixtures.AHORA,
                 )
             }
         }
 
-        compose.onNodeWithText("3 personas · sos administrador").performClick()
+        // Un teléfono puede estar pareado con varias redes: la tarjeta dice de cuál es.
+        compose.onNodeWithText("Administración").assertIsDisplayed()
+        compose.onNodeWithText("Oficina central").assertIsDisplayed()
+        // Ahí todos son administradores: la fila no repite "sos administrador".
+        compose.onNodeWithText("3 personas").performClick()
         compose.onNodeWithText("2 críticos · 1 poco importante").performClick()
-        compose.onNodeWithText("Quién cambió la configuración y por qué").performClick()
-        assertEquals("personas,equipos,registro", abiertas)
-        compose.onNodeWithText("Qué ataques son altos, medios o bajos").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Qué ataques son altos, medios o bajos").performScrollTo().performClick()
+        compose.onNodeWithText("Quién cambió la configuración y por qué").performScrollTo().performClick()
+        assertEquals("personas,equipos,severidades,registro", abiertas)
+        // Sin navegadores, su fila no aparece.
+        compose.onAllNodesWithText("Navegadores").assertCountEquals(0)
     }
 
     @Test
-    fun `ajustes cuenta solo a las personas y los navegadores van en su fila`() {
+    fun `administracion cuenta solo a las personas y los navegadores van en su fila`() {
         val estado = AjustesUiState(
             redes = listOf(RedConEstado(red, ContadoresSinRevisar(0, 0, 0), alertasGuardadas = 0)),
             redActiva = red,
@@ -106,18 +118,45 @@ class PersonasYEquiposContenidoTest {
         var abiertas = ""
         compose.setContent {
             ZondaTheme {
-                AjustesContenido(
+                AdministracionContenido(
                     estado = estado,
-                    acciones = AccionesAjustes(alAbrirPersonas = { abiertas += "personas," }, alAbrirNavegadores = { abiertas += "navegadores" }),
-                    zona = utc,
-                    ahora = Fixtures.AHORA,
+                    acciones = AccionesAdministracion(alAbrirPersonas = { abiertas += "personas," }, alAbrirNavegadores = { abiertas += "navegadores" }),
                 )
             }
         }
 
-        compose.onNodeWithText("3 personas · sos administrador").performClick()
+        compose.onNodeWithText("3 personas").performClick()
         compose.onNodeWithText("2 computadoras con el tablero web").performScrollTo().performClick()
         assertEquals("personas,navegadores", abiertas)
+    }
+
+    @Test
+    fun `con un servidor sin gente ni registro, administracion queda con las severidades`() {
+        // Un servidor anterior a la API 0.6.0 no informa la gente, los equipos ni el registro.
+        val estado = AjustesUiState(redes = listOf(RedConEstado(red, ContadoresSinRevisar(0, 0, 0), alertasGuardadas = 0)), redActiva = red)
+        compose.setContent { ZondaTheme { AdministracionContenido(estado = estado, acciones = AccionesAdministracion()) } }
+
+        compose.onNodeWithText("Severidad por tipo de ataque").assertIsDisplayed()
+        listOf("Personas", "Navegadores", "Equipos", "Registro de cambios").forEach { compose.onAllNodesWithText(it).assertCountEquals(0) }
+    }
+
+    @Test
+    fun `el administrador no ve en ajustes lo que vale para toda la red, que esta en administracion`() {
+        val estado = AjustesUiState(
+            redes = listOf(RedConEstado(red, ContadoresSinRevisar(0, 0, 0), alertasGuardadas = 0)),
+            redActiva = red,
+            personas = listOf(taiel, meli, laura, chrome),
+            equipos = equipos,
+        )
+        compose.setContent { ZondaTheme { AjustesContenido(estado = estado, acciones = AccionesAjustes(), zona = utc, ahora = Fixtures.AHORA) } }
+
+        // Lo suyo y de este teléfono sigue en Ajustes.
+        compose.onNodeWithText("Oficina central").assertIsDisplayed()
+        compose.onNodeWithText("Detalles técnicos").assertIsDisplayed()
+        compose.onNodeWithText("Avisos por severidad").performScrollTo().assertIsDisplayed()
+        listOf("Personas", "Navegadores", "Equipos", "Severidad por tipo de ataque", "Registro de cambios").forEach { fila ->
+            compose.onAllNodesWithText(fila).assertCountEquals(0)
+        }
     }
 
     @Test
@@ -164,14 +203,46 @@ class PersonasYEquiposContenidoTest {
     }
 
     @Test
-    fun `la analista ve que las severidades las cambia un administrador`() {
+    fun `la analista ve en ajustes equipos, severidades y registro sin poder cambiarlos, y no ve personas ni navegadores`() {
         val analista = red.copy(perfil = Perfil.ANALISTA)
-        val estado = AjustesUiState(redActiva = analista, personas = listOf(taiel, laura.copy(vos = true)), equipos = equipos.map { it.copy(importancia = Importancia.NORMAL) })
-        compose.setContent { ZondaTheme { AjustesContenido(estado = estado, acciones = AccionesAjustes(), zona = utc, ahora = Fixtures.AHORA) } }
+        val estado = AjustesUiState(
+            redActiva = analista,
+            personas = listOf(taiel, laura.copy(vos = true), chrome),
+            equipos = equipos.map { it.copy(importancia = Importancia.NORMAL) },
+        )
+        var abiertas = ""
+        compose.setContent {
+            ZondaTheme {
+                AjustesContenido(
+                    estado = estado,
+                    acciones = AccionesAjustes(
+                        alAbrirEquipos = { abiertas += "equipos," },
+                        alAbrirSeveridades = { abiertas += "severidades," },
+                        alAbrirRegistro = { abiertas += "registro" },
+                    ),
+                    zona = utc,
+                    ahora = Fixtures.AHORA,
+                )
+            }
+        }
 
-        compose.onNodeWithText("2 personas · sos analista").assertIsDisplayed()
-        compose.onNodeWithText("Todos normales").assertIsDisplayed()
-        compose.onNodeWithText("La cambia un administrador").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Todos normales").performClick()
+        compose.onNodeWithText("La cambia un administrador").performScrollTo().performClick()
+        compose.onNodeWithText("Quién cambió la configuración y por qué").performScrollTo().performClick()
+        assertEquals("equipos,severidades,registro", abiertas)
+        compose.onAllNodesWithText("Personas").assertCountEquals(0)
+        compose.onAllNodesWithText("Navegadores").assertCountEquals(0)
+    }
+
+    @Test
+    fun `la analista lee que la importancia la cambia un administrador, y el administrador no`() {
+        var estado by mutableStateOf(EquiposUiState(red = red.copy(perfil = Perfil.ANALISTA), equipos = equipos))
+        compose.setContent { ZondaTheme { EquiposContenido(estado = estado, alVolver = {}) } }
+
+        compose.onNodeWithText("La importancia la cambia un administrador.").assertIsDisplayed()
+
+        estado = EquiposUiState(red = red, equipos = equipos)
+        compose.onAllNodesWithText("La importancia la cambia un administrador.").assertCountEquals(0)
     }
 
     @Test

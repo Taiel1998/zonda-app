@@ -77,17 +77,19 @@ internal val MargenAjustes = PaddingValues(start = 16.dp, top = 16.dp, end = 16.
 internal val EntreTarjetas = Arrangement.spacedBy(16.dp)
 
 /**
- * Ajustes (RF05 y RF06; Figma 4-66 y 51-1137): una lista de tarjetas que abren otras pantallas.
- * Red (Redes, Personas, Navegadores, Equipos, Registro de cambios y Detalles técnicos), Avisos (Telegram, avisos por severidad y severidad por tipo de
- * ataque; desde la 1.0.4 sin "Notificaciones del sistema", porque cada severidad tiene su interruptor),
- * Datos locales, Este dispositivo y Ayuda. Las confirmaciones son
- * hojas inferiores con el botón rojo.
+ * Ajustes (RF05 y RF06; Figma 4-66 y 51-1137): una lista de tarjetas que abren otras pantallas, con lo
+ * de cada persona y de este teléfono. Red (Redes y Detalles técnicos), Avisos (Telegram y avisos por
+ * severidad; desde la 1.0.4 sin "Notificaciones del sistema", porque cada severidad tiene su
+ * interruptor), Apariencia, Datos locales, Este dispositivo y Ayuda. Las confirmaciones son hojas
+ * inferiores con el botón rojo.
+ *
+ * Lo que vale para toda la red está en Administración, la pestaña del administrador (como el tablero,
+ * 15/11). El analista no la tiene: en su Ajustes ve Equipos y el Registro de cambios en Red, y la
+ * Severidad por tipo de ataque en Avisos, sin poder cambiarlos; no ve Personas ni Navegadores.
  */
 @Composable
 fun AjustesScreen(
     alAbrirRedes: () -> Unit,
-    alAbrirPersonas: () -> Unit,
-    alAbrirNavegadores: () -> Unit,
     alAbrirEquipos: () -> Unit,
     alAbrirRegistro: () -> Unit,
     alAbrirDetallesTecnicos: () -> Unit,
@@ -105,8 +107,6 @@ fun AjustesScreen(
         estado = estado,
         acciones = AccionesAjustes(
             alAbrirRedes = alAbrirRedes,
-            alAbrirPersonas = alAbrirPersonas,
-            alAbrirNavegadores = alAbrirNavegadores,
             alAbrirEquipos = alAbrirEquipos,
             alAbrirRegistro = alAbrirRegistro,
             alAbrirDetallesTecnicos = alAbrirDetallesTecnicos,
@@ -155,10 +155,7 @@ fun ajustesViewModel(dueño: ViewModelStoreOwner? = null): AjustesViewModel = vi
 /** Lo que se puede hacer desde Ajustes; separado para probar la pantalla sin ViewModel. */
 data class AccionesAjustes(
     val alAbrirRedes: () -> Unit = {},
-    /** Personas, Equipos y Registro de cambios (decisiones 39 a 41; Figma 468-2154). */
-    val alAbrirPersonas: () -> Unit = {},
-    /** Las computadoras con el tablero web, aparte de las personas. */
-    val alAbrirNavegadores: () -> Unit = {},
+    /** Equipos y Registro de cambios del analista (decisiones 39 a 41; Figma 468-2154): el administrador los tiene en Administración. */
     val alAbrirEquipos: () -> Unit = {},
     val alAbrirRegistro: () -> Unit = {},
     val alAbrirDetallesTecnicos: () -> Unit = {},
@@ -240,41 +237,23 @@ fun AjustesContenido(
                         detalle = pluralStringResource(R.plurals.ajustes_red_detalle, estado.redes.size, direccion(red), estado.redes.size),
                         alTocar = acciones.alAbrirRedes,
                     )
-                    // Un servidor anterior a la API 0.6.0 no tiene gente ni registro: las filas no aparecen.
-                    if (estado.personas.isNotEmpty()) {
-                        val gente = estado.personas.size - estado.navegadores.size
-                        FilaNavegable(
-                            titulo = stringResource(R.string.ajustes_personas),
-                            detalle = pluralStringResource(
-                                R.plurals.ajustes_personas_detalle,
-                                gente,
-                                gente,
-                                stringResource(if (estado.perfil.esAdministrador) R.string.ajustes_sos_administrador else R.string.ajustes_sos_analista),
-                            ),
-                            alTocar = acciones.alAbrirPersonas,
-                        )
-                    }
-                    // Las computadoras con el tablero web no son personas: van aparte, como en el tablero.
-                    if (estado.navegadores.isNotEmpty()) {
-                        FilaNavegable(
-                            titulo = stringResource(R.string.ajustes_navegadores),
-                            detalle = pluralStringResource(R.plurals.ajustes_navegadores_detalle, estado.navegadores.size, estado.navegadores.size),
-                            alTocar = acciones.alAbrirNavegadores,
-                        )
-                    }
-                    if (estado.equipos.isNotEmpty()) {
-                        FilaNavegable(
-                            titulo = stringResource(R.string.ajustes_equipos),
-                            detalle = resumenDeEquipos(estado.equipos),
-                            alTocar = acciones.alAbrirEquipos,
-                        )
-                    }
-                    if (estado.personas.isNotEmpty()) {
-                        FilaNavegable(
-                            titulo = stringResource(R.string.ajustes_registro),
-                            detalle = stringResource(R.string.ajustes_registro_detalle),
-                            alTocar = acciones.alAbrirRegistro,
-                        )
+                    // El analista ve los equipos y el registro sin poder cambiarlos; el administrador los tiene en
+                    // Administración. Un servidor anterior a la API 0.6.0 no tiene registro: la fila no aparece.
+                    if (!estado.perfil.esAdministrador) {
+                        if (estado.equipos.isNotEmpty()) {
+                            FilaNavegable(
+                                titulo = stringResource(R.string.ajustes_equipos),
+                                detalle = resumenDeEquipos(estado.equipos),
+                                alTocar = acciones.alAbrirEquipos,
+                            )
+                        }
+                        if (estado.personas.isNotEmpty()) {
+                            FilaNavegable(
+                                titulo = stringResource(R.string.ajustes_registro),
+                                detalle = stringResource(R.string.ajustes_registro_detalle),
+                                alTocar = acciones.alAbrirRegistro,
+                            )
+                        }
                     }
                     FilaNavegable(
                         titulo = stringResource(R.string.ajustes_detalles_tecnicos),
@@ -307,14 +286,14 @@ fun AjustesContenido(
                     detalle = stringResource(R.string.ajustes_avisos_por_severidad_detalle),
                     alTocar = acciones.alAbrirAvisos,
                 )
-                FilaNavegable(
-                    titulo = stringResource(R.string.ajustes_severidad_por_tipo),
-                    // La analista las ve sin poder cambiarlas (Figma 468-2510).
-                    detalle = stringResource(
-                        if (estado.perfil.esAdministrador) R.string.ajustes_severidad_por_tipo_detalle else R.string.ajustes_severidad_la_cambia,
-                    ),
-                    alTocar = acciones.alAbrirSeveridades,
-                )
+                // La analista las ve sin poder cambiarlas (Figma 468-2510); el administrador, en Administración.
+                if (!estado.perfil.esAdministrador) {
+                    FilaNavegable(
+                        titulo = stringResource(R.string.ajustes_severidad_por_tipo),
+                        detalle = stringResource(R.string.ajustes_severidad_la_cambia),
+                        alTocar = acciones.alAbrirSeveridades,
+                    )
+                }
                 // El permiso bloqueado se sigue avisando (Figma 4-130): sin él no sale ninguna notificación de Zonda.
                 if (permiso.estado == EstadoPermiso.RECHAZADO) {
                     TarjetaAdvertencia(
@@ -454,9 +433,9 @@ fun HojaQuitarDispositivo(
     )
 }
 
-/** "2 críticos · 1 poco importante" o "Todos normales" (Figma 468-2163). */
+/** "2 críticos · 1 poco importante" o "Todos normales" (Figma 468-2163), en Ajustes del analista y en Administración. */
 @Composable
-private fun resumenDeEquipos(equipos: List<EquipoDeLaRed>): String {
+internal fun resumenDeEquipos(equipos: List<EquipoDeLaRed>): String {
     val criticos = equipos.count { it.importancia == Importancia.CRITICO }
     val pocoImportantes = equipos.count { it.importancia == Importancia.POCO_IMPORTANTE }
     if (criticos == 0 && pocoImportantes == 0) return stringResource(R.string.ajustes_equipos_todos_normales)

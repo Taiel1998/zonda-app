@@ -180,7 +180,7 @@ class PrimerInicioYConexionTest {
         compose.onNodeWithText("¿Dónde encuentro el código?").performScrollTo().performClick()
         // Lo da un administrador desde su app; la terminal del servidor es solo para el primer teléfono.
         compose.onNodeWithText("Te lo da un administrador desde su Zonda. Para el primer teléfono de la red, lo genera quien instaló Zonda, en el servidor.").assertIsDisplayed()
-        compose.onNodeWithText("El administrador entra a Ajustes → Personas → Agregar persona.").assertIsDisplayed()
+        compose.onNodeWithText("El administrador entra a Administración → Personas → Agregar persona.").assertIsDisplayed()
         compose.onAllNodesWithText("zonda pair", substring = true).assertCountEquals(0)
         compose.onNodeWithText("Escanear QR").performClick()
 
@@ -233,7 +233,7 @@ class PrimerInicioYConexionTest {
         compose.onNodeWithText("Corregir la dirección").performClick()
         // El mismo enlace del formulario, que abre la ayuda: antes era un texto verde que no se tocaba.
         compose.onNodeWithText("¿Dónde encuentro el código?").performScrollTo().performClick()
-        compose.onNodeWithText("El administrador entra a Ajustes → Personas → Agregar persona.").assertIsDisplayed()
+        compose.onNodeWithText("El administrador entra a Administración → Personas → Agregar persona.").assertIsDisplayed()
 
         assertTrue(corregir && reintentar)
     }

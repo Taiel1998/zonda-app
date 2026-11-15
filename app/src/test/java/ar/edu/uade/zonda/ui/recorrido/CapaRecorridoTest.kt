@@ -12,9 +12,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
@@ -103,6 +105,22 @@ class CapaRecorridoTest {
         compose.onNodeWithText("PASO 11 DE 11").assertIsDisplayed()
         compose.onNodeWithText("Listo").assertIsDisplayed()
         assertEquals(ObjetivoRecorrido.TARJETA_AVISOS, registro.actual)
+    }
+
+    @Test
+    fun `el paso de Ajustes le dice al administrador que lo de la red esta en Administracion, y al analista no`() {
+        var esAdministrador by mutableStateOf(true)
+        compose.setContent {
+            ZondaTheme { TarjetaRecorrido(paso = PasoRecorrido.AJUSTES, alSiguiente = {}, alOmitir = {}, esAdministrador = esAdministrador) }
+        }
+
+        compose.onNodeWithText(
+            "Tus avisos, la red, los datos guardados y, al final, la ayuda. La gente, los equipos y las severidades están en Administración.",
+        ).assertIsDisplayed()
+
+        esAdministrador = false
+        compose.onNodeWithText("Tus avisos, la red, los datos guardados y, al final, la ayuda.").assertIsDisplayed()
+        compose.onAllNodesWithText("Administración", substring = true).assertCountEquals(0)
     }
 
     @Test

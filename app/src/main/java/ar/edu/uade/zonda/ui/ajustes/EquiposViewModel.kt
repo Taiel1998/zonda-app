@@ -48,7 +48,7 @@ sealed interface AvisoEquipos {
 }
 
 /**
- * Ajustes → Equipos (corrección 4, decisión 41): la importancia de cada equipo con nombre. La ve todo el
+ * Administración → Equipos (corrección 4, decisión 41; el analista, desde Ajustes): la importancia de cada equipo con nombre. La ve todo el
  * equipo; el administrador la cambia con un motivo, se guarda en el teléfono y sale a la red, que
  * recalcula la severidad de sus alertas.
  */

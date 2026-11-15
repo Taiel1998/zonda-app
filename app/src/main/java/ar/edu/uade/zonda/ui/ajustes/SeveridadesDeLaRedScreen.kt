@@ -13,7 +13,7 @@ import ar.edu.uade.zonda.ui.etiqueta
 import ar.edu.uade.zonda.ui.primerinicio.SeveridadesScreen
 
 /**
- * Ajustes → Severidad por tipo de ataque (RF06). El administrador las cambia y, al guardar, la hoja "¿Por
+ * Administración → Severidad por tipo de ataque, y Ajustes para el analista (RF06). El administrador las cambia y, al guardar, la hoja "¿Por
  * qué la cambiás?" pide el motivo de todos los cambios (decisión 40); el analista las ve sin poder
  * cambiarlas (decisión 39). Usa el ViewModel de Ajustes, que guarda el borrador. Con cambios sin guardar,
  * la flecha y el botón Atrás preguntan antes de descartarlos ([salidaConCambios]).

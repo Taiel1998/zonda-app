@@ -6,7 +6,7 @@ import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.repository.RedesRepository
 
 /**
- * Sumar, cambiar de perfil o quitar gente de la red desde Ajustes → Personas (corrección 2, decisión 39).
+ * Sumar, cambiar de perfil o quitar gente de la red desde Administración → Personas (corrección 2, decisión 39).
  * Lo hace un administrador y necesita conexión: el código lo genera el servidor, y el servidor es el que
  * controla que siempre quede al menos un administrador. Cada cambio queda en el registro de cambios.
  */

@@ -66,7 +66,7 @@ sealed interface AvisoPersonas {
 }
 
 /**
- * Ajustes → Personas (corrección 2, decisión 39): la gente de la red activa. Todos la ven; el
+ * Administración → Personas (corrección 2, decisión 39): la gente de la red activa. Todos la ven; el
  * administrador suma gente con un código de un uso y cambia el perfil o quita a los demás. Todo pasa
  * por el servidor, que no deja al equipo sin administradores. Al abrir, pide la lista al servidor.
  */

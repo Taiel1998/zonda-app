@@ -16,7 +16,7 @@ enum class Perfil {
 }
 
 /**
- * Una persona del equipo: su teléfono pareado, con su nombre y su perfil (Ajustes → Personas). Sin
+ * Una persona del equipo: su teléfono pareado, con su nombre y su perfil (Administración → Personas). Sin
  * cuentas ni correos. [nombre] es null en los teléfonos pareados antes de la 1.0.5: se muestra el del
  * teléfono.
  */

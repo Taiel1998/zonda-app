@@ -645,6 +645,18 @@ class ResumenContenidoTest {
     }
 
     @Test
+    fun `al analista, que es cada tipo le dice que las severidades las cambia un administrador`() {
+        dibujar(estado(resumen()).copy(esAdministrador = false))
+
+        compose.onNodeWithContentDescription("Qué es cada tipo").performScrollTo().performClick()
+
+        compose.onNodeWithText(
+            "El punto de color es la severidad de cada tipo en esta red. La cambia un administrador. " +
+                "Una alerta a un equipo crítico sube un nivel; a uno poco importante, baja uno.",
+        ).assertExists()
+    }
+
+    @Test
     fun `el i de por tipo de ataque abre que es cada tipo`() {
         dibujar(estado(resumen()))
 

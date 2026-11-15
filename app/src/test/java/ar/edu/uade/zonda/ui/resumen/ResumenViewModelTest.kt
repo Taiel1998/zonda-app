@@ -10,6 +10,7 @@ import ar.edu.uade.zonda.domain.model.EscalaBarra
 import ar.edu.uade.zonda.domain.model.FiltroResumen
 import ar.edu.uade.zonda.domain.model.Franja
 import ar.edu.uade.zonda.domain.model.MetodoDeteccion
+import ar.edu.uade.zonda.domain.model.Perfil
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.RevisionResumen
@@ -85,6 +86,18 @@ class ResumenViewModelTest {
             // El punto de color de "Por tipo de ataque" (cambio 14).
             assertEquals(Severidad.ALTA, estado.severidades.severidadDe(TipoAtaque.ESCANEO))
             assertEquals(Severidad.ALTA, estado.severidades.severidadDe(TipoAtaque.FUERZA_BRUTA))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `sabe si este telefono es administrador, para decirle donde se cambian las severidades`() = runTest {
+        conRedYAlertas()
+
+        viewModel().estado.test {
+            assertTrue(esperar { it.datos != null }.esAdministrador)
+            redes.actualizar(Fixtures.red("red-1").copy(perfil = Perfil.ANALISTA))
+            esperar { !it.esAdministrador }
             cancelAndIgnoreRemainingEvents()
         }
     }
