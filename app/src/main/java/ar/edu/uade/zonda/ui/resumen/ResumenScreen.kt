@@ -353,6 +353,8 @@ fun ResumenContenido(
                     alElegirFechas(rango)
                 },
                 alCancelar = { eligiendoFechas = false },
+                // Con fechas puestas, "Limpiar" vuelve al atajo que estaba (7 o 30 días).
+                alQuitar = if (estado.fechas != null) ({ eligiendoFechas = false; alElegirPeriodo(estado.periodo) }) else null,
             )
         }
     }

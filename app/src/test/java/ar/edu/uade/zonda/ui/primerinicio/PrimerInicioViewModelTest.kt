@@ -36,6 +36,19 @@ class PrimerInicioViewModelTest {
         assertFalse(preferencias.primerInicio.value)
         viewModel.terminarIntroduccion()
         assertTrue(preferencias.primerInicio.value)
+        // Quien hizo la introducción ve después el recorrido guiado.
+        assertFalse(preferencias.recorrido.value)
+    }
+
+    @Test
+    fun `omitir la introduccion tambien saltea el recorrido guiado`() = runTest {
+        // "Ya conozco Zonda: omitir la introducción": antes le salían igual los 11 pasos del recorrido.
+        val viewModel = PrimerInicioViewModel(preferencias)
+
+        viewModel.omitirIntroduccion()
+
+        assertTrue(preferencias.primerInicio.value)
+        assertTrue(preferencias.recorrido.value)
     }
 
     @Test

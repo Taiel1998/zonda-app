@@ -169,7 +169,7 @@ class PrimerInicioYConexionTest {
 
         compose.onNodeWithText("Estar en la red de la empresa").assertIsDisplayed()
         compose.onNodeWithText("Conectate al wifi de la oficina, no a los datos del celular.").assertIsDisplayed()
-        compose.onNodeWithText("Si no sabés cuál es el wifi, preguntale al administrador.").assertIsDisplayed()
+        compose.onNodeWithText("Si no sabés cuál es el wifi, preguntale a quien te dio el código.").assertIsDisplayed()
     }
 
     @Test
@@ -231,7 +231,9 @@ class PrimerInicioYConexionTest {
         compose.onNodeWithText("El código sigue siendo válido hasta las 02:19.").assertIsDisplayed()
         compose.onNodeWithText("Reintentar").performClick()
         compose.onNodeWithText("Corregir la dirección").performClick()
-        compose.onNodeWithText("¿Dónde encuentro el código? Te lo da un administrador desde su Zonda.").performScrollTo().assertIsDisplayed()
+        // El mismo enlace del formulario, que abre la ayuda: antes era un texto verde que no se tocaba.
+        compose.onNodeWithText("¿Dónde encuentro el código?").performScrollTo().performClick()
+        compose.onNodeWithText("El administrador entra a Ajustes → Personas → Agregar persona.").assertIsDisplayed()
 
         assertTrue(corregir && reintentar)
     }
@@ -243,7 +245,7 @@ class PrimerInicioYConexionTest {
 
         compose.onNodeWithText("No se pudo verificar el servidor").assertIsDisplayed()
         compose.onNodeWithText("La dirección respondió, pero su certificado no es válido para ese nombre. La app no envió el código ni ningún otro dato.").assertIsDisplayed()
-        compose.onNodeWithText("Avisale al administrador. Si estás fuera de la empresa, conectate a la VPN y reintentá.").assertIsDisplayed()
+        compose.onNodeWithText("Avisale a quien instaló Zonda. Si estás fuera de la empresa, conectate a la VPN y reintentá.").assertIsDisplayed()
         compose.onNodeWithText("Volver").performClick()
 
         assertTrue(volver)
@@ -256,7 +258,7 @@ class PrimerInicioYConexionTest {
         compose.onNodeWithText("No se pudo verificar el servidor").assertIsDisplayed()
         compose.onNodeWithText("http://192.168.0.10:8000").assertIsDisplayed()
         compose.onNodeWithText("La dirección empieza con http://, sin cifrar, y Zonda solo se conecta por HTTPS. La app no envió el código ni ningún otro dato.").assertIsDisplayed()
-        compose.onNodeWithText("Avisale al administrador: la dirección del código tiene que empezar con https://.").assertIsDisplayed()
+        compose.onNodeWithText("Avisale a quien instaló Zonda: la dirección del código tiene que empezar con https://.").assertIsDisplayed()
         compose.onNodeWithText("Si estás fuera de la empresa", substring = true).assertDoesNotExist()
     }
 

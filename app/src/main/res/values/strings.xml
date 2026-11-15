@@ -203,7 +203,7 @@
     <string name="error_codigo_vencido">El código venció o ya se usó.</string>
     <string name="error_del_servidor">El servidor no respondió. Probá de nuevo en un rato.</string>
     <string name="error_validacion">Revisá los datos ingresados.</string>
-    <string name="error_telegram_no_disponible">El servidor de esta red todavía no tiene el bot de Telegram. Avisale al administrador.</string>
+    <string name="error_telegram_no_disponible">El servidor de esta red todavía no tiene el bot de Telegram. Avisale a quien instaló Zonda.</string>
     <string name="error_telegram_sin_vincular">Telegram ya no está vinculado. Conectalo de nuevo.</string>
     <!-- Severidades de la analista (corrección 2; Figma 468-3353) -->
     <!-- La gente es "la red", no "el equipo": en la app un equipo es una computadora (Ajustes → Equipos). -->
@@ -262,7 +262,7 @@
     <string name="detalle_quien">Quién</string>
     <string name="detalle_revisada">Revisada</string>
     <string name="detalle_resultado_sincronizada">%1$s · enviada %2$s</string>
-    <string name="detalle_pendiente_de_sincronizar">Pendiente de sincronizar</string>
+    <string name="detalle_pendiente_de_sincronizar">Pendiente de envío</string>
     <string name="detalle_revision_pendiente_banner">Sin conexión · tu revisión se enviará al reconectar</string>
     <string name="accion_compartir">Compartir</string>
     <!-- Lo que comparte el detalle: lo mismo que el aviso de Telegram, sin direcciones IP ni nombres de equipos (RNF02) -->
@@ -331,7 +331,11 @@
     <string name="conflicto_mantener">Mantener la de %1$s</string>
     <string name="conflicto_mantener_otra">Mantener la otra</string>
     <string name="envio_error_titulo">No se pudo enviar la revisión</string>
-    <string name="envio_error_detalle">Intentos: %1$d. Último error: %2$s.</string>
+    <!-- Sin el texto interno del error ("Error del servidor"): a la persona le alcanza con saber que no salió. -->
+    <plurals name="envio_error_intentos">
+        <item quantity="one">Zonda lo intentó %1$d vez.</item>
+        <item quantity="other">Zonda lo intentó %1$d veces.</item>
+    </plurals>
 
     <!-- Tipos de ataque y modos de aviso -->
     <string name="tipo_fuerza_bruta">Fuerza bruta (SSH, FTP)</string>
@@ -456,13 +460,12 @@
     <string name="conexion_codigo_error">El código tiene 8 caracteres, por ejemplo K7M2-QX9P</string>
     <string name="conexion_conectar">Conectar</string>
     <string name="conexion_donde_codigo">¿Dónde encuentro el código?</string>
-    <string name="conexion_donde_codigo_pie">¿Dónde encuentro el código? Te lo da un administrador desde su Zonda.</string>
     <!-- Ayudas (Figma 66-4286 y 66-4353) -->
     <string name="ayuda_red_titulo">Estar en la red de la empresa</string>
     <string name="ayuda_red_intro">Zonda se conecta al servidor que está dentro de tu empresa. Por eso, para parear, el teléfono tiene que estar en esa red.</string>
     <string name="ayuda_red_paso_1">Conectate al wifi de la oficina, no a los datos del celular.</string>
     <string name="ayuda_red_paso_2">Si estás afuera y la empresa tiene VPN, activala primero.</string>
-    <string name="ayuda_red_paso_3">Si no sabés cuál es el wifi, preguntale al administrador.</string>
+    <string name="ayuda_red_paso_3">Si no sabés cuál es el wifi, preguntale a quien te dio el código.</string>
     <!-- Desde la 1.0.5 el código lo genera un administrador en la app (Ajustes → Personas); solo el del
          primer teléfono de la red sale de la terminal del servidor (zonda pair). -->
     <string name="ayuda_codigo_intro">Te lo da un administrador desde su Zonda. Para el primer teléfono de la red, lo genera quien instaló Zonda, en el servidor.</string>
@@ -507,10 +510,10 @@
     <string name="error_pareo_codigo_valido_hasta">El código sigue siendo válido hasta las %1$s.</string>
     <string name="error_pareo_no_verificado_titulo">No se pudo verificar el servidor</string>
     <string name="error_pareo_no_verificado_texto">La dirección respondió, pero su certificado no es válido para ese nombre. La app no envió el código ni ningún otro dato.</string>
-    <string name="error_pareo_no_verificado_vpn">Avisale al administrador. Si estás fuera de la empresa, conectate a la VPN y reintentá.</string>
+    <string name="error_pareo_no_verificado_vpn">Avisale a quien instaló Zonda. Si estás fuera de la empresa, conectate a la VPN y reintentá.</string>
     <!-- El mismo cuadro (50-729) con una dirección http, que Android no deja usar. No está en el Figma: lo revisa Meli. -->
     <string name="error_pareo_sin_https_texto">La dirección empieza con http://, sin cifrar, y Zonda solo se conecta por HTTPS. La app no envió el código ni ningún otro dato.</string>
-    <string name="error_pareo_sin_https_admin">Avisale al administrador: la dirección del código tiene que empezar con https://.</string>
+    <string name="error_pareo_sin_https_admin">Avisale a quien instaló Zonda: la dirección del código tiene que empezar con https://.</string>
     <string name="error_pareo_otro_titulo">El servidor no respondió bien</string>
     <string name="error_pareo_otro_texto">Probá de nuevo en unos minutos.</string>
     <string name="pareo_escanear_otro">Escanear otro código</string>
@@ -606,7 +609,7 @@
     <string name="estado_lista_sin_altas">Sin alertas altas sin revisar</string>
     <string name="estado_lista_sin_medias">Sin alertas medias sin revisar</string>
     <string name="estado_lista_sin_bajas">Sin alertas bajas sin revisar</string>
-    <string name="estado_ver_todas">Ver todas →</string>
+    <string name="estado_ver_todas">Ir a Alertas →</string>
     <!-- Tarjeta Estado del sistema (1.0.6): el sensor, el análisis en vivo y el servidor -->
     <string name="estado_sistema_titulo">Estado del sistema</string>
     <string name="estado_sistema_sensor">Sensor de red</string>
@@ -626,10 +629,10 @@
     <string name="estado_sistema_sensor_pierde">Pierde el %1$s %% del tráfico</string>
     <string name="estado_sistema_sensor_simulado">%1$s (simulado)</string>
     <string name="estado_sistema_sensor_no_escucha">No escucha la red</string>
-    <string name="estado_sistema_analisis_ultima">Última revisión hace %1$s</string>
+    <string name="estado_sistema_analisis_ultima">Último análisis hace %1$s</string>
     <string name="estado_sistema_servidor_ultima">Última respuesta hace %1$s</string>
     <string name="estado_sistema_servidor_recien">Respondió recién</string>
-    <string name="estado_ver_todas_descripcion">Ver todas las alertas</string>
+    <string name="estado_ver_todas_descripcion">Ir a Alertas</string>
     <string name="estado_nota_vacia">No queda ninguna alerta sin revisar. Las nuevas aparecen acá apenas se sincronizan.</string>
     <!-- Cambio 7 (1.0.3): una revisión de este teléfono que no se aplicó porque otra persona revisó antes. -->
     <plurals name="estado_no_aplicadas_titulo">
@@ -704,7 +707,7 @@
         <item quantity="one">%1$s · %2$d alerta en el teléfono</item>
         <item quantity="other">%1$s · %2$d alertas en el teléfono</item>
     </plurals>
-    <string name="ajustes_sin_datos_guardados">Sin datos guardados · 0 alertas en el teléfono</string>
+    <string name="ajustes_sin_datos_guardados">Todavía no se sincronizó</string>
     <string name="ajustes_seccion_dispositivo">Este dispositivo</string>
     <string name="ajustes_quitar_dispositivo_detalle">Revoca el acceso de este teléfono en el servidor y borra sus alertas guardadas</string>
     <string name="ajustes_seccion_ayuda">Ayuda</string>
@@ -791,7 +794,7 @@
     <string name="detalles_sin_respuesta">Sin respuesta del servidor</string>
     <string name="detalles_sin_certificado">Sin certificado</string>
     <string name="detalles_sin_registro">Sin registro</string>
-    <string name="detalles_nota">Para renovar el acceso, se parea de nuevo. Si perdés el teléfono, pedile al administrador que lo revoque desde el servidor.</string>
+    <string name="detalles_nota">Para renovar el acceso, se parea de nuevo. Si perdés el teléfono, un administrador lo quita desde Ajustes → Personas.</string>
 
     <!-- Condiciones de uso desde Ajustes (Figma 66-3558) -->
     <string name="condiciones_ajustes_titulo">Condiciones de uso</string>
@@ -1126,6 +1129,8 @@
     <string name="navegadores_quitar_titulo">¿Quitarle el acceso a %1$s?</string>
     <string name="navegadores_quitar_texto">Ese navegador deja de ver el tablero y no puede volver a entrar sin un código nuevo.</string>
     <string name="navegadores_quitar_confirmar">Quitar acceso</string>
+    <!-- Lo que dice TalkBack del botón de cada fila: con varios navegadores, todos dirían "Quitar acceso". -->
+    <string name="navegadores_quitar_descripcion">Quitar el acceso de %1$s</string>
     <string name="navegadores_quitado">%1$s ya no tiene acceso al tablero.</string>
 
     <!-- Código para sumar a una persona (Figma 468-2735) -->
@@ -1133,6 +1138,8 @@
     <string name="codigo_intro">%1$s entra como %2$s. En su teléfono, conectado a la red de la empresa: Zonda → Escanear código QR.</string>
     <string name="codigo_vence">Sirve una sola vez · vence en %1$s</string>
     <string name="codigo_vencido">Venció. Volvé y generá otro código.</string>
+    <!-- Lo que se escribe a mano, con el código, si el otro teléfono no puede escanear el QR. -->
+    <string name="codigo_direccion">Dirección: %1$s</string>
     <string name="codigo_listo">Listo</string>
     <string name="codigo_qr_descripcion">Código QR para sumar a %1$s</string>
 

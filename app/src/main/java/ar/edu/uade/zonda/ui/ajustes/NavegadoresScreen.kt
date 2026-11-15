@@ -69,8 +69,9 @@ fun NavegadoresScreen(viewModel: PersonasViewModel, alVolver: () -> Unit) {
 }
 
 /**
- * La lista de Navegadores: cada computadora con su perfil y su último uso. El administrador toca una y
- * confirma "Quitar acceso", con los textos del tablero; es lo único que se le hace a un navegador.
+ * La lista de Navegadores: cada computadora con su perfil y su último uso. El administrador tiene en cada
+ * fila el botón "Quitar acceso" y lo confirma, con los textos del tablero; es lo único que se le hace a un
+ * navegador.
  */
 @Composable
 fun NavegadoresContenido(
@@ -121,7 +122,7 @@ fun NavegadoresContenido(
                             navegador = navegador,
                             ahora = ahora,
                             zona = zona,
-                            alTocar = if (estado.esAdministrador) ({ aQuitarId = navegador.id }) else null,
+                            alQuitar = if (estado.esAdministrador) ({ aQuitarId = navegador.id }) else null,
                         )
                     }
                 }

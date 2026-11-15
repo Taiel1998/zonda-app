@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -761,7 +762,8 @@ private fun TarjetaEnvioFallido(accion: AccionPendiente, acciones: AccionesDetal
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(text = stringResource(R.string.envio_error_titulo), style = MaterialTheme.typography.labelLarge, color = Tonos.Alta.texto)
             Text(
-                text = stringResource(R.string.envio_error_detalle, accion.intentos, accion.ultimoError.orEmpty()),
+                // Sin el texto interno del último error ("Error del servidor"): alcanza con cuántas veces se intentó.
+                text = pluralStringResource(R.plurals.envio_error_intentos, accion.intentos, accion.intentos),
                 style = MaterialTheme.typography.bodySmall,
                 color = Tonos.Alta.texto,
             )

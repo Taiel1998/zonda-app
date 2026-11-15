@@ -196,7 +196,8 @@ class DetalleContenidoTest {
         )
 
         compose.onNodeWithText("Sin conexión · tu revisión se enviará al reconectar").assertIsDisplayed()
-        compose.onNodeWithText("PENDIENTE DE SINCRONIZAR").assertIsDisplayed()
+        // La etiqueta dice lo mismo que la tarjeta de abajo ("pendiente de envío"), no "de sincronizar".
+        compose.onNodeWithText("PENDIENTE DE ENVÍO").assertIsDisplayed()
         compose.onNodeWithText("11:55 · Celular Martín · pendiente de envío").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Cambiar revisión").assertDoesNotExist()
     }
@@ -247,7 +248,7 @@ class DetalleContenidoTest {
         dibujar(contenido(alerta, accion), AccionesDetalle(alReintentarEnvio = { reintentada = true }))
 
         compose.onNodeWithText("No se pudo enviar la revisión").assertExists()
-        compose.onNodeWithText("Intentos: 5. Último error: Error del servidor.").assertExists()
+        compose.onNodeWithText("Zonda lo intentó 5 veces.").assertExists()
         compose.onNodeWithText("Reintentar").performScrollTo().performClick()
         assertTrue(reintentada)
     }

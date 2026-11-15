@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -56,6 +58,17 @@ class TelegramContenidoTest {
         compose.onNodeWithText("Ahora no").performScrollTo().performClick()
         compose.onNodeWithText("Podés hacerlo después desde Ajustes → Telegram.").performScrollTo().assertIsDisplayed()
         assertEquals(listOf("abrir", "ahora no"), tocados)
+    }
+
+    @Test
+    fun `desde Ajustes, Conectar Telegram no ofrece Ahora no ni dice que se puede hacer despues`() {
+        // Ya se está en Ajustes → Telegram y se vuelve con la flecha: esos dos textos son del primer inicio.
+        mostrar(sinVincular, AccionesTelegram(alVolver = {}), desdeAjustes = true)
+
+        compose.onNodeWithText("Abrir Telegram").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Volver").assertIsDisplayed()
+        compose.onAllNodesWithText("Ahora no").assertCountEquals(0)
+        compose.onAllNodesWithText("Podés hacerlo después desde Ajustes → Telegram.").assertCountEquals(0)
     }
 
     @Test
@@ -127,6 +140,6 @@ class TelegramContenidoTest {
     fun `sin el bot en el servidor lo dice`() {
         mostrar(sinVincular.copy(aviso = AvisoTelegram.Error(ErrorZonda.TelegramNoDisponible())))
 
-        compose.onNodeWithText("El servidor de esta red todavía no tiene el bot de Telegram. Avisale al administrador.").assertIsDisplayed()
+        compose.onNodeWithText("El servidor de esta red todavía no tiene el bot de Telegram. Avisale a quien instaló Zonda.").assertIsDisplayed()
     }
 }

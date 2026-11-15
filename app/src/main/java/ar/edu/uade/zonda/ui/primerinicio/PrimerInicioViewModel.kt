@@ -41,4 +41,15 @@ class PrimerInicioViewModel(
     fun terminarIntroduccion() {
         viewModelScope.launch { preferencias.marcarPrimerInicioHecho() }
     }
+
+    /**
+     * "Ya conozco Zonda: omitir la introducción": tampoco aparece el recorrido guiado después de conectar la
+     * red. Quien ya conoce la app no lo necesita, y antes le salían igual los 11 pasos.
+     */
+    fun omitirIntroduccion() {
+        viewModelScope.launch {
+            preferencias.marcarPrimerInicioHecho()
+            preferencias.marcarRecorridoHecho()
+        }
+    }
 }

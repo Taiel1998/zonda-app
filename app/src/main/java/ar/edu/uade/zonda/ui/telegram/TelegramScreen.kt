@@ -238,8 +238,12 @@ private fun ColumnScope.Conectar(estado: TelegramUiState, acciones: AccionesTele
         }
     }
     BotonPrincipal(texto = stringResource(R.string.telegram_abrir), alTocar = acciones.alAbrirTelegram, habilitado = !estado.ocupado)
-    BotonEnlace(texto = stringResource(R.string.telegram_ahora_no), alTocar = acciones.alAhoraNo, modifier = Modifier.fillMaxWidth())
-    NotaAlPie(stringResource(R.string.telegram_despues))
+    // "Ahora no" y "Podés hacerlo después desde Ajustes → Telegram." son del primer inicio: entrando desde
+    // Ajustes → Telegram (con flecha) sobran, porque ya se está ahí y se vuelve con la flecha.
+    if (acciones.alVolver == null) {
+        BotonEnlace(texto = stringResource(R.string.telegram_ahora_no), alTocar = acciones.alAhoraNo, modifier = Modifier.fillMaxWidth())
+        NotaAlPie(stringResource(R.string.telegram_despues))
+    }
 }
 
 /**

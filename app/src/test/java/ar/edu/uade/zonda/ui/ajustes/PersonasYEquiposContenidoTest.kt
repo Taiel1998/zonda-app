@@ -4,6 +4,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -131,10 +136,15 @@ class PersonasYEquiposContenidoTest {
         // La primera se llamaba solo "Tablero web".
         compose.onNodeWithText("Navegador").assertIsDisplayed()
         compose.onNodeWithText("Analista · hace 2 días").assertIsDisplayed()
+        // La fila no lleva flecha ni se toca: una flecha promete una pantalla, y abría directo la pregunta.
         compose.onNodeWithText("Chrome en Windows").performClick()
+        compose.onNodeWithText("¿Quitarle el acceso a Chrome en Windows?").assertDoesNotExist()
+        // Cada fila tiene su botón "Quitar acceso"; TalkBack dice de qué navegador es.
+        compose.onNodeWithContentDescription("Quitar el acceso de Chrome en Windows").performClick()
         compose.onNodeWithText("¿Quitarle el acceso a Chrome en Windows?").assertIsDisplayed()
         compose.onNodeWithText("Ese navegador deja de ver el tablero y no puede volver a entrar sin un código nuevo.").assertIsDisplayed()
-        compose.onNodeWithText("Quitar acceso").performClick()
+        // El botón de la hoja, no los de las filas (que llevan la descripción para TalkBack).
+        compose.onNode(hasText("Quitar acceso") and SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription)).performClick()
 
         assertEquals(listOf(chrome), quitados)
     }
@@ -149,6 +159,7 @@ class PersonasYEquiposContenidoTest {
 
         compose.onNodeWithText("Chrome en Windows").performClick()
         compose.onNodeWithText("¿Quitarle el acceso a Chrome en Windows?").assertDoesNotExist()
+        compose.onAllNodesWithText("Quitar acceso").assertCountEquals(0)
         assertFalse(quitar)
     }
 
@@ -238,6 +249,8 @@ class PersonasYEquiposContenidoTest {
         compose.onNodeWithText("Laura entra como analista. En su teléfono, conectado a la red de la empresa: Zonda → Escanear código QR.").assertIsDisplayed()
         compose.onNodeWithContentDescription("Código QR para sumar a Laura").assertIsDisplayed()
         compose.onNodeWithText("K7M2-QX9P").assertIsDisplayed()
+        // Si la otra persona no puede escanear, su teléfono le pide la dirección y el código: van los dos.
+        compose.onNodeWithText("Dirección: zonda-equipo.duckdns.org").assertIsDisplayed()
         compose.onNodeWithText("Sirve una sola vez · vence en 9:52").assertIsDisplayed()
     }
 
@@ -247,6 +260,9 @@ class PersonasYEquiposContenidoTest {
         compose.setContent { ZondaTheme { CodigoPersonaContenido(codigo = codigo, alVolver = {}, reloj = { Fixtures.AHORA }) } }
 
         compose.onNodeWithText("Venció. Volvé y generá otro código.").assertIsDisplayed()
+        // Vencido ya no se dibujan el QR ni el código: no sirven, y se veían igual que uno vigente.
+        compose.onNodeWithContentDescription("Código QR para sumar a Laura").assertDoesNotExist()
+        compose.onNodeWithText("K7M2-QX9P").assertDoesNotExist()
     }
 
     @Test

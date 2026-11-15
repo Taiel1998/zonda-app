@@ -92,15 +92,28 @@ fun CodigoPersonaContenido(codigo: CodigoPersona?, alVolver: () -> Unit, reloj: 
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                CodigoQr(contenido = codigo.contenido, descripcion = stringResource(R.string.codigo_qr_descripcion, codigo.nombre))
-                // SemiBold 24 con 2 % entre letras (Figma 468-3005).
-                Text(
-                    text = codigo.codigo,
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.48.sp),
-                )
                 val queda = Duration.between(ahora, codigo.vence)
+                val vencido = queda.isNegative || queda.isZero
+                // Vencido no se dibujan el QR ni el código: ya no sirven, y se veían igual que uno vigente.
+                if (!vencido) {
+                    CodigoQr(contenido = codigo.contenido, descripcion = stringResource(R.string.codigo_qr_descripcion, codigo.nombre))
+                    // SemiBold 24 con 2 % entre letras (Figma 468-3005).
+                    Text(
+                        text = codigo.codigo,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.48.sp),
+                    )
+                    // Si no puede escanear, el otro teléfono pide la dirección y el código: van los dos.
+                    codigo.direccion?.let { direccion ->
+                        Text(
+                            text = stringResource(R.string.codigo_direccion, direccion),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
                 Text(
-                    text = if (queda.isNegative || queda.isZero) {
+                    text = if (vencido) {
                         stringResource(R.string.codigo_vencido)
                     } else {
                         // seconds % 60 y no toSecondsPart(), que recién está desde Android 12 (API 31).

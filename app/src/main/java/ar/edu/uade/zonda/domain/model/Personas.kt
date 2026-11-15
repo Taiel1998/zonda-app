@@ -90,4 +90,11 @@ data class CodigoPersona(
     val contenido: String,
     val nombre: String,
     val perfil: Perfil,
-)
+) {
+    /**
+     * La dirección del servidor que lleva el código, sin el protocolo ("zonda-empresa.duckdns.org"): lo que
+     * la otra persona escribe a mano, junto con el código, si no puede escanear el QR.
+     */
+    val direccion: String?
+        get() = contenido.removePrefix("zonda:").substringBefore('#', missingDelimiterValue = "").substringAfter("://").ifEmpty { null }
+}

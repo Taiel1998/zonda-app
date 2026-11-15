@@ -62,8 +62,10 @@ import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.RangoResumen
 import ar.edu.uade.zonda.domain.model.Tramo
 import ar.edu.uade.zonda.ui.Formato
+import ar.edu.uade.zonda.ui.components.BotonContorno
 import ar.edu.uade.zonda.ui.components.BotonPrincipal
 import ar.edu.uade.zonda.ui.components.HojaInferior
+import ar.edu.uade.zonda.ui.components.RellenoBotonAngosto
 import ar.edu.uade.zonda.ui.theme.nota
 import ar.edu.uade.zonda.ui.theme.opcion
 import ar.edu.uade.zonda.ui.theme.tituloHoja
@@ -118,7 +120,9 @@ private enum class HoraEnElReloj { DESDE, HASTA }
  * La hoja "Elegí las fechas" (cambio 19; Figma 463-2027): Desde y Hasta con su día y su hora, los
  * meses completos que tocan los 30 días que guarda el teléfono (los días sin datos en gris) y
  * "Mostrar N alertas", que dice cuántas quedan con los demás filtros. "Cancelar" la cierra sin cambiar
- * nada. La hora se elige con el reloj de Material 3 ([RelojDeLaHora]).
+ * nada. Con fechas ya elegidas ([alQuitar]), "Limpiar" las saca, como en las otras hojas de filtros: en
+ * Alertas no había otra salida que abrir el chip del período. La hora se elige con el reloj de Material 3
+ * ([RelojDeLaHora]).
  */
 @Composable
 fun HojaFechas(
@@ -127,9 +131,10 @@ fun HojaFechas(
     cuantas: (RangoResumen) -> Int,
     alMostrar: (RangoResumen) -> Unit,
     alCancelar: () -> Unit,
+    alQuitar: (() -> Unit)? = null,
 ) {
     HojaInferior(alCerrar = alCancelar) {
-        ContenidoHojaFechas(rango, hoy, cuantas, alMostrar, alCancelar)
+        ContenidoHojaFechas(rango, hoy, cuantas, alMostrar, alCancelar, alQuitar)
     }
 }
 
@@ -141,6 +146,8 @@ fun ColumnScope.ContenidoHojaFechas(
     cuantas: (RangoResumen) -> Int,
     alMostrar: (RangoResumen) -> Unit,
     alCancelar: () -> Unit,
+    /** Saca las fechas elegidas ("Limpiar"); null si no hay ninguna puesta. */
+    alQuitar: (() -> Unit)? = null,
 ) {
     var borrador by remember(rango) { mutableStateOf(BorradorFechas.de(rango)) }
     var reloj by rememberSaveable { mutableStateOf<HoraEnElReloj?>(null) }
@@ -199,11 +206,15 @@ fun ColumnScope.ContenidoHojaFechas(
         MesDelCalendario(mes = mes, guardados = guardados, elegido = elegido, alTocar = { borrador = borrador.tocarDia(it) })
     }
     val quedan = remember(elegido, cuantas) { if (elegido.valido) cuantas(elegido) else 0 }
-    BotonPrincipal(
-        texto = pluralStringResource(R.plurals.resumen_mostrar_alertas, quedan, quedan),
-        alTocar = { alMostrar(elegido) },
-        habilitado = elegido.valido,
-    )
+    val mostrar = pluralStringResource(R.plurals.resumen_mostrar_alertas, quedan, quedan)
+    if (alQuitar == null) {
+        BotonPrincipal(texto = mostrar, alTocar = { alMostrar(elegido) }, habilitado = elegido.valido)
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            BotonContorno(texto = stringResource(R.string.filtro_limpiar), alTocar = alQuitar, modifier = Modifier.weight(1f), relleno = RellenoBotonAngosto)
+            BotonPrincipal(texto = mostrar, alTocar = { alMostrar(elegido) }, habilitado = elegido.valido, modifier = Modifier.weight(1f))
+        }
+    }
 
     when (reloj) {
         HoraEnElReloj.DESDE -> RelojDeLaHora(

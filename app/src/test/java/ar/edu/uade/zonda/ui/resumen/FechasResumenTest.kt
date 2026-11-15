@@ -14,6 +14,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -130,7 +132,12 @@ class FechasResumenTest {
 
     // ---- La hoja ----
 
-    private fun dibujar(rango: RangoResumen, elegidos: MutableList<RangoResumen> = mutableListOf(), cancelado: () -> Unit = {}) {
+    private fun dibujar(
+        rango: RangoResumen,
+        elegidos: MutableList<RangoResumen> = mutableListOf(),
+        cancelado: () -> Unit = {},
+        quitar: (() -> Unit)? = null,
+    ) {
         compose.setContent {
             ZondaTheme {
                 // Como en la hoja inferior, que se desplaza.
@@ -141,6 +148,7 @@ class FechasResumenTest {
                         cuantas = { 14 },
                         alMostrar = { elegidos += it },
                         alCancelar = cancelado,
+                        alQuitar = quitar,
                     )
                 }
             }
@@ -160,6 +168,22 @@ class FechasResumenTest {
         compose.onNodeWithText("Agosto 2026").assertExists()
         compose.onNodeWithText("Septiembre 2026").assertExists()
         compose.onNodeWithText("Mostrar 14 alertas").performScrollTo().assertIsDisplayed()
+        // Sin fechas puestas no hay nada que limpiar.
+        compose.onAllNodesWithText("Limpiar").assertCountEquals(0)
+    }
+
+    @Test
+    fun `con fechas ya elegidas la hoja ofrece Limpiar para sacarlas`() {
+        // En Alertas no había otra salida que abrir el chip del período y tocar Aplicar.
+        var quitadas = 0
+        val elegidos = mutableListOf<RangoResumen>()
+        dibujar(RangoResumen(momento(25, 0), momento(26, 23, 59)), elegidos, quitar = { quitadas++ })
+
+        compose.onNodeWithText("Mostrar 14 alertas").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Limpiar").performScrollTo().performClick()
+
+        assertEquals(1, quitadas)
+        assertTrue(elegidos.isEmpty())
     }
 
     @Test
