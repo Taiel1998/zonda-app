@@ -84,7 +84,7 @@ class AjustesContenidoTest {
 
         compose.onNodeWithText("Notificaciones desactivadas").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Abrir ajustes").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Lleva directo a las notificaciones de Zonda en el sistema").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Lleva directamente a las notificaciones de Zonda en el sistema").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Notificaciones del sistema").assertDoesNotExist()
     }
 

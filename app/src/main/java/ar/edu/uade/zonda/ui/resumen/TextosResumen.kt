@@ -210,11 +210,11 @@ private fun FiltroResumen.unoSolo(recursos: Resources): String {
 
 /**
  * La frase debajo del gráfico (cambio 16; Figma 100-8096 y 463-1145): con un filtro, "Mostrando
- * fuerza bruta: 15 alertas. Tocá de nuevo para sacarlo."; con más, los nombra ("Mostrando 9 alertas:
+ * fuerza bruta: 15 alertas. Tocá de nuevo para quitarlo."; con más, los nombra ("Mostrando 9 alertas:
  * sábado y domingo · fuerza bruta y escaneo de puertos.") y, si quedan más de cuatro, dice cuántos son
  * ("Mostrando 20 alertas con 5 filtros."). Sin filtros, lo que más pasó. En la imagen no se puede
  * tocar nada: la de un filtro no dice "Tocá de nuevo" ([enImagen]). La severidad se elige en la hoja de
- * filtros y en la pantalla no hay nada para tocar de nuevo: sola, dice "Se saca desde Filtros.".
+ * filtros y en la pantalla no hay nada para tocar de nuevo: sola, dice "Se quita desde Filtros.".
  */
 fun fraseDelGrafico(resumen: ResumenActividad, recursos: Resources, enImagen: Boolean = false): String? {
     val filtro = resumen.filtro

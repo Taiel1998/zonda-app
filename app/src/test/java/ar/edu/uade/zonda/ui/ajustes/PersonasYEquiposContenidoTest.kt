@@ -253,7 +253,7 @@ class PersonasYEquiposContenidoTest {
             ZondaTheme { PersonasContenido(estado = estado, acciones = AccionesPersonas(alAgregar = { agregar = true }), zona = utc, ahora = Fixtures.AHORA) }
         }
 
-        compose.onNodeWithText("Quiénes usan Zonda en Oficina central. Los administradores cambian la configuración de la red y suman gente.").assertIsDisplayed()
+        compose.onNodeWithText("Quiénes usan Zonda en Oficina central. Los administradores cambian la configuración de la red y agregan personas.").assertIsDisplayed()
         compose.onNodeWithText("Taiel (vos)").assertIsDisplayed()
         compose.onNodeWithText("Administrador · moto g(9) plus · hoy 11:30").assertIsDisplayed()
         compose.onNodeWithText("Administrador · Galaxy A54 · ayer 12:00").assertIsDisplayed()
@@ -307,7 +307,7 @@ class PersonasYEquiposContenidoTest {
         // Sin red dice qué pasó con el código, no el texto general de los datos guardados.
         compose.onNodeWithText("Sin conexión: el código no se generó.").assertIsDisplayed()
         compose.onNodeWithText("Revisa las alertas, pide bloqueos y elige sus avisos.").assertIsDisplayed()
-        compose.onNodeWithText("Además bloquea, cambia las severidades y suma o quita gente.").assertIsDisplayed()
+        compose.onNodeWithText("Además bloquea, cambia las severidades y agrega o quita personas.").assertIsDisplayed()
         compose.onNodeWithText("Generar código").assertIsDisplayed()
     }
 
@@ -322,7 +322,7 @@ class PersonasYEquiposContenidoTest {
         compose.onNodeWithText("K7M2-QX9P").assertIsDisplayed()
         // Si la otra persona no puede escanear, su teléfono le pide la dirección y el código: van los dos.
         compose.onNodeWithText("Dirección: zonda-equipo.duckdns.org").assertIsDisplayed()
-        compose.onNodeWithText("Sirve una sola vez · vence en 9:52").assertIsDisplayed()
+        compose.onNodeWithText("Un solo uso · vence en 9:52").assertIsDisplayed()
     }
 
     @Test

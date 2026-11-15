@@ -150,10 +150,10 @@ class DetalleContenidoTest {
         dibujar(contenido(Fixtures.alerta("a-1")))
         val ayudaDatos = "Conexiones en 60 s: cuántas veces el origen se conectó a este servicio en un minuto.\n" +
             "Conexiones en total: todas las de estos dos equipos, hasta que pasan 15 minutos sin ninguna."
-        val ayudaMetodos = "Modelo de IA: aprendió el tráfico normal de tu red y marca lo que se aleja de eso.\n" +
+        val ayudaMetodos = "Modelo de IA: aprendió el tráfico habitual de la red y marca lo que se aparta de él.\n" +
             "Umbrales: marcan si hay más conexiones a un servicio por minuto que en un día normal.\n" +
             "Reglas: marcan los servicios que no están en la lista de autorizados.\n" +
-            "Alcanza con que uno marque para que haya alerta."
+            "Basta con que uno la marque para que se genere una alerta."
 
         // Antes eran seis (decisión 37); ahora uno en "Datos del flujo" y otro en "Predicción por método" (decisión 48).
         compose.onAllNodes(hasContentDescription("Qué es", substring = true)).assertCountEquals(2)
@@ -286,7 +286,7 @@ class DetalleContenidoTest {
         compose.onNodeWithText("PENDIENTE DE DESCARGA").assertIsDisplayed()
         compose.onAllNodesWithText("SSH").assertCountEquals(2)
         compose.onNodeWithText("Aviso de Telegram de las 05:10").assertIsDisplayed()
-        compose.onNodeWithText("Lo que trajo el aviso").assertIsDisplayed()
+        compose.onNodeWithText("Datos del aviso").assertIsDisplayed()
         compose.onNodeWithText("Alta").assertIsDisplayed()
         compose.onNodeWithText("Hora de detección").assertIsDisplayed()
         compose.onNodeWithText("05:09").assertIsDisplayed()

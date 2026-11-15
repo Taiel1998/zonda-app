@@ -132,7 +132,7 @@ class TelegramContenidoTest {
         var consumidos = 0
         mostrar(vinculado.copy(aviso = AvisoTelegram.PruebaEnviada), AccionesTelegram(alAvisoMostrado = { consumidos++ }), desdeAjustes = true)
 
-        compose.onNodeWithText("Aviso de prueba enviado. Fijate en el chat de @zonda_alertas_bot.").assertIsDisplayed()
+        compose.onNodeWithText("Aviso de prueba enviado al chat de @zonda_alertas_bot.").assertIsDisplayed()
         assertEquals(1, consumidos)
     }
 

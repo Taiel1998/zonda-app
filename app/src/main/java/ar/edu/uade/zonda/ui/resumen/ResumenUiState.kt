@@ -28,7 +28,7 @@ sealed interface AvisoResumen {
     /** "Resumen enviado por Telegram." */
     data class Enviado(val destino: DestinoCompartir) : AvisoResumen
 
-    /** "Imagen copiada. Pegala donde quieras." */
+    /** "Imagen copiada al portapapeles." */
     data object Copiado : AvisoResumen
 
     /** No se pudo armar la imagen o abrir la app elegida. */

@@ -115,7 +115,7 @@ class CapaRecorridoTest {
         }
 
         compose.onNodeWithText(
-            "Tus avisos, la red, los datos guardados y, al final, la ayuda. La gente, los equipos y las severidades están en Administración.",
+            "Tus avisos, la red, los datos guardados y, al final, la ayuda. Las personas, los equipos y las severidades están en Administración.",
         ).assertIsDisplayed()
 
         esAdministrador = false

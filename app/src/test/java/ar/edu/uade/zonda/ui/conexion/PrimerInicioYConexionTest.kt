@@ -83,7 +83,7 @@ class PrimerInicioYConexionTest {
 
         compose.onNodeWithText("Condiciones de uso y privacidad").assertIsDisplayed()
         compose.onNodeWithText("Qué guarda Zonda").assertIsDisplayed()
-        compose.onNodeWithText("Qué sale del teléfono").assertIsDisplayed()
+        compose.onNodeWithText("Qué se envía desde el teléfono").assertIsDisplayed()
         compose.onNodeWithText("Cuánto tiempo").assertIsDisplayed()
         compose.onNodeWithText("Datos personales").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Entendido").performScrollTo().performClick()
@@ -168,7 +168,7 @@ class PrimerInicioYConexionTest {
         compose.onNodeWithText("Qué significa").performClick()
 
         compose.onNodeWithText("Estar en la red de la empresa").assertIsDisplayed()
-        compose.onNodeWithText("Conectate al wifi de la oficina, no a los datos del celular.").assertIsDisplayed()
+        compose.onNodeWithText("Conectate al wifi de la oficina, no a los datos móviles.").assertIsDisplayed()
         compose.onNodeWithText("Si no sabés cuál es el wifi, preguntale a quien te dio el código.").assertIsDisplayed()
     }
 
@@ -193,7 +193,7 @@ class PrimerInicioYConexionTest {
 
         compose.onNodeWithText("zonda-empresa.duckdns.org").assertIsDisplayed()
         compose.onNodeWithText("Buscando el servidor").assertIsDisplayed()
-        compose.onNodeWithText("Verificando que sea el verdadero").assertIsDisplayed()
+        compose.onNodeWithText("Verificando el certificado").assertIsDisplayed()
         compose.onNodeWithText("Registrando este teléfono").assertIsDisplayed()
         compose.onNodeWithText("Descargando las alertas").assertDoesNotExist()
     }
@@ -210,7 +210,7 @@ class PrimerInicioYConexionTest {
         compose.onNodeWithText("Oficina").assertIsDisplayed()
         compose.onNodeWithText("zonda-equipo.duckdns.org").assertIsDisplayed()
         compose.onNodeWithText("Conexión segura").assertIsDisplayed()
-        compose.onNodeWithText("Este teléfono quedó registrado como \"Celular Martín\". El código ya se usó y no sirve para otro teléfono.").assertIsDisplayed()
+        compose.onNodeWithText("Este teléfono quedó registrado como \"Celular Martín\". El código ya se usó y no es válido para otro teléfono.").assertIsDisplayed()
         compose.onNodeWithText("213 alertas de los últimos 30 días listas para descargar").assertIsDisplayed()
         compose.onNodeWithText("Detalles técnicos").performClick()
         compose.onNodeWithText("Continuar").performScrollTo().performClick()
@@ -273,7 +273,7 @@ class PrimerInicioYConexionTest {
 
         compose.onNodeWithText("El código venció o ya se usó").assertIsDisplayed()
         compose.onNodeWithText("Escanear otro código").performClick()
-        compose.onNodeWithText("Ingresar otro código a mano").performClick()
+        compose.onNodeWithText("Ingresar otro código manualmente").performClick()
         compose.onNodeWithText("El código sigue siendo válido", substring = true).assertDoesNotExist()
 
         assertTrue(escanear && aMano)

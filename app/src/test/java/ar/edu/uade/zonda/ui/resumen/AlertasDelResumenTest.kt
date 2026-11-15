@@ -163,6 +163,6 @@ class AlertasDelResumenTest {
         compose.runOnIdle { nav.popBackStack() }
 
         compose.onNodeWithText("Filtros (1)").assertIsDisplayed()
-        compose.onNodeWithText("Mostrando escaneo de puertos: 1 alerta. Tocá de nuevo para sacarlo.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Mostrando escaneo de puertos: 1 alerta. Tocá de nuevo para quitarlo.").performScrollTo().assertIsDisplayed()
     }
 }

@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Un cambio de importancia que espera su motivo en "¿Por qué la cambiás?". */
+/** Un cambio de importancia que espera su motivo en "Motivo del cambio". */
 data class CambioDeImportancia(val equipo: EquipoDeLaRed, val nueva: Importancia)
 
 data class EquiposUiState(

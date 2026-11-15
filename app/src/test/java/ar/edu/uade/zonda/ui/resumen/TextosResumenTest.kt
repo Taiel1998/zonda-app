@@ -103,8 +103,8 @@ class TextosResumenTest {
         val porDia = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, FiltroResumen(barras = setOf(viernes)))
         val porMetodo = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, FiltroResumen(metodo = MetodoDeteccion.IA))
 
-        assertEquals("Mostrando Viernes 25/09: 1 alerta. Tocá de nuevo para sacarlo.", fraseDelGrafico(porDia, recursos))
-        assertEquals("Mostrando modelo de IA: 1 alerta. Tocá de nuevo para sacarlo.", fraseDelGrafico(porMetodo, recursos))
+        assertEquals("Mostrando Viernes 25/09: 1 alerta. Tocá de nuevo para quitarlo.", fraseDelGrafico(porDia, recursos))
+        assertEquals("Mostrando modelo de IA: 1 alerta. Tocá de nuevo para quitarlo.", fraseDelGrafico(porMetodo, recursos))
         // En la imagen no se puede tocar.
         assertEquals("Mostrando Viernes 25/09: 1 alerta.", fraseDelGrafico(porDia, recursos, enImagen = true))
     }
@@ -143,7 +143,7 @@ class TextosResumenTest {
 
         // Sola, no dice "Tocá de nuevo": la severidad se elige en la hoja de filtros y en la pantalla no se toca.
         val medias = resumen(FiltroResumen(severidades = setOf(Severidad.MEDIA)))
-        assertEquals("Mostrando severidad media: 2 alertas. Se saca desde Filtros.", fraseDelGrafico(medias, recursos))
+        assertEquals("Mostrando severidad media: 2 alertas. Se quita desde Filtros.", fraseDelGrafico(medias, recursos))
         assertEquals("Mostrando severidad media: 2 alertas.", fraseDelGrafico(medias, recursos, enImagen = true))
         assertEquals(
             "Estás viendo la severidad media: la precisión cuenta solo las alertas revisadas de esa severidad.",
@@ -159,7 +159,7 @@ class TextosResumenTest {
 
     @Test
     fun `los tipos que la red tiene en alta se nombran uno por uno, como cualquier otra combinacion`() {
-        // Antes eran "las altas", un solo filtro con "Tocá de nuevo para sacarlo": ya no hay nada con ese
+        // Antes eran "las altas", un solo filtro con "Tocá de nuevo para quitarlo": ya no hay nada con ese
         // nombre para tocar, y son dos filtros.
         val lista = listOf(alertaDel("2026-09-25", "v-1"))
         val enAlta = setOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR)
@@ -211,7 +211,7 @@ class TextosResumenTest {
         assertEquals("Resumen enviado por WhatsApp.", textoDelAviso(AvisoResumen.Enviado(DestinoCompartir.WHATSAPP), recursos))
         assertEquals("Resumen adjuntado en un correo de Gmail.", textoDelAviso(AvisoResumen.Enviado(DestinoCompartir.GMAIL), recursos))
         assertEquals("Resumen guardado en Drive.", textoDelAviso(AvisoResumen.Enviado(DestinoCompartir.DRIVE), recursos))
-        assertEquals("Imagen copiada. Pegala donde quieras.", textoDelAviso(AvisoResumen.Copiado, recursos))
+        assertEquals("Imagen copiada al portapapeles.", textoDelAviso(AvisoResumen.Copiado, recursos))
     }
 
     @Test

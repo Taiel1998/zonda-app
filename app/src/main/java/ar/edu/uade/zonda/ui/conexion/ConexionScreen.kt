@@ -223,7 +223,7 @@ fun ConexionContenido(
 
 /**
  * El formulario (Figma 35-432). Al tocar un campo se oculta la parte de arriba y queda la
- * explicación "Escribí los dos datos que trae el código…" (Figma 49-10 y 49-131).
+ * explicación "Escribí los dos datos del código…" (Figma 49-10 y 49-131).
  */
 @Composable
 private fun ColumnScope.Formulario(estado: ConexionUiState.Formulario, acciones: AccionesConexion, alAyuda: (Ayuda) -> Unit) {
@@ -342,7 +342,7 @@ private fun RequisitoDeRed(alVerQueSignifica: () -> Unit) {
     }
 }
 
-/** "o ingresalo a mano" entre dos líneas (Figma 35-453). */
+/** "o ingresalo manualmente" entre dos líneas (Figma 35-453). */
 @Composable
 private fun Divisor() {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

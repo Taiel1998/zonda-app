@@ -49,7 +49,7 @@ class SalirSinGuardarTest {
         assertEquals(0, salidas)
 
         compose.onNodeWithText("Volver").performClick()
-        compose.onNodeWithText("Salir igual").performClick()
+        compose.onNodeWithText("Salir").performClick()
         assertEquals(1, salidas)
 
         // Sin cambios no hay nada que perder: sale sin preguntar.

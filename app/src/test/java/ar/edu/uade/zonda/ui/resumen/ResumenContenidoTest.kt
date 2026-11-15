@@ -246,7 +246,7 @@ class ResumenContenidoTest {
 
         compose.onNodeWithTag(ETIQUETA_SEVERIDADES).assert(hasText("2 altas"))
         compose.onNodeWithText("Filtros (1)").assertIsDisplayed()
-        compose.onNodeWithText("Mostrando severidad alta: 2 alertas. Se saca desde Filtros.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Mostrando severidad alta: 2 alertas. Se quita desde Filtros.").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -312,7 +312,7 @@ class ResumenContenidoTest {
         dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA)))))
 
         compose.onNodeWithText("Filtros (1)").assertIsDisplayed()
-        compose.onNodeWithText("Mostrando fuerza bruta: 2 alertas. Tocá de nuevo para sacarlo.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Mostrando fuerza bruta: 2 alertas. Tocá de nuevo para quitarlo.").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -621,7 +621,7 @@ class ResumenContenidoTest {
 
     @Test
     fun `un tipo elegido sin alertas en el periodo sigue en su fila para poder sacarlo`() {
-        // Pasa al cambiar de 30 a 7 días con un tipo elegido: "Tocá de nuevo para sacarlo" tiene que tener
+        // Pasa al cambiar de 30 a 7 días con un tipo elegido: "Tocá de nuevo para quitarlo" tiene que tener
         // qué tocar.
         val tocadas = mutableListOf<ToqueResumen>()
         dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.DDOS)))), alTocar = { tocadas += it })
@@ -689,7 +689,7 @@ class ResumenContenidoTest {
         compose.onNodeWithContentDescription("Qué es cada tipo").performScrollTo().performClick()
 
         compose.onNodeWithText("Qué es cada tipo").assertIsDisplayed()
-        compose.onNodeWithText("La IA vio algo raro y otro modelo le pone el tipo de ataque que parece.").assertExists()
+        compose.onNodeWithText("La IA detectó algo inusual y otro modelo le asigna el tipo de ataque más probable.").assertExists()
         compose.onNodeWithText("Fuerza bruta. Muchos intentos de contraseña contra un servicio.").assertExists()
         compose.onNodeWithText("Lo marcaron los otros dos métodos de Zonda.").assertExists()
         compose.onNodeWithText("Entendido").performScrollTo().performClick()

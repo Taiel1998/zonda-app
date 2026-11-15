@@ -23,7 +23,7 @@ enum class AccionResponsable {
     /** Administrador, sin responsable: "Asignar" abre la hoja con la gente. */
     ASIGNAR,
 
-    /** Administrador, con responsable: "Cambiar" abre la misma hoja, con "Sacar la asignación". */
+    /** Administrador, con responsable: "Cambiar" abre la misma hoja, con "Quitar la asignación". */
     CAMBIAR,
 
     /** Analista, sin responsable: "Me la asigno". */

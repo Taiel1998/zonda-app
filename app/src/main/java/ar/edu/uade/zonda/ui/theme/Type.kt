@@ -105,7 +105,7 @@ val Typography.tituloPaso: TextStyle
 val Typography.tituloBienvenida: TextStyle
     get() = titleLarge.copy(fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
 
-/** Medium 12: "o ingresalo a mano", el encabezado de un aviso y el nombre de cada contador. */
+/** Medium 12: "o ingresalo manualmente", el encabezado de un aviso y el nombre de cada contador. */
 val Typography.rotulo: TextStyle
     get() = bodySmall.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium)
 

@@ -180,7 +180,7 @@ class BloqueoContenidoTest {
     fun `un analista con su pedido abierto ve que espera a alguien que pueda bloquear`() {
         detalle(actual = bloqueo(estado = EstadoBloqueo.PEDIDO), perfil = Perfil.ANALISTA)
 
-        compose.onNodeWithText("Espera a alguien que pueda bloquear").performScrollTo().assertExists()
+        compose.onNodeWithText("Pendiente de aprobación").performScrollTo().assertExists()
         compose.onNodeWithText("Aprobar").assertDoesNotExist()
     }
 
@@ -213,19 +213,19 @@ class BloqueoContenidoTest {
 
         compose.onNodeWithText("Desbloquear pc-09").assertExists()
         compose.onNodeWithText("1 hora").assertDoesNotExist()
-        compose.onNodeWithText("pc-09 (192.168.10.9) vuelve a llegar a otras áreas y a internet.").assertExists()
+        compose.onNodeWithText("pc-09 (192.168.10.9) recupera el acceso a otras áreas y a internet.").assertExists()
     }
 
     @Test
     fun `la hoja dice que se corta y por cuanto tiempo`() {
         hoja(FormularioBloqueo(AccionBloqueo.BLOQUEAR))
-        compose.onNodeWithText("pc-09 (192.168.10.9) no va a llegar a otras áreas ni a internet durante 1 hora.").assertExists()
+        compose.onNodeWithText("pc-09 (192.168.10.9) no podrá acceder a otras áreas ni a internet durante 1 hora.").assertExists()
     }
 
     @Test
     fun `hasta desbloquear dice que dura hasta que alguien lo suelte`() {
         hoja(FormularioBloqueo(AccionBloqueo.BLOQUEAR, duracion = DuracionBloqueo.HASTA_DESBLOQUEAR))
-        compose.onNodeWithText("pc-09 (192.168.10.9) no va a llegar a otras áreas ni a internet hasta que alguien lo desbloquee.").assertExists()
+        compose.onNodeWithText("pc-09 (192.168.10.9) no podrá acceder a otras áreas ni a internet hasta que alguien lo desbloquee.").assertExists()
     }
 
     @Test
@@ -365,6 +365,6 @@ class BloqueoContenidoTest {
         compose.onNodeWithText("Bloqueó pc-rrhh por 15 min").assertExists()
         compose.onNodeWithText("Desbloqueó pc-rrhh").assertExists()
         compose.onNodeWithText("Le dio permiso de bloquear a Laura").assertExists()
-        compose.onNodeWithText("Le sacó el permiso de bloquear a Diego").assertExists()
+        compose.onNodeWithText("Le quitó el permiso de bloquear a Diego").assertExists()
     }
 }

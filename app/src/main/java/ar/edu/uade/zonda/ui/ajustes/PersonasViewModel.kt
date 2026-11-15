@@ -170,7 +170,7 @@ class PersonasViewModel(
         controles.update { it.copy(aviso = AvisoPersonas.PerfilCambiado(persona.nombreVisible, perfil)) }
     }
 
-    /** "Darle permiso de bloquear" o "Sacarle el permiso de bloquear" a un analista (decisión 51). */
+    /** "Darle permiso de bloquear" o "Quitarle el permiso de bloquear" a un analista (decisión 51). */
     fun cambiarPermisoBloqueo(persona: Persona, puedeBloquear: Boolean) = conRedActiva { redId ->
         gestionar.cambiarPermisoBloqueo(redId, persona.id, puedeBloquear)
         controles.update { it.copy(aviso = AvisoPersonas.PermisoBloqueoCambiado(persona.nombreVisible, puedeBloquear)) }

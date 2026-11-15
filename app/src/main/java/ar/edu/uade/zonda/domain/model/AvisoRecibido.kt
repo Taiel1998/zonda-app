@@ -4,12 +4,12 @@ import java.time.Instant
 import java.time.format.DateTimeParseException
 
 /**
- * Lo que trajo el aviso de Telegram en su enlace (RF03, criterio 3): la severidad, el servicio, la
+ * Datos del aviso de Telegram en su enlace (RF03, criterio 3): la severidad, el servicio, la
  * hora de detección y la hora del aviso. Si la alerta todavía no está en el teléfono, el detalle lo
  * muestra hasta poder descargarla (Figma 3-139).
  *
  * Llega en un enlace, y un enlace lo puede armar cualquiera: cada valor se valida y el que no cierra
- * se descarta. Solo se muestra, rotulado como "Lo que trajo el aviso"; no se guarda ni dispara nada.
+ * se descarta. Solo se muestra, rotulado como "Datos del aviso"; no se guarda ni dispara nada.
  */
 data class AvisoRecibido(
     val severidad: Severidad,

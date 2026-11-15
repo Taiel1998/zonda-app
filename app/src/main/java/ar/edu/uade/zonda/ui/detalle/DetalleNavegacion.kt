@@ -76,7 +76,7 @@ fun NavGraphBuilder.detalleAlerta(
     ) { entrada ->
         val argumentos = entrada.arguments
         val alertaId = argumentos?.getString(RutaDetalle.ARG_ID).orEmpty()
-        // Lo que trajo el aviso; cada valor se valida y uno que no cierra se descarta (AvisoRecibido).
+        // Datos del aviso; cada valor se valida y uno que no cierra se descarta (AvisoRecibido).
         val avisoRecibido = AvisoRecibido.desdeEnlace(
             severidad = argumentos?.getString(RutaDetalle.ARG_SEVERIDAD),
             servicio = argumentos?.getString(RutaDetalle.ARG_SERVICIO),

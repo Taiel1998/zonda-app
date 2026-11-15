@@ -246,7 +246,7 @@ class AjustesViewModel(
     }
 
     /**
-     * "Guardar" de Severidad por tipo (decisión 40): si cambió algo, abre "¿Por qué la cambiás?" y
+     * "Guardar" de Severidad por tipo (decisión 40): si cambió algo, abre "Motivo del cambio" y
      * devuelve true; si no cambió nada, devuelve false y no hay nada que guardar.
      */
     fun pedirMotivo(): Boolean {

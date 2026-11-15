@@ -116,7 +116,7 @@ private fun quienYCuando(asignacion: Asignacion, miId: String?, zona: ZoneId, ah
 
 /**
  * "Asignar a" (Figma 468-726): la gente de la red con su perfil; elegir a alguien la asigna y cierra la
- * hoja. Si ya estaba asignada, abajo "Sacar la asignación". Los navegadores con el tablero web no están:
+ * hoja. Si ya estaba asignada, abajo "Quitar la asignación". Los navegadores con el tablero web no están:
  * no son una persona y no reciben el aviso de la asignación (decisión 51).
  */
 @Composable

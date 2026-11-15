@@ -24,7 +24,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * Si el servidor deja de contestar se conserva la última corrida conocida, así "Sin señales desde hace 3 min"
  * sigue contando y se ve desde cuándo no hay noticias. No hay botón para reiniciar nada desde el teléfono.
  * Al terminar una sincronización, Estado pide [preguntarYa]: la app acaba de hablar con el servidor y la
- * tarjeta tiene que decirlo ("Respondió recién"), sin esperar la vuelta siguiente.
+ * tarjeta tiene que decirlo ("Respondió hace un instante"), sin esperar la vuelta siguiente.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObservarEstadoSistema(private val redes: RedesRepository, private val cada: Duration = CADA) {

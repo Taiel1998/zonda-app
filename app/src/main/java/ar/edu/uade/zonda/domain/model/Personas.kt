@@ -5,7 +5,7 @@ import java.time.Instant
 /**
  * Los dos perfiles de la red (corrección 2, decisión 39). El analista revisa alertas y elige sus
  * avisos; el administrador, además, cambia las severidades y la importancia de los equipos, asigna
- * alertas a cualquiera y suma o quita gente. Lo controla el servidor; la app esconde los botones.
+ * alertas a cualquiera y agrega o quita personas. Lo controla el servidor; la app esconde los botones.
  */
 enum class Perfil {
     ADMINISTRADOR,

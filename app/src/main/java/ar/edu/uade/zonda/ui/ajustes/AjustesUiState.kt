@@ -50,9 +50,9 @@ data class AjustesUiState(
     val equipos: List<EquipoDeLaRed> = emptyList(),
     /** El registro de cambios de la red activa, de lo más nuevo a lo más viejo (decisión 40). */
     val registro: List<CambioRegistro> = emptyList(),
-    /** El motivo que se está escribiendo en "¿Por qué la cambiás?"; null si la hoja está cerrada. */
+    /** El motivo que se está escribiendo en "Motivo del cambio"; null si la hoja está cerrada. */
     val motivo: String? = null,
-    /** Se tocó "Guardar cambios" sin motivo: la hoja dice "Escribí por qué la cambiás.". */
+    /** Se tocó "Guardar cambios" sin motivo: la hoja dice "Escribí el motivo del cambio.". */
     val faltaMotivo: Boolean = false,
     /** Ajustes → Apariencia → Tema (decisión 43). */
     val tema: Tema = Tema.COMO_EL_TELEFONO,

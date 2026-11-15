@@ -226,7 +226,7 @@ class EstadoContenidoTest {
         )
 
         compose.onNodeWithText("Ninguna alerta sin revisar · actualizado ayer 12:00").assertIsDisplayed()
-        compose.onNodeWithText("No queda ninguna alerta sin revisar. Las nuevas aparecen acá apenas se sincronizan.").assertIsDisplayed()
+        compose.onNodeWithText("No queda ninguna alerta sin revisar. Las nuevas aparecen aquí en cuanto se sincronizan.").assertIsDisplayed()
     }
 
     @Test
