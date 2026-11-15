@@ -5,14 +5,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.zonda.R
@@ -21,8 +26,11 @@ import ar.edu.uade.zonda.domain.model.EstadoBloqueo
 import ar.edu.uade.zonda.domain.model.EstadoPieza
 import ar.edu.uade.zonda.ui.Formato
 import ar.edu.uade.zonda.ui.components.BarraSuperior
+import ar.edu.uade.zonda.ui.components.CampoTexto
 import ar.edu.uade.zonda.ui.components.FilaNavegable
 import ar.edu.uade.zonda.ui.components.Panel
+import ar.edu.uade.zonda.ui.components.TituloSeccion
+import java.text.Normalizer
 import java.time.Instant
 import java.time.ZoneId
 
@@ -62,6 +70,7 @@ fun BloqueosContenido(
     zona: ZoneId = ZoneId.systemDefault(),
     ahora: Instant = Instant.now(),
 ) {
+    var consulta by rememberSaveable { mutableStateOf("") }
     Scaffold(topBar = { BarraSuperior(titulo = stringResource(R.string.bloqueos_titulo), alVolver = alVolver) }) { relleno ->
         Column(
             modifier = Modifier
@@ -79,17 +88,63 @@ fun BloqueosContenido(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                else -> Panel(espacio = 0.dp) {
-                    bloqueosEnOrden(bloqueos).forEach { bloqueo ->
-                        FilaNavegable(
-                            titulo = bloqueo.etiqueta,
-                            detalle = detalleDe(bloqueo, firewallConectado, zona, ahora),
-                            alTocar = { alAbrirDetalle(bloqueo.alertaId) },
-                            icono = { IconoDeBloqueo(enCurso = bloqueo.estado != EstadoBloqueo.APLICADO) },
+                else -> {
+                    // Desde 9, un buscador por nombre o IP, como el de Equipos del tablero; con algo escrito se queda
+                    // aunque la lista se acorte.
+                    if (bloqueos.size > UMBRAL_BUSCADOR || consulta.isNotBlank()) {
+                        CampoTexto(
+                            valor = consulta,
+                            alCambiar = { consulta = it },
+                            etiqueta = stringResource(R.string.bloqueos_buscar),
+                            ejemplo = stringResource(R.string.bloqueos_buscar_ejemplo),
+                            opcionesTeclado = KeyboardOptions(imeAction = ImeAction.Search),
                         )
+                    }
+                    val ordenados = bloqueosEnOrden(bloqueos).filter { it.coincideCon(consulta) }
+                    if (ordenados.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.bloqueos_sin_coincidencias, consulta.trim()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    // Un grupo por estado, en el orden en que piden atención; un grupo vacío no aparece, ni su título.
+                    val grupos = listOf(
+                        R.string.bloqueos_grupo_pedidos to EstadoBloqueo.PEDIDO,
+                        (if (firewallConectado) R.string.bloqueos_grupo_bloqueando else R.string.bloqueos_grupo_sin_aplicar) to EstadoBloqueo.APROBADO,
+                        R.string.bloqueos_grupo_bloqueados to EstadoBloqueo.APLICADO,
+                    )
+                    grupos.forEach { (titulo, estado) ->
+                        val delGrupo = ordenados.filter { it.estado == estado }
+                        if (delGrupo.isNotEmpty()) {
+                            GrupoDeBloqueos(stringResource(titulo), delGrupo, firewallConectado, zona, ahora, alAbrirDetalle)
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+/** Una tarjeta con el título del grupo («Esperan aprobación», «Bloqueando», «Bloqueados») y una fila por bloqueo. */
+@Composable
+private fun GrupoDeBloqueos(
+    titulo: String,
+    bloqueos: List<Bloqueo>,
+    firewallConectado: Boolean,
+    zona: ZoneId,
+    ahora: Instant,
+    alAbrirDetalle: (alertaId: String) -> Unit,
+) {
+    Panel(espacio = 0.dp) {
+        TituloSeccion(titulo)
+        bloqueos.forEach { bloqueo ->
+            FilaNavegable(
+                titulo = bloqueo.etiqueta,
+                detalle = detalleDe(bloqueo, firewallConectado, zona, ahora),
+                alTocar = { alAbrirDetalle(bloqueo.alertaId) },
+                icono = { IconoDeBloqueo(enCurso = bloqueo.estado != EstadoBloqueo.APLICADO) },
+            )
         }
     }
 }
@@ -113,17 +168,45 @@ private fun grupoDe(estado: EstadoBloqueo): Int = when (estado) {
 }
 
 /**
- * "Pedido de Laura · espera aprobación", "Bloqueando…" (o "Bloqueo sin aplicar" si el firewall no responde),
- * "Bloqueado · vence 13:34" (con la fecha si no es hoy) o "Bloqueado hasta desbloquear". "Bloqueado" sale
- * recién cuando el firewall dijo que lo aplicó.
+ * Desde 9 bloqueos la pantalla suma el buscador: es más o menos lo que entra en la pantalla de un teléfono. El
+ * servidor acepta hasta 20 a la vez.
+ */
+internal const val UMBRAL_BUSCADOR = 8
+
+/** Si [consulta] está en el nombre (sin importar tildes ni mayúsculas) o en la IP. Vacía, coinciden todos. */
+internal fun Bloqueo.coincideCon(consulta: String): Boolean {
+    val buscado = sinTildes(consulta.trim())
+    if (buscado.isEmpty()) return true
+    return ip.contains(buscado) || nombre?.let { sinTildes(it).contains(buscado) } == true
+}
+
+private val MARCAS = Regex("\\p{M}+")
+
+/** "Dirección" y "DIRECCION" se buscan igual: sin tildes y en minúsculas. */
+private fun sinTildes(texto: String): String = Normalizer.normalize(texto, Normalizer.Form.NFD).replace(MARCAS, "").lowercase()
+
+/**
+ * Lo que agrega cada fila al título de su grupo, con la dirección delante si el equipo tiene nombre:
+ * "192.168.30.50 · Hasta desbloquear". El firewall bloquea por dirección, y dos direcciones pueden tener el
+ * mismo nombre en el catálogo (en la demo, "pc-rrhh" son 192.168.30.50 y 172.16.0.1): la dirección las distingue.
  */
 @Composable
 private fun detalleDe(bloqueo: Bloqueo, firewallConectado: Boolean, zona: ZoneId, ahora: Instant): String {
-    if (bloqueo.estado == EstadoBloqueo.PEDIDO) return stringResource(R.string.bloqueos_pedido_por, bloqueo.pedidoPor)
+    val estado = estadoDe(bloqueo, firewallConectado, zona, ahora)
+    return if (bloqueo.nombre != null) stringResource(R.string.bloqueos_fila_con_ip, bloqueo.ip, estado) else estado
+}
+
+/**
+ * "Pedido de Laura"; "El firewall lo aplica en unos segundos" (o "El firewall no responde"); "Vence 13:34" (con la
+ * fecha si no es hoy) o "Hasta desbloquear".
+ */
+@Composable
+private fun estadoDe(bloqueo: Bloqueo, firewallConectado: Boolean, zona: ZoneId, ahora: Instant): String {
+    if (bloqueo.estado == EstadoBloqueo.PEDIDO) return stringResource(R.string.bloqueos_fila_pedido, bloqueo.pedidoPor)
     if (bloqueo.estado == EstadoBloqueo.APROBADO) {
-        return stringResource(if (firewallConectado) R.string.bloqueo_bloqueando else R.string.bloqueo_sin_aplicar)
+        return stringResource(if (firewallConectado) R.string.bloqueo_bloqueando_detalle else R.string.bloqueo_firewall_no_responde)
     }
-    val vence = bloqueo.venceEn ?: return stringResource(R.string.bloqueo_hasta_desbloquear_titulo)
+    val vence = bloqueo.venceEn ?: return stringResource(R.string.bloqueos_fila_hasta_desbloquear)
     val cuando = if (Formato.mismoDia(vence, ahora, zona)) Formato.hora(vence, zona) else Formato.fechaYHora(vence, zona)
-    return stringResource(R.string.bloqueo_vence, cuando)
+    return stringResource(R.string.bloqueos_fila_vence, cuando)
 }
