@@ -2,14 +2,19 @@ package ar.edu.uade.zonda.ui.resumen
 
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -21,6 +26,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.zonda.domain.Fixtures
 import ar.edu.uade.zonda.domain.model.Alerta
@@ -45,6 +51,7 @@ import ar.edu.uade.zonda.ui.theme.ZondaTheme
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.math.ceil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -98,13 +105,16 @@ class ResumenContenidoTest {
         sinConexion = sinConexion,
     )
 
-    /** El color con que se dibujó un texto. */
-    private fun colorDelTexto(texto: String): Color {
+    /** Cómo quedó dibujado un texto: en cuántos renglones, si se cortó y con qué estilo. */
+    private fun disposicionDelTexto(texto: String): TextLayoutResult {
         val resultados = mutableListOf<TextLayoutResult>()
         compose.onNodeWithText(texto, useUnmergedTree = true).fetchSemanticsNode()
             .config[SemanticsActions.GetTextLayoutResult].action?.invoke(resultados)
-        return resultados.first().layoutInput.style.color
+        return resultados.first()
     }
+
+    /** El color con que se dibujó un texto. */
+    private fun colorDelTexto(texto: String): Color = disposicionDelTexto(texto).layoutInput.style.color
 
     private fun dibujar(
         estado: ResumenUiState,
@@ -160,27 +170,71 @@ class ResumenContenidoTest {
 
         compose.onNodeWithText("sin revisar").performClick()
         compose.onNodeWithText("alertas").performClick()
-        compose.onNodeWithText("altas revisadas en la primera hora").performScrollTo().performClick()
         compose.onNodeWithText("vie").performScrollTo().performClick()
         compose.onNodeWithText("Probable falsa alarma").performScrollTo().performClick()
         compose.onNodeWithText("Falsos positivos").performScrollTo().performClick()
         compose.onNodeWithText("Umbrales estadísticos").performScrollTo().performClick()
-        compose.onNodeWithText("Cobertura de revisión").performScrollTo().performClick()
 
         val viernes = Franja.dia(LocalDate.of(2026, 10, 9))
         assertEquals(
             listOf(
                 ToqueResumen.Revision(RevisionResumen.SIN_REVISAR),
                 ToqueResumen.Total,
-                ToqueResumen.Altas,
                 ToqueResumen.Barra(viernes),
                 ToqueResumen.Tipo(TipoAtaque.PROBABLE_FALSA_ALARMA),
                 ToqueResumen.Revision(RevisionResumen.FALSOS_POSITIVOS),
                 ToqueResumen.Metodo(MetodoDeteccion.UMBRALES),
-                ToqueResumen.Revision(RevisionResumen.REVISADAS),
             ),
             tocadas,
         )
+    }
+
+    @Test
+    fun `las dos metricas y la cobertura solo informan - no se tocan, no se marcan y no son un boton`() {
+        val tocadas = mutableListOf<ToqueResumen>()
+        // Con "revisadas" y los tipos que la red tiene en alta elegidos, antes quedaban las tres marcadas.
+        val filtro = FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR), revision = RevisionResumen.REVISADAS)
+        dibujar(estado(resumen(filtro)), alTocar = { tocadas += it })
+
+        listOf("hasta la primera revisión", "altas revisadas en la primera hora", "Cobertura de revisión").forEach { rotulo ->
+            compose.onNodeWithText(rotulo).performScrollTo()
+                .assertHasNoClickAction()
+                .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Role))
+                .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected))
+                .performClick()
+        }
+        // TalkBack lee cada una de una vez: el valor, el rótulo y el detalle.
+        compose.onNode(hasText("hasta la primera revisión") and hasText("14 min") and hasText("mediana del período")).assertExists()
+        compose.onNode(hasText("Cobertura de revisión") and hasText("100 % · 1 de 1")).assertExists()
+
+        assertEquals(emptyList<ToqueResumen>(), tocadas)
+    }
+
+    @Test
+    fun `con la letra grande las cifras de las filas no se cortan`() {
+        // Con la letra del teléfono al 150 %, "213" se veía "21" y "100 %" se veía "100": el lugar de la
+        // cifra era fijo. Ahora crece lo que haga falta y la barra cede.
+        compose.setContent {
+            ZondaTheme {
+                CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 1.5f)) {
+                    Column(modifier = Modifier.width(354.dp)) {
+                        FilaTipo(rotulo = "Fuerza bruta (SSH, FTP)", severidad = Severidad.ALTA, valor = 213, maximo = 213, elegida = false, alTocar = {})
+                        FilaPrecision(rotulo = "Modelo de IA", porcentaje = "100 %", xDeY = "27 de 27", fraccion = 1f, elegida = false, alTocar = {})
+                    }
+                }
+            }
+        }
+
+        listOf("213", "100 %").forEach { cifra ->
+            val disposicion = disposicionDelTexto(cifra)
+            // Lo que mide el texto escrito entero contra el lugar que le dieron. No sirve hasVisualOverflow:
+            // la acción de TalkBack rehace el párrafo con el ancho máximo y lo da cortado aunque entre.
+            val anchoDelTexto = ceil(disposicion.multiParagraph.maxIntrinsicWidth).toInt()
+            val medidas = "lugar de ${disposicion.size.width} px para un texto de $anchoDelTexto px"
+            assertTrue("«$cifra» se corta: $medidas", disposicion.size.width >= anchoDelTexto)
+            assertFalse("«$cifra» pasa de un renglón: $medidas", disposicion.multiParagraph.didExceedMaxLines)
+            assertEquals("«$cifra» no entra en un renglón: $medidas", cifra.length, disposicion.getLineEnd(0, visibleEnd = true))
+        }
     }
 
     @Test
@@ -425,15 +479,17 @@ class ResumenContenidoTest {
     }
 
     @Test
-    fun `por tipo de ataque va en dos bloques, con los tipos sin alertas en una linea y sin el bloque vacio`() {
+    fun `por tipo de ataque va en dos bloques, solo con los tipos que tuvieron alertas y sin el bloque vacio`() {
         // Fuerza bruta, escaneo y probable falsa alarma: lo que la IA no detectó no tuvo alertas y se
-        // oculta con su título (cambio 14). Los tipos sin alertas van juntos debajo de su bloque, como en
-        // el tablero web.
+        // oculta con su título (cambio 14). Los tipos sin alertas no se nombran: la tarjeta cuenta lo que
+        // pasó.
         dibujar(estado(resumen()))
 
         compose.onNodeWithText("LO QUE DETECTÓ LA IA").performScrollTo().assertIsDisplayed()
         assertEquals(Texto, colorDelTexto("Fuerza bruta (SSH, FTP)"))
-        compose.onNodeWithText("Sin alertas: sin tipo identificado y denegación de servicio.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Escaneo de puertos").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Probable falsa alarma").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Sin alertas", substring = true).assertCountEquals(0)
         compose.onAllNodesWithText("Sin tipo identificado").assertCountEquals(0)
         compose.onAllNodesWithText("Denegación de servicio").assertCountEquals(0)
         compose.onAllNodesWithText("LO QUE LA IA NO DETECTÓ").assertCountEquals(0)
@@ -445,13 +501,14 @@ class ResumenContenidoTest {
     @Test
     fun `con un filtro, los tipos que tuvieron alertas en el periodo siguen en su fila aunque queden en cero`() {
         // Con fuerza bruta elegida, escaneo y probable falsa alarma quedan en cero, pero tuvieron alertas en
-        // la semana: siguen en gris y se pueden tocar para sumarlos. La línea no los nombra.
+        // la semana: siguen en gris y se pueden tocar para sumarlos.
         val tocadas = mutableListOf<ToqueResumen>()
         dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA)))), alTocar = { tocadas += it })
 
         compose.onNodeWithText("Escaneo de puertos").performScrollTo().assertIsDisplayed()
         assertEquals(TextoSecundario, colorDelTexto("Escaneo de puertos"))
-        compose.onNodeWithText("Sin alertas: sin tipo identificado y denegación de servicio.").performScrollTo().assertIsDisplayed()
+        // Los que no tuvieron alertas en la semana siguen sin fila.
+        compose.onAllNodesWithText("Denegación de servicio").assertCountEquals(0)
         compose.onNodeWithText("Probable falsa alarma").performScrollTo().performClick()
 
         assertEquals(listOf(ToqueResumen.Tipo(TipoAtaque.PROBABLE_FALSA_ALARMA)), tocadas)
@@ -464,27 +521,28 @@ class ResumenContenidoTest {
         val tocadas = mutableListOf<ToqueResumen>()
         dibujar(estado(resumen(FiltroResumen(tipos = setOf(TipoAtaque.DDOS)))), alTocar = { tocadas += it })
 
-        compose.onNodeWithText("Sin alertas: sin tipo identificado.").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Sin tipo identificado").assertCountEquals(0)
         compose.onNodeWithText("Denegación de servicio").performScrollTo().performClick()
 
         assertEquals(listOf(ToqueResumen.Tipo(TipoAtaque.DDOS)), tocadas)
     }
 
     @Test
-    fun `la imagen de un periodo sin alertas nombra todos los tipos en una linea por bloque`() {
+    fun `la imagen de un periodo sin alertas va sin la tarjeta de los tipos`() {
         compose.setContent {
             ZondaTheme {
                 ImagenResumen(resumen = resumen(lista = emptyList()), red = "Oficina central", datosDe = ahora, sinConexion = false, zona = utc)
             }
         }
 
-        compose.onNodeWithText("LO QUE DETECTÓ LA IA").assertExists()
-        compose.onNodeWithText(
-            "Sin alertas: fuerza bruta (SSH, FTP), sin tipo identificado, escaneo de puertos, denegación de servicio y probable falsa alarma.",
-        ).assertExists()
-        compose.onNodeWithText("LO QUE LA IA NO DETECTÓ").assertExists()
-        compose.onNodeWithText("Sin alertas: servicio no autorizado y volumen inusual.").assertExists()
-        compose.onAllNodesWithText("Escaneo de puertos").assertCountEquals(0)
+        // No hubo nada para contar por tipo: ni la tarjeta vacía ni la lista de lo que no pasó.
+        compose.onAllNodesWithText("Por tipo de ataque").assertCountEquals(0)
+        compose.onAllNodesWithText("LO QUE DETECTÓ LA IA").assertCountEquals(0)
+        compose.onAllNodesWithText("LO QUE LA IA NO DETECTÓ").assertCountEquals(0)
+        compose.onAllNodesWithText("Sin alertas", substring = true).assertCountEquals(0)
+        // El resto de la imagen sigue: los totales en cero, el gráfico y los reales y falsos positivos.
+        compose.onNodeWithText("Alertas por día").assertExists()
+        compose.onNodeWithText("Reales y falsos positivos (de las revisadas)").assertExists()
     }
 
     @Test
@@ -498,8 +556,7 @@ class ResumenContenidoTest {
 
         compose.onNodeWithText("LO QUE LA IA NO DETECTÓ").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Servicio no autorizado").performScrollTo().assertIsDisplayed()
-        // Volumen inusual no tuvo alertas: va en la línea de abajo, no en una fila.
-        compose.onNodeWithText("Sin alertas: volumen inusual.").performScrollTo().assertIsDisplayed()
+        // Volumen inusual no tuvo alertas: no tiene fila.
         compose.onAllNodesWithText("Volumen inusual").assertCountEquals(0)
         // El punto de color también lo lee TalkBack.
         compose.onNode(hasText("Escaneo de puertos") and hasContentDescription("Severidad alta")).assertExists()

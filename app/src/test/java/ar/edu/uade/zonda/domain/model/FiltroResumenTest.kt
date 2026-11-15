@@ -5,7 +5,6 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneOffset
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -19,7 +18,6 @@ class FiltroResumenTest {
     private val sabado = Franja.dia(LocalDate.of(2026, 10, 10))
     private val domingo = Franja.dia(LocalDate.of(2026, 10, 11))
     private val lunes = Franja.dia(LocalDate.of(2026, 10, 12))
-    private val altas = SeveridadPorTipo.RECOMENDADA.tiposAltos
 
     private fun alerta(
         id: String,
@@ -85,51 +83,35 @@ class FiltroResumenTest {
 
     @Test
     fun `tocar un dia o un tipo lo suma, y tocarlo de nuevo lo saca`() {
-        val conDomingo = FiltroResumen().tocar(ToqueResumen.Barra(domingo), altas)
-        val conLosDos = conDomingo.tocar(ToqueResumen.Barra(sabado), altas)
+        val conDomingo = FiltroResumen().tocar(ToqueResumen.Barra(domingo))
+        val conLosDos = conDomingo.tocar(ToqueResumen.Barra(sabado))
         assertEquals(setOf(sabado, domingo), conLosDos.barras)
-        assertEquals(setOf(sabado), conLosDos.tocar(ToqueResumen.Barra(domingo), altas).barras)
+        assertEquals(setOf(sabado), conLosDos.tocar(ToqueResumen.Barra(domingo)).barras)
 
         val tipos = FiltroResumen()
-            .tocar(ToqueResumen.Tipo(TipoAtaque.FUERZA_BRUTA), altas)
-            .tocar(ToqueResumen.Tipo(TipoAtaque.ESCANEO), altas)
+            .tocar(ToqueResumen.Tipo(TipoAtaque.FUERZA_BRUTA))
+            .tocar(ToqueResumen.Tipo(TipoAtaque.ESCANEO))
         assertEquals(setOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.ESCANEO), tipos.tipos)
-        assertEquals(setOf(TipoAtaque.ESCANEO), tipos.tocar(ToqueResumen.Tipo(TipoAtaque.FUERZA_BRUTA), altas).tipos)
+        assertEquals(setOf(TipoAtaque.ESCANEO), tipos.tocar(ToqueResumen.Tipo(TipoAtaque.FUERZA_BRUTA)).tipos)
     }
 
     @Test
     fun `la revision y el modelo van de a uno - tocar otro cambia el que estaba`() {
-        val reales = FiltroResumen().tocar(ToqueResumen.Revision(RevisionResumen.REALES), altas)
-        val falsos = reales.tocar(ToqueResumen.Revision(RevisionResumen.FALSOS_POSITIVOS), altas)
+        val reales = FiltroResumen().tocar(ToqueResumen.Revision(RevisionResumen.REALES))
+        val falsos = reales.tocar(ToqueResumen.Revision(RevisionResumen.FALSOS_POSITIVOS))
         assertEquals(RevisionResumen.FALSOS_POSITIVOS, falsos.revision)
-        assertEquals(null, falsos.tocar(ToqueResumen.Revision(RevisionResumen.FALSOS_POSITIVOS), altas).revision)
+        assertEquals(null, falsos.tocar(ToqueResumen.Revision(RevisionResumen.FALSOS_POSITIVOS)).revision)
 
-        val ia = FiltroResumen().tocar(ToqueResumen.Metodo(MetodoDeteccion.IA), altas)
-        assertEquals(MetodoDeteccion.UMBRALES, ia.tocar(ToqueResumen.Metodo(MetodoDeteccion.UMBRALES), altas).metodo)
-        assertEquals(null, ia.tocar(ToqueResumen.Metodo(MetodoDeteccion.IA), altas).metodo)
-    }
-
-    @Test
-    fun `tocar las altas suma los tipos que la red tiene en alta, y tocarlas de nuevo los saca`() {
-        val conEscaneo = FiltroResumen(tipos = setOf(TipoAtaque.ESCANEO))
-
-        val conAltas = conEscaneo.tocar(ToqueResumen.Altas, altas)
-        assertEquals(setOf(TipoAtaque.ESCANEO, TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR), conAltas.tipos)
-        assertEquals(setOf(TipoAtaque.ESCANEO), conAltas.tocar(ToqueResumen.Altas, altas).tipos)
-
-        val soloAltas = FiltroResumen().tocar(ToqueResumen.Altas, altas)
-        assertTrue(soloAltas.tiposSonLasAltas(altas))
-        assertFalse(conAltas.tiposSonLasAltas(altas))
-        // Si la red pone el escaneo en alta, las altas son otras.
-        val conEscaneoAlto = SeveridadPorTipo.RECOMENDADA.con(TipoAtaque.ESCANEO, Severidad.ALTA).tiposAltos
-        assertEquals(setOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR, TipoAtaque.ESCANEO), conEscaneoAlto)
+        val ia = FiltroResumen().tocar(ToqueResumen.Metodo(MetodoDeteccion.IA))
+        assertEquals(MetodoDeteccion.UMBRALES, ia.tocar(ToqueResumen.Metodo(MetodoDeteccion.UMBRALES)).metodo)
+        assertEquals(null, ia.tocar(ToqueResumen.Metodo(MetodoDeteccion.IA)).metodo)
     }
 
     @Test
     fun `tocar el total saca todo y cambiar de periodo saca solo los dias`() {
         val filtro = FiltroResumen(barras = setOf(domingo), tipos = setOf(TipoAtaque.FUERZA_BRUTA), revision = RevisionResumen.REALES, metodo = MetodoDeteccion.IA)
 
-        assertTrue(filtro.tocar(ToqueResumen.Total, altas).vacio)
+        assertTrue(filtro.tocar(ToqueResumen.Total).vacio)
         assertEquals(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA), revision = RevisionResumen.REALES, metodo = MetodoDeteccion.IA), filtro.sinBarras())
     }
 

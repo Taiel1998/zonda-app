@@ -152,22 +152,6 @@ class ResumenViewModelTest {
     }
 
     @Test
-    fun `las altas son los tipos que la red tiene en alta`() = runTest {
-        conRedYAlertas()
-        redes.guardarSeveridadesLocal("red-1", SeveridadPorTipo.RECOMENDADA.con(TipoAtaque.ESCANEO, Severidad.ALTA))
-        val viewModel = viewModel()
-
-        viewModel.estado.test {
-            esperar { it.datos != null && it.severidades.severidadDe(TipoAtaque.ESCANEO) == Severidad.ALTA }
-            viewModel.tocar(ToqueResumen.Altas)
-            val altas = esperar { it.filtro.tipos.isNotEmpty() }
-            assertEquals(setOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR, TipoAtaque.ESCANEO), altas.filtro.tipos)
-            assertTrue(altas.filtro.tiposSonLasAltas(altas.altas))
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
     fun `la hoja de filtros reemplaza todos los filtros de una vez`() = runTest {
         conRedYAlertas()
         val viewModel = viewModel()

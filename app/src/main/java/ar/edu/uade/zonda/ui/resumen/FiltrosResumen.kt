@@ -159,7 +159,7 @@ fun ColumnScope.ContenidoFiltrosResumen(
             ChipOpcion(
                 texto = franja.enHoja(recursos),
                 elegido = franja in borrador.barras,
-                alTocar = { borrador = borrador.tocar(ToqueResumen.Barra(franja), emptySet()) },
+                alTocar = { borrador = borrador.tocar(ToqueResumen.Barra(franja)) },
             )
         }
     }
@@ -179,7 +179,7 @@ fun ColumnScope.ContenidoFiltrosResumen(
                     tipo = tipo,
                     severidades = severidades,
                     marcada = tipo in borrador.tipos,
-                    alCambiar = { borrador = borrador.tocar(ToqueResumen.Tipo(tipo), emptySet()) },
+                    alCambiar = { borrador = borrador.tocar(ToqueResumen.Tipo(tipo)) },
                 )
             }
         }

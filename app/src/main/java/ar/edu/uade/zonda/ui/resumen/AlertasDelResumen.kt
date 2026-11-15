@@ -74,7 +74,7 @@ fun AlertasDelResumenContenido(
         ) {
             item {
                 Text(
-                    text = lineaDeLaLista(resumen, recursos, estado.altas),
+                    text = lineaDeLaLista(resumen, recursos),
                     style = MaterialTheme.typography.nota,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

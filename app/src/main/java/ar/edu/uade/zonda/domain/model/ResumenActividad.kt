@@ -174,10 +174,7 @@ sealed interface ToqueResumen {
     /** Una fila de "Por tipo de ataque". */
     data class Tipo(val tipo: TipoAtaque) : ToqueResumen
 
-    /** "altas revisadas en la primera hora": los tipos que la red tiene en alta. */
-    data object Altas : ToqueResumen
-
-    /** "revisadas", "sin revisar", la cobertura, el tiempo hasta la revisión, reales o falsos positivos. */
+    /** "revisadas", "sin revisar", reales o falsos positivos. */
     data class Revision(val revision: RevisionResumen) : ToqueResumen
 
     /** Una fila de la precisión: la IA, los umbrales o las reglas. */
@@ -221,27 +218,18 @@ data class FiltroResumen(
 
     /**
      * Lo que pasa al tocar una cifra: los días y los tipos se suman o se sacan, la revisión y el modelo
-     * reemplazan al que estaba (o se sacan si se toca el mismo), y el total saca todo. [altas] son los
-     * tipos que la red tiene en alta: tocar "altas revisadas en la primera hora" los suma, o los saca si
-     * ya estaban todos.
+     * reemplazan al que estaba (o se sacan si se toca el mismo), y el total saca todo.
      */
-    fun tocar(toque: ToqueResumen, altas: Set<TipoAtaque>): FiltroResumen = when (toque) {
+    fun tocar(toque: ToqueResumen): FiltroResumen = when (toque) {
         ToqueResumen.Total -> FiltroResumen()
         is ToqueResumen.Barra -> copy(barras = barras.alternar(toque.franja))
         is ToqueResumen.Tipo -> copy(tipos = tipos.alternar(toque.tipo))
-        ToqueResumen.Altas -> copy(tipos = if (altas.isNotEmpty() && tipos.containsAll(altas)) tipos - altas else tipos + altas)
         is ToqueResumen.Revision -> copy(revision = toque.revision.takeUnless { it == revision })
         is ToqueResumen.Metodo -> copy(metodo = toque.metodo.takeUnless { it == metodo })
     }
 
     /** Al cambiar de período, los días elegidos eran del otro: se sacan y queda lo demás. */
     fun sinBarras(): FiltroResumen = copy(barras = emptySet())
-
-    /**
-     * Si los tipos elegidos son justo los que la red tiene en alta: la métrica de las altas queda
-     * resaltada y la frase los nombra como "las altas".
-     */
-    fun tiposSonLasAltas(altas: Set<TipoAtaque>): Boolean = altas.isNotEmpty() && tipos == altas
 
     private fun <T> Set<T>.alternar(elemento: T): Set<T> = if (elemento in this) this - elemento else this + elemento
 }
@@ -282,9 +270,8 @@ data class ResumenActividad(
     /** Una barra por hora, por día o por semana ([RangoResumen.escala]), con las que quedaron en cero. */
     val barras: List<BarraActividad>,
     /**
-     * Cada tipo de ataque, en el orden de la pantalla de severidades y aunque esté en cero (cambio 14):
-     * un tipo en cero también dice algo ("esta semana no hubo DDoS"). La tarjeta lo dice en la línea
-     * "Sin alertas: …" ([tiposConFila]).
+     * Cada tipo de ataque, en el orden de la pantalla de severidades y aunque esté en cero (cambio 14).
+     * La tarjeta muestra solo los que tienen fila ([tiposConFila]).
      */
     val porTipo: Map<TipoAtaque, Int>,
     /** Métrica de éxito 1: tiempo mediano entre la creación de una alerta y su primera revisión. */
@@ -317,8 +304,8 @@ data class ResumenActividad(
     /**
      * Los tipos que van con su fila en "Por tipo de ataque", en el orden de la pantalla: los que tuvieron
      * alertas en el período, aunque los filtros los dejen en cero (quedan en gris y se pueden tocar), y
-     * los elegidos en el filtro, que se sacan tocándolos. Los demás van juntos en "Sin alertas: …", como
-     * en el tablero web; esa línea nunca nombra un tipo que tuvo alertas en el período.
+     * los elegidos en el filtro, que se sacan tocándolos. Los demás no se muestran: la tarjeta cuenta lo
+     * que pasó, y todos los tipos siguen en la hoja de filtros.
      */
     val tiposConFila: Set<TipoAtaque>
         get() = TipoAtaque.EN_PANTALLA.filter { tipo ->

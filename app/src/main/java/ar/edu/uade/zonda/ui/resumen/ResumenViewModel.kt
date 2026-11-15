@@ -114,12 +114,10 @@ class ResumenViewModel(
 
     /**
      * Tocar una cifra suma o saca su filtro y todo el Resumen se recalcula (RF07, cambio 16): los días y
-     * los tipos de a varios, la revisión y el modelo de a uno; el total saca todos. Las altas son los
-     * tipos que la red tiene en alta.
+     * los tipos de a varios, la revisión y el modelo de a uno; el total saca todos.
      */
     fun tocar(toque: ToqueResumen) {
-        val altas = estado.value.altas
-        consulta.update { actual -> actual.copy(filtro = actual.filtro.tocar(toque, altas)) }
+        consulta.update { actual -> actual.copy(filtro = actual.filtro.tocar(toque)) }
     }
 
     /** "Mostrar N alertas" (o "Ver estas alertas en la lista") de la hoja de filtros: reemplaza los filtros. */

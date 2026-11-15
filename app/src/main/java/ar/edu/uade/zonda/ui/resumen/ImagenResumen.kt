@@ -23,7 +23,6 @@ import ar.edu.uade.zonda.R
 import ar.edu.uade.zonda.domain.model.PeriodoResumen
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
-import ar.edu.uade.zonda.domain.model.TipoAtaque
 import ar.edu.uade.zonda.ui.theme.CremaBarra
 import ar.edu.uade.zonda.ui.theme.VerdeZonda
 import ar.edu.uade.zonda.ui.theme.nota
@@ -40,7 +39,7 @@ const val ETIQUETA_IMAGEN = "imagen_resumen"
  * La imagen que se comparte (cambio 18; Figma 107-4862 y 463-3007): "Zonda" y "Resumen semanal" o
  * "mensual", la línea de la red con las fechas, los filtros si hay ("Filtros: viernes 25/09 · fuerza
  * bruta"), los totales, las dos métricas, el gráfico con su frase, "Por tipo de ataque" en los dos
- * bloques y "Reales y falsos positivos", y el pie "Generado con Zonda · no incluye IPs ni nombres de
+ * bloques (si hubo alertas en el período) y "Reales y falsos positivos", y el pie "Generado con Zonda · no incluye IPs ni nombres de
  * equipos". Sin la precisión de cada modelo ni los ⓘ. Solo cantidades: nada de direcciones ni nombres
  * de equipos (RNF02). Fondo blanco, 16 de margen y 12 entre piezas. El PDF es esta misma imagen.
  */
@@ -52,12 +51,11 @@ fun ImagenResumen(
     sinConexion: Boolean,
     zona: ZoneId,
     modifier: Modifier = Modifier,
-    altas: Set<TipoAtaque> = emptySet(),
     severidades: SeveridadPorTipo = SeveridadPorTipo.RECOMENDADA,
 ) {
     val recursos = LocalResources.current
     // En la imagen no se puede tocar nada: la frase de un filtro no dice "Tocá de nuevo".
-    val frase = fraseDelGrafico(resumen, recursos, altas, enImagen = true)
+    val frase = fraseDelGrafico(resumen, recursos, enImagen = true)
     Column(
         modifier = modifier
             .width(AnchoImagen)
@@ -94,7 +92,7 @@ fun ImagenResumen(
             Spacer(modifier = Modifier.height(12.dp))
             // Figma 463-3007: el recuadro crema con los filtros, Regular 12.
             Text(
-                text = stringResource(R.string.resumen_imagen_filtros, resumen.filtro.grupos(recursos, altas, conFecha = true).joinToString(" · ")),
+                text = stringResource(R.string.resumen_imagen_filtros, resumen.filtro.grupos(recursos, conFecha = true).joinToString(" · ")),
                 style = MaterialTheme.typography.nota,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
@@ -105,12 +103,15 @@ fun ImagenResumen(
         Spacer(modifier = Modifier.height(12.dp))
         FilaDeTotales(resumen = resumen, alTocar = {})
         Spacer(modifier = Modifier.height(12.dp))
-        FilaDeMetricas(resumen = resumen, altas = altas, alTocar = {})
+        FilaDeMetricas(resumen = resumen)
         Spacer(modifier = Modifier.height(12.dp))
         TarjetaGrafico(resumen = resumen, alTocar = {}, frase = frase)
         Spacer(modifier = Modifier.height(12.dp))
-        TarjetaTipos(resumen = resumen, severidades = severidades, alTocar = {}, alPedirAyuda = null)
-        Spacer(modifier = Modifier.height(12.dp))
+        // Sin alertas en el período no hay tipos para contar: la tarjeta no va.
+        if (resumen.tiposConFila.isNotEmpty()) {
+            TarjetaTipos(resumen = resumen, severidades = severidades, alTocar = {}, alPedirAyuda = null)
+            Spacer(modifier = Modifier.height(12.dp))
+        }
         TarjetaRealesYFalsos(resumen = resumen, alTocar = {}, conNota = false)
         Spacer(modifier = Modifier.height(12.dp))
         Text(

@@ -289,7 +289,7 @@ class ResumenActividadTest {
     }
 
     @Test
-    fun `reales, falsos positivos, un tipo, los tipos altos y un metodo son filtros`() {
+    fun `reales, falsos positivos, un tipo, varios tipos y un metodo son filtros`() {
         fun total(filtro: FiltroResumen) = ResumenActividad.calcular(alertas(), PeriodoResumen.SIETE_DIAS, ahora, utc, filtro).total
 
         assertEquals(2, total(FiltroResumen(revision = RevisionResumen.REALES)))
@@ -300,8 +300,8 @@ class ResumenActividadTest {
         assertEquals(0, total(FiltroResumen(tipos = setOf(TipoAtaque.SIN_TIPIFICAR))))
         assertEquals(2, total(FiltroResumen(metodo = MetodoDeteccion.REGLAS)))
         assertEquals(3, total(FiltroResumen(metodo = MetodoDeteccion.IA)))
-        // Las altas son los tipos que la red tiene en alta: de fábrica, fuerza bruta y sin tipo identificado.
-        assertEquals(1, total(FiltroResumen(tipos = SeveridadPorTipo.RECOMENDADA.tiposAltos)))
+        // Con varios tipos entran las de cualquiera de ellos.
+        assertEquals(1, total(FiltroResumen(tipos = setOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR))))
     }
 
     @Test

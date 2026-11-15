@@ -2,7 +2,6 @@ package ar.edu.uade.zonda.ui.resumen
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -123,22 +122,19 @@ fun TarjetaTotal(
 
 /**
  * Una métrica de éxito (Figma 52-2629): el valor SemiBold 22 verde, el rótulo Medium 12 y el detalle
- * Regular 11 gris. No tiene fondo ni borde; elegida, el borde verde (Figma 100-7158 y 100-7426).
+ * Regular 11 gris. No tiene fondo ni borde. Solo informa: no se toca ni se marca, y TalkBack la lee de
+ * una vez, sin anunciarla como botón.
  */
 @Composable
 fun TarjetaMetrica(
     valor: String,
     rotulo: String,
     detalle: String,
-    elegida: Boolean,
-    alTocar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
-            .clip(FormaTarjeta)
-            .then(if (elegida) Modifier.border(BordeElegido, MaterialTheme.colorScheme.primary, FormaTarjeta) else Modifier)
-            .selectable(selected = elegida, onClick = alTocar, role = Role.Button)
+            .semantics(mergeDescendants = true) {}
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -362,7 +358,11 @@ fun FilaTipo(
 
 private fun fraccionDe(valor: Int, maximo: Int): Float = if (maximo == 0) 0f else valor.toFloat() / maximo * FRACCION_MAXIMA
 
-/** El número de una fila con barra: Medium 13 a la derecha, en 28 (Figma 52-2629). */
+/**
+ * El número de una fila con barra: Medium 13 a la derecha, en 28 (Figma 52-2629). Los 28 son el mínimo:
+ * con la letra grande del teléfono o con cuatro cifras crece lo que haga falta y la barra cede, en lugar
+ * de cortarse ("213" se veía "21").
+ */
 @Composable
 private fun ValorDeFila(valor: Int, color: Color) {
     Text(
@@ -371,7 +371,7 @@ private fun ValorDeFila(valor: Int, color: Color) {
         color = color,
         textAlign = TextAlign.End,
         maxLines = 1,
-        modifier = Modifier.width(28.dp),
+        modifier = Modifier.widthIn(min = 28.dp),
     )
 }
 
@@ -409,7 +409,8 @@ fun FilaPrecision(
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.End,
             maxLines = 1,
-            modifier = Modifier.width(46.dp),
+            // 46 como mínimo: con letra grande "100 %" no entra y se cortaba.
+            modifier = Modifier.widthIn(min = 46.dp),
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
@@ -423,18 +424,19 @@ fun FilaPrecision(
     }
 }
 
-/** "Cobertura de revisión · 73 % · 33 de 45" en el recuadro crema (Figma 52-2629), que también se toca. */
+/**
+ * "Cobertura de revisión · 73 % · 33 de 45" en el recuadro crema (Figma 52-2629). Solo informa, como las
+ * métricas: por las revisadas se filtra desde el total "revisadas".
+ */
 @Composable
-fun CajaCobertura(valor: String, rotulo: String, elegida: Boolean, alTocar: () -> Unit, modifier: Modifier = Modifier) {
+fun CajaCobertura(valor: String, rotulo: String, modifier: Modifier = Modifier) {
     val forma = RoundedCornerShape(8.dp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .clip(forma)
             .background(MaterialTheme.colorScheme.surfaceContainer, forma)
-            .then(if (elegida) Modifier.border(BordeElegido, MaterialTheme.colorScheme.primary, forma) else Modifier)
-            .selectable(selected = elegida, onClick = alTocar, role = Role.Button)
+            .semantics(mergeDescendants = true) {}
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         Text(text = rotulo, style = MaterialTheme.typography.opcion, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))

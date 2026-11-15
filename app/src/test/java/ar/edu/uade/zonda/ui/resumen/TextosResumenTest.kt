@@ -13,7 +13,6 @@ import ar.edu.uade.zonda.domain.model.ResultadoRevision
 import ar.edu.uade.zonda.domain.model.ResumenActividad
 import ar.edu.uade.zonda.domain.model.Revision
 import ar.edu.uade.zonda.domain.model.RevisionResumen
-import ar.edu.uade.zonda.domain.model.SeveridadPorTipo
 import ar.edu.uade.zonda.domain.model.TipoAtaque
 import java.time.Duration
 import java.time.Instant
@@ -79,7 +78,7 @@ class TextosResumenTest {
             "El viernes concentra 1 alerta: 1 sin tipo identificado.",
             fraseDelGrafico(ResumenActividad.calcular(sinTipo, PeriodoResumen.SIETE_DIAS, domingo, utc), recursos),
         )
-        assertEquals(listOf("volumen inusual"), FiltroResumen(tipos = setOf(TipoAtaque.VOLUMEN_INUSUAL)).grupos(recursos, emptySet(), conFecha = false))
+        assertEquals(listOf("volumen inusual"), FiltroResumen(tipos = setOf(TipoAtaque.VOLUMEN_INUSUAL)).grupos(recursos, conFecha = false))
     }
 
     @Test
@@ -124,13 +123,18 @@ class TextosResumenTest {
     }
 
     @Test
-    fun `los tipos que la red tiene en alta se nombran como las altas`() {
+    fun `los tipos que la red tiene en alta se nombran uno por uno, como cualquier otra combinacion`() {
+        // Antes eran "las altas", un solo filtro con "Tocá de nuevo para sacarlo": ya no hay nada con ese
+        // nombre para tocar, y son dos filtros.
         val lista = listOf(alertaDel("2026-09-25", "v-1"))
-        val altas = SeveridadPorTipo.RECOMENDADA.tiposAltos
-        val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, FiltroResumen(tipos = altas))
+        val enAlta = setOf(TipoAtaque.FUERZA_BRUTA, TipoAtaque.SIN_TIPIFICAR)
+        val resumen = ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, FiltroResumen(tipos = enAlta))
 
-        assertEquals("Mostrando las altas: 1 alerta. Tocá de nuevo para sacarlo.", fraseDelGrafico(resumen, recursos, altas))
-        assertEquals("Estás viendo las altas: la precisión cuenta solo las alertas altas revisadas.", recuadroDePrecision(resumen, recursos, altas))
+        assertEquals("Mostrando 1 alerta: fuerza bruta y sin tipo identificado.", fraseDelGrafico(resumen, recursos))
+        assertEquals(
+            "Estás viendo varios filtros juntos: la precisión cuenta solo las alertas revisadas que pasan todos.",
+            recuadroDePrecision(resumen, recursos),
+        )
     }
 
     @Test
@@ -151,7 +155,7 @@ class TextosResumenTest {
         val lista = listOf(alertaDel("2026-09-25", "v-1"))
         val viernes = Franja.dia(LocalDate.of(2026, 9, 25))
         fun linea(filtro: FiltroResumen) =
-            lineaDeLaLista(ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, filtro), recursos, emptySet())
+            lineaDeLaLista(ResumenActividad.calcular(lista, PeriodoResumen.SIETE_DIAS, domingo, utc, filtro), recursos)
 
         assertEquals("Del Resumen: viernes 25/09 · fuerza bruta", linea(FiltroResumen(barras = setOf(viernes), tipos = setOf(TipoAtaque.FUERZA_BRUTA))))
         assertEquals("Del Resumen: del 21/09 al 27/09 · sin revisar", linea(FiltroResumen(revision = RevisionResumen.SIN_REVISAR)))

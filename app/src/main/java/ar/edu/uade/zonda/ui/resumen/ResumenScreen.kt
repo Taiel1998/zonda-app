@@ -132,7 +132,6 @@ fun ResumenScreen(
                         datosDe = estado.datosDe,
                         sinConexion = estado.sinConexion,
                         zona = zona,
-                        altas = estado.altas,
                         severidades = estado.severidades,
                     )
                 }
@@ -321,7 +320,7 @@ fun ResumenContenido(
     val resumenActual = estado.resumen
     if (resumenActual != null) {
         when (ayuda) {
-            AyudaResumen.PRECISION -> HojaPrecision(resumen = resumenActual, altas = estado.altas, alCerrar = { ayuda = null })
+            AyudaResumen.PRECISION -> HojaPrecision(resumen = resumenActual, alCerrar = { ayuda = null })
             AyudaResumen.TIPOS -> HojaTipos(severidades = estado.severidades, alCerrar = { ayuda = null })
             null -> Unit
         }
@@ -372,7 +371,6 @@ private fun CuerpoDelResumen(
     zona: ZoneId,
 ) {
     val recursos = LocalResources.current
-    val altas = estado.altas
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -383,8 +381,8 @@ private fun CuerpoDelResumen(
         FilaDePeriodo(estado, alElegir = alElegirPeriodo, alAbrirFechas = alAbrirFechas, alAbrirFiltros = alAbrirFiltros)
         LineaDelResumen(estado, resumen, zona)
         FilaDeTotales(resumen, alTocar, modifier = Modifier.objetivoDelRecorrido(ObjetivoRecorrido.CIFRAS_RESUMEN))
-        FilaDeMetricas(resumen, altas, alTocar)
-        TarjetaGrafico(resumen, alTocar, frase = fraseDelGrafico(resumen, recursos, altas))
+        FilaDeMetricas(resumen)
+        TarjetaGrafico(resumen, alTocar, frase = fraseDelGrafico(resumen, recursos))
         TarjetaTipos(resumen, estado.severidades, alTocar, alPedirAyuda = { alPedirAyuda(AyudaResumen.TIPOS) })
         TarjetaRealesYFalsos(resumen, alTocar)
         TarjetaPrecision(resumen, alTocar, alPedirAyuda = { alPedirAyuda(AyudaResumen.PRECISION) })
@@ -534,12 +532,12 @@ fun FilaDeTotales(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, mo
 }
 
 /**
- * Las dos métricas de éxito (sección 7 del informe); tocarlas filtra por revisadas o por los tipos que
- * la red tiene en alta ([altas], cambio 16).
+ * Las dos métricas de éxito (sección 7 del informe). Solo informan: un tiempo y un porcentaje no se leen
+ * como un filtro, y por las revisadas o por los tipos en alta ya se filtra desde "revisadas" y desde
+ * "Por tipo de ataque".
  */
 @Composable
-fun FilaDeMetricas(resumen: ResumenActividad, altas: Set<TipoAtaque>, alTocar: (ToqueResumen) -> Unit, modifier: Modifier = Modifier) {
-    val filtro = resumen.filtro
+fun FilaDeMetricas(resumen: ResumenActividad, modifier: Modifier = Modifier) {
     val sinDato = stringResource(R.string.resumen_sin_dato)
     val mediana = resumen.tiempoMedianoHastaRevision
     val enLaPrimeraHora = resumen.altasRevisadasEnUnaHora
@@ -553,8 +551,6 @@ fun FilaDeMetricas(resumen: ResumenActividad, altas: Set<TipoAtaque>, alTocar: (
             valor = mediana?.let(Formato::duracionCorta) ?: sinDato,
             rotulo = stringResource(R.string.resumen_hasta_primera_revision),
             detalle = stringResource(if (mediana == null) R.string.resumen_sin_revisiones else R.string.resumen_mediana),
-            elegida = filtro.revision == RevisionResumen.REVISADAS,
-            alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.REVISADAS)) },
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
@@ -567,8 +563,6 @@ fun FilaDeMetricas(resumen: ResumenActividad, altas: Set<TipoAtaque>, alTocar: (
             } else {
                 stringResource(R.string.resumen_x_de_y, enLaPrimeraHora.parte, enLaPrimeraHora.total)
             },
-            elegida = filtro.tiposSonLasAltas(altas),
-            alTocar = { alTocar(ToqueResumen.Altas) },
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
@@ -620,10 +614,10 @@ fun TarjetaGrafico(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, f
 /**
  * Por tipo de ataque (cambio 14; Figma 52-2629 y 100-8498): los dos bloques de la pantalla de
  * severidades, con sus nombres y su orden fijo, y cada tipo con el punto de la severidad que eligió la
- * red. Los tipos sin alertas en el período van juntos en una línea debajo de su bloque ("Sin alertas:
- * escaneo de puertos."), como en el tablero web; uno que los filtros dejan en cero sigue en gris
- * ([ResumenActividad.tiposConFila]). Un bloque sin alertas en el período se oculta con su título, salvo
- * que los dos lo estén (la imagen de un período sin alertas). El ⓘ abre "Qué es cada tipo".
+ * red. Solo van los tipos que tuvieron alertas en el período: la tarjeta cuenta lo que pasó, y los demás
+ * siguen en la hoja de filtros. Uno que los filtros dejan en cero sigue en gris
+ * ([ResumenActividad.tiposConFila]). Un bloque sin alertas en el período se oculta con su título. El ⓘ
+ * abre "Qué es cada tipo".
  */
 @Composable
 fun TarjetaTipos(
@@ -633,13 +627,12 @@ fun TarjetaTipos(
     /** El ⓘ abre "Qué es cada tipo"; en la imagen que se comparte no va (null). */
     alPedirAyuda: (() -> Unit)?,
 ) {
-    val recursos = LocalResources.current
     val maximo = resumen.porTipo.values.maxOrNull() ?: 0
     val conFila = resumen.tiposConFila
     val bloques = listOf(
         R.string.tipos_bloque_ia to TipoAtaque.DETECTADOS_POR_LA_IA,
         R.string.tipos_bloque_sin_ia to TipoAtaque.NO_DETECTADOS_POR_LA_IA,
-    ).filter { (_, tipos) -> conFila.isEmpty() || tipos.any { it in conFila } }
+    ).filter { (_, tipos) -> tipos.any { it in conFila } }
     TarjetaResumen(
         titulo = stringResource(R.string.resumen_por_tipo),
         espacioTitulo = 10.dp,
@@ -649,8 +642,7 @@ fun TarjetaTipos(
             bloques.forEachIndexed { indice, (titulo, tipos) ->
                 if (indice > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 TituloDeBloque(stringResource(titulo))
-                val (conSuFila, sinAlertas) = tipos.partition { it in conFila }
-                conSuFila.forEach { tipo ->
+                tipos.filter { it in conFila }.forEach { tipo ->
                     FilaTipo(
                         rotulo = stringResource(tipo.enFila()),
                         severidad = severidades.severidadDe(tipo),
@@ -659,9 +651,6 @@ fun TarjetaTipos(
                         elegida = tipo in resumen.filtro.tipos,
                         alTocar = { alTocar(ToqueResumen.Tipo(tipo)) },
                     )
-                }
-                if (sinAlertas.isNotEmpty()) {
-                    Text(text = lineaSinAlertas(sinAlertas, recursos), style = estiloNotaResumen, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -701,7 +690,8 @@ fun TarjetaRealesYFalsos(resumen: ResumenActividad, alTocar: (ToqueResumen) -> U
 /**
  * La cobertura de revisión y la precisión de cada modelo (Figma 52-2629 y 100-9302), sin notas abajo
  * (cambios 4, 10 y 15): no nombra un ganador, porque la precisión dice cuánto acierta un modelo cuando
- * avisa y no cuál es el mejor. Cómo se lee lo explica la hoja del ⓘ.
+ * avisa y no cuál es el mejor. La cobertura solo informa; cada modelo se toca para filtrar. Cómo se lee
+ * lo explica la hoja del ⓘ.
  */
 @Composable
 private fun TarjetaPrecision(resumen: ResumenActividad, alTocar: (ToqueResumen) -> Unit, alPedirAyuda: () -> Unit) {
@@ -718,8 +708,6 @@ private fun TarjetaPrecision(resumen: ResumenActividad, alTocar: (ToqueResumen) 
                 resumen.cobertura.parte,
                 resumen.cobertura.total,
             ),
-            elegida = resumen.filtro.revision == RevisionResumen.REVISADAS,
-            alTocar = { alTocar(ToqueResumen.Revision(RevisionResumen.REVISADAS)) },
         )
         Spacer(modifier = Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
