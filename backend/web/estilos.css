@@ -1833,6 +1833,11 @@ html { overflow-y: scroll; }
 .redes-pie { margin: 22px 0 0; font-size: 13px; color: var(--texto-3); }
 @media (max-width: 720px) {
   .redes-titulo-cabecera { display: none; }
+  /* El tablero lleva el tema a Ajustes en pantalla angosta; el panel no tiene Ajustes: el botón queda arriba. */
+  .panel-redes #boton-tema { display: inline-grid; flex: none; }
+  /* El nombre de la empresa entero y, debajo, el resumen («2 altas sin revisar»). */
+  .red-cabecera { flex-direction: column; gap: 8px; }
+  .red-cabecera .sev, .red-cabecera .etiqueta-rango { align-self: flex-start; }
   .redes-encabezado { flex-direction: column; align-items: stretch; }
   .redes-campos { grid-template-columns: minmax(0, 1fr); }
   .redes-grilla { grid-template-columns: minmax(0, 1fr); }
