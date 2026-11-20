@@ -1789,3 +1789,51 @@ html { overflow-y: scroll; }
   .tarjeta:not(.contiene-grande) .piezas:has(> #pieza-firewall:not([hidden])) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
+
+/* ---- Panel de redes de una consultora (decisión 64, redes.html): una tarjeta por empresa, como la pantalla Redes
+   de la app, con las cuatro piezas del estado del sistema y las alertas sin revisar. ---- */
+.redes-titulo-cabecera { font-size: 15px; font-weight: 500; color: var(--texto-2); padding-left: 16px; border-left: 1px solid var(--borde); }
+.contenido.redes { max-width: 1440px; }
+.redes-encabezado { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.redes-encabezado h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+.redes-intro { margin: 0; color: var(--texto-2); font-size: 14.5px; }
+.redes-encabezado .boton-principal.chico { margin: 0; flex: none; }
+.redes-nota { margin: 6px 0 12px; color: var(--texto-2); font-size: 13.5px; }
+.redes-agregar { max-width: 760px; margin-bottom: 20px; }
+.redes-campos { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0 14px; }
+.redes-codigo { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+.redes-acciones-form { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 14px; }
+.redes-acciones-form .boton-principal.chico { margin: 0; }
+.redes-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+.red-tarjeta { display: flex; flex-direction: column; gap: 14px; }
+.red-tarjeta.atencion { border-color: color-mix(in srgb, var(--alta) 45%, var(--borde)); }
+.red-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.red-identidad { min-width: 0; }
+.red-nombre { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.red-detalle { margin: 3px 0 0; font-size: 13px; color: var(--texto-2); overflow-wrap: anywhere; }
+.red-detalle + .red-detalle { margin-top: 1px; color: var(--texto-3); }
+.red-cabecera .sev, .red-cabecera .etiqueta-rango { flex: none; }
+.red-piezas { display: grid; gap: 8px; padding: 12px; border-radius: 12px; background: var(--superficie-2); border: 1px solid var(--borde); }
+.red-pieza { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; }
+.red-pieza .pieza-nombre { font-size: 14px; }
+.red-pieza .semaforo { padding: 3px 5px; gap: 4px; }
+.red-pieza .semaforo .luz { width: 11px; height: 11px; }
+.red-pieza-dato { grid-column: 1 / -1; font-size: 12.5px; color: var(--texto-2); margin-left: 18px; }
+.red-contador { cursor: default; }
+.red-contador:hover { border-color: var(--borde); }
+.red-contador .contador-numero { font-size: 26px; }
+.red-aviso { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--alta-fondo); color: var(--alta-texto); font-size: 13.5px; }
+.red-actualizado { margin: 0; font-size: 12.5px; color: var(--texto-3); }
+.red-acciones { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--borde); }
+.red-acciones .boton-principal.chico { margin: 0; }
+.red-confirmar { flex-wrap: wrap; font-size: 13.5px; color: var(--texto); }
+.red-botones { display: inline-flex; gap: 8px; margin-left: auto; }
+.red-botones .boton-peligro { width: auto; margin: 0; padding: 8px 16px; font-size: 14px; border-radius: 9px; }
+.red-vacia { max-width: 760px; }
+.redes-pie { margin: 22px 0 0; font-size: 13px; color: var(--texto-3); }
+@media (max-width: 720px) {
+  .redes-titulo-cabecera { display: none; }
+  .redes-encabezado { flex-direction: column; align-items: stretch; }
+  .redes-campos { grid-template-columns: minmax(0, 1fr); }
+  .redes-grilla { grid-template-columns: minmax(0, 1fr); }
+}

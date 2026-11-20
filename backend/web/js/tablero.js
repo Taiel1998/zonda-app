@@ -573,6 +573,20 @@ function iniciar() {
   // El nombre de un rango que termina ahora no cambia, pero sí sus horas (en el globito del botón).
   setInterval(() => { if (e.acceso) pintarBarra(); }, 30000);
 
+  arrancarConAcceso();
+}
+
+/** Con el acceso guardado en este navegador entra directo; abierto desde el panel de redes de una consultora
+    (decisión 64), sin uno guardado, usa el que le pasa el panel; si no, pide el código. */
+async function arrancarConAcceso() {
+  const desdePanel = location.hash === MARCA_PANEL;
+  if (desdePanel) history.replaceState(history.state, '', location.pathname + location.search);
+  if (!leerAcceso() && desdePanel) {
+    const delPanel = await accesoDelPanel();
+    if (delPanel) guardarAcceso(delPanel);
+  }
+  // Ya no hace falta la pestaña que lo abrió: así esta página no puede tocarla.
+  if (desdePanel) window.opener = null;
   e.acceso = leerAcceso();
   if (e.acceso) {
     arrancarTablero();
@@ -580,6 +594,34 @@ function iniciar() {
   } else {
     mostrarIngreso();
   }
+}
+
+// ---- Abierto desde el panel de redes (decisión 64) ----
+
+// El panel abre «<servidor>/panel/#panel» en una pestaña nueva; la marca se borra de la dirección al entrar.
+const MARCA_PANEL = '#panel';
+const ESPERA_PANEL = 3000;
+
+/** Le pide el acceso de esta red a la pestaña que la abrió y lo espera unos segundos. El panel lo manda solo a la
+    dirección de este servidor (postMessage con el origen exacto), así que no viaja en la dirección ni lo ve otra
+    página. Vale solo si es de esta red: el servidor lo confirma con /salud antes de guardarlo. */
+function accesoDelPanel() {
+  const panel = window.opener;
+  if (!panel) return Promise.resolve(null);
+  return new Promise((resolver) => {
+    const terminar = (acceso) => { clearTimeout(reloj); window.removeEventListener('message', alRecibir); resolver(acceso); };
+    const reloj = setTimeout(() => terminar(null), ESPERA_PANEL);
+    async function alRecibir(evento) {
+      const datos = evento.data;
+      if (evento.source !== panel || !datos || datos.tipo !== 'zonda-acceso' || !datos.acceso || typeof datos.acceso.token !== 'string') return;
+      try {
+        const salud = await api('/salud', { token: datos.acceso.token });
+        terminar({ ...datos.acceso, red: salud.red, vence: salud.tokenVence || datos.acceso.vence });
+      } catch (_) { terminar(null); }
+    }
+    window.addEventListener('message', alRecibir);
+    panel.postMessage({ tipo: 'zonda-pide-acceso' }, '*');
+  });
 }
 
 iniciar();

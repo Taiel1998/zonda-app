@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es" data-tema="claro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zonda · Redes</title>
+<link rel="icon" href="img/logo_zonda.png">
+<link rel="stylesheet" href="estilos.css">
+<script type="module" src="js/redes.js"></script>
+</head>
+<body>
+
+<!-- El panel de redes de una consultora (decisión 64): lo sirve `zonda panel` en su computadora y le pregunta a
+     cada servidor directo. Ningún servidor de empresa sirve esta página. -->
+<header class="cabecera">
+  <span class="marca">
+    <img src="img/logo_zonda.png" alt="">
+    <span class="marca-nombre">Zonda</span>
+  </span>
+  <span class="redes-titulo-cabecera">Panel de redes</span>
+  <div class="cabecera-derecha">
+    <span class="en-vivo" id="redes-actualizado" data-estado="ok"><span class="punto" aria-hidden="true"></span><span id="redes-actualizado-texto">Conectando…</span></span>
+    <button class="boton-icono" id="boton-tema" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar a modo oscuro"></button>
+  </div>
+</header>
+
+<main class="contenido redes">
+  <div class="redes-encabezado">
+    <div>
+      <h1>Redes</h1>
+      <p class="redes-intro">Elegí qué red ver. Cada una guarda sus alertas por separado y tiene su propio acceso.</p>
+    </div>
+    <button class="boton-principal chico" id="boton-agregar" type="button">Agregar red</button>
+  </div>
+
+  <form class="tarjeta redes-agregar" id="form-agregar" novalidate hidden>
+    <h2 class="tarjeta-titulo">Agregar red</h2>
+    <p class="redes-nota">Se parea igual que la primera: con el código de pareo de esa red, estando en su red o conectado a su VPN.</p>
+    <div class="redes-campos">
+      <label class="campo" for="campo-direccion">Dirección del servidor
+        <input id="campo-direccion" autocomplete="off" spellcheck="false" placeholder="https://empresa.duckdns.org" required>
+      </label>
+      <label class="campo" for="campo-codigo">Código de pareo
+        <input id="campo-codigo" class="redes-codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="9" placeholder="ABCD-2345" required>
+      </label>
+    </div>
+    <p class="redes-nota">El código lo genera un administrador de esa red: Administración → Personas → Agregar persona. Vence a los 10 minutos. También se puede pegar el contenido del QR en la dirección.</p>
+    <div class="ingreso-error" id="agregar-error" role="alert" hidden></div>
+    <div class="redes-acciones-form">
+      <button class="boton-secundario" id="boton-cancelar" type="button">Cancelar</button>
+      <button class="boton-principal chico" id="boton-parear" type="submit">Agregar</button>
+    </div>
+  </form>
+
+  <div class="redes-grilla" id="redes-lista" aria-live="polite"></div>
+
+  <p class="redes-pie">Los accesos quedan guardados en este navegador. Cada empresa ve este navegador en Administración → Navegadores y le puede quitar el acceso.</p>
+</main>
+
+<div class="aviso-inferior" id="aviso" role="status" hidden></div>
+
+</body>
+</html>

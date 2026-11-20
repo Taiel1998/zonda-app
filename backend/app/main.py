@@ -15,6 +15,10 @@ mismo HTTPS de Caddy y el mismo token por dispositivo que la app.
 Los bloqueos del firewall (app/bloqueos.py, decisión 51) tienen su propio router: los pide la gente con el
 token de su dispositivo y los lee el agente del firewall con el suyo.
 
+El panel de redes de una consultora (app/panel.py, decisión 64) no lo sirve este servidor: corre en la
+computadora de la consultora y le pregunta a cada servidor directo, con el token que le dio el pareo. Para que
+el navegador la deje leer esta API, su dirección tiene que estar en ZONDA_ORIGENES_PANEL (CORS).
+
 Arranque: uvicorn app.main:app --host 127.0.0.1 --port 8000
 """
 
@@ -22,6 +26,8 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .bloqueos import router as router_bloqueos
@@ -49,6 +55,15 @@ CABECERAS_TABLERO = {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "Cache-Control": "no-cache",
 }
+
+
+# Las páginas del panel de redes (decisión 64) están en backend/web porque usan los mismos estilos, pero las
+# sirve solo `zonda panel`, en la computadora de la consultora. Un servidor de empresa no las sirve: así nunca
+# tiene el código que guarda los accesos a las otras redes.
+SOLO_DEL_PANEL_DE_REDES = {"/panel/redes.html", "/panel/js/redes.js"}
+# Los métodos y las cabeceras que usa el panel de redes: lee el estado, parea y quita su propio acceso.
+METODOS_DEL_PANEL = ["GET", "POST", "DELETE"]
+CABECERAS_DEL_PANEL = ["Authorization", "Content-Type", "Accept"]
 
 
 def es_del_tablero(ruta: str) -> bool:
@@ -96,10 +111,24 @@ def crear_app(config: Config | None = None) -> FastAPI:
 
     @app.middleware("http")
     async def cabeceras_del_tablero(request: Request, siguiente):
+        if request.url.path in SOLO_DEL_PANEL_DE_REDES:
+            return JSONResponse({"detail": "Not Found"}, status_code=404, headers=CABECERAS_TABLERO)
         respuesta = await siguiente(request)
         if es_del_tablero(request.url.path):
             respuesta.headers.update(CABECERAS_TABLERO)
         return respuesta
+
+    # CORS solo para las direcciones del panel de redes que eligió la empresa (decisión 64). Sin cookies: el acceso
+    # va en la cabecera Authorization, así que otra página no puede usar el de nadie. Sin la variable, como antes.
+    if cfg.origenes_panel:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cfg.origenes_panel,
+            allow_methods=METODOS_DEL_PANEL,
+            allow_headers=CABECERAS_DEL_PANEL,
+            allow_credentials=False,
+            max_age=600,
+        )
 
     return app
 

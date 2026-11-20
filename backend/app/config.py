@@ -48,6 +48,9 @@ class Config:
     # Direcciones del tablero, además de url_publica, desde las que vale una llave de acceso (decisión 51); por
     # ejemplo http://localhost:8001 para probar. Una llave se ata al nombre: con una IP no funciona.
     origenes_llave: list[str] = field(default_factory=list)
+    # Direcciones del panel de redes de una consultora (decisión 64) que pueden leer esta API desde el navegador
+    # (CORS), por ejemplo http://127.0.0.1:8090. Vacía, el navegador solo deja leerla al tablero de este servidor.
+    origenes_panel: list[str] = field(default_factory=list)
 
     @classmethod
     def desde_entorno(cls) -> "Config":
@@ -80,4 +83,5 @@ class Config:
             max_bloqueos=int(leer("ZONDA_MAX_BLOQUEOS", "20")),
             bloqueos_por_hora=int(leer("ZONDA_BLOQUEOS_POR_HORA", "10")),
             origenes_llave=[origen.strip() for origen in leer("ZONDA_ORIGENES_LLAVE", "").split(",") if origen.strip()],
+            origenes_panel=[origen.strip().rstrip("/") for origen in leer("ZONDA_ORIGENES_PANEL", "").split(",") if origen.strip()],
         )
