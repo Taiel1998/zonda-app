@@ -47,6 +47,7 @@ Configuración: copiar `.env.ejemplo` a `.env` (no se commitea). Variables que l
 | `ZONDA_FIREWALL_LIMITE` | Segundos sin que el firewall pregunte para darlo por desconectado | `60` |
 | `ZONDA_MAX_BLOQUEOS`, `ZONDA_BLOQUEOS_POR_HORA` | Topes de los bloqueos: activos a la vez en la red y pedidos por dispositivo en una hora | `20`, `10` |
 | `ZONDA_ORIGENES_LLAVE` | Direcciones del tablero, además de `ZONDA_URL_PUBLICA`, desde las que valen las llaves de acceso (decisión 51), separadas por comas; por ejemplo `http://localhost:8001` para probar. Una llave se ata al nombre: por la IP no funciona | vacío |
+| `ZONDA_ORIGENES_PANEL` | Direcciones del panel de redes de una consultora (decisión 64) que pueden leer esta API desde el navegador (CORS), separadas por comas; por ejemplo `http://127.0.0.1:8090`. Vacía, solo la lee el tablero de este servidor | vacío |
 
 ## Datos de muestra y fechas corridas
 
@@ -66,6 +67,7 @@ No hay interfaz web de administración; se usan comandos en la computadora de la
 .\zonda.cmd emitir            # crea ya una alerta alta de fuerza bruta por SSH, para la demo
 .\zonda.cmd emitir escaneo    # una de otro tipo; con el servicio: .\zonda.cmd emitir fuerza_bruta ftp
 .\zonda.cmd tranquila         # otra persona revisa desde su teléfono las altas y medias sin revisar, para la demo
+.\zonda.cmd panel             # el panel de redes de una consultora en http://127.0.0.1:8090, en su computadora (decisión 64)
 ```
 
 Los códigos de `zonda pair` son de administrador: el primero sale de la terminal y los demás los suma un administrador desde la app (Ajustes → Personas → Agregar persona, que pide un código a `POST /personas/codigo` y muestra el mismo QR en su pantalla; decisión 39). `zonda revoke` quita a cualquiera, también al último administrador, y en ese caso avisa que hay que generar otro código con `zonda pair`.

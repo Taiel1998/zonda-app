@@ -6,6 +6,7 @@ donde está la API; no hay interfaz web de administración.
     zonda dispositivos               lista los teléfonos pareados, con su persona y su perfil
     zonda emitir [tipo] [servicio]   crea ya una alerta nueva de ese tipo, para la demo (sin nada, fuerza bruta por SSH)
     zonda tranquila [--nombre N]     otra persona revisa desde su teléfono las altas y medias sin revisar, para la demo
+    zonda panel [--puerto P]         el panel de redes de una consultora, en esta computadora (decisión 64)
 """
 
 import argparse
@@ -172,7 +173,16 @@ def main(argv: list[str] | None = None) -> int:
     emitir.add_argument("servicio", nargs="?", help="ssh, ftp, http...; sin servicio, cualquiera de ese tipo")
     tranquila = sub.add_parser("tranquila", help="otra persona revisa desde su teléfono las altas y medias sin revisar")
     tranquila.add_argument("--nombre", default=NOMBRE_OTRO_TELEFONO, help=f"el teléfono que revisa; sin nombre, {NOMBRE_OTRO_TELEFONO}")
+    panel = sub.add_parser("panel", help="el panel de redes de una consultora, en http://127.0.0.1:8090")
+    panel.add_argument("--puerto", type=int, default=8090, help="sin puerto, 8090")
     args = parser.parse_args(argv)
+
+    # El panel no usa la base de este servidor: solo entrega sus páginas (app/panel.py).
+    if args.comando == "panel":
+        from . import panel as panel_de_redes
+
+        panel_de_redes.servir(args.puerto)
+        return 0
 
     cfg = Config.desde_entorno()
     base = Base(cfg.db_path)
